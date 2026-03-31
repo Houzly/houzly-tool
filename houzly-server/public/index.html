@@ -1094,19 +1094,31 @@ function dbDefaults(){
   if(!DB.ric_counter)DB.ric_counter=0;
 }
 function loadDB(){
-  // Sync load from localStorage as fallback while async fetch runs
-  try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
   dbDefaults();
-  if(DB.proprietari.length===0)seedDemo();
-  // Async: fetch from server and refresh UI
+  // Fetch from server — source of truth
   fetch('/api/db').then(function(r){return r.json();}).then(function(data){
     if(data.ok && data.db){
       DB=data.db;
       dbDefaults();
       if(DB.proprietari.length===0)seedDemo();
-      renderDash();
+    } else {
+      // No data on server yet
+      try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
+      dbDefaults();
+      if(DB.proprietari.length===0)seedDemo();
     }
-  }).catch(function(){});
+    // Refresh all UI after data loaded
+    renderDash();
+    populateDashFilter();
+    if(typeof renderArchivioRicevute==='function')renderArchivioRicevute();
+    if(typeof updateRicStats==='function')updateRicStats();
+  }).catch(function(){
+    // Server unreachable - use localStorage
+    try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
+    dbDefaults();
+    if(DB.proprietari.length===0)seedDemo();
+    renderDash();
+  });
 }
 function saveDB(){
   localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback
