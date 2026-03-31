@@ -1,103 +1,115 @@
 const express = require('express');
-const fs      = require('fs');
 const path    = require('path');
 const crypto  = require('crypto');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE  = path.join(__dirname, 'data', 'db.json');
-const AUTH_FILE = path.join(__dirname, 'data', 'auth.json');
 
-// Ensure data dir exists
-fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+// JSONBin config — set these as Environment Variables on Render
+const JSONBIN_KEY    = process.env.JSONBIN_KEY;    // X-Master-Key
+const JSONBIN_BIN_DB = process.env.JSONBIN_BIN_DB; // Bin ID for main DB
+const JSONBIN_BIN_AU = process.env.JSONBIN_BIN_AU; // Bin ID for auth
 
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the frontend HTML
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Helper ────────────────────────────────────────────────────────
-function readJSON(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
-  catch { return fallback; }
+// ── JSONBin helpers ───────────────────────────────────────────────
+async function binGet(binId) {
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  });
+  const data = await r.json();
+  return data.record;
 }
-function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+
+async function binSet(binId, record) {
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'PUT',
+    headers: { 'X-Master-Key': JSONBIN_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(record)
+  });
+  return await r.json();
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────
-// POST /api/auth/check   { pin }  → { ok, exists }
-// POST /api/auth/login   { pin }  → { ok }
-// POST /api/auth/set     { pin }  → { ok }
-// POST /api/auth/change  { oldPin, newPin } → { ok }
-
-app.get('/api/auth/exists', (req, res) => {
-  const auth = readJSON(AUTH_FILE, null);
-  res.json({ exists: !!auth });
+app.get('/api/auth/exists', async (req, res) => {
+  try {
+    const auth = await binGet(JSONBIN_BIN_AU);
+    res.json({ exists: !!(auth && auth.hash) });
+  } catch { res.json({ exists: false }); }
 });
 
-app.post('/api/auth/login', (req, res) => {
-  const { pin } = req.body;
-  const auth = readJSON(AUTH_FILE, null);
-  if (!auth) return res.json({ ok: false, error: 'no_auth' });
-  const hash = crypto.createHash('sha256').update(pin).digest('hex');
-  res.json({ ok: hash === auth.hash });
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const auth = await binGet(JSONBIN_BIN_AU);
+    if (!auth || !auth.hash) return res.json({ ok: false, error: 'no_auth' });
+    const hash = crypto.createHash('sha256').update(pin).digest('hex');
+    res.json({ ok: hash === auth.hash });
+  } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
-app.post('/api/auth/set', (req, res) => {
-  const { pin } = req.body;
-  if (!pin || pin.length < 4) return res.json({ ok: false, error: 'too_short' });
-  const hash = crypto.createHash('sha256').update(pin).digest('hex');
-  writeJSON(AUTH_FILE, { hash });
-  res.json({ ok: true });
+app.post('/api/auth/set', async (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin || pin.length < 4) return res.json({ ok: false, error: 'too_short' });
+    const hash = crypto.createHash('sha256').update(pin).digest('hex');
+    await binSet(JSONBIN_BIN_AU, { hash });
+    res.json({ ok: true });
+  } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
-app.post('/api/auth/change', (req, res) => {
-  const { oldPin, newPin } = req.body;
-  const auth = readJSON(AUTH_FILE, null);
-  if (!auth) return res.json({ ok: false, error: 'no_auth' });
-  const oldHash = crypto.createHash('sha256').update(oldPin).digest('hex');
-  if (oldHash !== auth.hash) return res.json({ ok: false, error: 'wrong_pin' });
-  const hash = crypto.createHash('sha256').update(newPin).digest('hex');
-  writeJSON(AUTH_FILE, { hash });
-  res.json({ ok: true });
+app.post('/api/auth/change', async (req, res) => {
+  try {
+    const { oldPin, newPin } = req.body;
+    const auth = await binGet(JSONBIN_BIN_AU);
+    const oldHash = crypto.createHash('sha256').update(oldPin).digest('hex');
+    if (oldHash !== auth.hash) return res.json({ ok: false, error: 'wrong_pin' });
+    const hash = crypto.createHash('sha256').update(newPin).digest('hex');
+    await binSet(JSONBIN_BIN_AU, { hash });
+    res.json({ ok: true });
+  } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
-// ── DB (main data) ─────────────────────────────────────────────────
-// GET  /api/db      → full DB object
-// POST /api/db      → save full DB object { db: {...} }
-
-app.get('/api/db', (req, res) => {
-  const db = readJSON(DB_FILE, null);
-  res.json({ ok: true, db });
+// ── DB ────────────────────────────────────────────────────────────
+app.get('/api/db', async (req, res) => {
+  try {
+    const db = await binGet(JSONBIN_BIN_DB);
+    res.json({ ok: true, db });
+  } catch { res.json({ ok: false, db: null }); }
 });
 
-app.post('/api/db', (req, res) => {
-  const { db } = req.body;
-  if (!db) return res.status(400).json({ ok: false, error: 'missing db' });
-  writeJSON(DB_FILE, db);
-  res.json({ ok: true });
+app.post('/api/db', async (req, res) => {
+  try {
+    const { db } = req.body;
+    if (!db) return res.status(400).json({ ok: false });
+    await binSet(JSONBIN_BIN_DB, db);
+    res.json({ ok: true });
+  } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
-// ── Backup / Restore ───────────────────────────────────────────────
-// GET  /api/backup  → full JSON export
-// POST /api/restore → restore from JSON { backup: {...} }
-
-app.get('/api/backup', (req, res) => {
-  const db = readJSON(DB_FILE, {});
-  res.setHeader('Content-Disposition', `attachment; filename="houzly-backup-${new Date().toISOString().slice(0,10)}.json"`);
-  res.setHeader('Content-Type', 'application/json');
-  res.send(JSON.stringify(db, null, 2));
+// ── Backup ────────────────────────────────────────────────────────
+app.get('/api/backup', async (req, res) => {
+  try {
+    const db = await binGet(JSONBIN_BIN_DB);
+    const filename = `houzly-backup-${new Date().toISOString().slice(0,10)}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify({ version: 2, date: new Date().toISOString(), db }, null, 2));
+  } catch { res.status(500).json({ ok: false }); }
 });
 
-app.post('/api/restore', (req, res) => {
-  const { backup } = req.body;
-  if (!backup) return res.status(400).json({ ok: false });
-  writeJSON(DB_FILE, backup);
-  res.json({ ok: true });
+app.post('/api/restore', async (req, res) => {
+  try {
+    const { backup } = req.body;
+    if (!backup) return res.status(400).json({ ok: false });
+    await binSet(JSONBIN_BIN_DB, backup);
+    res.json({ ok: true });
+  } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
 app.listen(PORT, () => console.log(`Houzly server running on port ${PORT}`));
