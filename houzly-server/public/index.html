@@ -4247,9 +4247,15 @@ function saveOpsTask() {
       done: (stato==='Completato'), done_at: null, created_at: now
     });
   }
+  // Assign kanban col if pending
+  if(window._kanbanPendingCol && !id) {
+    var lastT = DB.ops_tasks[DB.ops_tasks.length-1];
+    if(lastT) lastT.kanban_col = window._kanbanPendingCol;
+    window._kanbanPendingCol = null;
+  }
   saveDB(); closeModal('modal-ops-task');
   toast('Task salvato ✓');
-  if(_opsCurTab==='generici'){ renderGenTasks(); }
+  if(_opsCurTab==='generici'){ renderKanban(); }
   else if(propId && _opsCurProp) renderOpsTasks();
   else renderOpsProps();
 }
@@ -4972,21 +4978,7 @@ function openNewKanbanTask(colId) {
   }, 50);
 }
 
-// Override saveOpsTask to capture kanban col
-var _saveOpsTaskOrig = saveOpsTask;
-function saveOpsTask() {
-  _saveOpsTaskOrig();
-  // If called from kanban, set the col on the last added task
-  if(window._kanbanPendingCol) {
-    var tasks = DB.ops_tasks;
-    if(tasks.length) {
-      tasks[tasks.length-1].kanban_col = window._kanbanPendingCol;
-      saveDB();
-    }
-    window._kanbanPendingCol = null;
-    renderKanban();
-  }
-}
+
 
 // ── Init ──────────────────────────────────────────────────────────
 function initKanban() {
