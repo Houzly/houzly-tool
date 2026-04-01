@@ -979,7 +979,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div id="ops-tab-proprieta" style="display:none">
 
     <!-- sub-view: property list -->
-    <div id="ops-view-props">
+    <div id="ops-view-props" style="display:block">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
         <input id="ops-search" type="text" placeholder="&#128269; Cerca proprietà..." oninput="renderOpsProps()"
           style="flex:1;min-width:160px;max-width:300px;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;background:var(--surface);color:var(--text);outline:none">
@@ -3892,8 +3892,8 @@ function switchOpsTab(tab) {
   } else {
     document.getElementById('ops-tab-generici').style.display = 'none';
     document.getElementById('ops-tab-proprieta').style.display = 'block';
-    document.getElementById('ops-view-props').style.display = 'block';
-    document.getElementById('ops-view-tasks').style.display = 'none';
+    document.getElementById('ops-view-props').style.display  = 'block';
+    document.getElementById('ops-view-tasks').style.display  = 'none';
     document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(null); };
     _opsCurProp = null;
     renderOpsProps();
