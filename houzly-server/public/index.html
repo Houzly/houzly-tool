@@ -214,6 +214,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div class="nav-group"><div class="nav-group-label">Strumenti</div>
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
+    <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
   <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini</div>
 </nav>
@@ -451,6 +452,123 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
   </div>
 </div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     PAGE: IMPORT TASKS
+════════════════════════════════════════════════════════════════════ -->
+<div id="page-import-tasks" class="page">
+  <div class="section-header">
+    <div class="section-title">📥 Import Tasks</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
+
+    <!-- Excel -->
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="card-title">📊 Da Excel / CSV</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
+        Carica un file <strong>.xlsx</strong> o <strong>.csv</strong> con colonne:<br>
+        <code style="font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:4px">Task, Categoria, Assegnato a, Urgenza, Stato, Scadenza, Note</code>
+      </div>
+      <div class="drop-zone" id="dz-excel" onclick="document.getElementById('import-task-excel').click()" style="padding:24px">
+        <div class="dz-icon">📊</div>
+        <p><strong>Clicca o trascina</strong> il file Excel/CSV</p>
+      </div>
+      <input type="file" id="import-task-excel" accept=".xlsx,.csv" style="display:none" onchange="importTasksExcel(this)">
+      <div id="import-task-excel-result"></div>
+    </div>
+
+    <!-- PDF / Note testuali -->
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="card-title">📄 Da testo / Note</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
+        Incolla una lista di task in testo libero — uno per riga. Li riconosco automaticamente.
+      </div>
+      <textarea id="import-task-text" rows="8" placeholder="Finire cucina&#10;Firmare contratto Luigi&#10;Fare fattura Safa&#10;..."
+        style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12.5px;color:var(--text);resize:vertical;outline:none;font-family:'Plus Jakarta Sans',sans-serif"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field">
+          <label>Assegnato a (default)</label>
+          <select id="import-text-assegnato">
+            <option value="Romeo">Romeo</option>
+            <option value="Daniele">Daniele</option>
+            <option value="Entrambi">Entrambi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Urgenza (default)</label>
+          <select id="import-text-urgenza">
+            <option value="Media">🟡 Media</option>
+            <option value="Urgente">🔴 Urgente</option>
+            <option value="Alta">🟠 Alta</option>
+            <option value="Bassa">🟢 Bassa</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="importTasksText()">📥 Importa task</button>
+      <div id="import-task-text-result"></div>
+    </div>
+
+    <!-- Manuale rapido -->
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="card-title">⚡ Aggiunta rapida multipla</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
+        Aggiungi più task uno sotto l'altro velocemente senza aprire il modal.
+      </div>
+      <div id="quick-task-rows" style="display:grid;gap:8px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addQuickTaskRow()">+ Aggiungi riga</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field">
+          <label>Assegnato (default)</label>
+          <select id="quick-assegnato">
+            <option value="Romeo">Romeo</option>
+            <option value="Daniele">Daniele</option>
+            <option value="Entrambi">Entrambi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Urgenza (default)</label>
+          <select id="quick-urgenza">
+            <option value="Media">🟡 Media</option>
+            <option value="Urgente">🔴 Urgente</option>
+            <option value="Alta">🟠 Alta</option>
+            <option value="Bassa">🟢 Bassa</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveQuickTasks()">💾 Salva tutti</button>
+      <div id="quick-task-result"></div>
+    </div>
+
+  </div>
+
+  <!-- Preview tabella import -->
+  <div id="import-tasks-preview" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--blue)">Anteprima Import — <span id="import-preview-count">0</span> task</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('import-tasks-preview').style.display='none'">Annulla</button>
+        <button class="btn btn-primary" onclick="confirmImportTasks()">✅ Importa tutti</button>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--text);color:#fff">
+            <th style="padding:8px 12px;text-align:left">Task</th>
+            <th style="padding:8px 12px;text-align:left;width:120px">Categoria</th>
+            <th style="padding:8px 12px;text-align:center;width:90px">Assegnato</th>
+            <th style="padding:8px 12px;text-align:center;width:90px">Urgenza</th>
+            <th style="padding:8px 12px;text-align:center;width:80px">Scadenza</th>
+            <th style="padding:8px 12px;text-align:center;width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="import-preview-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <!-- MODAL PROPRIETARIO -->
@@ -795,22 +913,68 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
   <!-- TAB: TASK GENERICI -->
   <div id="ops-tab-generici" style="display:block">
-    <!-- status + search bar -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-      <div style="display:flex;gap:6px;flex-wrap:wrap" id="ops-gen-status-pills">
-        <span data-gen-status="open"  style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--blue);background:var(--blue);color:#fff">Aperti</span>
-        <span data-gen-status="done"  style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Completati</span>
-        <span data-gen-status="all"   style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Tutti</span>
-      </div>
-      <input id="ops-gen-search" type="text" placeholder="&#128269; Cerca task..." oninput="renderGenTasks()"
-        style="flex:1;min-width:160px;max-width:280px;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;background:var(--surface);color:var(--text);outline:none">
-    </div>
-    <!-- cat pills -->
-    <div id="ops-gen-cat-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
-    <!-- task list -->
-    <div id="ops-gen-task-list"></div>
-  </div>
 
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Task Totali</div><div class="stat-value" id="kpi-tot">0</div></div>
+      <div class="stat-card"><div class="stat-label">🔴 Urgenti aperti</div><div class="stat-value" id="kpi-urg" style="color:#dc2626">0</div></div>
+      <div class="stat-card"><div class="stat-label">✅ Completati</div><div class="stat-value" id="kpi-done" style="color:#10b981">0</div></div>
+      <div class="stat-card"><div class="stat-label">📅 Scadono oggi</div><div class="stat-value" id="kpi-oggi" style="color:#f59e0b">0</div></div>
+    </div>
+
+    <!-- Filtri -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:5px" id="ops-gen-status-pills">
+        <span data-gen-status="open"  style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--blue);background:var(--blue);color:#fff">Aperti</span>
+        <span data-gen-status="done"  style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Completati</span>
+        <span data-gen-status="all"   style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Tutti</span>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+      <select id="ops-gen-assegnato" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
+        <option value="">👤 Tutti</option>
+        <option value="Romeo">Romeo</option>
+        <option value="Daniele">Daniele</option>
+        <option value="Entrambi">Entrambi</option>
+      </select>
+      <select id="ops-gen-cat-sel" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
+        <option value="">📋 Tutte le categorie</option>
+        <option value="Operativo">⚙️ Operativo</option>
+        <option value="Commerciale">💼 Commerciale</option>
+        <option value="Amministrazione">📑 Amministrazione</option>
+        <option value="Setup">🔧 Setup</option>
+        <option value="Da definire">❓ Da definire</option>
+      </select>
+      <select id="ops-gen-urgenza-sel" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
+        <option value="">⚡ Tutte le urgenze</option>
+        <option value="Urgente">🔴 Urgente</option>
+        <option value="Alta">🟠 Alta</option>
+        <option value="Media">🟡 Media</option>
+        <option value="Bassa">🟢 Bassa</option>
+        <option value="Parcheggiato">⏸ Parcheggiato</option>
+      </select>
+      <input id="ops-gen-search" type="text" placeholder="🔍 Cerca..." oninput="renderGenTasks()"
+        style="flex:1;min-width:140px;max-width:240px;padding:5px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;background:var(--surface);color:var(--text);outline:none">
+    </div>
+
+    <!-- Task table -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--text);color:#fff">
+            <th style="padding:10px 12px;text-align:left;width:36px"></th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Task</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:130px">Categoria</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Assegnato</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Urgenza</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:100px">Stato</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Scadenza</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:70px">Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="ops-gen-tbody"></tbody>
+      </table>
+      <div id="ops-gen-empty" style="display:none;text-align:center;padding:40px;color:var(--text-light);font-size:13px">✅ Nessun task trovato</div>
+    </div>
   <!-- TAB: PROPRIETÀ -->
   <div id="ops-tab-proprieta" style="display:none">
 
@@ -858,49 +1022,74 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 <!-- MODAL: new/edit task -->
 <div id="modal-ops-task" class="modal-overlay">
-  <div class="modal" style="max-width:500px;position:relative">
+  <div class="modal" style="max-width:560px;position:relative">
     <button class="modal-close" onclick="closeModal('modal-ops-task')">&#10005;</button>
     <div class="modal-title" id="ops-task-modal-title">Nuovo Task</div>
     <input type="hidden" id="ops-task-id">
-    <input type="hidden" id="ops-task-prop-id">
     <div class="field" style="margin-bottom:14px">
-      <label>Proprietà *</label>
-      <select id="ops-task-prop-sel"></select>
+      <label>Task *</label>
+      <input id="ops-task-titolo" placeholder="Descrivi il task...">
     </div>
-    <div class="field" style="margin-bottom:14px">
-      <label>Titolo *</label>
-      <input id="ops-task-titolo" placeholder="Es. Sostituire lampadina bagno">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="field">
         <label>Categoria</label>
         <select id="ops-task-cat">
-          <option value="generale">📋 Generale</option>
-          <option value="pulizie">🧹 Pulizie</option>
-          <option value="manutenzione">🔧 Manutenzione</option>
-          <option value="check-in">🛬 Check-in</option>
-          <option value="check-out">🛫 Check-out</option>
-          <option value="forniture">📦 Forniture</option>
-          <option value="burocrazia">📑 Burocrazia</option>
+          <option value="Operativo">⚙️ Operativo</option>
+          <option value="Commerciale">💼 Commerciale</option>
+          <option value="Amministrazione">📑 Amministrazione</option>
+          <option value="Setup">🔧 Setup</option>
+          <option value="Da definire">❓ Da definire</option>
         </select>
       </div>
       <div class="field">
-        <label>Priorità</label>
-        <select id="ops-task-prio">
-          <option value="normale">⚪ Normale</option>
-          <option value="alta">🔴 Alta</option>
-          <option value="media">🟡 Media</option>
-          <option value="bassa">🟢 Bassa</option>
+        <label>Assegnato a</label>
+        <select id="ops-task-assegnato">
+          <option value="Romeo">Romeo</option>
+          <option value="Daniele">Daniele</option>
+          <option value="Entrambi">Entrambi</option>
         </select>
       </div>
     </div>
-    <div class="field" style="margin-bottom:14px">
-      <label>Scadenza</label>
-      <input type="date" id="ops-task-scadenza">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field">
+        <label>Urgenza</label>
+        <select id="ops-task-urgenza">
+          <option value="Urgente">🔴 Urgente</option>
+          <option value="Alta">🟠 Alta</option>
+          <option value="Media">🟡 Media</option>
+          <option value="Bassa">🟢 Bassa</option>
+          <option value="Parcheggiato">⏸ Parcheggiato</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Stato</label>
+        <select id="ops-task-stato">
+          <option value="Da fare">Da fare</option>
+          <option value="In corso">In corso</option>
+          <option value="In attesa">In attesa</option>
+          <option value="Completato">Completato</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field">
+        <label>Scadenza</label>
+        <input type="date" id="ops-task-scadenza">
+      </div>
+      <div class="field">
+        <label>Proprietà (opzionale)</label>
+        <select id="ops-task-prop-sel">
+          <option value="">— Nessuna (task generale) —</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Prossima azione</label>
+      <input id="ops-task-prossima" placeholder="Cosa fare subito dopo...">
     </div>
     <div class="field" style="margin-bottom:20px">
       <label>Note</label>
-      <textarea id="ops-task-note" rows="3" placeholder="Dettagli aggiuntivi..." style="resize:vertical"></textarea>
+      <textarea id="ops-task-note" rows="2" placeholder="Dettagli aggiuntivi..." style="resize:vertical"></textarea>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px">
       <button class="btn btn-ghost" onclick="closeModal('modal-ops-task')">Annulla</button>
@@ -1168,7 +1357,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operations',ricevute:'Ricevute'};
+  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operations',ricevute:'Ricevute','import-tasks':'Import Tasks'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   renderPage(p);
 }
@@ -1181,6 +1370,7 @@ function renderPage(p){
   if(p==='report_prop')setupReportFiltri();
   if(p==='documenti')renderDocumenti();
   if(p==='operations'){switchOpsTab('generici');}
+  if(p==='import-tasks'){initImportTasksPage();}
 }
 function wireTableActions(tbodyId){
   // no-op: delegation is handled globally via document listener below
@@ -3652,13 +3842,33 @@ var _opsPrevTab     = 'generici';  // for back from templates
 var _opsCurTplItems = [];
 
 var OPS_CATS = {
-  'generale':    {label:'Generale',    icon:'📋', color:'#6b7280'},
-  'pulizie':     {label:'Pulizie',     icon:'🧹', color:'#0099cc'},
-  'manutenzione':{label:'Manutenzione',icon:'🔧', color:'#f59e0b'},
-  'check-in':    {label:'Check-in',    icon:'🛬', color:'#10b981'},
-  'check-out':   {label:'Check-out',   icon:'🛫', color:'#8b5cf6'},
-  'forniture':   {label:'Forniture',   icon:'📦', color:'#ec4899'},
-  'burocrazia':  {label:'Burocrazia',  icon:'📑', color:'#64748b'},
+  'generale':       {label:'Generale',       icon:'📋', color:'#6b7280'},
+  'pulizie':        {label:'Pulizie',        icon:'🧹', color:'#0099cc'},
+  'manutenzione':   {label:'Manutenzione',   icon:'🔧', color:'#f59e0b'},
+  'check-in':       {label:'Check-in',       icon:'🛬', color:'#10b981'},
+  'check-out':      {label:'Check-out',      icon:'🛫', color:'#8b5cf6'},
+  'forniture':      {label:'Forniture',      icon:'📦', color:'#ec4899'},
+  'burocrazia':     {label:'Burocrazia',     icon:'📑', color:'#64748b'},
+  'Operativo':      {label:'Operativo',      icon:'⚙️', color:'#0099cc'},
+  'Commerciale':    {label:'Commerciale',    icon:'💼', color:'#10b981'},
+  'Amministrazione':{label:'Amministrazione',icon:'📑', color:'#64748b'},
+  'Setup':          {label:'Setup',          icon:'🔧', color:'#f59e0b'},
+  'Da definire':    {label:'Da definire',    icon:'❓', color:'#9ca3af'},
+};
+
+var URGENZA_CFG = {
+  'Urgente':     {dot:'🔴', bg:'#fee2e2', color:'#b91c1c', label:'Urgente'},
+  'Alta':        {dot:'🟠', bg:'#ffedd5', color:'#c2410c', label:'Alta'},
+  'Media':       {dot:'🟡', bg:'#fef9c3', color:'#92400e', label:'Media'},
+  'Bassa':       {dot:'🟢', bg:'#dcfce7', color:'#15803d', label:'Bassa'},
+  'Parcheggiato':{dot:'⏸', bg:'#f1f5f9', color:'#64748b', label:'Parcheggiato'},
+};
+
+var STATO_CFG = {
+  'Da fare':   {bg:'#dbeafe', color:'#1d4ed8', label:'Da fare'},
+  'In corso':  {bg:'#fef9c3', color:'#92400e', label:'In corso'},
+  'In attesa': {bg:'#ffedd5', color:'#c2410c', label:'In attesa'},
+  'Completato':{bg:'#dcfce7', color:'#15803d', label:'Completato'},
 };
 
 var PRIO_CFG = {
@@ -3684,7 +3894,6 @@ function switchOpsTab(tab) {
     document.getElementById('ops-tab-proprieta').style.display = 'none';
     document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(null); };
     renderGenTasks();
-    renderGenCatPills();
   } else {
     document.getElementById('ops-tab-generici').style.display = 'none';
     document.getElementById('ops-tab-proprieta').style.display = 'block';
@@ -3722,114 +3931,112 @@ function showOpsView(view) {
 }
 
 // ── Generic tasks ─────────────────────────────────────────────────────
-function renderGenCatPills() {
-  var cont = document.getElementById('ops-gen-cat-pills');
-  if(!cont) return;
-  var tasks = DB.ops_tasks.filter(function(t){ return !t.prop_id; });
-  var usedCats = [];
-  tasks.forEach(function(t){ if(usedCats.indexOf(t.cat)<0) usedCats.push(t.cat); });
-  cont.innerHTML = [''].concat(usedCats).map(function(c){
-    var active = _opsGenCat===c;
-    var label  = c ? (OPS_CATS[c] ? OPS_CATS[c].icon+' '+OPS_CATS[c].label : c) : 'Tutti';
-    return '<span data-gen-cat="'+c+'" style="padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid '
-      +(active?'var(--blue)':'var(--border)')+';background:'+(active?'var(--blue)':'var(--surface)')
-      +';color:'+(active?'#fff':'var(--text-mid)')+'">'+label+'</span>';
-  }).join('');
-  cont.querySelectorAll('[data-gen-cat]').forEach(function(el){
-    el.addEventListener('click',function(){
-      _opsGenCat = this.getAttribute('data-gen-cat');
-      renderGenCatPills();
-      renderGenTasks();
-    });
-  });
+function renderGenKPI() {
+  var all = DB.ops_tasks.filter(function(t){ return !t.prop_id; });
+  var today = new Date().toISOString().slice(0,10);
+  var open = all.filter(function(t){ return t.stato !== 'Completato'; });
+  var done = all.filter(function(t){ return t.stato === 'Completato'; });
+  var urg  = open.filter(function(t){ return t.urgenza === 'Urgente'; });
+  var oggi = open.filter(function(t){ return t.scadenza === today; });
+  var e = function(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  e('kpi-tot', all.length);
+  e('kpi-urg', urg.length);
+  e('kpi-done', done.length);
+  e('kpi-oggi', oggi.length);
 }
 
 function renderGenTasks() {
-  var list = document.getElementById('ops-gen-task-list');
-  if(!list) return;
-  var q = (document.getElementById('ops-gen-search')||{}).value || '';
+  renderGenKPI();
+  var q        = (document.getElementById('ops-gen-search')||{}).value||'';
+  var assegn   = (document.getElementById('ops-gen-assegnato')||{}).value||'';
+  var catSel   = (document.getElementById('ops-gen-cat-sel')||{}).value||'';
+  var urgSel   = (document.getElementById('ops-gen-urgenza-sel')||{}).value||'';
   q = q.toLowerCase();
+
   var tasks = DB.ops_tasks.filter(function(t){
-    if(t.prop_id) return false; // only generic
-    if(_opsGenStatus==='open' && t.done)  return false;
-    if(_opsGenStatus==='done' && !t.done) return false;
-    if(_opsGenCat && t.cat!==_opsGenCat)  return false;
+    if(t.prop_id) return false;
+    if(_opsGenStatus==='open' && t.stato==='Completato') return false;
+    if(_opsGenStatus==='done' && t.stato!=='Completato') return false;
+    if(assegn && t.assegnato !== assegn) return false;
+    if(catSel && t.cat !== catSel) return false;
+    if(urgSel && t.urgenza !== urgSel) return false;
     if(q && t.titolo.toLowerCase().indexOf(q)<0) return false;
     return true;
   });
+
+  // Sort: Urgente first, then Alta, then by scadenza, then completati in fondo
+  var urgOrd = {Urgente:0, Alta:1, Media:2, Bassa:3, Parcheggiato:4};
   tasks.sort(function(a,b){
-    if(a.done!==b.done) return a.done?1:-1;
-    var po={alta:0,media:1,normale:2,bassa:3};
-    var pd=(po[a.prio]||2)-(po[b.prio]||2);
-    if(pd) return pd;
-    if(a.scadenza&&b.scadenza) return a.scadenza<b.scadenza?-1:1;
+    var aD = a.stato==='Completato', bD = b.stato==='Completato';
+    if(aD !== bD) return aD ? 1 : -1;
+    var ud = (urgOrd[a.urgenza]||5) - (urgOrd[b.urgenza]||5);
+    if(ud) return ud;
+    if(a.scadenza && b.scadenza) return a.scadenza < b.scadenza ? -1 : 1;
     if(a.scadenza) return -1;
     if(b.scadenza) return 1;
     return 0;
   });
+
+  var tbody = document.getElementById('ops-gen-tbody');
+  var empty = document.getElementById('ops-gen-empty');
+  if(!tbody) return;
+
   if(!tasks.length){
-    list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-light);font-size:13px">'
-      +(_opsGenStatus==='open'?'✅ Nessun task generico aperto!':'Nessun task trovato.')+'</div>';
+    tbody.innerHTML = '';
+    if(empty) empty.style.display = 'block';
     return;
   }
-  list.innerHTML = tasks.map(function(t){ return buildTaskRow(t); }).join('');
-}
+  if(empty) empty.style.display = 'none';
 
-// ── Props grid ───────────────────────────────────────────────────────
-function renderOpsProps() {
-  var grid = document.getElementById('ops-prop-grid');
-  if(!grid) return;
-  var q = (document.getElementById('ops-search')||{}).value || '';
-  q = q.toLowerCase();
+  var today = new Date().toISOString().slice(0,10);
+  tbody.innerHTML = tasks.map(function(t){
+    var done    = t.stato === 'Completato';
+    var urg     = URGENZA_CFG[t.urgenza] || {dot:'⚪', bg:'#f1f5f9', color:'#64748b', label:t.urgenza||''};
+    var stato   = STATO_CFG[t.stato]     || {bg:'#f1f5f9', color:'#64748b', label:t.stato||''};
+    var cat     = OPS_CATS[t.cat]        || {icon:'📋', label:t.cat||'', color:'#6b7280'};
+    var overdue = !done && t.scadenza && t.scadenza < today;
+    var dueStr  = '';
+    if(t.scadenza){
+      var d = new Date(t.scadenza+'T00:00:00');
+      dueStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+    }
+    var rowBg = overdue ? 'background:#fff5f5' : (done ? 'background:var(--surface2);opacity:0.7' : '');
+    var assegnatoColor = t.assegnato==='Romeo' ? '#4361ee' : t.assegnato==='Daniele' ? '#10b981' : '#f59e0b';
 
-  var props = DB.proprieta.filter(function(p){
-    return !q || p.nome.toLowerCase().includes(q);
-  });
-
-  if(!props.length){
-    grid.innerHTML = '<div style="color:var(--text-light);font-size:13px;padding:20px">Nessuna proprietà trovata.</div>';
-    return;
-  }
-
-  grid.innerHTML = props.map(function(p){
-    var tasks = DB.ops_tasks.filter(function(t){ return t.prop_id===p.id; });
-    var open  = tasks.filter(function(t){ return !t.done; });
-    var over  = open.filter(function(t){ return t.scadenza && t.scadenza < new Date().toISOString().slice(0,10); });
-    var alta  = open.filter(function(t){ return t.prio==='alta'; });
-    var badge = open.length
-      ? '<span style="background:'+(over.length?'#dc2626':alta.length?'#f59e0b':'var(--blue)')
-        +';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;min-width:22px;text-align:center">'
-        +open.length+'</span>'
-      : '<span style="background:var(--surface2);color:var(--text-light);font-size:10px;padding:2px 8px;border-radius:12px">OK</span>';
-
-    var overdueBar = over.length
-      ? '<div style="font-size:10px;color:#dc2626;margin-top:4px">⚠ '+over.length+' scadut'+(over.length===1?'o':'i')+'</div>'
-      : '';
-
-    return '<div onclick="openOpsProps(\''+p.id+'\')" style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:box-shadow .15s;display:flex;flex-direction:column;gap:6px" '
-      +'onmouseover="this.style.boxShadow=\'var(--shadow-lg)\'" onmouseout="this.style.boxShadow=\'none\'">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between">'
-      +'<div style="font-weight:700;font-size:13px;color:var(--text)">🏠 '+esc(p.nome)+'</div>'
-      +badge
-      +'</div>'
-      +'<div style="font-size:11px;color:var(--text-light)">'
-      +tasks.length+' task totali &middot; '
-      +(tasks.length-open.length)+' completati'
-      +'</div>'
-      +overdueBar
-      +'</div>';
+    return '<tr style="border-bottom:1px solid var(--border);'+rowBg+'">'
+      // Checkbox
+      +'<td style="padding:10px 12px;text-align:center">'
+      +'<div data-toggle-task="'+t.id+'" style="width:18px;height:18px;border-radius:50%;border:2px solid '
+      +(done?'var(--blue)':'var(--border)')+';background:'+(done?'var(--blue)':'transparent')
+      +';cursor:pointer;display:flex;align-items:center;justify-content:center;margin:auto;transition:all .15s">'
+      +(done?'<svg width="10" height="7" viewBox="0 0 11 8"><polyline points="1,4 4,7 10,1" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'')
+      +'</div></td>'
+      // Task title
+      +'<td style="padding:10px 12px">'
+      +'<div style="font-weight:'+(done?'400':'600')+';color:var(--text);text-decoration:'+(done?'line-through':'none')+';font-size:13px">'+esc(t.titolo)+'</div>'
+      +(t.prossima ? '<div style="font-size:11px;color:var(--text-light);margin-top:2px">→ '+esc(t.prossima)+'</div>' : '')
+      +(t.note ? '<div style="font-size:11px;color:var(--text-light);margin-top:2px;font-style:italic">'+esc(t.note)+'</div>' : '')
+      +'</td>'
+      // Categoria
+      +'<td style="padding:10px 12px"><span style="font-size:11px;color:'+cat.color+'">'+cat.icon+' '+cat.label+'</span></td>'
+      // Assegnato
+      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:'+assegnatoColor+'">'+esc(t.assegnato||'—')+'</span></td>'
+      // Urgenza
+      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+urg.bg+';color:'+urg.color+'">'+urg.dot+' '+urg.label+'</span></td>'
+      // Stato
+      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+stato.bg+';color:'+stato.color+'">'+stato.label+'</span></td>'
+      // Scadenza
+      +'<td style="padding:10px 12px;text-align:center;font-size:11.5px;color:'+(overdue?'#dc2626':'var(--text-light)')+'">'+( dueStr ? (overdue?'⚠ ':'')+dueStr : '—')+'</td>'
+      // Azioni
+      +'<td style="padding:10px 12px;text-align:center">'
+      +'<button data-edit-task="'+t.id+'" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px" title="Modifica">✏️</button>'
+      +'<button data-del-task="'+t.id+'"  style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;color:#dc2626" title="Elimina">🗑</button>'
+      +'</td>'
+      +'</tr>';
   }).join('');
 }
 
-function openOpsProps(propId) {
-  _opsCurProp = propId;
-  _opsCurCat  = '';
-  var p = DB.proprieta.find(function(x){ return x.id===propId; });
-  document.getElementById('ops-prop-title').textContent = p ? '🏠 '+p.nome : '';
-  showOpsView('tasks');
-}
 
-// ── Tasks list ───────────────────────────────────────────────────────
 // ── Shared task row builder ───────────────────────────────────────────
 function buildTaskRow(t) {
   var today  = new Date().toISOString().slice(0,10);
@@ -3864,6 +4071,51 @@ function buildTaskRow(t) {
     +'<button data-del-task="'+t.id+'" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;color:#dc2626">🗑</button>'
     +'</div>'
     +'</div>';
+}
+
+
+// ── Props grid ───────────────────────────────────────────────────────
+function renderOpsProps() {
+  var grid = document.getElementById('ops-prop-grid');
+  if(!grid) return;
+  var q = (document.getElementById('ops-search')||{}).value || '';
+  q = q.toLowerCase();
+
+  var props = DB.proprieta.filter(function(p){
+    return !q || p.nome.toLowerCase().indexOf(q)>=0;
+  });
+
+  if(!props.length){
+    grid.innerHTML = '<div style="color:var(--text-light);font-size:13px;padding:20px">Nessuna proprietà trovata.</div>';
+    return;
+  }
+
+  grid.innerHTML = props.map(function(p){
+    var tasks = DB.ops_tasks.filter(function(t){ return t.prop_id===p.id; });
+    var open  = tasks.filter(function(t){ return t.stato!=='Completato' && !t.done; });
+    var over  = open.filter(function(t){ return t.scadenza && t.scadenza < new Date().toISOString().slice(0,10); });
+    var alta  = open.filter(function(t){ return t.urgenza==='Urgente'||t.urgenza==='Alta'; });
+    var badge = open.length
+      ? '<span style="background:'+(over.length?'#dc2626':alta.length?'#f59e0b':'var(--blue)')
+        +';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px">'
+        +open.length+'</span>'
+      : '<span style="background:var(--surface2);color:var(--text-light);font-size:10px;padding:2px 8px;border-radius:12px">OK</span>';
+
+    return '<div data-prop-card="'+p.id+'" style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:box-shadow .15s;display:flex;flex-direction:column;gap:6px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between">'
+      +'<div style="font-weight:700;font-size:13px">🏠 '+esc(p.nome)+'</div>'+badge+'</div>'
+      +'<div style="font-size:11px;color:var(--text-light)">'+tasks.length+' task totali &middot; '+(tasks.length-open.length)+' completati</div>'
+      +(over.length?'<div style="font-size:10px;color:#dc2626">⚠ '+over.length+' scadut'+(over.length===1?'o':'i')+'</div>':'')
+      +'</div>';
+  }).join('');
+
+  grid.querySelectorAll('[data-prop-card]').forEach(function(el){
+    el.addEventListener('click', function(){
+      openOpsProps(this.getAttribute('data-prop-card'));
+    });
+    el.addEventListener('mouseover', function(){ this.style.boxShadow='var(--shadow-lg)'; });
+    el.addEventListener('mouseout',  function(){ this.style.boxShadow='none'; });
+  });
 }
 
 
@@ -3909,78 +4161,91 @@ function renderOpsTasks() {
 
 // ── Task CRUD ────────────────────────────────────────────────────────
 function openNewTask(propId) {
-  document.getElementById('ops-task-id').value = '';
+  document.getElementById('ops-task-id').value       = '';
   document.getElementById('ops-task-modal-title').textContent = 'Nuovo Task';
-  document.getElementById('ops-task-titolo').value  = '';
-  document.getElementById('ops-task-cat').value     = 'generale';
-  document.getElementById('ops-task-prio').value    = 'normale';
-  document.getElementById('ops-task-scadenza').value= '';
-  document.getElementById('ops-task-note').value    = '';
-  // Populate property select
+  document.getElementById('ops-task-titolo').value   = '';
+  document.getElementById('ops-task-cat').value      = 'Operativo';
+  document.getElementById('ops-task-assegnato').value= 'Romeo';
+  document.getElementById('ops-task-urgenza').value  = 'Media';
+  document.getElementById('ops-task-stato').value    = 'Da fare';
+  document.getElementById('ops-task-scadenza').value = '';
+  document.getElementById('ops-task-prossima').value = '';
+  document.getElementById('ops-task-note').value     = '';
   var sel = document.getElementById('ops-task-prop-sel');
-  sel.innerHTML = DB.proprieta.map(function(p){
-    return '<option value="'+p.id+'"'+(p.id===propId?' selected':'')+'>'+esc(p.nome)+'</option>';
-  }).join('');
+  sel.innerHTML = '<option value="">— Nessuna (task generale) —</option>'
+    + DB.proprieta.map(function(p){
+        return '<option value="'+p.id+'"'+(p.id===propId?' selected':'')+'>'+esc(p.nome)+'</option>';
+      }).join('');
+  if(propId) sel.value = propId;
   openModal('modal-ops-task');
 }
 
 function editOpsTask(id) {
   var t = DB.ops_tasks.find(function(x){ return x.id===id; });
   if(!t) return;
-  document.getElementById('ops-task-id').value     = t.id;
+  document.getElementById('ops-task-id').value       = t.id;
   document.getElementById('ops-task-modal-title').textContent = 'Modifica Task';
-  document.getElementById('ops-task-titolo').value  = t.titolo;
-  document.getElementById('ops-task-cat').value     = t.cat||'generale';
-  document.getElementById('ops-task-prio').value    = t.prio||'normale';
-  document.getElementById('ops-task-scadenza').value= t.scadenza||'';
-  document.getElementById('ops-task-note').value    = t.note||'';
+  document.getElementById('ops-task-titolo').value   = t.titolo;
+  document.getElementById('ops-task-cat').value      = t.cat||'Operativo';
+  document.getElementById('ops-task-assegnato').value= t.assegnato||'Romeo';
+  document.getElementById('ops-task-urgenza').value  = t.urgenza||'Media';
+  document.getElementById('ops-task-stato').value    = t.stato||'Da fare';
+  document.getElementById('ops-task-scadenza').value = t.scadenza||'';
+  document.getElementById('ops-task-prossima').value = t.prossima||'';
+  document.getElementById('ops-task-note').value     = t.note||'';
   var sel = document.getElementById('ops-task-prop-sel');
-  sel.innerHTML = DB.proprieta.map(function(p){
-    return '<option value="'+p.id+'"'+(p.id===t.prop_id?' selected':'')+'>'+esc(p.nome)+'</option>';
-  }).join('');
+  sel.innerHTML = '<option value="">— Nessuna (task generale) —</option>'
+    + DB.proprieta.map(function(p){
+        return '<option value="'+p.id+'"'+(p.id===t.prop_id?' selected':'')+'>'+esc(p.nome)+'</option>';
+      }).join('');
+  if(t.prop_id) sel.value = t.prop_id;
   openModal('modal-ops-task');
 }
 
 function saveOpsTask() {
   var titolo = document.getElementById('ops-task-titolo').value.trim();
   if(!titolo){ toast('Inserisci un titolo'); return; }
-  var propId = document.getElementById('ops-task-prop-sel').value;
-  if(!propId){ toast('Seleziona una proprietà'); return; }
-  var id = document.getElementById('ops-task-id').value;
-  var now = new Date().toISOString();
+  var propId   = document.getElementById('ops-task-prop-sel').value || null;
+  var assegn   = document.getElementById('ops-task-assegnato').value;
+  var urgenza  = document.getElementById('ops-task-urgenza').value;
+  var stato    = document.getElementById('ops-task-stato').value;
+  var cat      = document.getElementById('ops-task-cat').value;
+  var scadenza = document.getElementById('ops-task-scadenza').value || null;
+  var prossima = document.getElementById('ops-task-prossima').value.trim() || null;
+  var note     = document.getElementById('ops-task-note').value.trim() || null;
+  var id       = document.getElementById('ops-task-id').value;
+  var now      = new Date().toISOString();
+
   if(id) {
     var t = DB.ops_tasks.find(function(x){ return x.id===id; });
     if(t){
-      t.prop_id   = propId;
-      t.titolo    = titolo;
-      t.cat       = document.getElementById('ops-task-cat').value;
-      t.prio      = document.getElementById('ops-task-prio').value;
-      t.scadenza  = document.getElementById('ops-task-scadenza').value||null;
-      t.note      = document.getElementById('ops-task-note').value.trim()||null;
+      t.prop_id  = propId; t.titolo = titolo; t.cat = cat;
+      t.assegnato= assegn; t.urgenza= urgenza; t.stato = stato;
+      t.scadenza = scadenza; t.prossima = prossima; t.note = note;
+      t.done     = (stato === 'Completato');
+      t.done_at  = t.done ? (t.done_at || now) : null;
     }
   } else {
     DB.ops_tasks.push({
-      id: uid(), prop_id: propId,
-      titolo: titolo,
-      cat:      document.getElementById('ops-task-cat').value,
-      prio:     document.getElementById('ops-task-prio').value,
-      scadenza: document.getElementById('ops-task-scadenza').value||null,
-      note:     document.getElementById('ops-task-note').value.trim()||null,
-      done: false, done_at: null, created_at: now
+      id: uid(), prop_id: propId, titolo: titolo, cat: cat,
+      assegnato: assegn, urgenza: urgenza, stato: stato,
+      scadenza: scadenza, prossima: prossima, note: note,
+      done: (stato==='Completato'), done_at: null, created_at: now
     });
   }
   saveDB(); closeModal('modal-ops-task');
   toast('Task salvato ✓');
-  var savedPropId = document.getElementById('ops-task-prop-sel').value;
-  if(_opsCurTab==='generici'){ renderGenTasks(); renderGenCatPills(); }
-  else if(savedPropId && _opsCurProp) renderOpsTasks();
+  if(_opsCurTab==='generici'){ renderGenTasks(); }
+  else if(propId && _opsCurProp) renderOpsTasks();
   else renderOpsProps();
 }
+
 
 function toggleOpsTask(id) {
   var t = DB.ops_tasks.find(function(x){ return x.id===id; });
   if(!t) return;
-  t.done    = !t.done;
+  t.done  = !t.done;
+  t.stato = t.done ? 'Completato' : 'Da fare';
   t.done_at = t.done ? new Date().toISOString() : null;
   saveDB();
   if(_opsCurTab==='generici') { renderGenTasks(); }
@@ -3991,7 +4256,7 @@ function deleteOpsTask(id) {
   if(!confirm('Eliminare questo task?')) return;
   DB.ops_tasks = DB.ops_tasks.filter(function(x){ return x.id!==id; });
   saveDB();
-  if(_opsCurTab==='generici'){ renderGenTasks(); renderGenCatPills(); }
+  if(_opsCurTab==='generici'){ renderGenTasks(); }
   else { renderOpsTasks(); renderOpsProps(); }
 }
 
@@ -4299,6 +4564,256 @@ function formatDestHTML(dest) {
   return '<strong>'+escHtml(dest.nome)+'</strong><br>'
     +(dest.cf ? 'CF/Pass.: '+escHtml(dest.cf)+'<br>' : '')
     +escHtml(dest.ind||'—')+(dest.cap?' '+dest.cap:'')+(dest.citta?' '+dest.citta:'')+(dest.prov?' ('+dest.prov+')':'');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// IMPORT TASKS MODULE
+// ═══════════════════════════════════════════════════════════════════
+
+var _importTasksBuffer = []; // task da confermare
+
+function initImportTasksPage() {
+  // Init quick task rows with 3 empty rows
+  var cont = document.getElementById('quick-task-rows');
+  if(cont && !cont.children.length) {
+    addQuickTaskRow(); addQuickTaskRow(); addQuickTaskRow();
+  }
+}
+
+// ── Drop zone drag & drop ─────────────────────────────────────────
+(function(){
+  ['dz-excel'].forEach(function(id){
+    document.addEventListener('DOMContentLoaded', function(){
+      var el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('dragover', function(e){ e.preventDefault(); el.style.borderColor='var(--blue)'; });
+      el.addEventListener('dragleave', function(){ el.style.borderColor=''; });
+      el.addEventListener('drop', function(e){
+        e.preventDefault(); el.style.borderColor='';
+        var file = e.dataTransfer.files[0];
+        if(file) importTasksExcelFile(file);
+      });
+    });
+  });
+})();
+
+// ── Excel / CSV import ────────────────────────────────────────────
+function importTasksExcel(input) {
+  var file = input.files[0];
+  if(!file) return;
+  importTasksExcelFile(file);
+  input.value = '';
+}
+
+function importTasksExcelFile(file) {
+  var res = document.getElementById('import-task-excel-result');
+  res.innerHTML = '<div style="color:var(--text-light);font-size:12px">Lettura in corso...</div>';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+      if(!rows.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun dato trovato</div>'; return; }
+
+      // Column mapping - flexible
+      var colMap = {
+        titolo:    ['task','titolo','nome','descrizione','title','description'],
+        cat:       ['categoria','category','cat','tipo','type'],
+        assegnato: ['assegnato','assegnato a','owner','assigned','assigned to'],
+        urgenza:   ['urgenza','urgency','priorità','priority','urgente'],
+        stato:     ['stato','status','state'],
+        scadenza:  ['scadenza','due','due date','deadline','data scadenza'],
+        note:      ['note','notes','descrizione','description','commento'],
+        prossima:  ['prossima azione','next action','next','prossima'],
+      };
+
+      function findCol(row, keys) {
+        var rowKeys = Object.keys(row).map(function(k){ return k.toLowerCase().trim(); });
+        for(var i=0; i<keys.length; i++){
+          var idx = rowKeys.indexOf(keys[i]);
+          if(idx>=0) return Object.values(row)[idx];
+        }
+        return '';
+      }
+
+      var tasks = rows.map(function(row){
+        var titolo = String(findCol(row, colMap.titolo)||'').trim();
+        if(!titolo) return null;
+        var scad = findCol(row, colMap.scadenza);
+        var scadStr = '';
+        if(scad){
+          if(scad instanceof Date) scadStr = scad.toISOString().slice(0,10);
+          else if(typeof scad==='string' && scad.match(/\d{4}-\d{2}-\d{2}/)) scadStr = scad.slice(0,10);
+          else if(typeof scad==='number') {
+            var d = new Date(Math.round((scad - 25569)*86400*1000));
+            scadStr = d.toISOString().slice(0,10);
+          }
+        }
+        var urgRaw = String(findCol(row, colMap.urgenza)||'').trim();
+        var urgenza = mapUrgenza(urgRaw) || 'Media';
+        var statoRaw = String(findCol(row, colMap.stato)||'').trim();
+        var stato = mapStato(statoRaw) || 'Da fare';
+        var assRaw = String(findCol(row, colMap.assegnato)||'').trim();
+        var assegnato = mapAssegnato(assRaw) || 'Romeo';
+        var catRaw = String(findCol(row, colMap.cat)||'').trim();
+        var cat = mapCategoria(catRaw) || 'Operativo';
+        return {
+          id: uid(), prop_id: null, titolo: titolo, cat: cat,
+          assegnato: assegnato, urgenza: urgenza, stato: stato,
+          scadenza: scadStr || null,
+          prossima: String(findCol(row, colMap.prossima)||'').trim() || null,
+          note: String(findCol(row, colMap.note)||'').trim() || null,
+          done: (stato==='Completato'), done_at: null, created_at: new Date().toISOString()
+        };
+      }).filter(Boolean);
+
+      if(!tasks.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun task riconosciuto. Verifica le colonne.</div>'; return; }
+      res.innerHTML='<div style="color:var(--blue);font-size:12px;font-weight:600">✓ '+tasks.length+' task riconosciuti</div>';
+      showImportPreview(tasks);
+    } catch(err) {
+      res.innerHTML='<div style="color:#dc2626;font-size:12px">Errore: '+err.message+'</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Mapping helpers ───────────────────────────────────────────────
+function mapUrgenza(v) {
+  v = (v||'').toLowerCase();
+  if(v.indexOf('urgent')>=0||v==='urgente') return 'Urgente';
+  if(v.indexOf('alta')>=0||v.indexOf('high')>=0) return 'Alta';
+  if(v.indexOf('media')>=0||v.indexOf('med')>=0||v.indexOf('normal')>=0) return 'Media';
+  if(v.indexOf('bassa')>=0||v.indexOf('low')>=0) return 'Bassa';
+  if(v.indexOf('parch')>=0||v.indexOf('park')>=0) return 'Parcheggiato';
+  return '';
+}
+function mapStato(v) {
+  v = (v||'').toLowerCase();
+  if(v.indexOf('complet')>=0||v.indexOf('done')>=0||v.indexOf('chiuso')>=0) return 'Completato';
+  if(v.indexOf('corso')>=0||v.indexOf('progress')>=0||v.indexOf('wip')>=0) return 'In corso';
+  if(v.indexOf('attesa')>=0||v.indexOf('wait')>=0||v.indexOf('hold')>=0) return 'In attesa';
+  return 'Da fare';
+}
+function mapAssegnato(v) {
+  v = (v||'').toLowerCase();
+  if(v.indexOf('romeo')>=0) return 'Romeo';
+  if(v.indexOf('daniele')>=0) return 'Daniele';
+  if(v.indexOf('entrambi')>=0||v.indexOf('both')>=0||v.indexOf('tutti')>=0) return 'Entrambi';
+  return '';
+}
+function mapCategoria(v) {
+  v = (v||'').toLowerCase();
+  if(v.indexOf('commerc')>=0) return 'Commerciale';
+  if(v.indexOf('ammin')>=0||v.indexOf('admin')>=0) return 'Amministrazione';
+  if(v.indexOf('setup')>=0||v.indexOf('install')>=0) return 'Setup';
+  if(v.indexOf('defin')>=0) return 'Da definire';
+  return 'Operativo';
+}
+
+// ── Text import ───────────────────────────────────────────────────
+function importTasksText() {
+  var text = (document.getElementById('import-task-text')||{}).value||'';
+  var assegnato = (document.getElementById('import-text-assegnato')||{}).value||'Romeo';
+  var urgenza   = (document.getElementById('import-text-urgenza')||{}).value||'Media';
+  var res = document.getElementById('import-task-text-result');
+
+  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  if(!lines.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun testo inserito</div>'; return; }
+
+  var tasks = lines.map(function(line){
+    return {
+      id: uid(), prop_id: null, titolo: line, cat: 'Operativo',
+      assegnato: assegnato, urgenza: urgenza, stato: 'Da fare',
+      scadenza: null, prossima: null, note: null,
+      done: false, done_at: null, created_at: new Date().toISOString()
+    };
+  });
+  res.innerHTML='<div style="color:var(--blue);font-size:12px;font-weight:600">✓ '+tasks.length+' task riconosciuti</div>';
+  showImportPreview(tasks);
+}
+
+// ── Quick task rows ───────────────────────────────────────────────
+function addQuickTaskRow() {
+  var cont = document.getElementById('quick-task-rows');
+  if(!cont) return;
+  var div = document.createElement('div');
+  div.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
+  var inp = document.createElement('input');
+  inp.placeholder = 'Descrivi il task...';
+  inp.style.cssText = 'background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12.5px;color:var(--text);outline:none;width:100%';
+  var btn = document.createElement('button');
+  btn.innerHTML = '🗑';
+  btn.style.cssText = 'background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;line-height:1;padding:4px';
+  btn.onclick = function(){ div.remove(); };
+  div.appendChild(inp);
+  div.appendChild(btn);
+  cont.appendChild(div);
+}
+
+function saveQuickTasks() {
+  var cont = document.getElementById('quick-task-rows');
+  var assegnato = (document.getElementById('quick-assegnato')||{}).value||'Romeo';
+  var urgenza   = (document.getElementById('quick-urgenza')||{}).value||'Media';
+  var res = document.getElementById('quick-task-result');
+
+  var tasks = [];
+  cont.querySelectorAll('input').forEach(function(inp){
+    var v = inp.value.trim();
+    if(v) tasks.push({
+      id: uid(), prop_id: null, titolo: v, cat: 'Operativo',
+      assegnato: assegnato, urgenza: urgenza, stato: 'Da fare',
+      scadenza: null, prossima: null, note: null,
+      done: false, done_at: null, created_at: new Date().toISOString()
+    });
+  });
+  if(!tasks.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun task inserito</div>'; return; }
+
+  tasks.forEach(function(t){ DB.ops_tasks.push(t); });
+  saveDB();
+  cont.innerHTML = '';
+  addQuickTaskRow(); addQuickTaskRow(); addQuickTaskRow();
+  res.innerHTML='<div style="color:#10b981;font-size:12px;font-weight:600">✓ '+tasks.length+' task aggiunti!</div>';
+  setTimeout(function(){ res.innerHTML=''; }, 3000);
+}
+
+// ── Preview & confirm ─────────────────────────────────────────────
+function showImportPreview(tasks) {
+  _importTasksBuffer = tasks;
+  var prev = document.getElementById('import-tasks-preview');
+  var tbody = document.getElementById('import-preview-tbody');
+  var count = document.getElementById('import-preview-count');
+  if(!prev||!tbody) return;
+
+  count.textContent = tasks.length;
+  tbody.innerHTML = tasks.map(function(t, i){
+    var urg = URGENZA_CFG[t.urgenza]||{dot:'⚪',label:t.urgenza};
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:8px 12px;font-size:12.5px">'+esc(t.titolo)+'</td>'
+      +'<td style="padding:8px 12px;font-size:12px;color:var(--text-mid)">'+esc(t.cat)+'</td>'
+      +'<td style="padding:8px 12px;text-align:center;font-size:12px;font-weight:600;color:#4361ee">'+esc(t.assegnato)+'</td>'
+      +'<td style="padding:8px 12px;text-align:center;font-size:11px">'+urg.dot+' '+urg.label+'</td>'
+      +'<td style="padding:8px 12px;text-align:center;font-size:11px;color:var(--text-light)">'+(t.scadenza||'—')+'</td>'
+      +'<td style="padding:8px 12px;text-align:center"><button onclick="_importTasksBuffer.splice('+i+',1);showImportPreview(_importTasksBuffer)" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px">🗑</button></td>'
+      +'</tr>';
+  }).join('');
+  prev.style.display = 'block';
+  prev.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function confirmImportTasks() {
+  if(!_importTasksBuffer.length) return;
+  _importTasksBuffer.forEach(function(t){ DB.ops_tasks.push(t); });
+  saveDB();
+  var n = _importTasksBuffer.length;
+  _importTasksBuffer = [];
+  document.getElementById('import-tasks-preview').style.display = 'none';
+  if(document.getElementById('import-task-text')) document.getElementById('import-task-text').value = '';
+  toast('✓ '+n+' task importati con successo!');
 }
 
 
