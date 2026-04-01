@@ -33,6 +33,23 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 #main{margin-left:var(--sidebar-w);flex:1;min-width:0;overflow-x:hidden}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 8px rgba(67,97,238,0.06)}
 .topbar-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)}
+/* ── Kanban ───────────────────────────────────────────────────── */
+.kb-col{background:var(--surface2);border-radius:var(--radius-lg);padding:0;width:260px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 220px)}
+.kb-col-header{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0;z-index:1}
+.kb-col-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-col-body{padding:8px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px}
+.kb-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;cursor:pointer;transition:box-shadow .15s}
+.kb-card:hover{box-shadow:var(--shadow-lg)}
+.kb-card.done{opacity:0.55}
+.kb-card-title{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:4px}
+.kb-card.done .kb-card-title{text-decoration:line-through;color:var(--text-light)}
+.kb-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kb-add-btn{margin:8px;padding:7px 10px;background:none;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-light);cursor:pointer;text-align:left;width:calc(100% - 16px);transition:all .15s}
+.kb-add-btn:hover{background:var(--surface);color:var(--text);border-color:var(--blue)}
+.kb-col-add{background:var(--surface2);border:1.5px dashed var(--border);border-radius:var(--radius-lg);width:220px;flex-shrink:0;display:flex;align-items:center;justify-content:center;min-height:80px;cursor:pointer;color:var(--text-light);font-size:13px;transition:all .15s}
+.kb-col-add:hover{background:var(--surface);color:var(--blue);border-color:var(--blue)}
+
+
 .page{display:none;padding:24px 28px;width:100%;min-width:0;box-sizing:border-box}.page.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)}
 .card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.06em}
@@ -914,67 +931,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- TAB: TASK GENERICI -->
   <div id="ops-tab-generici" style="display:block">
 
-    <!-- KPI strip -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-      <div class="stat-card"><div class="stat-label">Task Totali</div><div class="stat-value" id="kpi-tot">0</div></div>
-      <div class="stat-card"><div class="stat-label">🔴 Urgenti aperti</div><div class="stat-value" id="kpi-urg" style="color:#dc2626">0</div></div>
-      <div class="stat-card"><div class="stat-label">✅ Completati</div><div class="stat-value" id="kpi-done" style="color:#10b981">0</div></div>
-      <div class="stat-card"><div class="stat-label">📅 Scadono oggi</div><div class="stat-value" id="kpi-oggi" style="color:#f59e0b">0</div></div>
+    <!-- Kanban toolbar -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">📋 Board</div>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addKanbanCol()">+ Colonna</button>
     </div>
 
-    <!-- Filtri -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="display:flex;gap:5px" id="ops-gen-status-pills">
-        <span data-gen-status="open"  style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--blue);background:var(--blue);color:#fff">Aperti</span>
-        <span data-gen-status="done"  style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Completati</span>
-        <span data-gen-status="all"   style="padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">Tutti</span>
-      </div>
-      <div style="width:1px;height:20px;background:var(--border)"></div>
-      <select id="ops-gen-assegnato" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-        <option value="">👤 Tutti</option>
-        <option value="Romeo">Romeo</option>
-        <option value="Daniele">Daniele</option>
-        <option value="Entrambi">Entrambi</option>
-      </select>
-      <select id="ops-gen-cat-sel" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-        <option value="">📋 Tutte le categorie</option>
-        <option value="Operativo">⚙️ Operativo</option>
-        <option value="Commerciale">💼 Commerciale</option>
-        <option value="Amministrazione">📑 Amministrazione</option>
-        <option value="Setup">🔧 Setup</option>
-        <option value="Da definire">❓ Da definire</option>
-      </select>
-      <select id="ops-gen-urgenza-sel" onchange="renderGenTasks()" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-        <option value="">⚡ Tutte le urgenze</option>
-        <option value="Urgente">🔴 Urgente</option>
-        <option value="Alta">🟠 Alta</option>
-        <option value="Media">🟡 Media</option>
-        <option value="Bassa">🟢 Bassa</option>
-        <option value="Parcheggiato">⏸ Parcheggiato</option>
-      </select>
-      <input id="ops-gen-search" type="text" placeholder="🔍 Cerca..." oninput="renderGenTasks()"
-        style="flex:1;min-width:140px;max-width:240px;padding:5px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;background:var(--surface);color:var(--text);outline:none">
-    </div>
+    <!-- Kanban board -->
+    <div id="kanban-board" style="display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start;min-height:400px"></div>
 
-    <!-- Task table -->
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead>
-          <tr style="background:var(--text);color:#fff">
-            <th style="padding:10px 12px;text-align:left;width:36px"></th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Task</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:130px">Categoria</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Assegnato</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Urgenza</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:100px">Stato</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:90px">Scadenza</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:70px">Azioni</th>
-          </tr>
-        </thead>
-        <tbody id="ops-gen-tbody"></tbody>
-      </table>
-      <div id="ops-gen-empty" style="display:none;text-align:center;padding:40px;color:var(--text-light);font-size:13px">✅ Nessun task trovato</div>
-    </div>
   </div>
 
   <!-- TAB: PROPRIETÀ -->
@@ -1278,6 +1244,7 @@ function dbDefaults(){
   if(!DB.ops_templates)DB.ops_templates=[];
   if(!DB.ricevute)DB.ricevute=[];
   if(!DB.ric_counter)DB.ric_counter=0;
+  if(!DB.kanban_cols)DB.kanban_cols=[];
 }
 function loadDB(){
   dbDefaults();
@@ -3889,8 +3856,8 @@ function switchOpsTab(tab) {
   if(tab==='generici'){
     document.getElementById('ops-tab-generici').style.display = 'block';
     document.getElementById('ops-tab-proprieta').style.display = 'none';
-    document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(null); };
-    renderGenTasks();
+    document.getElementById('ops-btn-nuovo').onclick = function(){ addKanbanCol(); };
+    initKanban();
   } else {
     document.getElementById('ops-tab-generici').style.display = 'none';
     document.getElementById('ops-tab-proprieta').style.display = 'block';
@@ -4295,7 +4262,7 @@ function toggleOpsTask(id) {
   t.stato = t.done ? 'Completato' : 'Da fare';
   t.done_at = t.done ? new Date().toISOString() : null;
   saveDB();
-  if(_opsCurTab==='generici') { renderGenTasks(); }
+  if(_opsCurTab==='generici') { renderKanban(); }
   else { renderOpsTasks(); renderOpsProps(); }
 }
 
@@ -4861,6 +4828,177 @@ function confirmImportTasks() {
   document.getElementById('import-tasks-preview').style.display = 'none';
   if(document.getElementById('import-task-text')) document.getElementById('import-task-text').value = '';
   toast('✓ '+n+' task importati con successo!');
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// KANBAN MODULE
+// ═══════════════════════════════════════════════════════════════════
+
+var DEFAULT_COLS = [
+  {id:'col_generici',    nome:'Task Generici Houzly', color:'#dc2626'},
+  {id:'col_proprieta',   nome:'Attività Proprietà',   color:'#f59e0b'},
+  {id:'col_commerciale', nome:'Trattative / Studi',   color:'#10b981'},
+  {id:'col_followup',    nome:'Follow Up',             color:'#8b5cf6'},
+  {id:'col_ammin',       nome:'Amministrazione',       color:'#0099cc'},
+  {id:'col_pulizie',     nome:'Pulizie',               color:'#64748b'},
+  {id:'col_ricorrenti',  nome:'Task Mensili Ricorrenti',color:'#ec4899'},
+];
+
+function getKanbanCols() {
+  if(!DB.kanban_cols || !DB.kanban_cols.length) {
+    DB.kanban_cols = DEFAULT_COLS.map(function(c){ return Object.assign({},c); });
+    saveDB();
+  }
+  return DB.kanban_cols;
+}
+
+function dbDefaultsKanban() {
+  if(!DB.kanban_cols) DB.kanban_cols = [];
+}
+
+// ── Render board ─────────────────────────────────────────────────
+function renderKanban() {
+  dbDefaultsKanban();
+  var cols  = getKanbanCols();
+  var board = document.getElementById('kanban-board');
+  if(!board) return;
+
+  var today = new Date().toISOString().slice(0,10);
+
+  board.innerHTML = cols.map(function(col){
+    var tasks = DB.ops_tasks.filter(function(t){ return t.kanban_col === col.id && !t.prop_id; });
+    var open  = tasks.filter(function(t){ return t.stato!=='Completato'&&!t.done; });
+    var done  = tasks.filter(function(t){ return t.stato==='Completato'||t.done; });
+
+    var cards = tasks.map(function(t){
+      var isDone  = t.stato==='Completato'||t.done;
+      var isOver  = !isDone && t.scadenza && t.scadenza < today;
+      var urg     = URGENZA_CFG[t.urgenza]||{dot:'⚪',color:'#9ca3af',bg:'transparent'};
+      var dueStr  = '';
+      if(t.scadenza){
+        var d = new Date(t.scadenza+'T00:00:00');
+        dueStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+      }
+      var borderColor = isOver ? '#fca5a5' : isDone ? 'var(--border)' : 'var(--border)';
+      var assColor = t.assegnato==='Romeo'?'#4361ee':t.assegnato==='Daniele'?'#10b981':'#f59e0b';
+
+      return '<div class="kb-card'+(isDone?' done':'')+'" style="border-color:'+borderColor+'" data-edit-task="'+t.id+'">'
+        +'<div class="kb-card-title">'+esc(t.titolo)+'</div>'
+        +'<div class="kb-card-meta">'
+        +(t.urgenza&&t.urgenza!=='Media'?'<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:'+urg.bg+';color:'+urg.color+'">'+urg.dot+' '+t.urgenza+'</span>':'')
+        +(t.assegnato?'<span style="font-size:10px;font-weight:700;color:'+assColor+'">'+esc(t.assegnato)+'</span>':'')
+        +(dueStr?'<span style="font-size:10px;color:'+(isOver?'#dc2626':'var(--text-light)')+'">📅 '+dueStr+'</span>':'')
+        +(isDone?'<span style="font-size:10px;color:#10b981">✓</span>':'')
+        +'</div>'
+        // Move to col dropdown
+        +'<div style="margin-top:6px;display:flex;gap:4px;align-items:center">'
+        +'<button data-toggle-task="'+t.id+'" style="background:'+(isDone?'#dcfce7':'var(--surface2)')+';border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer;color:'+(isDone?'#15803d':'var(--text-light)')+'">'+( isDone?'✓ Fatto':'Fatto')+'</button>'
+        +'<select onchange="moveKanbanTask(\''+t.id+'\',this.value);this.value=\'\';" style="flex:1;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 4px;color:var(--text-light);cursor:pointer">'
+        +'<option value="">↔ Sposta</option>'
+        + cols.filter(function(c){ return c.id!==col.id; }).map(function(c){
+            return '<option value="'+c.id+'">'+esc(c.nome)+'</option>';
+          }).join('')
+        +'</select>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+
+    return '<div class="kb-col" data-col-id="'+col.id+'">'
+      +'<div class="kb-col-header">'
+      +'<div style="width:10px;height:10px;border-radius:50%;background:'+col.color+';flex-shrink:0;margin-right:8px"></div>'
+      +'<div class="kb-col-title" data-rename-col="'+col.id+'">'+esc(col.nome)+'</div>'
+      +'<span style="font-size:11px;font-weight:700;color:var(--text-light);margin-left:6px">'+open.length+'</span>'
+      +'<div style="display:flex;gap:2px;margin-left:8px">'
+      +'<button onclick="renameKanbanCol(\''+col.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;color:var(--text-light)" title="Rinomina">✏️</button>'
+      +'<button onclick="deleteKanbanCol(\''+col.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;color:#dc2626" title="Elimina">🗑</button>'
+      +'</div>'
+      +'</div>'
+      +'<div class="kb-col-body">'+cards+'</div>'
+      +'<button class="kb-add-btn" onclick="openNewKanbanTask(\''+col.id+'\')">+ Aggiungi task</button>'
+      +'</div>';
+  }).join('');
+}
+
+function moveKanbanTask(taskId, colId) {
+  var t = DB.ops_tasks.find(function(x){ return x.id===taskId; });
+  if(!t || !colId) return;
+  t.kanban_col = colId;
+  saveDB();
+  renderKanban();
+}
+
+// ── Column management ─────────────────────────────────────────────
+function addKanbanCol() {
+  var nome = prompt('Nome della nuova colonna:');
+  if(!nome || !nome.trim()) return;
+  var colors = ['#4361ee','#10b981','#f59e0b','#8b5cf6','#ec4899','#0099cc','#64748b'];
+  var col = {
+    id: 'col_'+uid(),
+    nome: nome.trim(),
+    color: colors[Math.floor(Math.random()*colors.length)]
+  };
+  DB.kanban_cols.push(col);
+  saveDB();
+  renderKanban();
+}
+
+function renameKanbanCol(colId) {
+  var col = DB.kanban_cols.find(function(c){ return c.id===colId; });
+  if(!col) return;
+  var nome = prompt('Nuovo nome:', col.nome);
+  if(!nome || !nome.trim()) return;
+  col.nome = nome.trim();
+  saveDB();
+  renderKanban();
+}
+
+function deleteKanbanCol(colId) {
+  var tasks = DB.ops_tasks.filter(function(t){ return t.kanban_col===colId; });
+  if(tasks.length && !confirm('La colonna ha '+tasks.length+' task. Eliminarla? I task resteranno senza colonna.')) return;
+  DB.kanban_cols = DB.kanban_cols.filter(function(c){ return c.id!==colId; });
+  saveDB();
+  renderKanban();
+}
+
+// ── New task from kanban ──────────────────────────────────────────
+function openNewKanbanTask(colId) {
+  openNewTask(null);
+  // Pre-set the kanban col after modal opens
+  setTimeout(function(){
+    var t = { _pendingCol: colId };
+    window._kanbanPendingCol = colId;
+  }, 50);
+}
+
+// Override saveOpsTask to capture kanban col
+var _saveOpsTaskOrig = saveOpsTask;
+function saveOpsTask() {
+  _saveOpsTaskOrig();
+  // If called from kanban, set the col on the last added task
+  if(window._kanbanPendingCol) {
+    var tasks = DB.ops_tasks;
+    if(tasks.length) {
+      tasks[tasks.length-1].kanban_col = window._kanbanPendingCol;
+      saveDB();
+    }
+    window._kanbanPendingCol = null;
+    renderKanban();
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+function initKanban() {
+  dbDefaultsKanban();
+  // Assign existing generic tasks without col to first col
+  var cols = getKanbanCols();
+  if(cols.length) {
+    DB.ops_tasks.forEach(function(t){
+      if(!t.prop_id && !t.kanban_col) t.kanban_col = cols[0].id;
+    });
+  }
+  renderKanban();
 }
 
 
