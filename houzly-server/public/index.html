@@ -5252,12 +5252,18 @@ async function clSyncSmoobu() {
     var bookings = data.bookings || data.data || [];
     var imported = 0;
     bookings.forEach(function(b) {
-      var checkout = b.departure || b['check-out'] || '';
-      var checkin  = b.arrival   || b['check-in']  || '';
+      // Skip blocked bookings (closures, maintenance, etc.)
+      if (b['is-blocked-booking'] === true) return;
+
+      var checkout = b.departure || '';  // departure = checkout date
+      var checkin  = b.arrival   || '';  // arrival   = checkin date
       if (!checkout) return;
       // Normalize to YYYY-MM-DD
       checkout = checkout.split('T')[0].split(' ')[0];
       checkin  = checkin.split('T')[0].split(' ')[0];
+      // check-out / check-in are the TIMES in Smoobu
+      var checkoutTime = b['check-out'] || '10:00';
+      var checkinTime  = b['check-in']  || '15:00';
       var propName = (b.apartment && (b.apartment.name || b.apartment.title)) || b.apartmentName || 'N/D';
       var propId   = b.apartment && b.apartment.id ? String(b.apartment.id) : null;
 
@@ -5280,8 +5286,8 @@ async function clSyncSmoobu() {
           prop_id: propId,
           date: checkout,
           checkin_date: checkin,
-          checkout_time: '10:00',
-          checkin_time: '15:00',
+          checkout_time: checkoutTime,
+          checkin_time: checkinTime,
           cleaner: '',
           notes: '',
           checklist: defaultCL,
