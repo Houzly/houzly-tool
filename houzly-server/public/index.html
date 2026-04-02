@@ -1125,8 +1125,9 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <input type="text" id="cl-f-prop-text" placeholder="Nome proprietà (da Smoobu)" style="margin-top:6px">
       </div>
       <div class="field">
-        <label>Data pulizia (checkout)</label>
+        <label>Data pulizia</label>
         <input type="date" id="cl-f-date">
+        <div class="field-hint" id="cl-f-date-hint" style="display:none"></div>
       </div>
       <div class="field">
         <label>Orario checkout</label>
@@ -5283,10 +5284,11 @@ async function clSyncSmoobu() {
       // Check if task already exists for this booking
       var existsIdx = db.tasks.findIndex(function(t){ return t.smoobu_id === String(b.id); });
       if (existsIdx >= 0) {
-        // Update checkout/checkin dates but keep cleaner/notes/checklist
+        // Update dates from Smoobu but preserve manual date_override
         db.tasks[existsIdx].date = checkout;
         db.tasks[existsIdx].checkin_date = checkin;
         db.tasks[existsIdx].prop_name = propName;
+        // date_override is intentionally NOT touched — manual shift is preserved
       } else {
         // New task
         var defaultCL = (db.defaultChecklist || []).map(function(item, i) {
@@ -5403,7 +5405,8 @@ function renderCleaning() {
     var isToday = dateStr === todayDate;
 
     var dayTasks = db.tasks.filter(function(t){
-      if (t.date !== dateStr) return false;
+      var effectiveDate = t.date_override || t.date;
+      if (effectiveDate !== dateStr) return false;
       if (CL.filterCleaner && t.cleaner !== CL.filterCleaner) return false;
       return true;
     });
@@ -5424,6 +5427,7 @@ function renderCleaning() {
 
       var cleanerBadge = t.cleaner ? '<span class="cl-task-cleaner">'+escHtml(t.cleaner)+'</span>' : '<span class="cl-task-cleaner" style="background:rgba(240,64,96,0.1);color:var(--red)">Non assegnato</span>';
       var doneBadge = t.status === 'done' ? '<span class="cl-task-done-badge">✅</span>' : '';
+      var shiftedBadge = t.date_override ? '<span style="font-size:9px;background:rgba(245,166,35,0.15);color:#c47a00;border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700">📅 Spostato</span>' : '';
       var times = '';
       if (t.checkout_time || t.checkin_time) {
         times = '<div class="cl-task-times">⬆ ' + (t.checkout_time||'?') + '  ⬇ ' + (t.checkin_time||'?') + '</div>';
@@ -5432,7 +5436,7 @@ function renderCleaning() {
       var checkTotal = t.checklist ? t.checklist.length : 0;
       var checkBadge = checkTotal > 0 ? '<span style="font-size:10px;color:var(--text-light);margin-left:4px">'+checkDone+'/'+checkTotal+'</span>' : '';
 
-      card.innerHTML = doneBadge + '<div class="cl-task-prop">'+escHtml(t.prop_name)+'</div>' + times + cleanerBadge + checkBadge;
+      card.innerHTML = doneBadge + '<div class="cl-task-prop">'+escHtml(t.prop_name)+shiftedBadge+'</div>' + times + cleanerBadge + checkBadge;
       card.onclick = function(){ clOpenModal(t.id, dateStr); };
       body.appendChild(card);
     });
@@ -5507,7 +5511,16 @@ function clOpenModal(taskId, dateStr) {
       document.getElementById('cl-f-prop-text').readOnly = false;
       document.getElementById('cl-f-prop-text').style.color = '';
     }
-    document.getElementById('cl-f-date').value = t.date || '';
+    var displayDate = t.date_override || t.date || '';
+    document.getElementById('cl-f-date').value = displayDate;
+    var hintEl = document.getElementById('cl-f-date-hint');
+    if (t.date_override && t.date_override !== t.date) {
+      hintEl.style.display = '';
+      hintEl.innerHTML = '📅 Data originale Smoobu: <strong>' + t.date + '</strong> — modificata manualmente. <span style="cursor:pointer;color:var(--blue);text-decoration:underline" onclick="clResetDate()">Ripristina</span>';
+    } else {
+      hintEl.style.display = 'none';
+      hintEl.innerHTML = '';
+    }
     document.getElementById('cl-f-checkout-time').value = t.checkout_time || '';
     document.getElementById('cl-f-checkin-time').value = t.checkin_time || '';
     document.getElementById('cl-f-notes').value = t.notes || '';
@@ -5569,6 +5582,16 @@ function clRenderModalChecklist() {
   });
 }
 
+function clResetDate() {
+  var db = clDB();
+  var t = db.tasks.find(function(x){ return x.id === CL.editingId; });
+  if (!t) return;
+  document.getElementById('cl-f-date').value = t.date;
+  var hintEl = document.getElementById('cl-f-date-hint');
+  hintEl.style.display = 'none';
+  hintEl.innerHTML = '';
+}
+
 function clAddCheckItem() {
   var inp = document.getElementById('cl-f-new-check');
   var val = (inp.value || '').trim();
@@ -5604,10 +5627,21 @@ function clSaveTask() {
   if (CL.editingId) {
     var idx = db.tasks.findIndex(function(t){ return t.id === CL.editingId; });
     if (idx >= 0) {
-      taskData.status = db.tasks[idx].status;
+      var existing = db.tasks[idx];
+      taskData.status = existing.status;
       taskData.id = CL.editingId;
-      taskData.smoobu_id = db.tasks[idx].smoobu_id;
-      taskData.created = db.tasks[idx].created;
+      taskData.smoobu_id = existing.smoobu_id;
+      taskData.created = existing.created;
+      // If task comes from Smoobu and date was changed, save as override
+      if (existing.smoobu_id && date !== existing.date) {
+        taskData.date = existing.date;           // keep original Smoobu date
+        taskData.date_override = date;           // store manual override
+      } else if (existing.smoobu_id && date === existing.date) {
+        taskData.date = existing.date;
+        taskData.date_override = null;           // reset override if back to original
+      } else {
+        taskData.date_override = existing.date_override || null;
+      }
       db.tasks[idx] = taskData;
     }
   } else {
