@@ -158,9 +158,15 @@ app.post('/api/smoobu/webhook', async (req, res) => {
     if (!db.cleaning) db.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
 
     const b = event.data || event;
+
+    // Skip blocked bookings (closures, maintenance, etc.)
+    if (b['is-blocked-booking'] === true) return res.json({ ok: true, skipped: 'blocked' });
+
     const bookingId = String(b.id || b.reservationId || '');
-    const checkout  = (b.departure || b['check-out'] || '').split('T')[0];
-    const checkin   = (b.arrival   || b['check-in']  || '').split('T')[0];
+    const checkout  = (b.departure || '').split('T')[0];  // departure = checkout date
+    const checkin   = (b.arrival   || '').split('T')[0];  // arrival   = checkin date
+    const checkoutTime = b['check-out'] || '10:00';       // check-out = checkout time
+    const checkinTime  = b['check-in']  || '15:00';       // check-in  = checkin time
     const propName  = (b.apartment?.name || b.apartmentName || 'N/D');
     const propId    = b.apartment?.id ? String(b.apartment.id) : null;
 
@@ -189,8 +195,8 @@ app.post('/api/smoobu/webhook', async (req, res) => {
           prop_id:       propId,
           date:          checkout,
           checkin_date:  checkin,
-          checkout_time: '10:00',
-          checkin_time:  '15:00',
+          checkout_time: checkoutTime,
+          checkin_time:  checkinTime,
           cleaner:       '',
           notes:         '',
           checklist:     defaultCL,
