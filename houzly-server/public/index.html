@@ -19,7 +19,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13.5px;display:flex;min-height:100vh}
-#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--text);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column}
+#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--text);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
 .sidebar-logo{padding:22px 12px 18px;border-bottom:1px solid rgba(255,255,255,0.07)}
 .sidebar-logo img{width:150px;display:block;margin:0 auto;mix-blend-mode:screen;filter:brightness(1.1)}
 .sidebar-footer-text{text-align:center;font-size:8.5px;color:rgba(34,209,238,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-top:6px;font-weight:600}
@@ -265,7 +265,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Anagrafiche</div>
     <div class="nav-item" onclick="showPage('proprietari')"><span class="nav-icon">&#128100;</span> Proprietari</div>
     <div class="nav-item" onclick="showPage('proprieta')"><span class="nav-icon">&#127968;</span> Propriet&agrave;</div>
-    <div class="nav-item" onclick="showPage('gruppi')"><span class="nav-icon">&#128257;</span> Gruppi Propriet&agrave;</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Finance</div>
     <div class="nav-item" onclick="showPage('prenotazioni')"><span class="nav-icon">&#128203;</span> Prenotazioni</div>
