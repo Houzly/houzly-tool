@@ -516,6 +516,25 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div id="import-result" style="margin-top:14px"></div>
     </div>
   </div>
+
+  <!-- Backup / Restore row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="card">
+      <div class="card-title">💾 Backup DB</div>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Scarica una copia completa del database (proprietari, proprietà, prenotazioni, pulizie, ricevute).</p>
+      <a id="backup-link" class="btn btn-primary" href="/api/backup" download>⬇ Scarica Backup</a>
+    </div>
+    <div class="card">
+      <div class="card-title">♻️ Restore da Backup</div>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Carica un file di backup JSON per ripristinare il database. <strong style="color:var(--red)">Attenzione: sovrascrive tutti i dati attuali.</strong></p>
+      <div class="drop-zone" style="padding:20px" onclick="document.getElementById('restore-file').click()">
+        <div class="dz-icon">📂</div>
+        <p><strong>Clicca</strong> per selezionare il file .json di backup</p>
+      </div>
+      <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreFromBackup(this)">
+      <div id="restore-result" style="margin-top:12px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -5750,6 +5769,60 @@ function clRemoveDefaultItem(idx) {
 }
 
 // Cleaning hooks integrated into renderPage above
+
+// ── Backup / Restore ──────────────────────────────────────────────
+async function restoreFromBackup(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var resultEl = document.getElementById('restore-result');
+  resultEl.innerHTML = '<div class="alert alert-info">Lettura file...</div>';
+
+  try {
+    var text = await file.text();
+    var parsed = JSON.parse(text);
+
+    // Accept both {backup: {...}} and raw DB object
+    var dbToRestore = parsed.backup || parsed.db || parsed;
+
+    // Basic validation
+    if (!dbToRestore.proprietari && !dbToRestore.prenotazioni && !dbToRestore.cleaning) {
+      resultEl.innerHTML = '<div class="alert alert-warning">⚠ File non riconosciuto come backup Houzly.</div>';
+      return;
+    }
+
+    if (!confirm('Sei sicuro di voler ripristinare il backup?\nQuesta operazione sovrascrive tutti i dati attuali.')) {
+      resultEl.innerHTML = '';
+      input.value = '';
+      return;
+    }
+
+    resultEl.innerHTML = '<div class="alert alert-info">Ripristino in corso...</div>';
+
+    var resp = await fetch('/api/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup: dbToRestore })
+    });
+    var data = await resp.json();
+
+    if (data.ok) {
+      // Also update local DB
+      DB = dbToRestore;
+      localStorage.setItem('houzly_v4', JSON.stringify(DB));
+      resultEl.innerHTML = '<div class="alert alert-success">✓ Restore completato! Proprietari: ' +
+        (dbToRestore.proprietari||[]).length + ', Prenotazioni: ' +
+        (dbToRestore.prenotazioni||[]).length + ', Cleaning tasks: ' +
+        ((dbToRestore.cleaning||{}).tasks||[]).length + '</div>';
+      toast('Restore completato ✓');
+      renderDash();
+    } else {
+      resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore server: ' + (data.error||'unknown') + '</div>';
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore: ' + e.message + '</div>';
+  }
+  input.value = '';
+}
 
 </script>
 </body>
