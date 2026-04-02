@@ -1038,6 +1038,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="section-title">🧹 Cleaning Manager</div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn btn-outline btn-sm" onclick="clSyncSmoobu()">⟳ Sync Smoobu</button>
+      <button class="btn btn-danger btn-sm" onclick="clResetAndSync()">🗑 Reset &amp; Sync</button>
       <button class="btn btn-primary btn-sm" onclick="clOpenModal(null,null)">+ Task manuale</button>
       <button class="btn btn-ghost btn-sm" onclick="showPage('cl-settings')">⚙ Cleaners</button>
     </div>
@@ -5231,6 +5232,15 @@ function clFmtDisplay(d) {
 }
 
 // ── Smoobu sync ──────────────────────────────────────────────────
+async function clResetAndSync() {
+  if (!confirm('Cancella tutti i task pulizia esistenti e risincronizza da Smoobu?')) return;
+  var db = clDB();
+  db.tasks = [];
+  clSave();
+  toast('Task resettati — avvio sync...');
+  await clSyncSmoobu();
+}
+
 async function clSyncSmoobu() {
   var db = clDB();
   var apiKey = db.apiKey || '';
