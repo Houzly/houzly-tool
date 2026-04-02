@@ -112,4 +112,101 @@ app.post('/api/restore', async (req, res) => {
   } catch { res.json({ ok: false, error: 'server_error' }); }
 });
 
+// ── Smoobu Proxy ──────────────────────────────────────────────────
+// GET /api/smoobu/reservations?apiKey=XXX&pageSize=100&page=1
+// Proxies to Smoobu API to avoid CORS issues from the browser.
+app.get('/api/smoobu/reservations', async (req, res) => {
+  try {
+    const apiKey   = req.query.apiKey;
+    const pageSize = req.query.pageSize || 100;
+    const page     = req.query.page || 1;
+
+    if (!apiKey) return res.status(400).json({ ok: false, error: 'missing_api_key' });
+
+    const url = `https://login.smoobu.com/api/reservations?pageSize=${pageSize}&page=${page}`;
+    const r = await fetch(url, {
+      headers: {
+        'Api-Key': apiKey,
+        'Cache-Control': 'no-cache'
+      }
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      return res.status(r.status).json({ ok: false, error: `Smoobu error ${r.status}`, detail: text });
+    }
+
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Smoobu Webhook (new / modified / cancelled in real time) ──────
+// Configure this URL in Smoobu → Account → Settings → API → Webhooks:
+//   https://houzly-tool.onrender.com/api/smoobu/webhook
+app.post('/api/smoobu/webhook', async (req, res) => {
+  try {
+    const event = req.body;
+    // Smoobu sends: action = "newReservation" | "modifiedReservation" | "cancelledReservation"
+    console.log('[Smoobu Webhook]', event.action, event.data?.id);
+
+    // Load current DB
+    const db = await binGet(JSONBIN_BIN_DB);
+    if (!db) return res.json({ ok: false, error: 'db_not_found' });
+    if (!db.cleaning) db.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
+
+    const b = event.data || event;
+    const bookingId = String(b.id || b.reservationId || '');
+    const checkout  = (b.departure || b['check-out'] || '').split('T')[0];
+    const checkin   = (b.arrival   || b['check-in']  || '').split('T')[0];
+    const propName  = (b.apartment?.name || b.apartmentName || 'N/D');
+    const propId    = b.apartment?.id ? String(b.apartment.id) : null;
+
+    const action = event.action || '';
+
+    if (action === 'cancelledReservation') {
+      // Remove cleaning task for this booking
+      db.cleaning.tasks = db.cleaning.tasks.filter(t => t.smoobu_id !== bookingId);
+    } else {
+      // newReservation or modifiedReservation
+      const existsIdx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
+      if (existsIdx >= 0) {
+        // Update dates/property, keep cleaner+notes+checklist
+        db.cleaning.tasks[existsIdx].date         = checkout;
+        db.cleaning.tasks[existsIdx].checkin_date  = checkin;
+        db.cleaning.tasks[existsIdx].prop_name     = propName;
+      } else {
+        // New task
+        const defaultCL = (db.cleaning.defaultChecklist || []).map((item, i) => ({
+          id: `dc_${Date.now()}_${i}`, text: item, done: false
+        }));
+        db.cleaning.tasks.push({
+          id:            `cl_${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
+          smoobu_id:     bookingId,
+          prop_name:     propName,
+          prop_id:       propId,
+          date:          checkout,
+          checkin_date:  checkin,
+          checkout_time: '10:00',
+          checkin_time:  '15:00',
+          cleaner:       '',
+          notes:         '',
+          checklist:     defaultCL,
+          status:        'todo',
+          created:       new Date().toISOString()
+        });
+      }
+    }
+
+    db.cleaning.lastSync = new Date().toISOString();
+    await binSet(JSONBIN_BIN_DB, db);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Smoobu Webhook] error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`Houzly server running on port ${PORT}`));
