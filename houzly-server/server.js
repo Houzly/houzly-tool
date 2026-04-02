@@ -179,10 +179,11 @@ app.post('/api/smoobu/webhook', async (req, res) => {
       // newReservation or modifiedReservation
       const existsIdx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
       if (existsIdx >= 0) {
-        // Update dates/property, keep cleaner+notes+checklist
+        // Update dates/property from Smoobu, keep cleaner+notes+checklist+date_override
         db.cleaning.tasks[existsIdx].date         = checkout;
         db.cleaning.tasks[existsIdx].checkin_date  = checkin;
         db.cleaning.tasks[existsIdx].prop_name     = propName;
+        // date_override is intentionally NOT touched — manual shift is preserved
       } else {
         // New task
         const defaultCL = (db.cleaning.defaultChecklist || []).map((item, i) => ({
