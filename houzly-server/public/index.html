@@ -267,13 +267,15 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('proprieta')"><span class="nav-icon">&#127968;</span> Propriet&agrave;</div>
     <div class="nav-item" onclick="showPage('gruppi')"><span class="nav-icon">&#128257;</span> Gruppi Propriet&agrave;</div>
   </div>
-  <div class="nav-group"><div class="nav-group-label">Operativo</div>
+  <div class="nav-group"><div class="nav-group-label">Finance</div>
     <div class="nav-item" onclick="showPage('prenotazioni')"><span class="nav-icon">&#128203;</span> Prenotazioni</div>
     <div class="nav-item" onclick="showPage('report_prop')"><span class="nav-icon">&#128202;</span> Report Proprietari</div>
     <div class="nav-item" onclick="showPage('documenti')"><span class="nav-icon">&#128196;</span> Documenti Fiscali</div>
     <div class="nav-item" onclick="showPage('ricevute')"><span class="nav-icon">&#128523;</span> Ricevute</div>
-    <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Operational Tasks</div>
-    <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Pulizie</div>
+  </div>
+  <div class="nav-group"><div class="nav-group-label">Operations</div>
+    <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Tasks</div>
+    <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Cleaning Manager</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Strumenti</div>
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
@@ -1119,7 +1121,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="form-grid" id="cl-modal-form">
       <div class="field">
         <label>Proprietà</label>
-        <select id="cl-f-prop"><option value="">-- seleziona --</option></select>
+        <select id="cl-f-prop" onchange="document.getElementById('cl-f-prop-text').value=this.value"><option value="">-- seleziona --</option></select>
+        <input type="text" id="cl-f-prop-text" placeholder="Nome proprietà (da Smoobu)" style="margin-top:6px">
       </div>
       <div class="field">
         <label>Data pulizia (checkout)</label>
@@ -5492,7 +5495,18 @@ function clOpenModal(taskId, dateStr) {
     if (!t) return;
     titleEl.textContent = '✏ Modifica Task Pulizia';
     deleteBtn.style.display = 'inline-flex';
+    // For Smoobu tasks: show prop name as readonly, hide select
+    document.getElementById('cl-f-prop-text').value = t.prop_name || '';
     document.getElementById('cl-f-prop').value = t.prop_name || '';
+    if (t.smoobu_id) {
+      document.getElementById('cl-f-prop').style.display = 'none';
+      document.getElementById('cl-f-prop-text').readOnly = true;
+      document.getElementById('cl-f-prop-text').style.color = 'var(--text-light)';
+    } else {
+      document.getElementById('cl-f-prop').style.display = '';
+      document.getElementById('cl-f-prop-text').readOnly = false;
+      document.getElementById('cl-f-prop-text').style.color = '';
+    }
     document.getElementById('cl-f-date').value = t.date || '';
     document.getElementById('cl-f-checkout-time').value = t.checkout_time || '';
     document.getElementById('cl-f-checkin-time').value = t.checkin_time || '';
@@ -5504,6 +5518,10 @@ function clOpenModal(taskId, dateStr) {
     titleEl.textContent = '+ Nuovo Task Pulizia';
     deleteBtn.style.display = 'none';
     document.getElementById('cl-f-prop').value = '';
+    document.getElementById('cl-f-prop').style.display = '';
+    document.getElementById('cl-f-prop-text').value = '';
+    document.getElementById('cl-f-prop-text').readOnly = false;
+    document.getElementById('cl-f-prop-text').style.display = 'none';
     document.getElementById('cl-f-date').value = dateStr || '';
     document.getElementById('cl-f-checkout-time').value = '10:00';
     document.getElementById('cl-f-checkin-time').value = '15:00';
@@ -5567,9 +5585,10 @@ function clRemoveCheckItem(idx) {
 
 function clSaveTask() {
   var db = clDB();
-  var propName = document.getElementById('cl-f-prop').value;
+  var propName = document.getElementById('cl-f-prop').value || document.getElementById('cl-f-prop-text').value;
   var date = document.getElementById('cl-f-date').value;
-  if (!propName || !date) { toast('⚠ Proprietà e data obbligatorie'); return; }
+  if (!date) { toast('⚠ Data obbligatoria'); return; }
+  if (!propName) propName = 'N/D';
 
   var taskData = {
     prop_name: propName,
