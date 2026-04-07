@@ -771,7 +771,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="form-grid">
         <div class="field"><label>Importo Totale OTA (&euro;) *</label><input type="number" id="p-tot" step="0.01" oninput="calcScorporo()"></div>
         <div class="field"><label>% Commissione OTA</label><input type="number" id="p-comm-perc" step="0.1" value="15" oninput="calcScorporo()"></div>
-        <div class="field"><label>Tassa di Soggiorno (&euro;/persona/notte)</label><input type="number" id="p-tassa-pn" step="0.01" value="2" oninput="calcScorporo()"><div class="field-hint">Tot = &euro;/persona &times; N.ospiti &times; notti</div></div>
+        <div class="field"><label>Tassa di Soggiorno &mdash; Totale (&euro;)</label><input type="number" id="p-tassa-tot" step="0.01" value="0" placeholder="0.00" oninput="calcScorporo()"><div class="field-hint">Inserisci l'importo totale manualmente</div></div>
         <div class="field"><label>Spese Pulizia (&euro;)</label><input type="number" id="p-pulizia" step="0.01" value="0" oninput="calcScorporo()"></div>
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
         <div class="field"><label>IVA 22% su Houzly</label><select id="p-iva22" onchange="calcScorporo()"><option value="0">No (esente)</option><option value="1">S&igrave; (+ 22%)</option></select></div>
@@ -1489,7 +1489,7 @@ function doCalc(b){
   // Prenotazione diretta: commissione OTA sempre 0
   var effCommPerc=(b.canale==='Diretta')?0:(+b.comm_ota_perc||0);
   var comm_ota=r2(tot*(effCommPerc/100));
-  var tassa=r2((+b.tassa_pn||0)*(b.notti||0)*(b.n_ospiti||1));
+  var tassa=r2(+b.tassa_tot||0);
   var pulizia=+b.pulizia||0;
   // Check if this property has pulizie_owner flag
   var prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
@@ -2098,7 +2098,7 @@ function editPren(id){
   document.getElementById('p-prop-sel').value=b.proprieta_id||'';
   document.getElementById('p-tot').value=b.tot||'';
   document.getElementById('p-comm-perc').value=b.comm_ota_perc||0;
-  document.getElementById('p-tassa-pn').value=b.tassa_pn||0;
+  document.getElementById('p-tassa-tot').value=b.tassa_tot||0;
   document.getElementById('p-pulizia').value=b.pulizia||0;
   document.getElementById('p-houzly-perc').value=b.houzly_perc||20;
   document.getElementById('p-iva22').value=b.iva22?'1':'0';
@@ -2265,7 +2265,7 @@ function viewPren(id){
       +'<span style="font-size:11.5px;color:#c47a00">Smoobu non le include — inserisci con Modifica</span>'
       +'</div>';
   }
-  if(c.tassa>0)html+=row('Tassa di soggiorno ('+eur(b.tassa_pn)+'/notte/osp.)','-'+eur(c.tassa),false,'var(--red)');
+  if(c.tassa>0)html+=row('Tassa di soggiorno','-'+eur(c.tassa),false,'var(--red)');
   html+=row('Netto Host',eur(c.netto),true,'var(--blue)');
   html+=row('Compenso Houzly ('+r2(b.houzly_perc)+'%)','-'+eur(c.houzly),false,'var(--orange)');
   if(c.iva22>0)html+=row('IVA 22% su Houzly','-'+eur(c.iva22),false,'var(--orange)');
@@ -2294,7 +2294,7 @@ function openNewModal(){
   document.getElementById('p-notti').value='';
   document.getElementById('p-n-ospiti').value=2;
   document.getElementById('p-tot').value='';
-  document.getElementById('p-tassa-pn').value=0;
+  document.getElementById('p-tassa-tot').value=0;
   document.getElementById('p-pulizia').value=0;
   document.getElementById('p-comm-perc').value=0;
   document.getElementById('p-houzly-perc').value=20;
@@ -2339,7 +2339,7 @@ function onCanaleChange(){
   calcScorporo();
 }
 function calcScorporo(){
-  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
+  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_tot:+document.getElementById('p-tassa-tot').value||0,notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
   if(!b.tot){document.getElementById('sc-rows').innerHTML='<div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div>';return;}
   var c=doCalc(b);
   document.getElementById('sc-rows').innerHTML=
@@ -2347,7 +2347,7 @@ function calcScorporo(){
     +'<div class="sc-section-label">Costi Condivisi</div>'
     +'<div class="sc-row"><span>Commissione OTA ('+b.comm_ota_perc+'%)</span><span class="amt">- '+eur(c.comm_ota)+'</span></div>'
     +'<div class="sc-section-label">Trattenute</div>'
-    +'<div class="sc-row"><span>Tassa di Soggiorno ('+b.n_ospiti+' osp &times; '+b.notti+' n &times; '+eur(b.tassa_pn)+')</span><span class="amt">- '+eur(c.tassa)+'</span></div>'
+    +'<div class="sc-row"><span>Tassa di Soggiorno</span><span class="amt">- '+eur(c.tassa)+'</span></div>'
     +'<div class="sc-row"><span>Spese Pulizia</span><span class="amt">- '+eur(c.pulizia)+'</span></div>'
     +'<div class="sc-section-label">Totali</div>'
     +'<div class="sc-row"><span>Tot. Netto</span><span class="amt">'+eur(c.netto)+'</span></div>'
@@ -2367,7 +2367,7 @@ function goStep(n){
 function buildConfirm(){
   var propId=document.getElementById('p-prop-sel').value;
   var own=ownerOfProp(propId);
-  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
+  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_tot:+document.getElementById('p-tassa-tot').value||0,notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
   var c=doCalc(b);
   document.getElementById('confirm-summary').innerHTML=
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
@@ -2386,7 +2386,7 @@ function buildConfirm(){
 function savePren(){
   var propId=document.getElementById('p-prop-sel').value;
   if(!propId){toast('Seleziona una propriet\u00e0');return;}
-  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,calc:{}};
+  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_tot:+document.getElementById('p-tassa-tot').value||0,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -2516,7 +2516,7 @@ function genFatturaOspite(bid, dest){
   var totV=r2(totF22-totI);
   var totF=r2(totF22+(c.tassa||0));
   var rows22=voci22.map(function(v){var impon=r2(v.imp/1.22);var ivaE=r2(v.imp-impon);return'<tr><td>'+v.desc+'</td><td class="r">'+eur(impon)+'</td><td class="r"><span class="badge-iva">22%</span></td><td class="r">'+eur(ivaE)+'</td><td class="r"><strong>'+eur(v.imp)+'</strong></td></tr>';}).join('');
-  var rowTassa=c.tassa>0?'<tr style="background:#fffbf0"><td>Tassa di Soggiorno ('+b.notti+'n x '+b.n_ospiti+' osp x '+eur(b.tassa_pn)+') &mdash; <em>Escluso art. 15 DPR 633/72</em></td><td class="r">'+eur(c.tassa)+'</td><td class="r"><span class="badge-iva" style="background:#fff8e6;color:#b07800;border-color:#e0c060">0% N1</span></td><td class="r">0,00</td><td class="r"><strong>'+eur(c.tassa)+'</strong></td></tr>':'';
+  var rowTassa=c.tassa>0?'<tr style="background:#fffbf0"><td>Tassa di Soggiorno &mdash; <em>Escluso art. 15 DPR 633/72</em></td><td class="r">'+eur(c.tassa)+'</td><td class="r"><span class="badge-iva" style="background:#fff8e6;color:#b07800;border-color:#e0c060">0% N1</span></td><td class="r">0,00</td><td class="r"><strong>'+eur(c.tassa)+'</strong></td></tr>':'';
   var html=PS+'<div class="doc">'
     +'<div class="doc-header"><div><div class="doc-logo">HOUZLY<small>Property Management</small></div><div style="font-size:10px;color:#888;margin-top:4px">'+CO.nome+' &middot; P.IVA '+CO.piva+'</div></div><div class="doc-type"><h2>Fattura N&deg; '+num+'</h2><p>Data '+oggi+' &middot; Servizi di gestione</p></div></div>'
     +'<div class="doc-parties"><div class="doc-party"><h4>Emittente</h4><p><strong>'+CO.nome+'</strong><br>P.IVA: '+CO.piva+'<br>'+CO.indirizzo+'<br>'+CO.cap+' '+CO.comune+' ('+CO.provincia+')</p></div>'
@@ -3395,7 +3395,7 @@ function processSmoobu(file){
         var adulti=+get('Adulti')||1;
         var bambini=+get('Bambini')||0;
         var n_ospiti=adulti+bambini||1;
-        var tassa_pn=(notti>0&&n_ospiti>0&&tassaTot>0)?r2(tassaTot/(notti*n_ospiti)):0;
+        var tassa_pn=0; // legacy, not used
 
         var otaRef=extractOtaNum(get('Note'))||pos;
         var ospEmail=get('E-mail')||'';
@@ -3409,7 +3409,7 @@ function processSmoobu(file){
           ospite_nome:get('Ospite'),n_ospiti:n_ospiti,
           ospite_cf:'',ospite_email:ospEmail,ospite_ind:'',
           checkin:checkin,checkout:checkout,notti:notti,
-          tot:tot,comm_ota_perc:comm_ota_perc,tassa_pn:tassa_pn,
+          tot:tot,comm_ota_perc:comm_ota_perc,tassa_tot:r2(tassaTot),
           pulizia:pulizia,houzly_perc:houzly_perc,iva22:iva22,
           note:otaRef,calc:{}};
         b.calc=doCalc(b);
@@ -3450,7 +3450,7 @@ function processSmoobu(file){
             +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:700">'+eur(b.calc.tot)+'</td>'
             +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-light)">'+r2(b.comm_ota_perc)+'%</td>'
             +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+eur(b.calc.pulizia)+'</td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+eur(b.tassa_pn)+'</td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+eur(b.tassa_tot)+'</td>'
             +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:700;color:var(--blue)">'+eur(b.calc.canone)+'</td>'
             +'</tr>';
         }).join('');
