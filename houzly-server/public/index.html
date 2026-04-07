@@ -2417,18 +2417,29 @@ var _xmlBlob=null,_xmlFilename='';
 function printModalDoc(){
   var body=document.getElementById('pm-body').innerHTML;
   var title=document.getElementById('pm-title').innerHTML;
-  var win=window.open('','_blank');
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title>'
+  var hasStyle=body.indexOf('<style>')>=0||body.indexOf('<STYLE>')>=0;
+  var fullHtml='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:"Plus Jakarta Sans",sans-serif;background:#fff;color:#0f1535;font-size:12px;padding:20px}'
-    +'@media print{body{padding:0}@page{margin:12mm}}'
-    +'</style>'
+    +(hasStyle?'':'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Plus Jakarta Sans",sans-serif;background:#fff;color:#0f1535;font-size:12px;padding:20px}@media print{body{padding:0}@page{margin:12mm}}</style>')
     +'</head><body>'+body
-    +'<script>window.onload=function(){window.print();window.close();}<\/script>'
-    +'</body></html>');
-  win.document.close();
+    +'<script>window.onload=function(){window.print();}<\/script>'
+    +'</body></html>';
+  var win=null;
+  try{ win=window.open('','_blank'); }catch(e){}
+  if(win&&!win.closed){
+    win.document.write(fullHtml);
+    win.document.close();
+  } else {
+    var blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(title.replace(/[^a-zA-Z0-9À-ÿ\s\-]/g,'').trim().replace(/\s+/g,'_').slice(0,60)||'report')+'.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    toast('File scaricato — aprilo e stampa con Ctrl+P');
+  }
 }
 function openPrintModal(title,htmlContent,xmlData,xmlFilename){
   _xmlBlob=xmlData||null;_xmlFilename=xmlFilename||'';
