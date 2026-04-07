@@ -3034,7 +3034,7 @@ function previewReportProp(){
          ?'<div class="rpt-sum-row"><span>Rimborso pulizie al proprietario</span><span style="color:var(--green);font-weight:600">+ '+eur(r2(bks.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0)))+'</span></div>'
          :'')
        +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale guadagno proprietario</span><span style="font-weight:700">'+eur(sommaNetti)+'</span></div>'
-       +((!isGroup&&own&&own.fisc_cedolare)
+       +(((own&&own.fisc_cedolare)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return _fo&&_fo.fisc_cedolare;}())))
          ?'<div class="rpt-sum-row" style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px"><span>Cedolare Secca 21%</span><span style="color:var(--red);font-weight:700">- '+eur(cedolare)+'</span></div>'
           +'<div class="rpt-sum-row"><span>Netto da bonificare al proprietario dopo imposta</span><span class="rpt-sum-total">'+eur(nettoImposta)+'</span></div>'
           +(own&&own.coprops&&own.coprops.length
@@ -3128,7 +3128,7 @@ function printReport(){
      +(bksNorm.some(function(b){return b.iva22;})?srow('IVA 22% su Houzly','- '+eur(bksNorm.reduce(function(s,b){return s+(b.iva22?b.calc.iva22:0);},0)),'neg'):'')
      +(bksNorm.some(function(b){return b.calc.pulizie_owner&&b.calc.rimborso_pulizie>0;})?srow('Rimborso pulizie al proprietario','+ '+eur(bksNorm.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0)),'pos'):'')
      +srow('Totale guadagno proprietario',eur(sommaNetti2),'total')
-     +(!isGroup2&&own&&own.fisc_cedolare
+     +(((own&&own.fisc_cedolare)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return _fo2&&_fo2.fisc_cedolare;})()))
        ?srow('Cedolare Secca 21%','- '+eur(cedolare2),'neg')
         +srow('Netto dopo imposta',eur(nettoImposta2),'grand')
         +(own&&own.coprops&&own.coprops.length
