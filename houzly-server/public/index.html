@@ -81,7 +81,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .toggle input:checked+.toggle-slider{background:var(--grad)}.toggle input:checked+.toggle-slider::before{transform:translateX(16px)}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text);padding:6px 10px;background:var(--surface2);border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap}
+th{text-align:left;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#fff;padding:6px 10px;background:#0f1535;border-bottom:2px solid #0f1535;font-weight:700;white-space:nowrap}
 td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text-mid);vertical-align:middle}
 tr:last-child td{border-bottom:none}tr:hover td{background:rgba(67,97,238,0.04)}.rpt-summary tr:hover td,.rpt-summary tr:hover,.rpt-summary *:hover{background:transparent!important}
 td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-nums;font-weight:600}
@@ -129,7 +129,7 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .rpt-section{margin-bottom:0}
 .rpt-ota-header{background:var(--grad);color:#fff;padding:7px 14px;border-radius:var(--radius) var(--radius) 0 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
 .rpt-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}
-.rpt-table th{background:var(--surface2);color:var(--text-light);padding:6px 10px;text-align:right;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--border)}
+.rpt-table th{background:#0f1535;color:#fff;padding:7px 10px;text-align:right;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--border)}
 .rpt-table th:first-child,.rpt-table th:nth-child(2),.rpt-table th:nth-child(3){text-align:left}
 .rpt-table td{padding:7px 10px;border:1px solid var(--border);text-align:right}
 .rpt-table td:first-child,.rpt-table td:nth-child(2),.rpt-table td:nth-child(3){text-align:left}
@@ -156,6 +156,7 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .doc-row.is-done .doc-row-body{opacity:0.65}
 .drop-zone .dz-icon{font-size:32px;margin-bottom:8px}.drop-zone p{font-size:13px;color:var(--text-light)}
 @media print{body *{visibility:hidden}#pm-body,#pm-body *{visibility:visible}#pm-body{position:fixed;inset:0;margin:0;padding:24px;background:#fff;max-height:none!important;overflow:visible!important}}
+#pm-body thead tr th{color:#fff!important}
 .bulk-bar{display:none;align-items:center;gap:10px;background:var(--blue);color:#fff;padding:9px 16px;border-radius:var(--radius);margin-bottom:10px;font-size:13px;font-weight:600}
 .bulk-bar.visible{display:flex}
 .bulk-bar button{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit}
