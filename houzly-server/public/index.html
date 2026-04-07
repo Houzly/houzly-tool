@@ -64,7 +64,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-outline{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}.btn-outline:hover{background:var(--blue);color:#fff}
 .btn-ghost{background:var(--surface2);color:var(--text-mid);border:1px solid var(--border)}.btn-ghost:hover{background:var(--border)}
 .btn-danger{background:var(--red);color:#fff}.btn-danger:hover{opacity:.88}
-.btn-sm{padding:5px 11px;font-size:12px}
+.btn-sm{padding:4px 8px;font-size:11.5px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -80,9 +80,9 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .toggle-slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
 .toggle input:checked+.toggle-slider{background:var(--grad)}.toggle input:checked+.toggle-slider::before{transform:translateX(16px)}
 .table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);padding:9px 12px;background:var(--surface2);border-bottom:1px solid var(--border);font-weight:700;white-space:nowrap}
-td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-mid);vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);padding:6px 10px;background:var(--surface2);border-bottom:1px solid var(--border);font-weight:700;white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text-mid);vertical-align:middle}
 tr:last-child td{border-bottom:none}tr:hover td{background:rgba(67,97,238,0.04)}.rpt-summary tr:hover td,.rpt-summary tr:hover,.rpt-summary *:hover{background:transparent!important}
 td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-nums;font-weight:600}
 .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700}
@@ -2206,9 +2206,9 @@ function renderPrenotazioni(){
       +(b.canale==='Airbnb'&&!b.pulizia
         ?'<span title="Pulizie mancanti — Smoobu non le include per Airbnb. Inserisci con Modifica." style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:rgba(245,166,35,0.15);border-radius:50%;font-size:11px;cursor:default;flex-shrink:0" >&#9888;</span>'
         :'')
-      +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" style="color:var(--blue);border-color:var(--blue)">&#128269; Visualizza</button>'
-      +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'">&#128196;</button>'
-      +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'">&#9999;&#65039; Modifica</button>'
+      +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" style="color:var(--blue);border-color:var(--blue)">&#128269;</button>'
+      +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'" title="Documento">&#128196;</button>'
+      +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'" title="Modifica">&#9999;&#65039;</button>'
       +'<button class="btn btn-sm btn-danger" data-action="del-pren" data-id="'+b.id+'">&#128465;</button>'
       +'</td></tr>';  }).join('');
   wireTableActions('tbody-prenotazioni');
