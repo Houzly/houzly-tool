@@ -1489,6 +1489,12 @@ function doCalc(b){
   // Prenotazione diretta: commissione OTA sempre 0
   var effCommPerc=(b.canale==='Diretta')?0:(+b.comm_ota_perc||0);
   var comm_ota=r2(tot*(effCommPerc/100));
+  // Booking.com: aggiungi booking_fee_perc della proprietà (commissione bancaria ~1.5%)
+  if(b.canale==='Booking.com'){
+    var _prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
+    var _bfee=_prop&&_prop.booking_fee_perc!=null?_prop.booking_fee_perc:1.5;
+    comm_ota=r2(comm_ota+r2(tot*_bfee/100));
+  }
   var tassa=(b.tassa_tot!==null&&b.tassa_tot!==undefined&&b.tassa_tot!==''&&+b.tassa_tot>0)?r2(+b.tassa_tot):r2((+b.tassa_pn||0)*(b.notti||0)*(b.n_ospiti||1));
   var pulizia=+b.pulizia||0;
   // Check if this property has pulizie_owner flag
