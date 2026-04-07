@@ -19,7 +19,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13.5px;display:flex;min-height:100vh}
-#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--text);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column}
+#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--text);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
 .sidebar-logo{padding:22px 12px 18px;border-bottom:1px solid rgba(255,255,255,0.07)}
 .sidebar-logo img{width:150px;display:block;margin:0 auto;mix-blend-mode:screen;filter:brightness(1.1)}
 .sidebar-footer-text{text-align:center;font-size:8.5px;color:rgba(34,209,238,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-top:6px;font-weight:600}
@@ -171,6 +171,51 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 #toast{position:fixed;bottom:22px;right:22px;background:var(--text);color:#fff;padding:11px 18px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);display:none;z-index:9999;max-width:280px;border-left:3px solid var(--cyan)}
 .tot-row td{background:#f0f4ff!important}
 
+/* ── Cleaning Manager ─────────────────────────────────────────── */
+.cl-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.cl-week-nav{display:flex;align-items:center;gap:8px}
+.cl-week-nav button{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-mid);font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;transition:all .15s}
+.cl-week-nav button:hover{border-color:var(--blue);color:var(--blue)}
+.cl-week-label{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);min-width:200px;text-align:center}
+.cl-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:start}
+.cl-day-col{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;min-height:120px}
+.cl-day-col.today{border-color:var(--blue);box-shadow:0 0 0 2px rgba(67,97,238,0.12)}
+.cl-day-header{padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center}
+.cl-day-header .dow{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-light);font-weight:700}
+.cl-day-header .dom{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+.cl-day-col.today .cl-day-header .dom{color:var(--blue)}
+.cl-day-body{padding:6px;display:flex;flex-direction:column;gap:5px}
+.cl-task-card{border-radius:8px;padding:8px 9px;cursor:pointer;transition:box-shadow .15s;border:1.5px solid transparent;position:relative}
+.cl-task-card:hover{box-shadow:var(--shadow-lg)}
+.cl-task-card.status-todo{background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.3)}
+.cl-task-card.status-done{background:rgba(0,196,140,0.07);border-color:rgba(0,196,140,0.25);opacity:.75}
+.cl-task-prop{font-size:11.5px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:3px}
+.cl-task-times{font-size:10.5px;color:var(--text-light);margin-bottom:3px}
+.cl-task-cleaner{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(67,97,238,0.1);color:var(--blue)}
+.cl-task-card.status-done .cl-task-prop{text-decoration:line-through;color:var(--text-light)}
+.cl-task-done-badge{position:absolute;top:6px;right:6px;font-size:12px}
+.cl-add-task{width:100%;background:none;border:1.5px dashed var(--border);border-radius:7px;padding:5px;font-size:11px;color:var(--text-light);cursor:pointer;font-family:inherit;transition:all .15s;margin-top:2px}
+.cl-add-task:hover{border-color:var(--blue);color:var(--blue);background:var(--grad-soft)}
+.cl-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.cl-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 18px;flex:1;min-width:120px}
+.cl-stat .cs-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-light);font-weight:700;margin-bottom:4px}
+.cl-stat .cs-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--blue)}
+.cl-smoobu-bar{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:9px 14px;margin-bottom:14px;flex-wrap:wrap}
+.cl-smoobu-bar .sb-status{font-size:12px;color:var(--text-light)}
+.cl-smoobu-bar .sb-status.ok{color:var(--green);font-weight:600}
+.cl-smoobu-bar .sb-status.err{color:var(--red)}
+.checklist-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.checklist-item:last-child{border-bottom:none}
+.checklist-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+.checklist-item label{font-size:13px;color:var(--text);cursor:pointer;flex:1}
+.checklist-item label.done-label{text-decoration:line-through;color:var(--text-light)}
+.checklist-add{display:flex;gap:8px;margin-top:10px}
+.checklist-add input{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);outline:none}
+.checklist-add input:focus{border-color:var(--blue)}
+.cleaner-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);transition:all .15s}
+.cleaner-chip:hover{border-color:var(--blue);color:var(--blue)}
+.cleaner-chip.selected{background:var(--blue);color:#fff;border-color:var(--blue)}
+
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -220,14 +265,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Anagrafiche</div>
     <div class="nav-item" onclick="showPage('proprietari')"><span class="nav-icon">&#128100;</span> Proprietari</div>
     <div class="nav-item" onclick="showPage('proprieta')"><span class="nav-icon">&#127968;</span> Propriet&agrave;</div>
-    <div class="nav-item" onclick="showPage('gruppi')"><span class="nav-icon">&#128257;</span> Gruppi Propriet&agrave;</div>
   </div>
-  <div class="nav-group"><div class="nav-group-label">Operativo</div>
+  <div class="nav-group"><div class="nav-group-label">Finance</div>
     <div class="nav-item" onclick="showPage('prenotazioni')"><span class="nav-icon">&#128203;</span> Prenotazioni</div>
     <div class="nav-item" onclick="showPage('report_prop')"><span class="nav-icon">&#128202;</span> Report Proprietari</div>
     <div class="nav-item" onclick="showPage('documenti')"><span class="nav-icon">&#128196;</span> Documenti Fiscali</div>
     <div class="nav-item" onclick="showPage('ricevute')"><span class="nav-icon">&#128523;</span> Ricevute</div>
-    <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Operational Tasks</div>
+  </div>
+  <div class="nav-group"><div class="nav-group-label">Operations</div>
+    <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Tasks</div>
+    <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Cleaning Manager</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Strumenti</div>
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
@@ -466,6 +513,25 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('smoobu-csv').click()"><div class="dz-icon">&#128193;</div><p><strong>Clicca o trascina</strong> il CSV da Smoobu</p></div>
       <input type="file" id="smoobu-csv" accept=".csv,.xlsx" style="display:none" onchange="importSmoobu(this)">
       <div id="import-result" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Backup / Restore row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="card">
+      <div class="card-title">💾 Backup DB</div>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Scarica una copia completa del database (proprietari, proprietà, prenotazioni, pulizie, ricevute).</p>
+      <a id="backup-link" class="btn btn-primary" href="/api/backup" download>⬇ Scarica Backup</a>
+    </div>
+    <div class="card">
+      <div class="card-title">♻️ Restore da Backup</div>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Carica un file di backup JSON per ripristinare il database. <strong style="color:var(--red)">Attenzione: sovrascrive tutti i dati attuali.</strong></p>
+      <div class="drop-zone" style="padding:20px" onclick="document.getElementById('restore-file').click()">
+        <div class="dz-icon">📂</div>
+        <p><strong>Clicca</strong> per selezionare il file .json di backup</p>
+      </div>
+      <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreFromBackup(this)">
+      <div id="restore-result" style="margin-top:12px"></div>
     </div>
   </div>
 </div>
@@ -983,6 +1049,139 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 </div>
 
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PULIZIE – Cleaning Manager
+══════════════════════════════════════════════════════════════════ -->
+<div id="page-pulizie" class="page">
+  <div class="section-header">
+    <div class="section-title">🧹 Cleaning Manager</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="clSyncSmoobu()">⟳ Sync Smoobu</button>
+      <button class="btn btn-danger btn-sm" onclick="clResetAndSync()">🗑 Reset &amp; Sync</button>
+      <button class="btn btn-primary btn-sm" onclick="clOpenModal(null,null)">+ Task manuale</button>
+      <button class="btn btn-ghost btn-sm" onclick="showPage('cl-settings')">⚙ Cleaners</button>
+    </div>
+  </div>
+
+  <!-- Smoobu sync status bar -->
+  <div class="cl-smoobu-bar">
+    <span style="font-size:13px;font-weight:600;color:var(--text)">Smoobu Live</span>
+    <span id="cl-sync-status" class="sb-status">Non sincronizzato</span>
+    <span id="cl-sync-time" style="font-size:11px;color:var(--text-light)"></span>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="showPage('cl-settings')">Configura API Key →</button>
+  </div>
+
+  <!-- Stats settimana -->
+  <div class="cl-stats" id="cl-stats"></div>
+
+  <!-- Toolbar settimana -->
+  <div class="cl-toolbar">
+    <div class="cl-week-nav">
+      <button onclick="clPrevWeek()">&#8592;</button>
+      <div class="cl-week-label" id="cl-week-label"></div>
+      <button onclick="clNextWeek()">&#8594;</button>
+      <button onclick="clGoToday()" class="btn btn-ghost btn-sm">Oggi</button>
+    </div>
+    <!-- Filtro cleaner -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;align-items:center">
+      <span style="font-size:11px;color:var(--text-light);font-weight:600">Filtra:</span>
+      <div id="cl-cleaner-filter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+
+  <!-- Calendario settimanale -->
+  <div class="cl-calendar" id="cl-calendar"></div>
+</div>
+
+<!-- ── Cleaning Settings page ───────────────────────────────────── -->
+<div id="page-cl-settings" class="page">
+  <div class="section-header">
+    <div class="section-title">⚙ Impostazioni Pulizie</div>
+    <button class="btn btn-ghost btn-sm" onclick="showPage('pulizie')">← Torna a Pulizie</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="card">
+      <div class="card-title">API Key Smoobu</div>
+      <div class="field" style="margin-bottom:12px">
+        <label>API Key</label>
+        <input type="password" id="cl-api-key-input" placeholder="Incolla qui la tua API key Smoobu">
+        <div class="field-hint">Smoobu → Account → Settings → API → copia la chiave</div>
+      </div>
+      <button class="btn btn-primary" onclick="clSaveApiKey()">Salva API Key</button>
+      <div id="cl-api-test-result" style="margin-top:10px;font-size:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cleaners</div>
+      <div id="cl-cleaners-list" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="cl-new-cleaner-name" placeholder="Nome cleaner" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);outline:none">
+        <button class="btn btn-primary btn-sm" onclick="clAddCleaner()">Aggiungi</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Checklist Default</div>
+      <div style="font-size:12px;color:var(--text-light);margin-bottom:10px">Questi item vengono aggiunti automaticamente ad ogni nuovo task pulizia.</div>
+      <div id="cl-default-checklist"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" id="cl-new-check-item" placeholder="Nuovo item checklist" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);outline:none" onkeydown="if(event.key==='Enter')clAddDefaultCheckItem()">
+        <button class="btn btn-outline btn-sm" onclick="clAddDefaultCheckItem()">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Cleaning Task ─────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-cleaning">
+  <div class="modal" style="max-width:580px">
+    <button class="modal-close" onclick="clCloseModal()">✕</button>
+    <div class="modal-title" id="cl-modal-title">Task Pulizia</div>
+    <div class="form-grid" id="cl-modal-form">
+      <div class="field">
+        <label>Proprietà</label>
+        <select id="cl-f-prop" onchange="document.getElementById('cl-f-prop-text').value=this.value"><option value="">-- seleziona --</option></select>
+        <input type="text" id="cl-f-prop-text" placeholder="Nome proprietà (da Smoobu)" style="margin-top:6px">
+      </div>
+      <div class="field">
+        <label>Data pulizia</label>
+        <input type="date" id="cl-f-date">
+        <div class="field-hint" id="cl-f-date-hint" style="display:none"></div>
+      </div>
+      <div class="field">
+        <label>Orario checkout</label>
+        <input type="time" id="cl-f-checkout-time" placeholder="10:00">
+      </div>
+      <div class="field">
+        <label>Orario checkin successivo</label>
+        <input type="time" id="cl-f-checkin-time" placeholder="15:00">
+      </div>
+      <div class="field form-full">
+        <label>Assegna Cleaner</label>
+        <div id="cl-f-cleaner-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"></div>
+      </div>
+      <div class="field form-full">
+        <label>Note</label>
+        <textarea id="cl-f-notes" rows="2" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);outline:none;resize:vertical" placeholder="Note aggiuntive per il cleaner..."></textarea>
+      </div>
+      <div class="field form-full">
+        <label>Checklist</label>
+        <div id="cl-f-checklist"></div>
+        <div class="checklist-add">
+          <input type="text" id="cl-f-new-check" placeholder="Aggiungi item..." onkeydown="if(event.key==='Enter')clAddCheckItem()">
+          <button class="btn btn-outline btn-sm" onclick="clAddCheckItem()">+</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:20px;align-items:center">
+      <button class="btn btn-danger btn-sm" id="cl-delete-btn" onclick="clDeleteTask()" style="display:none">Elimina</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-ghost" onclick="clCloseModal()">Annulla</button>
+        <button class="btn btn-primary" onclick="clSaveTask()">Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: new/edit task -->
 <div id="modal-ops-task" class="modal-overlay">
   <div class="modal" style="max-width:560px;position:relative">
@@ -1321,7 +1520,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks'};
+  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   renderPage(p);
 }
@@ -1335,6 +1534,8 @@ function renderPage(p){
   if(p==='documenti')renderDocumenti();
   if(p==='operations'){switchOpsTab('generici');}
   if(p==='import-tasks'){initImportTasksPage();}
+  if(p==='pulizie'){if(typeof clDB==='function'){clDB();renderCleaning();}}
+  if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
 }
 function wireTableActions(tbodyId){
   // no-op: delegation is handled globally via document listener below
@@ -2876,7 +3077,7 @@ function printReport(){
     var chCls=b.canale==='Airbnb'?'ota-air':b.canale==='Booking.com'?'ota-bk':'ota-dir';
     return '<tr>'
       +(isGrp?'<td style="font-weight:700;font-size:10px">'+nomeProp(b.proprieta_id)+'</td>':'')
-      +'<td class="td-c date">'+dateIt(b.checkin).replace(/\//g,".")+'</td><td class="td-c date">'+dateIt(b.checkout).replace(/\//g,".")+'</td>'
+      +'<td>'+dateIt(b.checkin)+'</td><td>'+dateIt(b.checkout)+'</td>'
       +'<td>'+esc(b.ospite_nome)+'</td>'
       +'<td><span class="'+chCls+'">'+b.canale+'</span></td>'
       +'<td class="n">'+b.notti+'</td><td class="n">'+b.n_ospiti+'</td>'
@@ -2934,24 +3135,21 @@ function printReport(){
   var html='<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:14px}'
-    +'h2{font-size:15px;font-weight:800;color:#2d3fe0;margin-bottom:4px}'
-    +'.sub{font-size:10px;color:#666;margin-top:4px;margin-bottom:16px;padding-top:2px}'
+    +'h2{font-size:15px;font-weight:800;color:#2d3fe0;margin-bottom:2px}'
+    +'.sub{font-size:10px;color:#666;margin-bottom:14px}'
     +'table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9px;table-layout:fixed}'
-    +'col.c-date{width:8%}col.c-cli{width:11%}col.c-can{width:8%}col.c-n{width:3%}col.c-osp{width:3.5%}col.c-eur{width:6.5%}col.c-np{width:7%}'
-    +'th{background:#0f1535;color:#fff;padding:5px 6px;text-align:right;font-size:8px;text-transform:uppercase;letter-spacing:.05em;word-break:normal;overflow-wrap:normal}'
-    +'th.th-l{text-align:left}th.th-c{text-align:center}'
-    +'td{padding:5px 6px;border-bottom:1px solid #e8edf8;text-align:right;vertical-align:middle;word-break:normal;overflow-wrap:normal}'
-    +'td.td-l{text-align:left}td.td-c{text-align:center}'
-    +'.date{white-space:nowrap;font-size:8.5px}'
-    +'tr:nth-child(even) td{background:#f5f7ff}'
+    +'th{background:#0f1535;color:#fff;padding:5px 6px;text-align:right;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}'
+    +'th:first-child,th:nth-child(2),th:nth-child(3),th:nth-child(4),th:nth-child(5){text-align:left}'
+    +'td{padding:5px 6px;border-bottom:1px solid #e8edf8;text-align:right;vertical-align:top}'
+    +'td:first-child,td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5){text-align:left}'
     +'tr:last-child td{border-bottom:none}'
-    +'.n{text-align:center!important;white-space:nowrap}'
+    +'.n{text-align:center!important}'
     +'.m{font-variant-numeric:tabular-nums}'
     +'.bold{font-weight:700}'
     +'.blue{color:#2d3fe0;font-weight:700}'
-    +'.ota-air{background:#ff5a5f22;color:#cc2020;padding:2px 6px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap;display:inline-block}'
-    +'.ota-bk{background:#00358022;color:#003580;padding:2px 6px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap;display:inline-block}'
-    +'.ota-dir{background:#00c48c22;color:#007a55;padding:2px 6px;border-radius:10px;font-size:8px;font-weight:700;white-space:nowrap;display:inline-block}'
+    +'.ota-air{background:#ff5a5f22;color:#cc2020;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
+    +'.ota-bk{background:#00358022;color:#003580;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
+    +'.ota-dir{background:#00c48c22;color:#007a55;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
     +'.blk-header{background:#fee;border:1px solid #fcc;color:#c00;font-weight:700;font-size:10px;padding:5px 10px;border-radius:4px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em}'
     +'.sum-tbl{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px}'
     +'.sum-tbl td{padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.08);color:#fff}'
@@ -2967,7 +3165,7 @@ function printReport(){
     +'.total td{border-top:1px solid rgba(255,255,255,0.2)!important;font-weight:700;font-size:12px}'
     +'.grand td{font-size:14px;font-weight:800;color:#22d1ee!important}'
     +'.coprop td{color:rgba(255,255,255,0.6)!important;font-size:10px}'
-    +'@media print{@page{size:A4 landscape;margin:10mm 12mm}body{padding:0;font-size:10px}h2{font-size:14px;margin-bottom:3px}.sub{font-size:10px;margin-top:3px;margin-bottom:10px}table{font-size:9px;margin-bottom:10px}th{font-size:7.5px;padding:5px 5px}td{padding:4px 5px}.date{font-size:8px;white-space:nowrap}.ota-air,.ota-bk,.ota-dir{white-space:nowrap;font-size:7.5px}tr{page-break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sum-tbl{font-size:10px}.sum-tbl td{padding:5px 12px}h3{font-size:11px;margin:6px 0}.blk-header{margin:8px 0 4px;padding:5px 8px;font-size:10px}}'
+    +'@media print{@page{size:A4 landscape;margin:6mm 8mm}body{padding:0;font-size:8px}h2{font-size:11px;margin-bottom:1px}.sub{font-size:8px;margin-bottom:6px}table{font-size:7px;margin-bottom:6px}th{font-size:6.5px;padding:3px 3px}td{padding:2px 3px}tr{page-break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sum-tbl{font-size:8px}.sum-tbl td{padding:3px 8px}h3{font-size:9px;margin:4px 0}.blk-header{margin:6px 0 3px;padding:3px 6px;font-size:8px}}'
     +'</style>'
     +'<h2>'+title+'</h2>'
     +'<div class="sub">'+(own?nomeOwner(own.id):(grp2?grp2.nome:''))+' &middot; '+mese+' '+anno+' &middot; '+new Date().toLocaleDateString('it-IT')+'</div>'
@@ -5003,6 +5201,628 @@ function escHtml(s) {
 
 // ── Init al load ──────────────────────────────────────────────────
 // initRicevute is called by appInit after auth check
+
+
+// ════════════════════════════════════════════════════════════════
+//  CLEANING MANAGER
+// ════════════════════════════════════════════════════════════════
+
+var CL = {
+  weekOffset: 0,       // 0 = settimana corrente
+  filterCleaner: null, // null = tutti
+  editingId: null,
+  tempChecklist: []    // checklist temporanea per il modal
+};
+
+// ── Storage helpers ──────────────────────────────────────────────
+function clDB() {
+  if (!DB.cleaning) DB.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
+  if (!DB.cleaning.tasks) DB.cleaning.tasks = [];
+  if (!DB.cleaning.cleaners) DB.cleaning.cleaners = [];
+  if (!DB.cleaning.defaultChecklist) DB.cleaning.defaultChecklist = ['Bagni', 'Cucina', 'Camere da letto', 'Soggiorno', 'Cambio biancheria', 'Verifica inventario'];
+  return DB.cleaning;
+}
+
+function clSave() {
+  saveDB();
+}
+
+// ── Date utilities ───────────────────────────────────────────────
+function clGetWeekDates(offset) {
+  var now = new Date();
+  var day = now.getDay(); // 0=dom
+  var mon = new Date(now);
+  mon.setDate(now.getDate() - ((day + 6) % 7) + (offset * 7));
+  mon.setHours(0,0,0,0);
+  var days = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function clFmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function clFmtDisplay(d) {
+  var days = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+  var months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+}
+
+// ── Smoobu sync ──────────────────────────────────────────────────
+async function clResetAndSync() {
+  if (!confirm('Cancella tutti i task pulizia esistenti e risincronizza da Smoobu?')) return;
+  var db = clDB();
+  db.tasks = [];
+  clSave();
+  toast('Task resettati — avvio sync...');
+  await clSyncSmoobu();
+}
+
+async function clSyncSmoobu() {
+  var db = clDB();
+  var apiKey = db.apiKey || '';
+  if (!apiKey) {
+    toast('⚠ Configura prima la API Key Smoobu nelle impostazioni');
+    showPage('cl-settings');
+    return;
+  }
+  var statusEl = document.getElementById('cl-sync-status');
+  var timeEl = document.getElementById('cl-sync-time');
+  if (statusEl) { statusEl.textContent = 'Sincronizzazione...'; statusEl.className = 'sb-status'; }
+
+  try {
+    // Smoobu API: get reservations (via server proxy to avoid CORS)
+    var resp = await fetch('/api/smoobu/reservations?apiKey=' + encodeURIComponent(apiKey) + '&page=1&pageSize=100');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+
+    var bookings = data.bookings || data.data || [];
+    var imported = 0;
+    bookings.forEach(function(b) {
+      // Skip blocked bookings (closures, maintenance, etc.)
+      if (b['is-blocked-booking'] === true) return;
+
+      var checkout = b.departure || '';  // departure = checkout date
+      var checkin  = b.arrival   || '';  // arrival   = checkin date
+      if (!checkout) return;
+      // Normalize to YYYY-MM-DD
+      checkout = checkout.split('T')[0].split(' ')[0];
+      checkin  = checkin.split('T')[0].split(' ')[0];
+      // check-out / check-in are the TIMES in Smoobu
+      var checkoutTime = b['check-out'] || '10:00';
+      var checkinTime  = b['check-in']  || '15:00';
+      var propName = (b.apartment && (b.apartment.name || b.apartment.title)) || b.apartmentName || 'N/D';
+      var propId   = b.apartment && b.apartment.id ? String(b.apartment.id) : null;
+
+      // Check if task already exists for this booking
+      var existsIdx = db.tasks.findIndex(function(t){ return t.smoobu_id === String(b.id); });
+      if (existsIdx >= 0) {
+        // Update dates from Smoobu but preserve manual date_override
+        db.tasks[existsIdx].date = checkout;
+        db.tasks[existsIdx].checkin_date = checkin;
+        db.tasks[existsIdx].prop_name = propName;
+        // date_override is intentionally NOT touched — manual shift is preserved
+      } else {
+        // New task
+        var defaultCL = (db.defaultChecklist || []).map(function(item, i) {
+          return { id: 'dc_' + Date.now() + '_' + i, text: item, done: false };
+        });
+        db.tasks.push({
+          id: 'cl_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
+          smoobu_id: String(b.id),
+          prop_name: propName,
+          prop_id: propId,
+          date: checkout,
+          checkin_date: checkin,
+          checkout_time: checkoutTime,
+          checkin_time: checkinTime,
+          cleaner: '',
+          notes: '',
+          checklist: defaultCL,
+          status: 'todo',
+          created: new Date().toISOString()
+        });
+        imported++;
+      }
+    });
+
+    db.lastSync = new Date().toISOString();
+    clSave();
+    if (statusEl) { statusEl.textContent = '✓ Sincronizzato (' + imported + ' nuovi)'; statusEl.className = 'sb-status ok'; }
+    if (timeEl) timeEl.textContent = 'Ultimo sync: ' + new Date().toLocaleTimeString('it-IT');
+    renderCleaning();
+    toast('Sync completato — ' + imported + ' nuovi task');
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '✗ Errore: ' + e.message; statusEl.className = 'sb-status err'; }
+    toast('Errore sync Smoobu: ' + e.message);
+  }
+}
+
+// ── Render ───────────────────────────────────────────────────────
+function renderCleaning() {
+  if (document.getElementById('page-pulizie').style.display === 'none' &&
+      !document.getElementById('page-pulizie').classList.contains('active')) return;
+
+  var db = clDB();
+  var days = clGetWeekDates(CL.weekOffset);
+
+  // Week label
+  var wlEl = document.getElementById('cl-week-label');
+  if (wlEl) {
+    var mon = days[0]; var sun = days[6];
+    var ms = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+    wlEl.textContent = mon.getDate() + ' ' + ms[mon.getMonth()] + ' – ' + sun.getDate() + ' ' + ms[sun.getMonth()] + ' ' + sun.getFullYear();
+  }
+
+  // Sync status
+  var statusEl = document.getElementById('cl-sync-status');
+  var timeEl = document.getElementById('cl-sync-time');
+  if (statusEl) {
+    if (db.apiKey) {
+      if (db.lastSync) {
+        statusEl.textContent = '✓ API configurata';
+        statusEl.className = 'sb-status ok';
+        if (timeEl) timeEl.textContent = 'Ultimo sync: ' + new Date(db.lastSync).toLocaleString('it-IT');
+      } else {
+        statusEl.textContent = 'API configurata — premi Sync';
+        statusEl.className = 'sb-status';
+      }
+    } else {
+      statusEl.textContent = 'API Key non configurata';
+      statusEl.className = 'sb-status err';
+    }
+  }
+
+  // Cleaner filter chips
+  var cfEl = document.getElementById('cl-cleaner-filter');
+  if (cfEl) {
+    cfEl.innerHTML = '';
+    var allChip = document.createElement('div');
+    allChip.className = 'cleaner-chip' + (CL.filterCleaner === null ? ' selected' : '');
+    allChip.textContent = 'Tutti';
+    allChip.onclick = function(){ CL.filterCleaner = null; renderCleaning(); };
+    cfEl.appendChild(allChip);
+    (db.cleaners || []).forEach(function(cl) {
+      var chip = document.createElement('div');
+      chip.className = 'cleaner-chip' + (CL.filterCleaner === cl.name ? ' selected' : '');
+      chip.textContent = cl.name;
+      chip.onclick = function(){ CL.filterCleaner = cl.name; renderCleaning(); };
+      cfEl.appendChild(chip);
+    });
+  }
+
+  // Stats
+  var todayStr = clFmtDate(new Date());
+  var weekTasks = db.tasks.filter(function(t){
+    return days.some(function(d){ return clFmtDate(d) === t.date; });
+  });
+  var filtered = CL.filterCleaner ? weekTasks.filter(function(t){ return t.cleaner === CL.filterCleaner; }) : weekTasks;
+  var done = filtered.filter(function(t){ return t.status === 'done'; }).length;
+  var statsEl = document.getElementById('cl-stats');
+  if (statsEl) {
+    statsEl.innerHTML =
+      '<div class="cl-stat"><div class="cs-label">Pulizie settimana</div><div class="cs-val">' + filtered.length + '</div></div>' +
+      '<div class="cl-stat"><div class="cs-val" style="color:var(--green)">' + done + '</div><div class="cs-label">Completate</div></div>' +
+      '<div class="cl-stat"><div class="cs-val" style="color:var(--orange)">' + (filtered.length - done) + '</div><div class="cs-label">Da fare</div></div>' +
+      '<div class="cl-stat"><div class="cs-val" style="color:var(--text-light)">' + db.tasks.length + '</div><div class="cs-label">Totale archivio</div></div>';
+  }
+
+  // Calendar
+  var cal = document.getElementById('cl-calendar');
+  if (!cal) return;
+  cal.innerHTML = '';
+  var todayDate = clFmtDate(new Date());
+
+  days.forEach(function(d) {
+    var dateStr = clFmtDate(d);
+    var isToday = dateStr === todayDate;
+
+    var dayTasks = db.tasks.filter(function(t){
+      var effectiveDate = t.date_override || t.date;
+      if (effectiveDate !== dateStr) return false;
+      if (CL.filterCleaner && t.cleaner !== CL.filterCleaner) return false;
+      return true;
+    });
+    dayTasks.sort(function(a,b){ return (a.checkout_time||'').localeCompare(b.checkout_time||''); });
+
+    var col = document.createElement('div');
+    col.className = 'cl-day-col' + (isToday ? ' today' : '');
+
+    var dowNames = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    col.innerHTML = '<div class="cl-day-header"><div class="dow">' + dowNames[d.getDay()] + '</div><div class="dom">' + d.getDate() + '</div></div><div class="cl-day-body" id="cl-day-' + dateStr + '"></div>';
+    cal.appendChild(col);
+
+    var body = col.querySelector('.cl-day-body');
+
+    dayTasks.forEach(function(t) {
+      var card = document.createElement('div');
+      card.className = 'cl-task-card status-' + t.status;
+
+      var cleanerBadge = t.cleaner ? '<span class="cl-task-cleaner">'+escHtml(t.cleaner)+'</span>' : '<span class="cl-task-cleaner" style="background:rgba(240,64,96,0.1);color:var(--red)">Non assegnato</span>';
+      var doneBadge = t.status === 'done' ? '<span class="cl-task-done-badge">✅</span>' : '';
+      var shiftedBadge = t.date_override ? '<span style="font-size:9px;background:rgba(245,166,35,0.15);color:#c47a00;border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700">📅 Spostato</span>' : '';
+      var times = '';
+      if (t.checkout_time || t.checkin_time) {
+        times = '<div class="cl-task-times">⬆ ' + (t.checkout_time||'?') + '  ⬇ ' + (t.checkin_time||'?') + '</div>';
+      }
+      var checkDone = t.checklist ? t.checklist.filter(function(c){return c.done;}).length : 0;
+      var checkTotal = t.checklist ? t.checklist.length : 0;
+      var checkBadge = checkTotal > 0 ? '<span style="font-size:10px;color:var(--text-light);margin-left:4px">'+checkDone+'/'+checkTotal+'</span>' : '';
+
+      card.innerHTML = doneBadge + '<div class="cl-task-prop">'+escHtml(t.prop_name)+shiftedBadge+'</div>' + times + cleanerBadge + checkBadge;
+      card.onclick = function(){ clOpenModal(t.id, dateStr); };
+      body.appendChild(card);
+    });
+
+    // Add manual task button
+    var addBtn = document.createElement('button');
+    addBtn.className = 'cl-add-task';
+    addBtn.textContent = '+ pulizia';
+    addBtn.onclick = function(e){ e.stopPropagation(); clOpenModal(null, dateStr); };
+    body.appendChild(addBtn);
+  });
+}
+
+// ── Navigation ───────────────────────────────────────────────────
+function clPrevWeek(){ CL.weekOffset--; renderCleaning(); }
+function clNextWeek(){ CL.weekOffset++; renderCleaning(); }
+function clGoToday(){ CL.weekOffset = 0; renderCleaning(); }
+
+// ── Modal ────────────────────────────────────────────────────────
+function clOpenModal(taskId, dateStr) {
+  var db = clDB();
+  CL.editingId = taskId;
+  CL.tempChecklist = [];
+
+  var overlay = document.getElementById('modal-cleaning');
+  var titleEl = document.getElementById('cl-modal-title');
+  var deleteBtn = document.getElementById('cl-delete-btn');
+
+  // Populate property select
+  var propSel = document.getElementById('cl-f-prop');
+  propSel.innerHTML = '<option value="">-- seleziona --</option>';
+  (DB.proprieta || []).forEach(function(p){
+    var opt = document.createElement('option');
+    opt.value = p.nome;
+    opt.textContent = p.nome;
+    propSel.appendChild(opt);
+  });
+
+  // Populate cleaner chips
+  var chipsEl = document.getElementById('cl-f-cleaner-chips');
+  chipsEl.innerHTML = '';
+  var noneChip = document.createElement('div');
+  noneChip.className = 'cleaner-chip selected';
+  noneChip.textContent = 'Non assegnato';
+  noneChip.dataset.cleaner = '';
+  noneChip.onclick = function(){ clSelectCleaner(''); };
+  chipsEl.appendChild(noneChip);
+  (db.cleaners || []).forEach(function(cl){
+    var chip = document.createElement('div');
+    chip.className = 'cleaner-chip';
+    chip.textContent = cl.name;
+    chip.dataset.cleaner = cl.name;
+    chip.onclick = function(){ clSelectCleaner(cl.name); };
+    chipsEl.appendChild(chip);
+  });
+
+  if (taskId) {
+    // Edit existing
+    var t = db.tasks.find(function(x){ return x.id === taskId; });
+    if (!t) return;
+    titleEl.textContent = '✏ Modifica Task Pulizia';
+    deleteBtn.style.display = 'inline-flex';
+    // For Smoobu tasks: show prop name as readonly, hide select
+    document.getElementById('cl-f-prop-text').value = t.prop_name || '';
+    document.getElementById('cl-f-prop').value = t.prop_name || '';
+    if (t.smoobu_id) {
+      document.getElementById('cl-f-prop').style.display = 'none';
+      document.getElementById('cl-f-prop-text').readOnly = true;
+      document.getElementById('cl-f-prop-text').style.color = 'var(--text-light)';
+    } else {
+      document.getElementById('cl-f-prop').style.display = '';
+      document.getElementById('cl-f-prop-text').readOnly = false;
+      document.getElementById('cl-f-prop-text').style.color = '';
+    }
+    var displayDate = t.date_override || t.date || '';
+    document.getElementById('cl-f-date').value = displayDate;
+    var hintEl = document.getElementById('cl-f-date-hint');
+    if (t.date_override && t.date_override !== t.date) {
+      hintEl.style.display = '';
+      hintEl.innerHTML = '📅 Data originale Smoobu: <strong>' + t.date + '</strong> — modificata manualmente. <span style="cursor:pointer;color:var(--blue);text-decoration:underline" onclick="clResetDate()">Ripristina</span>';
+    } else {
+      hintEl.style.display = 'none';
+      hintEl.innerHTML = '';
+    }
+    document.getElementById('cl-f-checkout-time').value = t.checkout_time || '';
+    document.getElementById('cl-f-checkin-time').value = t.checkin_time || '';
+    document.getElementById('cl-f-notes').value = t.notes || '';
+    CL.tempChecklist = (t.checklist || []).map(function(c){ return Object.assign({},c); });
+    clSelectCleaner(t.cleaner || '');
+  } else {
+    // New
+    titleEl.textContent = '+ Nuovo Task Pulizia';
+    deleteBtn.style.display = 'none';
+    document.getElementById('cl-f-prop').value = '';
+    document.getElementById('cl-f-prop').style.display = '';
+    document.getElementById('cl-f-prop-text').value = '';
+    document.getElementById('cl-f-prop-text').readOnly = false;
+    document.getElementById('cl-f-prop-text').style.display = 'none';
+    document.getElementById('cl-f-date').value = dateStr || '';
+    document.getElementById('cl-f-checkout-time').value = '10:00';
+    document.getElementById('cl-f-checkin-time').value = '15:00';
+    document.getElementById('cl-f-notes').value = '';
+    // Default checklist
+    CL.tempChecklist = (db.defaultChecklist || []).map(function(item, i){
+      return { id: 'ci_'+Date.now()+'_'+i, text: item, done: false };
+    });
+    clSelectCleaner('');
+  }
+
+  clRenderModalChecklist();
+  overlay.classList.add('open');
+}
+
+function clCloseModal() {
+  document.getElementById('modal-cleaning').classList.remove('open');
+  CL.editingId = null;
+  CL.tempChecklist = [];
+}
+
+function clSelectCleaner(name) {
+  document.querySelectorAll('#cl-f-cleaner-chips .cleaner-chip').forEach(function(ch){
+    ch.classList.toggle('selected', ch.dataset.cleaner === name);
+  });
+}
+
+function clGetSelectedCleaner() {
+  var sel = document.querySelector('#cl-f-cleaner-chips .cleaner-chip.selected');
+  return sel ? sel.dataset.cleaner : '';
+}
+
+function clRenderModalChecklist() {
+  var el = document.getElementById('cl-f-checklist');
+  el.innerHTML = '';
+  CL.tempChecklist.forEach(function(item, idx) {
+    var row = document.createElement('div');
+    row.className = 'checklist-item';
+    var lid = 'chk_' + idx;
+    row.innerHTML = '<input type="checkbox" id="'+lid+'" '+(item.done?'checked':'')+'>' +
+      '<label for="'+lid+'" class="'+(item.done?'done-label':'')+'">'+escHtml(item.text)+'</label>' +
+      '<span style="cursor:pointer;color:var(--text-light);font-size:13px;padding:0 4px" onclick="clRemoveCheckItem('+idx+')">✕</span>';
+    row.querySelector('input').onchange = function(){ CL.tempChecklist[idx].done = this.checked; clRenderModalChecklist(); };
+    el.appendChild(row);
+  });
+}
+
+function clResetDate() {
+  var db = clDB();
+  var t = db.tasks.find(function(x){ return x.id === CL.editingId; });
+  if (!t) return;
+  document.getElementById('cl-f-date').value = t.date;
+  var hintEl = document.getElementById('cl-f-date-hint');
+  hintEl.style.display = 'none';
+  hintEl.innerHTML = '';
+}
+
+function clAddCheckItem() {
+  var inp = document.getElementById('cl-f-new-check');
+  var val = (inp.value || '').trim();
+  if (!val) return;
+  CL.tempChecklist.push({ id: 'ci_'+Date.now(), text: val, done: false });
+  inp.value = '';
+  clRenderModalChecklist();
+}
+
+function clRemoveCheckItem(idx) {
+  CL.tempChecklist.splice(idx, 1);
+  clRenderModalChecklist();
+}
+
+function clSaveTask() {
+  var db = clDB();
+  var propName = document.getElementById('cl-f-prop').value || document.getElementById('cl-f-prop-text').value;
+  var date = document.getElementById('cl-f-date').value;
+  if (!date) { toast('⚠ Data obbligatoria'); return; }
+  if (!propName) propName = 'N/D';
+
+  var taskData = {
+    prop_name: propName,
+    date: date,
+    checkout_time: document.getElementById('cl-f-checkout-time').value,
+    checkin_time: document.getElementById('cl-f-checkin-time').value,
+    cleaner: clGetSelectedCleaner(),
+    notes: document.getElementById('cl-f-notes').value,
+    checklist: CL.tempChecklist.slice(),
+    status: 'todo'
+  };
+
+  if (CL.editingId) {
+    var idx = db.tasks.findIndex(function(t){ return t.id === CL.editingId; });
+    if (idx >= 0) {
+      var existing = db.tasks[idx];
+      taskData.status = existing.status;
+      taskData.id = CL.editingId;
+      taskData.smoobu_id = existing.smoobu_id;
+      taskData.created = existing.created;
+      // If task comes from Smoobu and date was changed, save as override
+      if (existing.smoobu_id && date !== existing.date) {
+        taskData.date = existing.date;           // keep original Smoobu date
+        taskData.date_override = date;           // store manual override
+      } else if (existing.smoobu_id && date === existing.date) {
+        taskData.date = existing.date;
+        taskData.date_override = null;           // reset override if back to original
+      } else {
+        taskData.date_override = existing.date_override || null;
+      }
+      db.tasks[idx] = taskData;
+    }
+  } else {
+    taskData.id = 'cl_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+    taskData.created = new Date().toISOString();
+    db.tasks.push(taskData);
+  }
+
+  clSave();
+  clCloseModal();
+  renderCleaning();
+  toast(CL.editingId ? 'Task aggiornato ✓' : 'Task aggiunto ✓');
+}
+
+function clDeleteTask() {
+  if (!CL.editingId) return;
+  if (!confirm('Eliminare questo task?')) return;
+  var db = clDB();
+  db.tasks = db.tasks.filter(function(t){ return t.id !== CL.editingId; });
+  clSave();
+  clCloseModal();
+  renderCleaning();
+  toast('Task eliminato');
+}
+
+// ── Settings page ────────────────────────────────────────────────
+function renderClSettings() {
+  var db = clDB();
+  // API key
+  var inp = document.getElementById('cl-api-key-input');
+  if (inp) inp.value = db.apiKey || '';
+
+  // Cleaners list
+  var cl = document.getElementById('cl-cleaners-list');
+  if (cl) {
+    cl.innerHTML = '';
+    if (!db.cleaners.length) { cl.innerHTML = '<div style="color:var(--text-light);font-size:12px">Nessun cleaner aggiunto.</div>'; }
+    db.cleaners.forEach(function(c, i) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)';
+      row.innerHTML = '<span style="font-size:13px;font-weight:600">'+escHtml(c.name)+'</span>' +
+        '<button class="btn btn-ghost btn-sm" onclick="clRemoveCleaner('+i+')">Rimuovi</button>';
+      cl.appendChild(row);
+    });
+  }
+
+  // Default checklist
+  var dcl = document.getElementById('cl-default-checklist');
+  if (dcl) {
+    dcl.innerHTML = '';
+    (db.defaultChecklist || []).forEach(function(item, i) {
+      var row = document.createElement('div');
+      row.className = 'checklist-item';
+      row.innerHTML = '<span style="font-size:13px;flex:1">'+escHtml(item)+'</span>' +
+        '<span style="cursor:pointer;color:var(--text-light)" onclick="clRemoveDefaultItem('+i+')">✕</span>';
+      dcl.appendChild(row);
+    });
+  }
+}
+
+function clSaveApiKey() {
+  var db = clDB();
+  var key = (document.getElementById('cl-api-key-input').value || '').trim();
+  db.apiKey = key;
+  clSave();
+  var res = document.getElementById('cl-api-test-result');
+  if (res) res.innerHTML = '<span style="color:var(--green)">✓ API Key salvata. Torna su Pulizie e premi Sync Smoobu.</span>';
+  toast('API Key salvata ✓');
+}
+
+function clAddCleaner() {
+  var db = clDB();
+  var name = (document.getElementById('cl-new-cleaner-name').value || '').trim();
+  if (!name) return;
+  if (db.cleaners.find(function(c){ return c.name === name; })) { toast('Cleaner già presente'); return; }
+  db.cleaners.push({ name: name, id: 'cl_' + Date.now() });
+  document.getElementById('cl-new-cleaner-name').value = '';
+  clSave();
+  renderClSettings();
+  toast('Cleaner aggiunto ✓');
+}
+
+function clRemoveCleaner(idx) {
+  var db = clDB();
+  db.cleaners.splice(idx, 1);
+  clSave();
+  renderClSettings();
+}
+
+function clAddDefaultCheckItem() {
+  var db = clDB();
+  var val = (document.getElementById('cl-new-check-item').value || '').trim();
+  if (!val) return;
+  if (!db.defaultChecklist) db.defaultChecklist = [];
+  db.defaultChecklist.push(val);
+  document.getElementById('cl-new-check-item').value = '';
+  clSave();
+  renderClSettings();
+}
+
+function clRemoveDefaultItem(idx) {
+  var db = clDB();
+  db.defaultChecklist.splice(idx, 1);
+  clSave();
+  renderClSettings();
+}
+
+// Cleaning hooks integrated into renderPage above
+
+// ── Backup / Restore ──────────────────────────────────────────────
+async function restoreFromBackup(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var resultEl = document.getElementById('restore-result');
+  resultEl.innerHTML = '<div class="alert alert-info">Lettura file...</div>';
+
+  try {
+    var text = await file.text();
+    var parsed = JSON.parse(text);
+
+    // Accept both {backup: {...}} and raw DB object
+    var dbToRestore = parsed.backup || parsed.db || parsed;
+
+    // Basic validation
+    if (!dbToRestore.proprietari && !dbToRestore.prenotazioni && !dbToRestore.cleaning) {
+      resultEl.innerHTML = '<div class="alert alert-warning">⚠ File non riconosciuto come backup Houzly.</div>';
+      return;
+    }
+
+    if (!confirm('Sei sicuro di voler ripristinare il backup?\nQuesta operazione sovrascrive tutti i dati attuali.')) {
+      resultEl.innerHTML = '';
+      input.value = '';
+      return;
+    }
+
+    resultEl.innerHTML = '<div class="alert alert-info">Ripristino in corso...</div>';
+
+    var resp = await fetch('/api/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup: dbToRestore })
+    });
+    var data = await resp.json();
+
+    if (data.ok) {
+      // Also update local DB
+      DB = dbToRestore;
+      localStorage.setItem('houzly_v4', JSON.stringify(DB));
+      resultEl.innerHTML = '<div class="alert alert-success">✓ Restore completato! Proprietari: ' +
+        (dbToRestore.proprietari||[]).length + ', Prenotazioni: ' +
+        (dbToRestore.prenotazioni||[]).length + ', Cleaning tasks: ' +
+        ((dbToRestore.cleaning||{}).tasks||[]).length + '</div>';
+      toast('Restore completato ✓');
+      renderDash();
+    } else {
+      resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore server: ' + (data.error||'unknown') + '</div>';
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore: ' + e.message + '</div>';
+  }
+  input.value = '';
+}
+
 </script>
 </body>
 </html>
