@@ -3087,33 +3087,32 @@ function printReport(){
   function prow(b,isGrp){
     var chCls=b.canale==='Airbnb'?'ota-air':b.canale==='Booking.com'?'ota-bk':'ota-dir';
     return '<tr>'
-      +(isGrp?'<td style="font-weight:700;font-size:10px">'+nomeProp(b.proprieta_id)+'</td>':'')
+      +(isGrp?'<td style="font-weight:700">'+nomeProp(b.proprieta_id)+'</td>':'')
       +'<td>'+dateIt(b.checkin)+'</td><td>'+dateIt(b.checkout)+'</td>'
       +'<td>'+esc(b.ospite_nome)+'</td>'
       +'<td><span class="'+chCls+'">'+b.canale+'</span></td>'
-      +'<td class="n">'+b.notti+'</td><td class="n">'+b.n_ospiti+'</td>'
-      +'<td class="m">'+eur(b.calc.tot)+'</td>'
-      +'<td class="m">'+eur(b.calc.comm_ota)+'</td>'
-      +'<td class="m">'+eur(b.calc.tassa)+'</td>'
-      +'<td class="m">'+eur(b.calc.pulizia)+'</td>'
-      +'<td class="m">'+eur(b.calc.netto)+'</td>'
-      +'<td class="m">'+eur(b.calc.houzly)+'</td>'
-      +'<td class="m">'+(b.iva22?eur(b.calc.iva22):'—')+'</td>'
+      +'<td class="r">'+b.n_ospiti+'</td>'
+      +'<td class="r">'+eur(b.calc.tot)+'</td>'
+      +'<td class="r">'+eur(b.calc.comm_ota)+'</td>'
+      +'<td class="r">'+eur(b.calc.tassa)+'</td>'
+      +'<td class="r">'+eur(b.calc.pulizia)+'</td>'
+      +'<td class="r">'+eur(b.calc.houzly)+'</td>'
+      +'<td class="r">'+(b.iva22?eur(b.calc.iva22):'—')+'</td>'
       +(b.calc.pulizie_owner
-        ?'<td class="m bold blue">'+eur(b.calc.canone)+'<br><span style="font-size:9px;color:#00b37d">+'+eur(b.calc.rimborso_pulizie)+'</span><br><span style="font-size:10px;color:#0099cc;font-weight:800">'+eur(b.calc.canone_totale)+'</span></td>'
-        :'<td class="m bold blue">'+eur(b.calc.canone)+'</td>')
+        ?'<td class="r bold blue">'+eur(b.calc.canone_totale)+'</td>'
+        :'<td class="r bold blue">'+eur(b.calc.canone)+'</td>')
       +'</tr>';
   }
   function srow(label,val,cls){
-    return '<tr class="sr '+(cls||'')+'"><td colspan="2">'+label+'</td><td>'+val+'</td></tr>';
+    return '<div class="sum-row '+(cls||'')+'"><span class="lbl">'+label+'</span><span class="val">'+val+'</span></div>';
   }
   var propCol=isGroup2?'<th>Proprietà</th>':'';
-  var thead='<thead><tr>'+propCol+'<th>Ingresso</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th>Notti</th><th>Osp.</th><th>Lordo</th><th>Comm.OTA</th><th>T.Sogg.</th><th>Pulizia</th><th>Netto</th><th>Houzly</th><th>IVA</th><th>Netto Prop.</th></tr></thead>';
+  var thead='<thead><tr>'+propCol+'<th>Entrata</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th class="r">N.Osp.</th><th class="r">Lordo</th><th class="r">Comm.OTA</th><th class="r">T.Sogg.</th><th class="r">Pulizia</th><th class="r">Houzly</th><th class="r">IVA 22%</th><th class="r">Netto Prop.</th></tr></thead>';
   var tableNorm=bksNorm.length?'<table>'+thead+'<tbody>'+bksNorm.map(function(b){return prow(b,isGroup2);}).join('')+'</tbody></table>':'';
   var tableBlk=bksBlk.length?'<div class="blk-header">● Prenotazioni Fuori Conto Corrente</div><table>'+thead+'<tbody>'+bksBlk.map(function(b){return prow(b,isGroup2);}).join('')+'</tbody></table>':'';
   var sumNorm=bksNorm.length
-    ?'<table class="sum-tbl">'
-     +'<tr class="sum-head"><td colspan="3">RIEPILOGO — PRENOTAZIONI FATTURATE</td></tr>'
+    ?'<div class="sum-wrap"><div class="sum-box">'
+     +'<div class="sum-title">RIEPILOGO — PRENOTAZIONI FATTURATE</div>'
      +srow('Totale Lordo',eur(bksNorm.reduce(function(s,b){return s+b.calc.tot;},0)))
      +srow('Commissioni OTA','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.comm_ota;},0)),'neg')
      +srow('Tasse di soggiorno','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.tassa;},0)),'neg')
@@ -3132,55 +3131,64 @@ function printReport(){
            }).join('')
           :'')
        :'')
-     +'</table>'
+     +'</div></div>'
     :'';
   var sumBlk=bksBlk.length
-    ?'<table class="sum-tbl blk-sum">'
-     +'<tr class="sum-head blk"><td colspan="3">RIEPILOGO — FUORI CONTO CORRENTE</td></tr>'
+    ?'<div class="blk-header">● Fuori Conto Corrente</div><div class="sum-wrap"><div class="sum-box" style="background:#2a0a10">'
+     +'<div class="sum-title" style="background:#a00020">RIEPILOGO — FUORI CONTO CORRENTE</div>'
      +srow('Totale Lordo',eur(bksBlk.reduce(function(s,b){return s+b.calc.tot;},0)))
      +srow('Commissioni OTA','- '+eur(bksBlk.reduce(function(s,b){return s+b.calc.comm_ota;},0)),'neg')
      +srow('Compenso Houzly','- '+eur(bksBlk.reduce(function(s,b){return s+b.calc.houzly;},0)),'neg')
      +srow('Totale spettante (solo informativo)',eur(totBlk),'total')
-     +'</table>'
+     +'</div></div>'
     :'';
+  // ── CSS A4 verticale leggibile (come PDF allegato) ──────────────
   var html='<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:14px}'
-    +'h2{font-size:15px;font-weight:800;color:#2d3fe0;margin-bottom:2px}'
-    +'.sub{font-size:10px;color:#666;margin-bottom:14px}'
-    +'table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9px;table-layout:fixed}'
-    +'th{background:#0f1535;color:#fff;padding:5px 6px;text-align:right;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}'
-    +'th:first-child,th:nth-child(2),th:nth-child(3),th:nth-child(4),th:nth-child(5){text-align:left}'
-    +'td{padding:5px 6px;border-bottom:1px solid #e8edf8;text-align:right;vertical-align:top}'
-    +'td:first-child,td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5){text-align:left}'
-    +'tr:last-child td{border-bottom:none}'
-    +'.n{text-align:center!important}'
-    +'.m{font-variant-numeric:tabular-nums}'
-    +'.bold{font-weight:700}'
-    +'.blue{color:#2d3fe0;font-weight:700}'
-    +'.ota-air{background:#ff5a5f22;color:#cc2020;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
-    +'.ota-bk{background:#00358022;color:#003580;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
-    +'.ota-dir{background:#00c48c22;color:#007a55;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}'
-    +'.blk-header{background:#fee;border:1px solid #fcc;color:#c00;font-weight:700;font-size:10px;padding:5px 10px;border-radius:4px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em}'
-    +'.sum-tbl{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px}'
-    +'.sum-tbl td{padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.08);color:#fff}'
-    +'.sum-tbl td:last-child{text-align:right;font-weight:600;min-width:110px}'
-    +'.sum-tbl td:first-child{color:rgba(255,255,255,0.75)}'
-    +'.sum-tbl tr.sum-head td{background:#1a2260;color:rgba(255,255,255,0.9);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:8px 14px}'
-    +'.sum-tbl tr.sum-head.blk td{background:#a00020}'
-    +'.sum-tbl{background:#0f1535;border-radius:6px;overflow:hidden}'
-    +'.blk-sum{background:#2a0a10}'
-    +'.sr td{padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.07)}'
-    +'.neg td:last-child{color:#f87096}'
-    +'.pos td:last-child{color:#4ade80}'
-    +'.total td{border-top:1px solid rgba(255,255,255,0.2)!important;font-weight:700;font-size:12px}'
-    +'.grand td{font-size:14px;font-weight:800;color:#22d1ee!important}'
-    +'.coprop td{color:rgba(255,255,255,0.6)!important;font-size:10px}'
-    +'@media print{@page{size:A4 landscape;margin:6mm 8mm}body{padding:0;font-size:8px}h2{font-size:11px;margin-bottom:1px}.sub{font-size:8px;margin-bottom:6px}table{font-size:7px;margin-bottom:6px}th{font-size:6.5px;padding:3px 3px}td{padding:2px 3px}tr{page-break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sum-tbl{font-size:8px}.sum-tbl td{padding:3px 8px}h3{font-size:9px;margin:4px 0}.blk-header{margin:6px 0 3px;padding:3px 6px;font-size:8px}}'
+    +'@page{size:A4 portrait;margin:15mm 12mm}'
+    +'body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    // Header
+    +'.rpt-header{background:#0f1535;color:#fff;padding:16px 20px;margin-bottom:18px;border-radius:4px}'
+    +'.rpt-header h1{font-size:16px;font-weight:800;margin-bottom:4px;color:#fff}'
+    +'.rpt-header .sub{font-size:11px;color:rgba(255,255,255,0.65)}'
+    // Tabella prenotazioni
+    +'table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:10.5px}'
+    +'thead tr{background:#0f1535}'
+    +'th{color:#fff;padding:8px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;white-space:nowrap}'
+    +'th.r{text-align:right}'
+    +'td{padding:9px 8px;border-bottom:1px solid #e5eaf5;vertical-align:middle}'
+    +'td.r{text-align:right;font-variant-numeric:tabular-nums}'
+    +'td.bold{font-weight:700}'
+    +'td.blue{color:#2d3fe0;font-weight:700}'
+    +'tbody tr:last-child td{border-bottom:2px solid #0f1535}'
+    +'tbody tr:nth-child(even){background:#f7f9ff}'
+    +'.ota-air{background:#fff0f0;color:#cc2020;padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:700;display:inline-block}'
+    +'.ota-bk{background:#e8f0ff;color:#003580;padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:700;display:inline-block}'
+    +'.ota-dir{background:#e8fff4;color:#007a55;padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:700;display:inline-block}'
+    // Riepilogo
+    +'.sum-wrap{display:flex;justify-content:flex-end;margin-top:4px}'
+    +'.sum-box{width:340px;background:#0f1535;border-radius:6px;overflow:hidden}'
+    +'.sum-title{background:#1a2260;color:#fff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:10px 16px}'
+    +'.sum-row{display:flex;justify-content:space-between;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.8);font-size:11px}'
+    +'.sum-row.neg .val{color:#f87096}'
+    +'.sum-row.pos .val{color:#4ade80}'
+    +'.sum-row.total{border-top:1px solid rgba(255,255,255,0.25);font-weight:700;font-size:12px;color:#fff}'
+    +'.sum-row.grand{font-size:14px;font-weight:800;padding:12px 16px}'
+    +'.sum-row.grand .lbl{color:#fff}'
+    +'.sum-row.grand .val{color:#22d1ee}'
+    +'.sum-row.coprop{font-size:10px;color:rgba(255,255,255,0.5)}'
+    // Sezione BLACK
+    +'.blk-header{background:#fff0f0;border:1px solid #fcc;color:#a00;font-weight:700;font-size:10px;padding:7px 12px;border-radius:4px;margin:18px 0 8px;text-transform:uppercase}'
     +'</style>'
-    +'<h2>'+title+'</h2>'
+    // ── Header ──
+    +'<div class="rpt-header">'
+    +'<h1>'+title+'</h1>'
     +'<div class="sub">'+(own?nomeOwner(own.id):(grp2?grp2.nome:''))+' &middot; '+mese+' '+anno+' &middot; '+new Date().toLocaleDateString('it-IT')+'</div>'
-    +tableNorm+tableBlk+sumNorm+sumBlk;
+    +'</div>'
+    // ── Tabella ──
+    +tableNorm+tableBlk
+    // ── Riepilogo ──
+    +sumNorm+sumBlk;
   openPrintModal(title, html);
 }
 
