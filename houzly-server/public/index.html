@@ -1487,20 +1487,27 @@ function loadDB(){
   });
 }
 function manualSave(){
-  saveDB();
   var btn = document.querySelector('[onclick="manualSave()"]');
-  if(btn){
-    var orig = btn.innerHTML;
-    btn.innerHTML = '&#10003; Salvato!';
-    btn.style.background = 'var(--green)';
-    setTimeout(function(){ btn.innerHTML = orig; btn.style.background = ''; }, 1800);
-  }
-  toast('Dati salvati ✓');
+  if(btn){ btn.innerHTML = '⏳ Salvo...'; btn.disabled = true; }
+  saveDB(
+    function(){
+      if(btn){ var orig='&#128190; Salva'; btn.innerHTML='&#10003; Salvato!'; btn.style.background='var(--green)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; },1800); }
+      toast('✅ Dati salvati nel DB');
+    },
+    function(err){
+      if(btn){ btn.innerHTML='&#10005; Errore!'; btn.style.background='var(--red)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML='&#128190; Salva'; btn.style.background=''; },2500); }
+      toast('❌ Errore salvataggio: '+err);
+    }
+  );
 }
-function saveDB(){
+function saveDB(onSuccess, onError){
   localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback
   fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB})})
-    .catch(function(){});
+    .then(function(r){
+      if(r.ok){ if(onSuccess) onSuccess(); }
+      else{ if(onError) onError('HTTP '+r.status); else console.warn('saveDB error: HTTP '+r.status); }
+    })
+    .catch(function(e){ if(onError) onError(e.message||'Errore rete'); else console.warn('saveDB catch:',e); });
 }
 
 function seedDemo(){
@@ -2821,9 +2828,18 @@ function destNazioneToggle(val){
 }
 function toggleDocDone(bid){
   if(!DB.docDone)DB.docDone={};
-  DB.docDone[bid]=!DB.docDone[bid];
-  saveDB();
+  var newVal = !DB.docDone[bid];
+  DB.docDone[bid] = newVal;
   renderDocumenti();
+  saveDB(
+    function(){ toast(newVal ? '✅ Completato salvato nel DB' : '⬜ Rimosso dal DB'); },
+    function(err){ 
+      toast('❌ Errore salvataggio: '+err+' — riprova!');
+      // rollback visivo
+      DB.docDone[bid] = !newVal;
+      renderDocumenti();
+    }
+  );
 }
 function openDocRow(bid){
   document.getElementById('doc-section').style.display='block';
