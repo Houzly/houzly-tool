@@ -2490,13 +2490,14 @@ function genRicevuta(bid, dest){
     +'<td class="r">'+eur(c.canone)+'</td>'
     +'<td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N4</span></td>'
     +'<td class="r"><strong>'+eur(c.canone)+'</strong></td></tr>'
-    +'<tr class="esente-row"><td colspan="2" style="text-align:right;font-style:italic">Esente IVA &mdash; Art. 10 DPR 633/72 (locazioni esenti)</td><td class="r">&#8364; 0,00</td><td class="r">'+eur(c.canone)+'</td></tr>'
+    +(c.pulizie_owner&&c.rimborso_pulizie>0 ? '<tr><td>Rimborso spese pulizia &mdash; '+nomeProp(b.proprieta_id)+'</td><td class="r">'+eur(c.rimborso_pulizie)+'</td><td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N4</span></td><td class="r"><strong>'+eur(c.rimborso_pulizie)+'</strong></td></tr>' : '')
+    +'<tr class="esente-row"><td colspan="2" style="text-align:right;font-style:italic">Esente IVA &mdash; Art. 10 DPR 633/72 (locazioni esenti)</td><td class="r">&#8364; 0,00</td><td class="r">'+(c.pulizie_owner&&c.rimborso_pulizie>0?eur(c.canone_totale):eur(c.canone))+'</td></tr>'
     +'</tbody></table>'
     +'<div class="doc-total"><div class="doc-total-box">'
-    +(dest.bollo ? '<div style="display:flex;justify-content:space-between;font-size:12px;color:#888;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #eee"><span>Canone locazione</span><span>'+eur(c.canone_totale||c.canone)+'</span></div>'
+    +(dest.bollo ? '<div style="display:flex;justify-content:space-between;font-size:12px;color:#888;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #eee"><span>Canone locazione</span><span>'+(c.pulizie_owner&&c.rimborso_pulizie>0?eur(c.canone_totale):eur(c.canone))+'</span></div>'
       +'<div style="display:flex;justify-content:space-between;font-size:12px;color:#92400e;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #fde68a"><span>🖊 Marca da Bollo</span><span>€ 2,00</span></div>'
-      +'<div class="lbl">Totale Ricevuto</div><div class="val">'+eur((c.canone_totale||c.canone)+2)+'</div>'
-    : '<div class="lbl">Totale Ricevuto</div><div class="val">'+eur(c.canone_totale||c.canone)+'</div>')
+      +'<div class="lbl">Totale Ricevuto</div><div class="val">'+eur((c.pulizie_owner&&c.rimborso_pulizie>0?c.canone_totale:c.canone)+2)+'</div>'
+    : '<div class="lbl">Totale Ricevuto</div><div class="val">'+(c.pulizie_owner&&c.rimborso_pulizie>0?eur(c.canone_totale):eur(c.canone))+'</div>')
     +'</div></div>'
     +'<p class="doc-note">'
     +'<strong>Riferimenti normativi:</strong> Locazione breve ai sensi art. 4 D.L. 24/04/2017 n. 50, conv. L. 21/06/2017 n. 96. Operazione esente IVA ai sensi art. 10 c. 1 n. 8 DPR 26/10/1972 n. 633. Esente dall\u2019obbligo di fatturazione ai sensi art. 1 c. 595 L. 30/12/2020 n. 178. Soggetta a ritenuta d\u2019acconto del 21% ai sensi art. 4 c. 5 D.L. 50/2017 (applicata dal sostituto d\u2019imposta ove dovuta). Il locatore applica il regime della cedolare secca ai sensi art. 3 D.Lgs. 14/03/2011 n. 23.'
@@ -2516,7 +2517,7 @@ function genFatturaOspite(bid, dest){
   var voci22=[
     {desc:'Commissione piattaforma '+b.canale+' ('+b.comm_ota_perc+'%)',imp:c.comm_ota},
     {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:b.iva22?r2(c.houzly+c.iva22):c.houzly},
-    {desc:'Spese di pulizia',imp:c.pulizia}
+    {desc:'Spese di pulizia',imp:c.pulizie_owner?0:c.pulizia}
   ].filter(function(v){return v.imp>0;});
   var totF22=r2(voci22.reduce(function(s,v){return s+v.imp;},0));
   var totI=r2(totF22/1.22);
@@ -2552,7 +2553,7 @@ function genFatturaAzienda(bid, dest){
   var voci22=[
     {desc:'Commissione piattaforma '+b.canale+' ('+b.comm_ota_perc+'%)',imp:c.comm_ota},
     {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:b.iva22?r2(c.houzly+c.iva22):c.houzly},
-    {desc:'Spese di pulizia &mdash; '+nomeProp(b.proprieta_id),imp:c.pulizia}
+    {desc:'Spese di pulizia &mdash; '+nomeProp(b.proprieta_id),imp:c.pulizie_owner?0:c.pulizia}
   ].filter(function(v){return v.imp>0;});
   var totF22=r2(voci22.reduce(function(s,v){return s+v.imp;},0));
   var totI=r2(totF22/1.22);var totV=r2(totF22-totI);var totF=r2(totF22+(c.tassa||0));
