@@ -1326,17 +1326,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
     <!-- Campi persona fisica -->
     <div id="dest-fields-privato">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <!-- Riga 1: Nome + Documento identità + N° Documento -->
+      <div style="display:grid;grid-template-columns:2fr 1.2fr 1fr;gap:12px;margin-bottom:12px">
         <div class="field"><label>Nome e Cognome *</label><input id="dest-nome" type="text" placeholder="Mario Rossi"></div>
-        <div class="field"><label>CF / Passaporto</label><input id="dest-cf" type="text" placeholder="RSSMRA80A01H501Z"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="field"><label>Documento d'Identità</label><select id="dest-doc-tipo"><option value="">-- Seleziona --</option><option value="Passaporto">Passaporto</option><option value="Carta d'Identità">Carta d'Identità</option><option value="Patente">Patente</option></select></div>
         <div class="field"><label>N° Documento</label><input id="dest-doc-num" type="text" placeholder="AA1234567"></div>
       </div>
+      <!-- Riga 2: CF + Nazione -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div class="field"><label>Nazione</label><input id="dest-nazione" type="text" placeholder="es. Germania" oninput="destNazioneToggle(this.value)"></div>
-        <div class="field" id="dest-nazione-hint" style="display:flex;align-items:flex-end"><span style="font-size:11px;color:var(--text-light);padding-bottom:9px">Se estero, indirizzo/CAP/città non richiesti</span></div>
+        <div class="field"><label>Codice Fiscale / ID Fiscale</label><input id="dest-cf" type="text" placeholder="RSSMRA80A01H501Z"></div>
+        <div class="field"><label>Nazione</label><input id="dest-nazione" type="text" placeholder="Italia" oninput="destNazioneToggle(this.value)"></div>
       </div>
     </div>
 
@@ -1353,10 +1352,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
 
     <!-- Indirizzo (comune a entrambi) -->
-    <div id="dest-addr-block" style="display:grid;grid-template-columns:3fr 1fr 2fr;gap:10px;margin-bottom:12px">
-      <div class="field"><label>Indirizzo</label><input id="dest-ind" type="text" placeholder="Via Roma 1"></div>
-      <div class="field"><label>CAP</label><input id="dest-cap" type="text" maxlength="5"></div>
-      <div class="field"><label>Città</label><input id="dest-citta" type="text"></div>
+    <div id="dest-addr-block" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:3fr 1fr 2fr;gap:10px;margin-bottom:12px">
+        <div class="field"><label>Indirizzo</label><input id="dest-ind" type="text" placeholder="Via Roma 1"></div>
+        <div class="field"><label>CAP</label><input id="dest-cap" type="text" maxlength="5"></div>
+        <div class="field"><label>Città</label><input id="dest-citta" type="text"></div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div class="field"><label>Email</label><input id="dest-email" type="email"></div>
@@ -1499,14 +1500,32 @@ function manualSave(){
     }
   );
 }
+var _saveTimer = null;
+var _saveQueue = [];
 function saveDB(onSuccess, onError){
-  localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback
-  fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB})})
-    .then(function(r){
-      if(r.ok){ if(onSuccess) onSuccess(); }
-      else{ if(onError) onError('HTTP '+r.status); else console.warn('saveDB error: HTTP '+r.status); }
-    })
-    .catch(function(e){ if(onError) onError(e.message||'Errore rete'); else console.warn('saveDB catch:',e); });
+  localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback immediato
+  if(onSuccess) _saveQueue.push(onSuccess);
+  if(onError)   _saveQueue.push(onError);  // per ora ignoriamo distinzione, gestiamo dopo
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function(){
+    var snapshot = JSON.stringify(DB);
+    var callbacks = _saveQueue.splice(0);
+    fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:snapshot})
+      .then(function(r){
+        if(r.ok){
+          callbacks.filter(function(_,i){return i%2===0;}).forEach(function(cb){try{cb();}catch(e){}});
+        } else {
+          var errMsg = 'HTTP '+r.status;
+          callbacks.filter(function(_,i){return i%2!==0;}).forEach(function(cb){try{cb(errMsg);}catch(e){}});
+          console.warn('saveDB error:', errMsg);
+        }
+      })
+      .catch(function(e){
+        var errMsg = e.message||'Errore rete';
+        callbacks.filter(function(_,i){return i%2!==0;}).forEach(function(cb){try{cb(errMsg);}catch(e){}});
+        console.warn('saveDB catch:', errMsg);
+      });
+  }, 600); // debounce 600ms — raggruppa chiamate ravvicinate
 }
 
 function seedDemo(){
@@ -2827,17 +2846,12 @@ function destNazioneToggle(val){
 }
 function toggleDocDone(bid){
   if(!DB.docDone)DB.docDone={};
-  var newVal = !DB.docDone[bid];
-  DB.docDone[bid] = newVal;
+  DB.docDone[bid] = !DB.docDone[bid];
+  var isDone = DB.docDone[bid];
   renderDocumenti();
   saveDB(
-    function(){ toast(newVal ? '✅ Completato salvato nel DB' : '⬜ Rimosso dal DB'); },
-    function(err){ 
-      toast('❌ Errore salvataggio: '+err+' — riprova!');
-      // rollback visivo
-      DB.docDone[bid] = !newVal;
-      renderDocumenti();
-    }
+    function(){ toast(isDone ? '✅ Salvato' : '⬜ Rimosso'); },
+    function(err){ toast('❌ Errore salvataggio — riprova ('+err+')'); }
   );
 }
 function openDocRow(bid){
@@ -4758,7 +4772,6 @@ function openDestinatarioModal(bid, action) {
   document.getElementById('dest-ind').value    = b.ospite_ind   || '';
   document.getElementById('dest-cap').value    = b.ospite_cap   || '';
   document.getElementById('dest-citta').value  = b.ospite_citta || '';
-  document.getElementById('dest-prov').value   = b.ospite_prov  || '';
   document.getElementById('dest-email').value  = b.ospite_email || '';
   document.getElementById('dest-tel').value    = b.ospite_tel   || '';
   // Azienda fields reset
