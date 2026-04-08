@@ -155,7 +155,7 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .doc-row.is-done .doc-row-title{color:var(--text-light)}
 .doc-row.is-done .doc-row-body{opacity:0.65}
 .drop-zone .dz-icon{font-size:32px;margin-bottom:8px}.drop-zone p{font-size:13px;color:var(--text-light)}
-@media print{body *{visibility:hidden}#pm-body,#pm-body *{visibility:visible}#pm-body{position:fixed;inset:0;margin:0;padding:24px;background:#fff;max-height:none!important;overflow:visible!important}}
+@media print{body *{visibility:hidden}#pm-body,#pm-body *{visibility:visible}#pm-body{position:fixed;inset:0;margin:0;padding:8mm;background:#fff;max-height:none!important;overflow:visible!important}#pm-body .doc{padding:0!important;max-width:100%!important;font-size:11px!important}#pm-body .doc-header{margin-bottom:10px!important;padding-bottom:8px!important}#pm-body .doc-parties{margin-bottom:10px!important;gap:12px!important}#pm-body .doc-ref{padding:5px 10px!important;margin-bottom:10px!important}#pm-body table.dtbl th{padding:5px 8px!important}#pm-body table.dtbl td{padding:5px 8px!important}#pm-body .doc-total{margin-bottom:10px!important}#pm-body .doc-total-box{padding:8px 14px!important}#pm-body .doc-total-box .val{font-size:18px!important}#pm-body .doc-note{margin-top:8px!important;padding:6px 8px!important;font-size:10px!important}#pm-body .doc-footer{margin-top:10px!important;padding-top:6px!important}@page{size:A4;margin:8mm}}
 #pm-body thead tr th{color:#fff!important}
 .bulk-bar{display:none;align-items:center;gap:10px;background:var(--blue);color:#fff;padding:9px 16px;border-radius:var(--radius);margin-bottom:10px;font-size:13px;font-weight:600}
 .bulk-bar.visible{display:flex}
@@ -288,6 +288,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="topbar">
   <div class="topbar-title" id="topbar-title">Dashboard</div>
   <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-primary btn-sm" onclick="manualSave()" title="Salva tutti i dati">&#128190; Salva</button>
     <button class="btn btn-ghost btn-sm" onclick="authLogout()" title="Esci">&#128274; Esci</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">&#128190; Backup</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">&#128204; Ripristina</button>
@@ -1173,8 +1174,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         </div>
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:20px;align-items:center">
+    <div style="display:flex;justify-content:space-between;margin-top:20px;align-items:center;flex-wrap:wrap;gap:10px">
       <button class="btn btn-danger btn-sm" id="cl-delete-btn" onclick="clDeleteTask()" style="display:none">Elimina</button>
+      <label id="cl-done-toggle" style="display:none;align-items:center;gap:10px;cursor:pointer;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 14px">
+        <input type="checkbox" id="cl-f-done" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">✅ Segna come Completato</span>
+      </label>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="btn btn-ghost" onclick="clCloseModal()">Annulla</button>
         <button class="btn btn-primary" onclick="clSaveTask()">Salva</button>
@@ -1325,6 +1330,14 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Nome e Cognome *</label><input id="dest-nome" type="text" placeholder="Mario Rossi"></div>
         <div class="field"><label>CF / Passaporto</label><input id="dest-cf" type="text" placeholder="RSSMRA80A01H501Z"></div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="field"><label>Documento d'Identità</label><select id="dest-doc-tipo"><option value="">-- Seleziona --</option><option value="Passaporto">Passaporto</option><option value="Carta d'Identità">Carta d'Identità</option><option value="Patente">Patente</option></select></div>
+        <div class="field"><label>N° Documento</label><input id="dest-doc-num" type="text" placeholder="AA1234567"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="field"><label>Nazione</label><input id="dest-nazione" type="text" placeholder="es. Germania" oninput="destNazioneToggle(this.value)"></div>
+        <div class="field" id="dest-nazione-hint" style="display:flex;align-items:flex-end"><span style="font-size:11px;color:var(--text-light);padding-bottom:9px">Se estero, indirizzo/CAP/città non richiesti</span></div>
+      </div>
     </div>
 
     <!-- Campi azienda (hidden by default) -->
@@ -1340,7 +1353,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
 
     <!-- Indirizzo (comune a entrambi) -->
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+    <div id="dest-addr-block" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="field"><label>Indirizzo</label><input id="dest-ind" type="text" placeholder="Via Roma 1"></div>
       <div class="field"><label>CAP</label><input id="dest-cap" type="text" maxlength="5"></div>
       <div class="field"><label>Città</label><input id="dest-citta" type="text"></div>
@@ -1472,6 +1485,17 @@ function loadDB(){
     if(DB.proprietari.length===0)seedDemo();
     renderDash();
   });
+}
+function manualSave(){
+  saveDB();
+  var btn = document.querySelector('[onclick="manualSave()"]');
+  if(btn){
+    var orig = btn.innerHTML;
+    btn.innerHTML = '&#10003; Salvato!';
+    btn.style.background = 'var(--green)';
+    setTimeout(function(){ btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+  }
+  toast('Dati salvati ✓');
 }
 function saveDB(){
   localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback
@@ -2782,6 +2806,19 @@ function renderDocumenti(){
 }
 function onDocGroupSel(){document.getElementById('doc-prop-sel').value='';renderDocumenti();}
 
+function destNazioneToggle(val){
+  var isEstero = val.trim().length > 0 && val.trim().toLowerCase() !== 'italia' && val.trim().toLowerCase() !== 'it';
+  var block = document.getElementById('dest-addr-block');
+  if(!block) return;
+  var inputs = block.querySelectorAll('input');
+  inputs.forEach(function(inp){
+    inp.disabled = isEstero;
+    inp.style.opacity = isEstero ? '0.4' : '1';
+    inp.style.cursor = isEstero ? 'not-allowed' : '';
+    if(isEstero) inp.value = '';
+  });
+  block.style.opacity = isEstero ? '0.5' : '1';
+}
 function toggleDocDone(bid){
   if(!DB.docDone)DB.docDone={};
   DB.docDone[bid]=!DB.docDone[bid];
@@ -5329,11 +5366,13 @@ async function clSyncSmoobu() {
       // Check if task already exists for this booking
       var existsIdx = db.tasks.findIndex(function(t){ return t.smoobu_id === String(b.id); });
       if (existsIdx >= 0) {
-        // Update dates from Smoobu but preserve manual date_override
+        // Update dates from Smoobu but preserve manual date_override, cleaner, status
         db.tasks[existsIdx].date = checkout;
         db.tasks[existsIdx].checkin_date = checkin;
         db.tasks[existsIdx].prop_name = propName;
-        // date_override is intentionally NOT touched — manual shift is preserved
+        db.tasks[existsIdx].checkout_time = checkoutTime;
+        db.tasks[existsIdx].checkin_time  = checkinTime;
+        // date_override, cleaner, status, notes, checklist are intentionally NOT touched
       } else {
         // New task
         var defaultCL = (db.defaultChecklist || []).map(function(item, i) {
@@ -5569,6 +5608,10 @@ function clOpenModal(taskId, dateStr) {
     document.getElementById('cl-f-checkout-time').value = t.checkout_time || '';
     document.getElementById('cl-f-checkin-time').value = t.checkin_time || '';
     document.getElementById('cl-f-notes').value = t.notes || '';
+    var doneToggle = document.getElementById('cl-done-toggle');
+    var doneCb = document.getElementById('cl-f-done');
+    if(doneToggle) doneToggle.style.display = 'flex';
+    if(doneCb) doneCb.checked = (t.status === 'done');
     CL.tempChecklist = (t.checklist || []).map(function(c){ return Object.assign({},c); });
     clSelectCleaner(t.cleaner || '');
   } else {
@@ -5584,6 +5627,10 @@ function clOpenModal(taskId, dateStr) {
     document.getElementById('cl-f-checkout-time').value = '10:00';
     document.getElementById('cl-f-checkin-time').value = '15:00';
     document.getElementById('cl-f-notes').value = '';
+    var doneToggleN = document.getElementById('cl-done-toggle');
+    var doneCbN = document.getElementById('cl-f-done');
+    if(doneToggleN) doneToggleN.style.display = 'none';
+    if(doneCbN) doneCbN.checked = false;
     // Default checklist
     CL.tempChecklist = (db.defaultChecklist || []).map(function(item, i){
       return { id: 'ci_'+Date.now()+'_'+i, text: item, done: false };
@@ -5673,7 +5720,8 @@ function clSaveTask() {
     var idx = db.tasks.findIndex(function(t){ return t.id === CL.editingId; });
     if (idx >= 0) {
       var existing = db.tasks[idx];
-      taskData.status = existing.status;
+      var doneCb2 = document.getElementById('cl-f-done');
+    taskData.status = doneCb2 && doneCb2.checked ? 'done' : (existing.status === 'done' && doneCb2 && !doneCb2.checked ? 'todo' : existing.status);
       taskData.id = CL.editingId;
       taskData.smoobu_id = existing.smoobu_id;
       taskData.created = existing.created;
