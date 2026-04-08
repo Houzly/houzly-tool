@@ -2515,7 +2515,7 @@ function genFatturaOspite(bid, dest){
   var oggi=new Date().toLocaleDateString('it-IT');
   var voci22=[
     {desc:'Commissione piattaforma '+b.canale+' ('+b.comm_ota_perc+'%)',imp:c.comm_ota},
-    {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:c.houzly},
+    {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:b.iva22?r2(c.houzly*1.22*1.22):c.houzly},
     {desc:'Spese di pulizia',imp:c.pulizia}
   ].filter(function(v){return v.imp>0;});
   var totF22=r2(voci22.reduce(function(s,v){return s+v.imp;},0));
@@ -2551,7 +2551,7 @@ function genFatturaAzienda(bid, dest){
   var oggi=new Date().toLocaleDateString('it-IT');
   var voci22=[
     {desc:'Commissione piattaforma '+b.canale+' ('+b.comm_ota_perc+'%)',imp:c.comm_ota},
-    {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:c.houzly},
+    {desc:'Compenso gestione Houzly ('+b.houzly_perc+'%)',imp:b.iva22?r2(c.houzly*1.22*1.22):c.houzly},
     {desc:'Spese di pulizia &mdash; '+nomeProp(b.proprieta_id),imp:c.pulizia}
   ].filter(function(v){return v.imp>0;});
   var totF22=r2(voci22.reduce(function(s,v){return s+v.imp;},0));
