@@ -1309,7 +1309,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 <!-- MODAL: Dati Destinatario (pre-generazione documento) -->
 <div id="modal-destinatario" class="modal-overlay">
-  <div class="modal" style="max-width:560px;position:relative">
+  <div class="modal" style="max-width:720px;position:relative;overflow-y:visible;max-height:none">
     <button class="modal-close" onclick="closeModal('modal-destinatario')">&#10005;</button>
     <div class="modal-title">&#128101; Dati Destinatario</div>
     <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;margin-top:-10px">
@@ -1353,11 +1353,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
 
     <!-- Indirizzo (comune a entrambi) -->
-    <div id="dest-addr-block" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+    <div id="dest-addr-block" style="display:grid;grid-template-columns:3fr 1fr 2fr;gap:10px;margin-bottom:12px">
       <div class="field"><label>Indirizzo</label><input id="dest-ind" type="text" placeholder="Via Roma 1"></div>
       <div class="field"><label>CAP</label><input id="dest-cap" type="text" maxlength="5"></div>
       <div class="field"><label>Città</label><input id="dest-citta" type="text"></div>
-      <div class="field"><label>Prov.</label><input id="dest-prov" type="text" maxlength="2"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div class="field"><label>Email</label><input id="dest-email" type="email"></div>
