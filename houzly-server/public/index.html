@@ -1459,6 +1459,17 @@ function dbDefaults(){
   if(!DB.ric_counter)DB.ric_counter=0;
   if(!DB.kanban_cols)DB.kanban_cols=[];
 }
+function loadDocDoneLocal(){
+  // docDone è salvato SOLO in localStorage — non dipende da JSONBin
+  try{
+    var s=localStorage.getItem('houzly_docdone');
+    return s ? JSON.parse(s) : {};
+  }catch(e){ return {}; }
+}
+function saveDocDoneLocal(){
+  // Salva docDone in localStorage immediatamente — nessuna chiamata di rete
+  try{ localStorage.setItem('houzly_docdone', JSON.stringify(DB.docDone||{})); }catch(e){}
+}
 function loadDB(){
   dbDefaults();
   // Fetch from server — source of truth
@@ -1473,6 +1484,9 @@ function loadDB(){
       dbDefaults();
       if(DB.proprietari.length===0)seedDemo();
     }
+    // SEMPRE: ripristina docDone da localStorage locale (non sovrascrivere mai)
+    var localDone = loadDocDoneLocal();
+    DB.docDone = Object.assign({}, DB.docDone||{}, localDone);
     // Refresh all UI after data loaded
     renderDash();
     populateDashFilter();
@@ -1482,6 +1496,8 @@ function loadDB(){
     // Server unreachable - use localStorage
     try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
     dbDefaults();
+    var localDone = loadDocDoneLocal();
+    DB.docDone = Object.assign({}, DB.docDone||{}, localDone);
     if(DB.proprietari.length===0)seedDemo();
     renderDash();
   });
@@ -1500,46 +1516,23 @@ function manualSave(){
     }
   );
 }
-var _saveTimer = null;
-var _saveQueue = [];
 function saveDB(onSuccess, onError){
-  // Strip calc from prenotazioni before saving (ricalcolato al volo, inutile persistere)
-  var dbToSave = JSON.parse(JSON.stringify(DB));
-  if(dbToSave.prenotazioni) {
-    dbToSave.prenotazioni = dbToSave.prenotazioni.map(function(p){
-      var pc = Object.assign({}, p);
-      delete pc.calc;
-      return pc;
+  localStorage.setItem('houzly_v4', JSON.stringify(DB)); // fallback locale
+  fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(DB)})
+    .then(function(r){
+      if(r.ok){
+        if(onSuccess) try{onSuccess();}catch(e){}
+      } else {
+        var errMsg='HTTP '+r.status;
+        if(onError) try{onError(errMsg);}catch(e){}
+        console.warn('[saveDB] error:', errMsg);
+      }
+    })
+    .catch(function(e){
+      var errMsg=e.message||'Errore rete';
+      if(onError) try{onError(errMsg);}catch(e){}
+      console.warn('[saveDB] catch:', errMsg);
     });
-  }
-  localStorage.setItem('houzly_v4', JSON.stringify(dbToSave)); // local fallback immediato
-  if(onSuccess) _saveQueue.push(onSuccess);
-  if(onError)   _saveQueue.push(onError);  // per ora ignoriamo distinzione, gestiamo dopo
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(function(){
-    // Strip calc from prenotazioni (ricalcolato al volo) before sending
-    var dbLean = JSON.parse(JSON.stringify(DB));
-    if(dbLean.prenotazioni){
-      dbLean.prenotazioni = dbLean.prenotazioni.map(function(p){var pc=Object.assign({},p);delete pc.calc;return pc;});
-    }
-    var snapshot = JSON.stringify(dbLean);
-    var callbacks = _saveQueue.splice(0);
-    fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:snapshot})
-      .then(function(r){
-        if(r.ok){
-          callbacks.filter(function(_,i){return i%2===0;}).forEach(function(cb){try{cb();}catch(e){}});
-        } else {
-          var errMsg = 'HTTP '+r.status;
-          callbacks.filter(function(_,i){return i%2!==0;}).forEach(function(cb){try{cb(errMsg);}catch(e){}});
-          console.warn('saveDB error:', errMsg);
-        }
-      })
-      .catch(function(e){
-        var errMsg = e.message||'Errore rete';
-        callbacks.filter(function(_,i){return i%2!==0;}).forEach(function(cb){try{cb(errMsg);}catch(e){}});
-        console.warn('saveDB catch:', errMsg);
-      });
-  }, 600); // debounce 600ms — raggruppa chiamate ravvicinate
 }
 
 function seedDemo(){
@@ -2864,11 +2857,9 @@ function toggleDocDone(bid){
   if(!DB.docDone)DB.docDone={};
   DB.docDone[bid] = !DB.docDone[bid];
   var isDone = DB.docDone[bid];
+  saveDocDoneLocal(); // salva SOLO in localStorage — istantaneo, nessun errore di rete
   renderDocumenti();
-  saveDB(
-    function(){ toast(isDone ? '✅ Salvato' : '⬜ Rimosso'); },
-    function(err){ toast('❌ Errore salvataggio — riprova ('+err+')'); }
-  );
+  toast(isDone ? '✅ Completato' : '⬜ Rimosso');
 }
 function openDocRow(bid){
   document.getElementById('doc-section').style.display='block';
