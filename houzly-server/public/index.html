@@ -1503,12 +1503,26 @@ function manualSave(){
 var _saveTimer = null;
 var _saveQueue = [];
 function saveDB(onSuccess, onError){
-  localStorage.setItem('houzly_v4',JSON.stringify(DB)); // local fallback immediato
+  // Strip calc from prenotazioni before saving (ricalcolato al volo, inutile persistere)
+  var dbToSave = JSON.parse(JSON.stringify(DB));
+  if(dbToSave.prenotazioni) {
+    dbToSave.prenotazioni = dbToSave.prenotazioni.map(function(p){
+      var pc = Object.assign({}, p);
+      delete pc.calc;
+      return pc;
+    });
+  }
+  localStorage.setItem('houzly_v4', JSON.stringify(dbToSave)); // local fallback immediato
   if(onSuccess) _saveQueue.push(onSuccess);
   if(onError)   _saveQueue.push(onError);  // per ora ignoriamo distinzione, gestiamo dopo
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(function(){
-    var snapshot = JSON.stringify(DB);
+    // Strip calc from prenotazioni (ricalcolato al volo) before sending
+    var dbLean = JSON.parse(JSON.stringify(DB));
+    if(dbLean.prenotazioni){
+      dbLean.prenotazioni = dbLean.prenotazioni.map(function(p){var pc=Object.assign({},p);delete pc.calc;return pc;});
+    }
+    var snapshot = JSON.stringify(dbLean);
     var callbacks = _saveQueue.splice(0);
     fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:snapshot})
       .then(function(r){
@@ -4844,10 +4858,12 @@ function getDestOspite() {
     tipo:    'privato',
     nome:    document.getElementById('dest-nome').value.trim(),
     cf:      document.getElementById('dest-cf').value.trim(),
+    nazione: (document.getElementById('dest-nazione')||{value:''}).value.trim(),
+    doc_tipo:(document.getElementById('dest-doc-tipo')||{value:''}).value.trim(),
+    doc_num: (document.getElementById('dest-doc-num')||{value:''}).value.trim(),
     ind:     document.getElementById('dest-ind').value.trim(),
     cap:     document.getElementById('dest-cap').value.trim(),
     citta:   document.getElementById('dest-citta').value.trim(),
-    prov:    document.getElementById('dest-prov').value.trim(),
     email:   document.getElementById('dest-email').value.trim(),
     tel:     document.getElementById('dest-tel').value.trim(),
   };
@@ -5374,6 +5390,25 @@ async function clSyncSmoobu() {
     var data = await resp.json();
 
     var bookings = data.bookings || data.data || [];
+
+    // ── Dedup: rimuovi task duplicati con stesso smoobu_id (tieni il più recente) ──
+    var seenIds = {};
+    db.tasks = db.tasks.filter(function(t) {
+      if (!t.smoobu_id) return true; // task manuali: tieni sempre
+      if (seenIds[t.smoobu_id]) return false; // duplicato: elimina
+      seenIds[t.smoobu_id] = true;
+      return true;
+    });
+
+    // ── Trim: elimina task con data > 90 giorni fa (risparmia spazio JSONBin) ──
+    var cutoff90 = new Date();
+    cutoff90.setDate(cutoff90.getDate() - 90);
+    var cutoff90str = cutoff90.toISOString().slice(0,10);
+    db.tasks = db.tasks.filter(function(t) {
+      if (!t.date) return true;
+      return t.date >= cutoff90str;
+    });
+
     var imported = 0;
     bookings.forEach(function(b) {
       // Skip blocked bookings (closures, maintenance, etc.)
