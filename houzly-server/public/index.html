@@ -1506,7 +1506,7 @@ function manualSave(){
 }
 function saveDB(onSuccess, onError){
   localStorage.setItem('houzly_v4', JSON.stringify(DB)); // fallback locale
-  fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(DB)})
+  fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB})})
     .then(function(r){
       if(r.ok){
         if(onSuccess) try{onSuccess();}catch(e){}
