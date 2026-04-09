@@ -96,10 +96,13 @@ app.post('/api/db', async (req, res) => {
   try {
     const { db } = req.body;
     if (!db) return res.status(400).json({ ok: false });
+    // Strip _id from incoming data to avoid MongoDB duplicate key error
+    const { _id, ...cleanDb } = db;
     const col = await getCollection('db');
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanDb }, { upsert: true });
     res.json({ ok: true });
   } catch (e) {
+    console.error('[POST /api/db]', e.message);
     res.json({ ok: false, error: e.message });
   }
 });
@@ -124,7 +127,8 @@ app.post('/api/restore', async (req, res) => {
     const { backup } = req.body;
     if (!backup) return res.status(400).json({ ok: false });
     const col = await getCollection('db');
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...backup }, { upsert: true });
+    const { _id: _rid, ...cleanBackup } = backup;
+    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanBackup }, { upsert: true });
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });
