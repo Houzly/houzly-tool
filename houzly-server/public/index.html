@@ -2620,9 +2620,8 @@ function genFatturaAzienda(bid, dest){
   ].filter(function(v){return v.imp>0;});
   var totF22=r2(voci22.reduce(function(s,v){return s+v.imp;},0));
   var totI=r2(totF22/1.22);var totV=r2(totF22-totI);var totF=r2(totF22+(c.tassa||0));
-  var rows22=voci22.map(function(v){return'<tr><td>'+v.desc+'</td><td class="r">'+eur(v.imp)+'</td><td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N2</span></td><td class="r">0,00</td><td class="r"><strong>'+eur(v.imp)+'</strong></td></tr>';}).join('');
+  var rows22=voci22.map(function(v){var impon=r2(v.imp/1.22);var ivaE=r2(v.imp-impon);return'<tr><td>'+v.desc+'</td><td class="r">'+eur(impon)+'</td><td class="r"><span class="badge-iva">22%</span></td><td class="r">'+eur(ivaE)+'</td><td class="r"><strong>'+eur(v.imp)+'</strong></td></tr>';}).join('');
   var rowTassa=c.tassa>0?'<tr style="background:#fffbf0"><td>Tassa di Soggiorno ('+b.notti+'n x '+b.n_ospiti+' osp) &mdash; <em>Escluso art. 15 DPR 633/72</em></td><td class="r">'+eur(c.tassa)+'</td><td class="r"><span class="badge-iva" style="background:#fff8e6;color:#b07800;border-color:#e0c060">0% N1</span></td><td class="r">0,00</td><td class="r"><strong>'+eur(c.tassa)+'</strong></td></tr>':'';
-  var totF=r2(voci22.reduce(function(s,v){return s+v.imp;},0)+(c.tassa||0));
   var html=PS+'<div class="doc">'
     +'<div class="doc-header"><div><div class="doc-logo">HOUZLY<small>Property Management</small></div><div style="font-size:10px;color:#888;margin-top:4px">'+CO.nome+' &middot; P.IVA '+CO.piva+'</div></div><div class="doc-type"><h2>Fattura N&deg; '+num+'</h2><p>Data '+oggi+' &middot; Servizi gestione B2B</p></div></div>'
     +'<div class="doc-parties"><div class="doc-party"><h4>Emittente</h4><p><strong>'+CO.nome+'</strong><br>P.IVA: '+CO.piva+'<br>'+CO.indirizzo+'<br>'+CO.cap+' '+CO.comune+' ('+CO.provincia+')</p></div>'
@@ -2631,10 +2630,13 @@ function genFatturaAzienda(bid, dest){
     +'<div class="doc-ref">&#128197; Rif. soggiorno: <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; Ospite: '+dest.nome+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+'</div>'
     +'<table class="dtbl"><thead><tr><th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">IVA &euro;</th><th class="r">Totale</th></tr></thead>'
     +'<tbody>'+rows22+rowTassa
-    +'<tr class="tot-row"><td colspan="3" style="text-align:right;font-weight:700">Totale Servizi Houzly (esente IVA)</td><td></td><td class="r">'+eur(totF)+'</td></tr>'
+    +'<tr class="tot-row"><td colspan="3" style="text-align:right">Totale Imponibile IVA 22% (scorporato)</td><td></td><td class="r">'+eur(totI)+'</td></tr>'
+    +'<tr class="tot-row"><td colspan="3" style="text-align:right">IVA 22% (scorporata)</td><td></td><td class="r">'+eur(totV)+'</td></tr>'
+    +(c.tassa>0?'<tr class="esente-row"><td colspan="3" style="text-align:right">di cui Tassa di Soggiorno esclusa (art. 15 DPR 633/72)</td><td></td><td class="r">'+eur(c.tassa)+'</td></tr>':'')
+    +'<tr class="total-final"><td colspan="3" style="text-align:right">TOTALE FATTURA (IVA incl. + TdS esente)</td><td></td><td class="r">'+eur(totF)+'</td></tr>'
     +'</tbody></table>'
     +'<div class="doc-total"><div class="doc-total-box"><div class="lbl">Totale Fattura</div><div class="val">'+eur(totF)+'</div></div></div>'
-    +'<p style="font-size:11px;color:#666;font-style:italic;margin-top:-10px;margin-bottom:16px">Operazione fuori campo IVA ai sensi dell’art. 7-ter DPR 633/72 ovvero esente per regime applicabile al rapporto contrattuale.</p>'
+    +'<p style="font-size:11px;color:#666;font-style:italic;margin-top:-10px;margin-bottom:16px">IVA al 22% ai sensi del DPR 633/72. Pagamento soggetto a ritenuta d’acconto ove applicabile.</p>'
     +'<div class="doc-footer">Pagamento: bonifico bancario entro 30 giorni &middot; SDI: '+CO.sdi+' &middot; '+CO.email+'</div></div>';
   openPrintModal('Fattura Houzly B2B &mdash; '+num,html);
 }
