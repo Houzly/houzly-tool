@@ -1459,15 +1459,8 @@ function dbDefaults(){
   if(!DB.ric_counter)DB.ric_counter=0;
   if(!DB.kanban_cols)DB.kanban_cols=[];
 }
-function loadDocDoneLocal(){
-  // docDone è salvato SOLO in localStorage — non dipende da JSONBin
-  try{
-    var s=localStorage.getItem('houzly_docdone');
-    return s ? JSON.parse(s) : {};
-  }catch(e){ return {}; }
-}
 function saveDocDoneLocal(){
-  // Salva docDone in localStorage immediatamente — nessuna chiamata di rete
+  // Manteniamo anche localStorage come cache locale rapida
   try{ localStorage.setItem('houzly_docdone', JSON.stringify(DB.docDone||{})); }catch(e){}
 }
 function loadDB(){
@@ -1484,9 +1477,6 @@ function loadDB(){
       dbDefaults();
       if(DB.proprietari.length===0)seedDemo();
     }
-    // SEMPRE: ripristina docDone da localStorage locale (non sovrascrivere mai)
-    var localDone = loadDocDoneLocal();
-    DB.docDone = Object.assign({}, DB.docDone||{}, localDone);
     // Refresh all UI after data loaded
     renderDash();
     populateDashFilter();
@@ -1496,8 +1486,6 @@ function loadDB(){
     // Server unreachable - use localStorage
     try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
     dbDefaults();
-    var localDone = loadDocDoneLocal();
-    DB.docDone = Object.assign({}, DB.docDone||{}, localDone);
     if(DB.proprietari.length===0)seedDemo();
     renderDash();
   });
@@ -2857,9 +2845,12 @@ function toggleDocDone(bid){
   if(!DB.docDone)DB.docDone={};
   DB.docDone[bid] = !DB.docDone[bid];
   var isDone = DB.docDone[bid];
-  saveDocDoneLocal(); // salva SOLO in localStorage — istantaneo, nessun errore di rete
+  saveDocDoneLocal(); // cache locale immediata
   renderDocumenti();
-  toast(isDone ? '✅ Completato' : '⬜ Rimosso');
+  saveDB(
+    function(){ toast(isDone ? '✅ Completato' : '⬜ Rimosso'); },
+    function(err){ toast('❌ Errore salvataggio: '+err); }
+  );
 }
 function openDocRow(bid){
   document.getElementById('doc-section').style.display='block';
