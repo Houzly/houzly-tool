@@ -38,7 +38,7 @@ app.get('/api/auth/exists', async (req, res) => {
     const col  = await getCollection('auth');
     const auth = await col.findOne({ _id: 'auth' });
     res.json({ exists: !!(auth && auth.hash) });
-  } catch { res.json({ exists: false }); }
+  } catch (e) { console.error('[auth/exists]', e.message); res.json({ exists: false }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -49,7 +49,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!auth || !auth.hash) return res.json({ ok: false, error: 'no_auth' });
     const hash = crypto.createHash('sha256').update(pin).digest('hex');
     res.json({ ok: hash === auth.hash });
-  } catch { res.json({ ok: false, error: 'server_error' }); }
+  } catch (e) { console.error('[route]', e.message); res.json({ ok: false, error: e.message }); }
 });
 
 app.post('/api/auth/set', async (req, res) => {
@@ -60,7 +60,7 @@ app.post('/api/auth/set', async (req, res) => {
     const col  = await getCollection('auth');
     await col.replaceOne({ _id: 'auth' }, { _id: 'auth', hash }, { upsert: true });
     res.json({ ok: true });
-  } catch { res.json({ ok: false, error: 'server_error' }); }
+  } catch (e) { console.error('[auth/set]', e.message); res.json({ ok: false, error: e.message }); }
 });
 
 app.post('/api/auth/change', async (req, res) => {
@@ -73,7 +73,7 @@ app.post('/api/auth/change', async (req, res) => {
     const hash = crypto.createHash('sha256').update(newPin).digest('hex');
     await col.replaceOne({ _id: 'auth' }, { _id: 'auth', hash }, { upsert: true });
     res.json({ ok: true });
-  } catch { res.json({ ok: false, error: 'server_error' }); }
+  } catch (e) { console.error('[route]', e.message); res.json({ ok: false, error: e.message }); }
 });
 
 // ── DB ────────────────────────────────────────────────────────────
@@ -219,4 +219,14 @@ app.post('/api/smoobu/webhook', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Houzly server running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Houzly server running on port ${PORT}`);
+  // Test MongoDB connection at startup
+  try {
+    const db = await getDb();
+    await db.command({ ping: 1 });
+    console.log('[MongoDB] Connected successfully');
+  } catch (e) {
+    console.error('[MongoDB] Connection FAILED:', e.message);
+  }
+});
