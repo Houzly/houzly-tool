@@ -390,7 +390,8 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   try {
     const payload = {
       apartmentId: aptId,
-      arrival, departure,
+      arrivalDate: arrival,
+      departureDate: departure,
       firstName, lastName,
       email,
       adults: parseInt(adults) || 1,
