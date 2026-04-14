@@ -312,8 +312,9 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     }
 
     // Struttura risposta Smoobu rates: { data: { "YYYY-MM-DD": { available: 0|1, price: X } } }
-    const aptData = data && (data[apartmentId] || (data.data && data.data[apartmentId]));
-    if (!aptData || !aptData.days) {
+    // Struttura Smoobu: { data: { "apartmentId": { "YYYY-MM-DD": { price, available, min_length_of_stay } } } }
+    const aptDays = data && data.data && data.data[apartmentId];
+    if (!aptDays) {
       console.error('[booking/availability] no days data:', JSON.stringify(data).slice(0, 300));
       return res.status(404).json({ ok: false, error: 'Dati non trovati per questo appartamento' });
     }
@@ -326,17 +327,22 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     // Verifica tutti i giorni del soggiorno (escluso giorno di partenza)
     let available = true;
     let totalPrice = 0;
+    let minStay = 1;
     for (let i = 0; i < nights; i++) {
       const d = new Date(arrDate);
       d.setDate(d.getDate() + i);
       const dateStr = d.toISOString().slice(0, 10);
-      const dayData = aptData.days[dateStr];
+      const dayData = aptDays[dateStr];
       if (!dayData || dayData.available === 0) {
         available = false;
         break;
       }
       totalPrice += dayData.price || 0;
+      if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
     }
+
+    // Controlla soggiorno minimo
+    if (available && nights < minStay) available = false;
 
     res.json({
       ok: true,
