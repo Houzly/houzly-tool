@@ -25,7 +25,14 @@ async function getCollection(name) {
   return db.collection(name);
 }
 
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: "20mb" }));
+app.use("/api/booking", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
