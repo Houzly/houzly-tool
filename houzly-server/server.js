@@ -236,14 +236,12 @@ app.post('/api/smoobu/webhook', async (req, res) => {
 
 const SMOOBU_API_KEY = process.env.SMOOBU_API_KEY;
 
-// Middleware CORS solo per le route /api/booking/*
+// Middleware CORS per le route /api/booking/*
 function bookingCors(req, res, next) {
-  const allowed = ['https://www.houzly.it', 'https://houzly.it', 'https://houzly-site.onrender.com', 'http://localhost:3000', 'http://127.0.0.1:5500'];
-  const origin  = req.headers.origin;
-  if (allowed.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 }
 
