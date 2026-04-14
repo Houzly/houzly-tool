@@ -396,7 +396,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
       'last-name':  lastName,
       email,
       adults: Number(adults) || 1,
-      'channel-id': 397  // Direct booking in Smoobu
+      'channel-id': 4090393  // Direct booking — SettingsChannelId da Smoobu
     };
     if (phone) payload.phone  = phone;
     if (note)  payload.notice = note;
