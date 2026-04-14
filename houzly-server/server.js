@@ -260,7 +260,20 @@ app.get('/api/booking/apartments', bookingCors, async (req, res) => {
   try {
     const r = await fetch('https://login.smoobu.com/api/apartments', { headers: smoobuHdr() });
     const data = await r.json();
-    const apartments = (data.apartments || []).map(a => ({
+    console.log('[booking/apartments] raw response keys:', Object.keys(data));
+
+    // Smoobu può restituire { apartments: [...] } oppure direttamente un array
+    // o { data: [...] } — gestiamo tutti i casi
+    let list = [];
+    if (Array.isArray(data))              list = data;
+    else if (Array.isArray(data.apartments)) list = data.apartments;
+    else if (Array.isArray(data.data))    list = data.data;
+    else {
+      // Restituiamo il raw per debug
+      return res.json({ ok: true, apartments: [], _raw: data });
+    }
+
+    const apartments = list.map(a => ({
       id:   a.id,
       name: a.name,
       type: a.type || null
