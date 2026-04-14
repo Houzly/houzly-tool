@@ -390,6 +390,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   try {
     const payload = {
       'apartment-id': aptId,
+      // Note: also try apartmentId as alternative field name
       arrival, departure,
       'first-name': firstName,
       'last-name':  lastName,
@@ -400,6 +401,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
     if (phone) payload.phone  = phone;
     if (note)  payload.notice = note;
 
+    console.log('[booking/create] payload to Smoobu:', JSON.stringify(payload));
     const r = await fetch('https://login.smoobu.com/api/reservations', {
       method: 'POST', headers: smoobuHdr(), body: JSON.stringify(payload)
     });
