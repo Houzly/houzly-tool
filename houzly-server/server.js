@@ -96,7 +96,6 @@ app.post('/api/db', async (req, res) => {
   try {
     const { db } = req.body;
     if (!db) return res.status(400).json({ ok: false });
-    // Strip _id from incoming data to avoid MongoDB duplicate key error
     const { _id, ...cleanDb } = db;
     const col = await getCollection('db');
     await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanDb }, { upsert: true });
@@ -135,7 +134,7 @@ app.post('/api/restore', async (req, res) => {
   }
 });
 
-// ── Smoobu Proxy ──────────────────────────────────────────────────
+// ── Smoobu Proxy (Houzly Tool — cleaning sync) ────────────────────
 app.get('/api/smoobu/reservations', async (req, res) => {
   try {
     const apiKey   = req.query.apiKey;
@@ -223,9 +222,148 @@ app.post('/api/smoobu/webhook', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+// ── Smoobu Booking Engine (houzly.it website proxy) ──────────────
+//
+//  Queste route fanno da proxy tra il sito houzly.it (GitHub Pages)
+//  e le API Smoobu, risolvendo il problema CORS.
+//
+//  Richiede SMOOBU_API_KEY nelle Environment Variables di Render.
+//  (Smoobu → Impostazioni → Sviluppatori → API Key)
+//
+//  CORS aperto solo per houzly.it e localhost (sviluppo).
+// ══════════════════════════════════════════════════════════════════
+
+const SMOOBU_API_KEY = process.env.SMOOBU_API_KEY;
+
+// Middleware CORS solo per le route /api/booking/*
+function bookingCors(req, res, next) {
+  const allowed = ['https://www.houzly.it', 'https://houzly.it', 'http://localhost:3000', 'http://127.0.0.1:5500'];
+  const origin  = req.headers.origin;
+  if (allowed.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+}
+
+// Helper: headers Smoobu
+function smoobuHdr() {
+  return { 'Api-Key': SMOOBU_API_KEY, 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' };
+}
+
+// ── GET /api/booking/apartments ───────────────────────────────────
+// Recupera lista appartamenti Smoobu con i loro ID.
+// Usare una volta per mappare smoobuId nelle PROPERTIES del sito.
+// Esempio: https://houzly-tool.onrender.com/api/booking/apartments
+app.get('/api/booking/apartments', bookingCors, async (req, res) => {
+  try {
+    const r = await fetch('https://login.smoobu.com/api/apartments', { headers: smoobuHdr() });
+    const data = await r.json();
+    const apartments = (data.apartments || []).map(a => ({
+      id:   a.id,
+      name: a.name,
+      type: a.type || null
+    }));
+    res.json({ ok: true, apartments });
+  } catch (e) {
+    console.error('[booking/apartments]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── POST /api/booking/availability ───────────────────────────────
+// Verifica disponibilità e prezzo per un appartamento e un periodo.
+// Body: { apartmentId, arrival: "YYYY-MM-DD", departure: "YYYY-MM-DD", guests }
+// Risposta: { ok, available, price, nights, minStay }
+app.post('/api/booking/availability', bookingCors, async (req, res) => {
+  const { apartmentId, arrival, departure, guests } = req.body || {};
+  if (!apartmentId || !arrival || !departure) {
+    return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure' });
+  }
+  try {
+    const payload = { apartments: [Number(apartmentId)], arrival, departure };
+    if (guests) payload.adults = Number(guests);
+    const r = await fetch('https://login.smoobu.com/api/availability', {
+      method: 'POST', headers: smoobuHdr(), body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    const apt  = data && data[apartmentId];
+    if (!apt) return res.status(404).json({ ok: false, error: 'Apartment non trovato' });
+    res.json({
+      ok:        true,
+      available: apt.available === true,
+      price:     apt.price     || null,
+      nights:    apt.nights    || null,
+      minStay:   apt.minimumLength || null
+    });
+  } catch (e) {
+    console.error('[booking/availability]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── GET /api/booking/rates ────────────────────────────────────────
+// Recupera disponibilità giorno per giorno (per il calendario).
+// Query: apartmentId, start=YYYY-MM-DD, end=YYYY-MM-DD
+app.get('/api/booking/rates', bookingCors, async (req, res) => {
+  const { apartmentId, start, end } = req.query;
+  if (!apartmentId || !start || !end) {
+    return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, start, end' });
+  }
+  try {
+    const url = `https://login.smoobu.com/api/rates?apartments[]=${apartmentId}&start_date=${start}&end_date=${end}`;
+    const r   = await fetch(url, { headers: smoobuHdr() });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    console.error('[booking/rates]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── POST /api/booking/create ──────────────────────────────────────
+// Crea una prenotazione diretta su Smoobu (canale Direct, senza OTA).
+// Body: { apartmentId, arrival, departure, firstName, lastName, email,
+//         phone?, adults?, note? }
+app.post('/api/booking/create', bookingCors, async (req, res) => {
+  const { apartmentId, arrival, departure, firstName, lastName, email, phone, adults, note } = req.body || {};
+  if (!apartmentId || !arrival || !departure || !firstName || !lastName || !email) {
+    return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure, firstName, lastName, email' });
+  }
+  try {
+    const payload = {
+      'apartment-id': Number(apartmentId),
+      arrival, departure,
+      'first-name': firstName,
+      'last-name':  lastName,
+      email,
+      adults: Number(adults) || 1,
+      'channel-id': 397  // Direct booking in Smoobu
+    };
+    if (phone) payload.phone  = phone;
+    if (note)  payload.notice = note;
+
+    const r = await fetch('https://login.smoobu.com/api/reservations', {
+      method: 'POST', headers: smoobuHdr(), body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      console.error('[booking/create] Smoobu rejected:', data);
+      return res.status(r.status).json({ ok: false, error: data.detail || 'Smoobu ha rifiutato la prenotazione' });
+    }
+    console.log(`[booking/create] New booking #${data.id} — ${firstName} ${lastName} — apt ${apartmentId} — ${arrival}→${departure}`);
+    res.json({ ok: true, reservationId: data.id });
+  } catch (e) {
+    console.error('[booking/create]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
-  // Test MongoDB connection at startup
   try {
     const db = await getDb();
     await db.command({ ping: 1 });
