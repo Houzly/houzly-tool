@@ -384,9 +384,12 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   if (!apartmentId || !arrival || !departure || !firstName || !lastName || !email) {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure, firstName, lastName, email' });
   }
+  const aptId = parseInt(apartmentId, 10);
+  console.log('[booking/create] apartmentId raw:', apartmentId, '→ parsed:', aptId);
+  if (!aptId) return res.status(400).json({ ok: false, error: 'apartmentId non valido' });
   try {
     const payload = {
-      'apartment-id': Number(apartmentId),
+      'apartment-id': aptId,
       arrival, departure,
       'first-name': firstName,
       'last-name':  lastName,
