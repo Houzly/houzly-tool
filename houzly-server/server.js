@@ -389,14 +389,12 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   if (!aptId) return res.status(400).json({ ok: false, error: 'apartmentId non valido' });
   try {
     const payload = {
-      'apartment-id': aptId,
-      // Note: also try apartmentId as alternative field name
+      apartmentId: aptId,
       arrival, departure,
-      'first-name': firstName,
-      'last-name':  lastName,
+      firstName, lastName,
       email,
-      adults: Number(adults) || 1,
-      'channel-id': 4090393  // Direct booking — SettingsChannelId da Smoobu
+      adults: parseInt(adults) || 1,
+      channelId: 4090393
     };
     if (phone) payload.phone  = phone;
     if (note)  payload.notice = note;
