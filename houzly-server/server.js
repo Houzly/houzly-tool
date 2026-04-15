@@ -184,12 +184,14 @@ app.post('/api/smoobu/sync', async (req, res) => {
     const apiKey = req.body?.apiKey || db.cleaning.apiKey || '';
     if (!apiKey) return res.status(400).json({ ok: false, error: 'missing_api_key' });
 
-    // Finestra temporale
+    // Finestra temporale — scarica 60 giorni indietro + N mesi avanti
+    // (60gg indietro per non perdere task recenti ancora in lavorazione)
     const months  = parseInt(req.body?.months || db.cleaning.syncMonths || 3);
-    const fromDate = new Date(); fromDate.setDate(fromDate.getDate() - 1);
+    const fromDate = new Date(); fromDate.setDate(fromDate.getDate() - 60);
     const toDate   = new Date(); toDate.setMonth(toDate.getMonth() + months);
     const fromISO  = fromDate.toISOString().split('T')[0];
     const toISO    = toDate.toISOString().split('T')[0];
+    const todayISO = new Date().toISOString().split('T')[0];
 
     // Scarica tutte le pagine da Smoobu
     let allReservations = [];
@@ -218,20 +220,10 @@ app.post('/api/smoobu/sync', async (req, res) => {
       return checkout >= fromISO && checkout <= toISO;
     });
 
-    const activeIds = new Set(relevant.map(b => String(b.id || '')));
-
-    // 1. Rimuovi task Smoobu cancellati (solo quelli nella finestra futura e non completati)
-    const todayISO = new Date().toISOString().split('T')[0];
-    const before = db.cleaning.tasks.length;
-    db.cleaning.tasks = db.cleaning.tasks.filter(t => {
-      if (!t.smoobu_id) return true;          // task manuali: mai toccare
-      if (t.status === 'done') return true;    // già completati: mai toccare
-      const d = t.date_override || t.date;
-      if (d <= todayISO) return true;          // checkout oggi o passato: non toccare (prenotazione conclusa)
-      if (d > toISO) return true;              // fuori finestra futura: non toccare
-      return activeIds.has(t.smoobu_id);       // futuro + non completato: rimuovi se cancellato
-    });
-    const removed = before - db.cleaning.tasks.length;
+    // Rimozione task: MAI durante il sync.
+    // I task vengono rimossi SOLO via webhook cancelledReservation (già gestito sotto).
+    // Il sync aggiunge nuovi task e aggiorna quelli esistenti — nient'altro.
+    const removed = 0;
 
     // 2. Merge: aggiorna esistenti, aggiungi nuovi
     let added = 0, updated = 0;
@@ -246,15 +238,17 @@ app.post('/api/smoobu/sync', async (req, res) => {
 
       const idx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
       if (idx >= 0) {
-        // Aggiorna campi Smoobu, preserva tutto il resto
+        // Aggiorna solo campi Smoobu — preserva TUTTO il resto incluso date_override
+        const ex = db.cleaning.tasks[idx];
         db.cleaning.tasks[idx] = {
-          ...db.cleaning.tasks[idx],
-          date:          checkout,
+          ...ex,
+          date:          checkout,          // aggiorna data originale Smoobu
           checkin_date:  checkin,
           checkout_time: checkoutTime,
           checkin_time:  checkinTime,
           prop_name:     propName,
           prop_id:       propId,
+          // date_override, cleaner, status, notes, checklist: preservati da spread
         };
         updated++;
       } else {
