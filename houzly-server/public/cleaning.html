@@ -802,6 +802,7 @@ select.field-input {
 
       <button class="save-btn" onclick="saveSettings()">💾 Salva impostazioni</button>
       <button class="save-btn" onclick="saveSettings(true)" style="margin-top:10px;background:linear-gradient(135deg,#00b09b,#00e5a0)">↻ Salva e sincronizza ora</button>
+      <button class="save-btn" onclick="applyChecklistToUnassigned()" style="margin-top:10px;background:linear-gradient(135deg,#4361ee,#22d1ee)">📋 Applica checklist ai task non assegnati</button>
     </div>
   </div>
 </div>
@@ -1717,6 +1718,36 @@ function updateHeaderSub() {
   } else {
     sub.textContent = 'Cleaning Manager';
   }
+}
+
+// ═══════════════════════════════
+//  APPLY CHECKLIST TO UNASSIGNED
+// ═══════════════════════════════
+async function applyChecklistToUnassigned() {
+  const db = clDB();
+  const today = new Date().toISOString().split('T')[0];
+  const newChecklist = (db.defaultChecklist || []).map(l => ({ label: l, done: false }));
+
+  // Solo task: todo + non assegnati + data futura o oggi
+  let count = 0;
+  db.tasks.forEach(t => {
+    if (t.status === 'done') return;           // già completati: mai toccare
+    if (t.cleaner && (Array.isArray(t.cleaner) ? t.cleaner.length > 0 : t.cleaner)) return; // già assegnati: skip
+    const d = t.date_override || t.date;
+    if (d < today) return;                     // passati: skip
+    t.checklist = newChecklist.map(i => ({...i}));
+    count++;
+  });
+
+  if (count === 0) {
+    toast('Nessun task da aggiornare');
+    return;
+  }
+
+  await saveDB();
+  closeSettings();
+  renderAll();
+  toast(`✓ Checklist aggiornata su ${count} task`);
 }
 
 // ═══════════════════════════════
