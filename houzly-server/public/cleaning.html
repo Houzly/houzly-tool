@@ -42,6 +42,32 @@ body {
   font-size: 15px;
 }
 
+/* ── WHO ARE YOU SCREEN ── */
+#whoareyou-screen {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: calc(var(--safe-top) + 32px) 24px calc(var(--safe-bottom) + 32px);
+  overflow-y: auto;
+}
+#whoareyou-screen.hidden { display: none; }
+
+.way-btn {
+  width: 100%; padding: 18px 24px;
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: var(--radius); color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; text-align: left;
+  display: flex; align-items: center; gap: 14px;
+}
+.way-btn:active { transform: scale(0.97); border-color: var(--accent); }
+.way-btn.tutti-btn {
+  background: linear-gradient(135deg, rgba(67,97,238,0.2), rgba(34,209,238,0.15));
+  border-color: var(--accent2); color: var(--accent);
+}
+.way-btn .way-icon { font-size: 22px; }
+
 /* ── AUTH ── */
 #auth-screen {
   position: fixed; inset: 0; z-index: 999;
@@ -515,10 +541,41 @@ body {
 }
 .loader-text { font-size: 13px; color: var(--text-dim); letter-spacing: 0.1em; }
 
+/* Pull-to-refresh indicator */
+#ptr-indicator {
+  position: fixed; top: calc(var(--safe-top) + 60px); left: 50%;
+  transform: translateX(-50%) translateY(-60px);
+  background: var(--accent2); color: #fff;
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  transition: transform 0.3s; z-index: 500;
+  pointer-events: none; white-space: nowrap;
+}
+#ptr-indicator.visible { transform: translateX(-50%) translateY(0); }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.tc-smoobu {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 4px;
+  background: var(--accent2); color: #fff;
+  font-size: 10px; font-weight: 800; margin-right: 6px;
+  flex-shrink: 0; vertical-align: middle;
+}
+.tc-unassigned {
+  font-size: 12px; color: var(--orange); font-weight: 600;
+}
+
+select.field-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2222d1ee' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -558,6 +615,15 @@ body {
   <div class="auth-err" id="auth-err"></div>
 </div>
 
+<!-- CHI SEI? -->
+<div id="whoareyou-screen" class="hidden">
+  <div class="auth-icon">👤</div>
+  <div class="auth-logo">Houzly</div>
+  <div class="auth-title">Chi sei?</div>
+  <div class="auth-sub" style="margin-bottom:32px">La scelta verrà ricordata su questo dispositivo</div>
+  <div id="way-chips" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px"></div>
+</div>
+
 <!-- MAIN APP -->
 <div id="app" style="display:none">
   <!-- Header -->
@@ -565,10 +631,11 @@ body {
     <div class="header-row">
       <div>
         <div class="header-logo">HOUZLY</div>
-        <div class="header-sub">Cleaning Manager</div>
+        <div class="header-sub" id="header-sub">Cleaning Manager</div>
       </div>
       <div class="header-right">
         <button class="sync-btn" id="sync-btn" onclick="syncSmoobu()" title="Sync Smoobu">↻</button>
+        <button class="sync-btn" id="settings-btn" onclick="openSettings()" title="Impostazioni" style="display:none">⚙</button>
       </div>
     </div>
   </div>
@@ -582,7 +649,7 @@ body {
   <!-- Week nav -->
   <div class="week-nav">
     <button class="week-nav-btn" onclick="changeWeek(-1)">‹</button>
-    <div class="week-label" id="week-label">
+    <div class="week-label" id="week-label" onclick="goToToday()" style="cursor:pointer">
       <span id="week-range"></span>
     </div>
     <button class="week-nav-btn" onclick="changeWeek(1)">›</button>
@@ -595,7 +662,7 @@ body {
   <div class="main-scroll" id="task-list"></div>
 
   <!-- FAB -->
-  <button class="fab" onclick="openModal()">+</button>
+  <button class="fab" id="main-fab" onclick="openModal()">+</button>
 </div>
 
 <!-- TASK MODAL -->
@@ -667,6 +734,73 @@ body {
   </div>
 </div>
 
+<!-- CLEANER VIEW MODAL (read-only + checklist for cleaners) -->
+<div class="modal-overlay" id="cleaner-modal" onclick="handleCleanerModalClick(event)">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title" id="cv-title">Task</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px" id="cv-sub"></div>
+      </div>
+      <button class="sheet-close" onclick="closeCleanerView()">×</button>
+    </div>
+    <div class="sheet-body">
+      <div id="cv-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px">Checklist</div>
+      <div class="checklist-wrap" id="cv-checklist"></div>
+      <button class="save-btn" style="margin-top:20px" onclick="saveCleanerView()">💾 Salva checklist</button>
+      <button class="st-btn done" id="cv-done-btn" style="width:100%;margin-top:10px;padding:14px" onclick="toggleCleanerTaskDone()">✅ Segna completato</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal" onclick="handleSettingsClick(event)">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">⚙ Impostazioni</div>
+      <button class="sheet-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- API Key -->
+      <div class="field-group">
+        <label class="field-label">🔑 Smoobu API Key</label>
+        <input type="password" class="field-input" id="s-apikey" placeholder="Incolla la tua API Key Smoobu..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Smoobu → Impostazioni → Sviluppatori → API Key</div>
+      </div>
+
+      <!-- Sync range -->
+      <div class="field-group">
+        <label class="field-label">📅 Mesi da sincronizzare</label>
+        <select class="field-input" id="s-syncmonths">
+          <option value="2">2 mesi</option>
+          <option value="3" selected>3 mesi</option>
+          <option value="6">6 mesi</option>
+          <option value="12">12 mesi</option>
+        </select>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Finestra futura da importare da Smoobu</div>
+      </div>
+
+      <!-- Default checklist -->
+      <div class="field-group">
+        <label class="field-label">✅ Checklist predefinita</label>
+        <div class="checklist-wrap" id="s-checklist-wrap"></div>
+        <div class="cl-add-row" style="margin-top:10px">
+          <input type="text" class="cl-add-input" id="s-cl-input" placeholder="Aggiungi voce..." onkeydown="if(event.key==='Enter')sAddCheckItem()">
+          <button class="cl-add-btn" onclick="sAddCheckItem()">+</button>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 Salva impostazioni</button>
+      <button class="save-btn" onclick="saveSettings(true)" style="margin-top:10px;background:linear-gradient(135deg,#00b09b,#00e5a0)">↻ Salva e sincronizza ora</button>
+    </div>
+  </div>
+</div>
+
+<div id="ptr-indicator">↻ Aggiorna</div>
 <div id="toast"></div>
 
 <script>
@@ -674,13 +808,15 @@ body {
 //  CONFIG
 // ═══════════════════════════════
 const AUTH_KEY = 'houzly_auth_v2';
+const CLEANER_KEY = 'houzly_cleaner_v1'; // null = tutti (Daniele/Romeo), string = nome pulitrice
 const CLEANERS = ['Ana','Luana','Caterina','Linda','Patrizia'];
 const DOW = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const DOW_FULL = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
 let DB = {};
-let currentCleaner = null; // null = tutti (per Daniele/Romeo)
+let myIdentity = localStorage.getItem(CLEANER_KEY); // null = non scelto, 'tutti' o nome pulitrice
+let currentCleaner = (myIdentity && myIdentity !== 'tutti') ? myIdentity : null; // null = mostra tutto
 let weekOffset = 0; // 0 = questa settimana, 1 = prossima
 let editingId = null;
 let tempChecklist = [];
@@ -759,6 +895,40 @@ function showErr(msg) {
 
 async function onAuthOk() {
   document.getElementById('auth-screen').classList.add('hidden');
+  // Se l'identità non è ancora stata scelta, mostra "Chi sei?"
+  if (localStorage.getItem(CLEANER_KEY) === null) {
+    showWhoAreYou();
+    return;
+  }
+  myIdentity = localStorage.getItem(CLEANER_KEY); // 'tutti' o nome pulitrice
+  currentCleaner = myIdentity === 'tutti' ? null : myIdentity;
+  await enterApp();
+}
+
+function showWhoAreYou() {
+  const screen = document.getElementById('whoareyou-screen');
+  screen.classList.remove('hidden');
+  const wrap = document.getElementById('way-chips');
+  // Tutti (Daniele/Romeo)
+  let html = `<button class="way-btn tutti-btn" onclick="selectIdentity('tutti')"><span class="way-icon">👁</span> Tutti (Manager)</button>`;
+  // Pulitrici
+  const icons = ['🧹','🧼','✨','🫧','💧'];
+  CLEANERS.forEach((c, i) => {
+    html += `<button class="way-btn" onclick="selectIdentity('${c}')"><span class="way-icon">${icons[i]||'🧹'}</span> ${c}</button>`;
+  });
+  wrap.innerHTML = html;
+}
+
+async function selectIdentity(name) {
+  // name = 'tutti' | 'Ana' | ...
+  localStorage.setItem(CLEANER_KEY, name);
+  myIdentity = name;
+  currentCleaner = name === 'tutti' ? null : name;
+  document.getElementById('whoareyou-screen').classList.add('hidden');
+  await enterApp();
+}
+
+async function enterApp() {
   document.getElementById('loading').classList.remove('hidden');
   await loadDB();
   document.getElementById('loading').classList.add('hidden');
@@ -782,7 +952,7 @@ async function loadDB() {
 
 async function saveDB() {
   try {
-    await fetch('/api/save', {
+    await fetch('/api/db', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({db: DB})
     });
@@ -790,10 +960,14 @@ async function saveDB() {
 }
 
 function dbDefaults() {
-  if (!DB.cleaning) DB.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], lastSync: null };
-  if (!DB.cleaning.tasks) DB.cleaning.tasks = [];
-  if (!DB.cleaning.defaultChecklist || !DB.cleaning.defaultChecklist.length) {
-    DB.cleaning.defaultChecklist = ['Bagni','Cucina','Camere da letto','Soggiorno','Cambio biancheria','Verifica inventario'];
+  if (!DB.cleaning) DB.cleaning = {};
+  const c = DB.cleaning;
+  if (!c.tasks)       c.tasks = [];
+  if (c.apiKey === undefined) c.apiKey = '';
+  if (!c.syncMonths)  c.syncMonths = '3';
+  if (!c.lastSync)    c.lastSync = null;
+  if (!c.defaultChecklist || !c.defaultChecklist.length) {
+    c.defaultChecklist = ['Bagni','Cucina','Camere da letto','Soggiorno','Cambio biancheria','Verifica inventario'];
   }
 }
 
@@ -803,13 +977,90 @@ async function syncSmoobu() {
   const btn = document.getElementById('sync-btn');
   btn.classList.add('spinning');
   try {
-    const r = await fetch('/api/smoobu/sync', {method:'POST'});
-    const data = await r.json();
-    await loadDB();
+    const db = clDB();
+    const apiKey = db.apiKey || '';
+    if (!apiKey) { toast('⚠ API Key mancante — apri ⚙ Impostazioni'); btn.classList.remove('spinning'); return; }
+
+    // Calcola finestra futura
+    const today = new Date();
+    today.setDate(today.getDate() - 1);
+    const fromISO = today.toISOString().split('T')[0];
+    const toDate = new Date();
+    toDate.setMonth(toDate.getMonth() + parseInt(db.syncMonths || 3));
+    const toISO = toDate.toISOString().split('T')[0];
+
+    let allReservations = [];
+    let page = 1;
+    const MAX_PAGES = 20; // safety cap
+    while (page <= MAX_PAGES) {
+      const r = await fetch(`/api/smoobu/reservations?apiKey=${encodeURIComponent(apiKey)}&pageSize=100&page=${page}`);
+      if (!r.ok) { const t = await r.text(); throw new Error(`Smoobu ${r.status}: ${t}`); }
+      const data = await r.json();
+      // Smoobu wraps bookings in _embedded.bookings
+      const items = (data._embedded && data._embedded.bookings) || data.bookings || data.reservations || [];
+      if (items.length === 0) break;
+      allReservations = allReservations.concat(items);
+      const totalPages = data.page_count || data.total_pages || data.pages || 1;
+      if (page >= totalPages) break;
+      page++;
+    }
+
+    // Filter out blocked bookings and past/far-future checkouts
+    const relevant = allReservations.filter(b => {
+      if (b['is-blocked-booking']) return false;
+      const checkout = (b.departure || '').split('T')[0];
+      return checkout >= fromISO && checkout <= toISO;
+    });
+
+    // Merge into existing tasks (preserve cleaner, status, notes, checklist, date_override)
+    let tasks = db.tasks || [];
+    relevant.forEach(b => {
+      const bookingId = String(b.id || '');
+      const checkout = (b.departure || '').split('T')[0];
+      const checkin = (b.arrival || '').split('T')[0];
+      const checkoutTime = b['check-out'] || '10:00';
+      const checkinTime = b['check-in'] || '15:00';
+      const propName = b.apartment?.name || b.apartmentName || 'N/D';
+
+      const existsIdx = tasks.findIndex(t => t.smoobu_id === bookingId);
+      if (existsIdx >= 0) {
+        const ex = tasks[existsIdx];
+        tasks[existsIdx] = {
+          ...ex,
+          date: checkout,
+          checkin_date: checkin,
+          checkout_time: checkoutTime,
+          checkin_time: checkinTime,
+          prop_name: propName,
+        };
+      } else {
+        tasks.push({
+          id: 'cl_' + bookingId + '_' + Date.now(),
+          smoobu_id: bookingId,
+          date: checkout,
+          date_override: null,
+          checkin_date: checkin,
+          checkout_time: checkoutTime,
+          checkin_time: checkinTime,
+          prop_name: propName,
+          cleaner: null,
+          notes: '',
+          checklist: (db.defaultChecklist || []).map(l => ({ label: l, done: false })),
+          status: 'todo',
+          created: new Date().toISOString(),
+        });
+      }
+    });
+
+    db.tasks = tasks;
+    db.lastSync = new Date().toISOString();
+    await saveDB();
+    updateHeaderSub();
     renderAll();
-    toast('✓ Sync completato');
+    toast(`✓ Sync: ${relevant.length} prenotazioni`);
   } catch(e) {
-    toast('⚠ Errore sync');
+    console.error('syncSmoobu error', e);
+    toast('⚠ Errore sync: ' + e.message);
   } finally {
     btn.classList.remove('spinning');
   }
@@ -819,23 +1070,70 @@ async function syncSmoobu() {
 //  APP INIT
 // ═══════════════════════════════
 function appInit() {
+  // Imposta il filtro in base all'identità
+  currentCleaner = (myIdentity === 'tutti' || !myIdentity) ? null : myIdentity;
+  const isManager = (myIdentity === 'tutti');
+  // Sync visibile a tutti; ⚙ solo ai manager
+  document.getElementById('settings-btn').style.display = isManager ? 'flex' : 'none';
+  // FAB + solo ai manager
+  document.getElementById('main-fab').style.display = isManager ? 'flex' : 'none';
+  updateHeaderSub();
   renderCleanerChips();
   renderAll();
+  // Auto-pulizia task molto vecchi (checkout > 30 giorni fa) — solo per manager
+  if (isManager) autoCleanOldTasks();
+}
+
+function autoCleanOldTasks() {
+  const db = clDB();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffISO = cutoff.toISOString().split('T')[0];
+  const before = db.tasks.length;
+  db.tasks = db.tasks.filter(t => {
+    const d = t.date_override || t.date;
+    return d >= cutoffISO;
+  });
+  if (db.tasks.length < before) {
+    saveDB(); // silenzioso
+  }
 }
 
 function renderCleanerChips() {
   const wrap = document.getElementById('cleaner-chips');
-  // "Tutti" chip for managers
-  let html = `<div style="display:flex;gap:8px;flex-wrap:wrap">`;
-  html += `<span class="cleaner-chip tutti ${currentCleaner===null?'active':''}" onclick="selectCleaner(null)">👁 Tutti</span>`;
-  CLEANERS.forEach(c => {
-    html += `<span class="cleaner-chip ${currentCleaner===c?'active':''}" data-cleaner="${c}" onclick="selectCleaner('${c}')">${c}</span>`;
-  });
-  html += `</div>`;
-  wrap.innerHTML = html;
+  const isManager = (myIdentity === 'tutti');
+
+  if (isManager) {
+    // Manager: mostra tutti i filtri + chip identità
+    let html = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
+    html += `<span class="cleaner-chip tutti ${currentCleaner===null?'active':''}" onclick="selectCleaner(null)">👁 Tutti</span>`;
+    CLEANERS.forEach(c => {
+      html += `<span class="cleaner-chip ${currentCleaner===c?'active':''}" data-cleaner="${c}" onclick="selectCleaner('${c}')">${c}</span>`;
+    });
+    html += `<span class="cleaner-chip" style="margin-left:auto;font-size:11px;opacity:0.6" onclick="changeIdentity()">cambia ▸</span>`;
+    html += `</div>`;
+    wrap.innerHTML = html;
+  } else {
+    // Pulitrice: mostra solo il proprio nome + cambio
+    let html = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
+    html += `<span class="cleaner-chip active">🧹 ${myIdentity}</span>`;
+    html += `<span class="cleaner-chip" style="margin-left:4px;font-size:11px;opacity:0.6" onclick="changeIdentity()">cambia ▸</span>`;
+    html += `</div>`;
+    wrap.innerHTML = html;
+  }
+}
+
+function changeIdentity() {
+  localStorage.removeItem(CLEANER_KEY);
+  myIdentity = null;
+  currentCleaner = null;
+  document.getElementById('app').style.display = 'none';
+  showWhoAreYou();
 }
 
 function selectCleaner(name) {
+  // Solo i manager (tutti) possono cambiare il filtro
+  if (myIdentity !== 'tutti') return;
   currentCleaner = name;
   renderCleanerChips();
   renderAll();
@@ -845,14 +1143,14 @@ function selectCleaner(name) {
 //  DATE HELPERS
 // ═══════════════════════════════
 function getWeekDays(offset) {
-  // Returns array of 14 Date objects (2 weeks starting from this Monday + offset*7)
+  // Returns array of 7 Date objects (Mon–Sun) for the week at offset
   const today = new Date();
   const dow = today.getDay();
   const monday = new Date(today);
   monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
   monday.setHours(0,0,0,0);
   const days = [];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     days.push(d);
@@ -880,18 +1178,35 @@ function renderAll() {
   renderWeekLabel();
   renderStats();
   renderTasks();
+  // Auto-scroll to today's group if in current week
+  if (weekOffset === 0) {
+    requestAnimationFrame(() => {
+      const todayHeader = document.querySelector('.day-header.today');
+      if (todayHeader) todayHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function renderWeekLabel() {
   const days = getWeekDays(weekOffset);
-  const from = days[0], to = days[13];
-  document.getElementById('week-range').textContent =
-    `${from.getDate()} ${MONTHS[from.getMonth()].slice(0,3)} – ${to.getDate()} ${MONTHS[to.getMonth()].slice(0,3)} ${to.getFullYear()}`;
+  const from = days[0], to = days[6];
+  const isCurrentWeek = weekOffset === 0;
+  const label = isCurrentWeek ? 'Questa settimana' : weekOffset === 1 ? 'Prossima settimana' : weekOffset === -1 ? 'Settimana scorsa' : '';
+  const range = `${from.getDate()} ${MONTHS[from.getMonth()].slice(0,3)} – ${to.getDate()} ${MONTHS[to.getMonth()].slice(0,3)} ${to.getFullYear()}`;
+  document.getElementById('week-label').innerHTML =
+    `${label ? `<strong style="color:var(--accent)">${label}</strong><br>` : ''}<span id="week-range">${range}</span>`;
 }
 
 function changeWeek(dir) {
   weekOffset += dir;
   renderAll();
+}
+
+function goToToday() {
+  if (weekOffset === 0) return;
+  weekOffset = 0;
+  renderAll();
+  toast('📅 Settimana corrente');
 }
 
 function getFilteredTasks() {
@@ -907,20 +1222,43 @@ function getFilteredTasks() {
   }).sort((a, b) => {
     const da = a.date_override || a.date;
     const db2 = b.date_override || b.date;
-    return da < db2 ? -1 : da > db2 ? 1 : 0;
+    if (da !== db2) return da < db2 ? -1 : 1;
+    // Same day: sort by checkout time
+    const ta = a.checkout_time || '99:99';
+    const tb = b.checkout_time || '99:99';
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
 }
 
 function renderStats() {
   const tasks = getFilteredTasks();
   const total = tasks.length;
-  const done = tasks.filter(t => t.status === 'done').length;
-  const todo = total - done;
+  const done  = tasks.filter(t => t.status === 'done').length;
+  const todo  = total - done;
+  const isManager = (myIdentity === 'tutti');
 
-  document.getElementById('stats-bar').innerHTML =
+  let html =
     `<div class="stat-pill"><div class="sp-val">${total}</div><div class="sp-label">Totale</div></div>` +
     `<div class="stat-pill orange"><div class="sp-val">${todo}</div><div class="sp-label">Da fare</div></div>` +
     `<div class="stat-pill green"><div class="sp-val">${done}</div><div class="sp-label">Completati</div></div>`;
+
+  if (isManager) {
+    const unassigned = tasks.filter(t => !t.cleaner && t.status !== 'done').length;
+    if (unassigned > 0) {
+      html += `<div class="stat-pill" style="border-color:var(--red)"><div class="sp-val" style="color:var(--red)">${unassigned}</div><div class="sp-label">No pulitrice</div></div>`;
+    }
+    // Checklist progress: avg across todo tasks that have checklists
+    const withCl = tasks.filter(t => t.status !== 'done' && t.checklist && t.checklist.length > 0);
+    if (withCl.length > 0) {
+      const avgPct = Math.round(withCl.reduce((acc, t) => {
+        const checked = t.checklist.filter(i => i.done).length;
+        return acc + (checked / t.checklist.length);
+      }, 0) / withCl.length * 100);
+      html += `<div class="stat-pill"><div class="sp-val" style="color:var(--accent)">${avgPct}%</div><div class="sp-label">Checklist</div></div>`;
+    }
+  }
+
+  document.getElementById('stats-bar').innerHTML = html;
 }
 
 function renderTasks() {
@@ -928,7 +1266,11 @@ function renderTasks() {
   const container = document.getElementById('task-list');
 
   if (!tasks.length) {
-    container.innerHTML = `<div class="empty-state"><div class="es-icon">✨</div><div class="es-text">Nessun task in questo periodo</div></div>`;
+    const isManager = (myIdentity === 'tutti');
+    const msg = isManager
+      ? 'Nessun task in questa settimana'
+      : 'Nessuna pulizia assegnata questa settimana ✨';
+    container.innerHTML = `<div class="empty-state"><div class="es-icon">${isManager ? '📋' : '🎉'}</div><div class="es-text">${msg}</div></div>`;
     return;
   }
 
@@ -965,7 +1307,7 @@ function renderTasks() {
 
 function renderTaskCard(t) {
   const isDone = t.status === 'done';
-  const d = t.date_override || t.date;
+  const isManager = (myIdentity === 'tutti');
 
   // Checklist progress
   let clBar = '';
@@ -979,19 +1321,27 @@ function renderTaskCard(t) {
   }
 
   const checkout = t.checkout_time ? `<span>🚪 ${t.checkout_time}</span>` : '';
-  const checkin = t.checkin_time ? `<span>🔑 ${t.checkin_time}</span>` : '';
-  const cleaner = t.cleaner ? `<span class="tc-cleaner">👤 ${t.cleaner}</span>` : '';
-  const notes = t.notes ? `<span class="tc-notes">📝 ${t.notes}</span>` : '';
+  const checkin  = t.checkin_time  ? `<span>🔑 ${t.checkin_time}</span>`  : '';
+  // Show cleaner badge only to managers
+  const cleaner  = (isManager && t.cleaner) ? `<span class="tc-cleaner">👤 ${t.cleaner}</span>` : '';
+  const unassigned = (isManager && !t.cleaner) ? `<span class="tc-unassigned">⚠ Non assegnato</span>` : '';
+  const notes    = t.notes ? `<span class="tc-notes">📝 ${t.notes}</span>` : '';
+  const smoobuBadge = t.smoobu_id ? `<span class="tc-smoobu">S</span>` : '';
+  // Override indicator
+  const overrideNote = t.date_override ? `<span class="tc-notes" style="color:var(--orange)">📅 Data spostata</span>` : '';
 
-  return `<div class="task-card ${isDone?'done':''}" onclick="openTaskEdit('${t.id}')">
+  // Card click: managers open edit, cleaners open checklist view
+  const clickFn = isManager ? `openTaskEdit('${t.id}')` : `openCleanerView('${t.id}')`;
+
+  return `<div class="task-card ${isDone?'done':''}" onclick="${clickFn}">
     <div class="tc-top">
       <div class="tc-check" onclick="toggleDone(event,'${t.id}')">${isDone?'✓':''}</div>
       <div class="tc-body">
-        <div class="tc-prop">${t.prop_name || 'N/D'}</div>
+        <div class="tc-prop">${smoobuBadge}${t.prop_name || 'N/D'}</div>
         <div class="tc-times">${checkout}${checkin}</div>
       </div>
     </div>
-    <div class="tc-bottom">${cleaner}${notes}</div>
+    <div class="tc-bottom">${cleaner}${unassigned}${overrideNote}${notes}</div>
     ${clBar}
   </div>`;
 }
@@ -1189,6 +1539,173 @@ function deleteTask() {
 }
 
 // ═══════════════════════════════
+//  CLEANER VIEW (read-only modal)
+// ═══════════════════════════════
+let cvTaskId = null;
+let cvChecklist = [];
+
+function openCleanerView(taskId) {
+  const db = clDB();
+  const t = db.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  cvTaskId = taskId;
+  cvChecklist = (t.checklist || []).map(i =>
+    typeof i === 'string' ? {label: i, done: false} : {...i}
+  );
+
+  const d = t.date_override || t.date;
+  document.getElementById('cv-title').textContent = t.prop_name || 'N/D';
+  document.getElementById('cv-sub').textContent = formatDate(d);
+
+  // Info row
+  const checkout = t.checkout_time ? `<div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em">Check-out</div><div style="font-size:18px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace">🚪 ${t.checkout_time}</div></div>` : '';
+  const checkin  = t.checkin_time  ? `<div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em">Check-in</div><div style="font-size:18px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">🔑 ${t.checkin_time}</div></div>` : '';
+  document.getElementById('cv-info').innerHTML = checkout + checkin;
+
+  const isDone = t.status === 'done';
+  const doneBtn = document.getElementById('cv-done-btn');
+  doneBtn.textContent = isDone ? '↩ Riapri task' : '✅ Segna completato';
+  doneBtn.classList.toggle('active', isDone);
+
+  renderCleanerChecklist();
+  document.getElementById('cleaner-modal').classList.add('open');
+}
+
+function closeCleanerView() {
+  document.getElementById('cleaner-modal').classList.remove('open');
+}
+
+function handleCleanerModalClick(e) {
+  if (e.target === document.getElementById('cleaner-modal')) closeCleanerView();
+}
+
+function renderCleanerChecklist() {
+  const wrap = document.getElementById('cv-checklist');
+  if (!cvChecklist.length) {
+    wrap.innerHTML = '<div style="padding:14px;font-size:13px;color:var(--text-dim)">Nessuna voce nella checklist.</div>';
+    return;
+  }
+  wrap.innerHTML = cvChecklist.map((item, i) =>
+    `<div class="cl-item" onclick="cvToggleItem(${i})" style="cursor:pointer">
+      <div class="cl-cb ${item.done?'checked':''}"></div>
+      <span class="cl-item-label ${item.done?'done-label':''}">${item.label}</span>
+    </div>`
+  ).join('');
+}
+
+function cvToggleItem(i) {
+  cvChecklist[i].done = !cvChecklist[i].done;
+  renderCleanerChecklist();
+}
+
+async function saveCleanerView() {
+  const db = clDB();
+  const t = db.tasks.find(x => x.id === cvTaskId);
+  if (!t) return;
+  t.checklist = cvChecklist.slice();
+  // Auto-complete if all items checked
+  if (cvChecklist.length > 0 && cvChecklist.every(i => i.done)) {
+    t.status = 'done';
+  }
+  await saveDB();
+  closeCleanerView();
+  renderAll();
+  toast('✓ Checklist salvata');
+}
+
+async function toggleCleanerTaskDone() {
+  const db = clDB();
+  const t = db.tasks.find(x => x.id === cvTaskId);
+  if (!t) return;
+  t.status = t.status === 'done' ? 'todo' : 'done';
+  await saveDB();
+  closeCleanerView();
+  renderAll();
+  toast(t.status === 'done' ? '✅ Completato' : '↩ Riaperto');
+}
+
+// ═══════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════
+let sTempChecklist = [];
+
+function openSettings() {
+  const db = clDB();
+  document.getElementById('s-apikey').value = db.apiKey || '';
+  const sel = document.getElementById('s-syncmonths');
+  sel.value = db.syncMonths || '3';
+  if (!sel.value) sel.value = '3'; // fallback if stored value not in options
+  sTempChecklist = (db.defaultChecklist || []).slice();
+  renderSettingsChecklist();
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function handleSettingsClick(e) {
+  if (e.target === document.getElementById('settings-modal')) closeSettings();
+}
+
+function renderSettingsChecklist() {
+  const wrap = document.getElementById('s-checklist-wrap');
+  if (!sTempChecklist.length) {
+    wrap.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--text-dim)">Nessuna voce.</div>';
+    return;
+  }
+  wrap.innerHTML = sTempChecklist.map((label, i) =>
+    `<div class="cl-item">
+      <span class="cl-item-label" style="cursor:default">${label}</span>
+      <span class="cl-item-del" data-idx="${i}" onclick="sRemoveItem(${i})">×</span>
+    </div>`
+  ).join('');
+}
+
+function sAddCheckItem() {
+  const inp = document.getElementById('s-cl-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  sTempChecklist.push(val);
+  inp.value = '';
+  renderSettingsChecklist();
+  inp.focus();
+}
+
+function sRemoveItem(i) {
+  sTempChecklist.splice(i, 1);
+  renderSettingsChecklist();
+}
+
+async function saveSettings(andSync = false) {
+  const db = clDB();
+  const apiKey = document.getElementById('s-apikey').value.trim();
+  const syncMonths = document.getElementById('s-syncmonths').value;
+  db.apiKey = apiKey;
+  db.syncMonths = syncMonths;
+  db.defaultChecklist = sTempChecklist.slice();
+  await saveDB();
+  closeSettings();
+  updateHeaderSub();
+  toast('✓ Impostazioni salvate');
+  if (andSync) {
+    await syncSmoobu();
+  }
+}
+
+function updateHeaderSub() {
+  const db = clDB();
+  const sub = document.getElementById('header-sub');
+  if (db.lastSync) {
+    const d = new Date(db.lastSync);
+    const fmt = `${d.getDate()} ${['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'][d.getMonth()]} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    sub.textContent = `Sync: ${fmt}`;
+  } else {
+    sub.textContent = 'Cleaning Manager';
+  }
+}
+
+// ═══════════════════════════════
 //  TOAST
 // ═══════════════════════════════
 let _toastTimer;
@@ -1204,12 +1721,20 @@ function toast(msg) {
 //  BOOTSTRAP
 // ═══════════════════════════════
 async function boot() {
-  // Check if already logged in
+  // Check if already logged in (PIN already validated in a previous session)
   if (localStorage.getItem(AUTH_KEY) === '1') {
     try {
-      const r = await fetch('/api/auth/exists', {method:'POST'});
+      const r = await fetch('/api/auth/exists');
       const d = await r.json();
-      if (d.ok) {
+      if (d.exists) {
+        // If identity not chosen yet, show who-are-you
+        if (localStorage.getItem(CLEANER_KEY) === null) {
+          document.getElementById('loading').classList.add('hidden');
+          showWhoAreYou();
+          return;
+        }
+        myIdentity = localStorage.getItem(CLEANER_KEY);
+        currentCleaner = myIdentity === 'tutti' ? null : myIdentity;
         await loadDB();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('app').style.display = 'block';
@@ -1224,6 +1749,42 @@ async function boot() {
 }
 
 boot();
+
+// ═══════════════════════════════
+//  PULL TO REFRESH
+// ═══════════════════════════════
+(function initPTR() {
+  let startY = 0, pulling = false, triggered = false;
+  const indicator = document.getElementById('ptr-indicator');
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+      triggered = false;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 60 && !triggered) {
+      indicator.classList.add('visible');
+      triggered = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (triggered) {
+      indicator.classList.remove('visible');
+      await loadDB();
+      renderAll();
+      toast('✓ Dati aggiornati');
+    }
+    pulling = false;
+    triggered = false;
+  });
+})();
 </script>
 </body>
 </html>
