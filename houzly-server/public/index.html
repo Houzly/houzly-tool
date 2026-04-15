@@ -5498,7 +5498,12 @@ function renderCleaning() {
   var weekTasks = db.tasks.filter(function(t){
     return days.some(function(d){ return clFmtDate(d) === t.date; });
   });
-  var filtered = CL.filterCleaner ? weekTasks.filter(function(t){ return t.cleaner === CL.filterCleaner; }) : weekTasks;
+  var filtered = CL.filterCleaner ? weekTasks.filter(function(t){
+    var tc = t.cleaner;
+    if (!tc) return false;
+    var arr = Array.isArray(tc) ? tc : [tc];
+    return arr.indexOf(CL.filterCleaner) >= 0;
+  }) : weekTasks;
   var done = filtered.filter(function(t){ return t.status === 'done'; }).length;
   var statsEl = document.getElementById('cl-stats');
   if (statsEl) {
@@ -5522,7 +5527,12 @@ function renderCleaning() {
     var dayTasks = db.tasks.filter(function(t){
       var effectiveDate = t.date_override || t.date;
       if (effectiveDate !== dateStr) return false;
-      if (CL.filterCleaner && t.cleaner !== CL.filterCleaner) return false;
+      if (CL.filterCleaner) {
+        var tc = t.cleaner;
+        if (!tc) return false;
+        var arr = Array.isArray(tc) ? tc : [tc];
+        if (arr.indexOf(CL.filterCleaner) < 0) return false;
+      }
       return true;
     });
     dayTasks.sort(function(a,b){ return (a.checkout_time||'').localeCompare(b.checkout_time||''); });
@@ -5540,7 +5550,10 @@ function renderCleaning() {
       var card = document.createElement('div');
       card.className = 'cl-task-card status-' + t.status;
 
-      var cleanerBadge = t.cleaner ? '<span class="cl-task-cleaner">'+escHtml(t.cleaner)+'</span>' : '<span class="cl-task-cleaner" style="background:rgba(240,64,96,0.1);color:var(--red)">Non assegnato</span>';
+      var _cleanerArr = !t.cleaner ? [] : Array.isArray(t.cleaner) ? t.cleaner : [t.cleaner];
+      var cleanerBadge = _cleanerArr.length > 0
+        ? '<span class="cl-task-cleaner">'+escHtml(_cleanerArr.join(' & '))+'</span>'
+        : '<span class="cl-task-cleaner" style="background:rgba(240,64,96,0.1);color:var(--red)">Non assegnato</span>';
       var doneBadge = t.status === 'done' ? '<span class="cl-task-done-badge">✅</span>' : '';
       var shiftedBadge = t.date_override ? '<span style="font-size:9px;background:rgba(245,166,35,0.15);color:#c47a00;border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700">📅 Spostato</span>' : '';
       var times = '';
@@ -5590,21 +5603,21 @@ function clOpenModal(taskId, dateStr) {
     propSel.appendChild(opt);
   });
 
-  // Populate cleaner chips
+  // Populate cleaner chips (multi-toggle)
   var chipsEl = document.getElementById('cl-f-cleaner-chips');
   chipsEl.innerHTML = '';
   var noneChip = document.createElement('div');
   noneChip.className = 'cleaner-chip selected';
-  noneChip.textContent = 'Non assegnato';
+  noneChip.textContent = '✕ Nessuno';
   noneChip.dataset.cleaner = '';
-  noneChip.onclick = function(){ clSelectCleaner(''); };
+  noneChip.onclick = function(){ clToggleCleaner(''); };
   chipsEl.appendChild(noneChip);
   (db.cleaners || []).forEach(function(cl){
     var chip = document.createElement('div');
     chip.className = 'cleaner-chip';
     chip.textContent = cl.name;
     chip.dataset.cleaner = cl.name;
-    chip.onclick = function(){ clSelectCleaner(cl.name); };
+    chip.onclick = (function(name){ return function(){ clToggleCleaner(name); }; })(cl.name);
     chipsEl.appendChild(chip);
   });
 
@@ -5644,7 +5657,7 @@ function clOpenModal(taskId, dateStr) {
     if(doneToggle) doneToggle.style.display = 'flex';
     if(doneCb) doneCb.checked = (t.status === 'done');
     CL.tempChecklist = (t.checklist || []).map(function(c){ return Object.assign({},c); });
-    clSelectCleaner(t.cleaner || '');
+    clSelectCleaner(t.cleaner || null);
   } else {
     // New
     titleEl.textContent = '+ Nuovo Task Pulizia';
@@ -5679,15 +5692,45 @@ function clCloseModal() {
   CL.tempChecklist = [];
 }
 
-function clSelectCleaner(name) {
+function clSelectCleaner(value) {
+  // value: '' | 'Ana' | ['Ana','Luana']
+  var arr = !value ? [] : Array.isArray(value) ? value : [value];
   document.querySelectorAll('#cl-f-cleaner-chips .cleaner-chip').forEach(function(ch){
-    ch.classList.toggle('selected', ch.dataset.cleaner === name);
+    if (ch.dataset.cleaner === '') {
+      ch.classList.toggle('selected', arr.length === 0);
+    } else {
+      ch.classList.toggle('selected', arr.indexOf(ch.dataset.cleaner) >= 0);
+    }
   });
 }
 
+function clToggleCleaner(name) {
+  if (name === '') {
+    // Nessuno: deseleziona tutto
+    document.querySelectorAll('#cl-f-cleaner-chips .cleaner-chip').forEach(function(ch){
+      ch.classList.toggle('selected', ch.dataset.cleaner === '');
+    });
+    return;
+  }
+  var chip = document.querySelector('#cl-f-cleaner-chips .cleaner-chip[data-cleaner="' + name + '"]');
+  if (chip) chip.classList.toggle('selected');
+  // Se almeno uno selezionato, deseleziona "Nessuno"
+  var anySelected = [].slice.call(document.querySelectorAll('#cl-f-cleaner-chips .cleaner-chip')).some(function(ch){
+    return ch.dataset.cleaner !== '' && ch.classList.contains('selected');
+  });
+  var noneChip = document.querySelector('#cl-f-cleaner-chips .cleaner-chip[data-cleaner=""]');
+  if (noneChip) noneChip.classList.toggle('selected', !anySelected);
+}
+
 function clGetSelectedCleaner() {
-  var sel = document.querySelector('#cl-f-cleaner-chips .cleaner-chip.selected');
-  return sel ? sel.dataset.cleaner : '';
+  var noneSelected = document.querySelector('#cl-f-cleaner-chips .cleaner-chip[data-cleaner=""].selected');
+  if (noneSelected) return null;
+  var selected = [].slice.call(document.querySelectorAll('#cl-f-cleaner-chips .cleaner-chip.selected'))
+    .map(function(ch){ return ch.dataset.cleaner; })
+    .filter(function(n){ return n !== ''; });
+  if (selected.length === 0) return null;
+  if (selected.length === 1) return selected[0]; // stringa singola per compatibilità
+  return selected; // array multiplo
 }
 
 function clRenderModalChecklist() {
