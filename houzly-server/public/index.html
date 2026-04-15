@@ -290,6 +290,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn btn-primary btn-sm" onclick="manualSave()" title="Salva tutti i dati">&#128190; Salva</button>
     <button class="btn btn-ghost btn-sm" onclick="authLogout()" title="Esci">&#128274; Esci</button>
+    <button class="btn btn-ghost btn-sm" onclick="authSetup()" title="Cambia password">&#128273; Password</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">&#128190; Backup</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">&#128204; Ripristina</button>
     <input type="file" id="import-backup-file" accept=".json" style="display:none" onchange="importBackup(this)">
@@ -1424,12 +1425,20 @@ async function authLogin(){
     document.getElementById('auth-err').textContent='Errore di connessione al server';
   }
 }
-function authSetup(){
-  var stored=localStorage.getItem(AUTH_KEY);
-  if(stored){var cur=prompt('Password attuale:');if(cur===null)return;if(btoa(cur)!==stored){alert('Password errata');return;}}
+async function authSetup(){
+  var cur=prompt('Password attuale:');
+  if(cur===null)return;
+  // Verify current password
+  var chk=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:cur})});
+  var chkData=await chk.json();
+  if(!chkData.ok){alert('Password attuale errata');return;}
   var np=prompt('Nuova password (min 4 caratteri):');
   if(!np||np.length<4){alert('Troppo corta');return;}
-  localStorage.setItem(AUTH_KEY,btoa(np));toast('Password aggiornata ✓');
+  var np2=prompt('Ripeti nuova password:');
+  if(np!==np2){alert('Le password non coincidono');return;}
+  var res=await fetch('/api/auth/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:np})});
+  var data=await res.json();
+  if(data.ok){toast('Password aggiornata ✓');}else{alert('Errore aggiornamento password');}
 }
 function authLogout(){
   document.getElementById('auth-pin').value='';
