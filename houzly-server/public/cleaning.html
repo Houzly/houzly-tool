@@ -8,9 +8,6 @@
 <meta name="theme-color" content="#0a0f2e">
 <title>Houzly · Pulizie</title>
 <link rel="manifest" href="/manifest-cleaning.json">
-<link rel="apple-touch-icon" href="/icon-512.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -593,9 +590,9 @@ select.field-input {
 
 <!-- AUTH -->
 <div id="auth-screen" class="hidden">
-  <img src="/icon-512.png" alt="Houzly" style="width:80px;height:80px;object-fit:contain;margin-bottom:16px;filter:drop-shadow(0 0 24px rgba(34,209,238,0.4))">
-  <img src="/HOUZLY_SF-01.png" alt="HOUZLY" style="height:36px;object-fit:contain;margin-bottom:6px;filter:brightness(0) invert(1)">
-  <div class="auth-title" style="font-size:18px;font-weight:500;color:var(--text-mid)">Pulizie</div>
+  <div class="auth-icon">🧹</div>
+  <div class="auth-logo">Houzly</div>
+  <div class="auth-title">Pulizie</div>
   <div class="auth-sub">Inserisci il PIN per accedere</div>
   <div class="pin-dots">
     <div class="pin-dot" id="d0"></div>
@@ -622,8 +619,8 @@ select.field-input {
 
 <!-- CHI SEI? -->
 <div id="whoareyou-screen" class="hidden">
-  <img src="/icon-512.png" alt="Houzly" style="width:72px;height:72px;object-fit:contain;margin-bottom:16px;filter:drop-shadow(0 0 20px rgba(34,209,238,0.4))">
-  <img src="/HOUZLY_SF-01.png" alt="HOUZLY" style="height:32px;object-fit:contain;margin-bottom:6px;filter:brightness(0) invert(1)">
+  <div class="auth-icon">👤</div>
+  <div class="auth-logo">Houzly</div>
   <div class="auth-title">Chi sei?</div>
   <div class="auth-sub" style="margin-bottom:32px">La scelta verrà ricordata su questo dispositivo</div>
   <div id="way-chips" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px"></div>
@@ -635,13 +632,8 @@ select.field-input {
   <div class="app-header">
     <div class="header-row">
       <div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <img src="/icon-512.png" alt="H" style="width:28px;height:28px;object-fit:contain">
-          <div>
-            <img src="/HOUZLY_SF-01.png" alt="HOUZLY" style="height:16px;object-fit:contain;filter:brightness(0) invert(1);display:block">
-            <div class="header-sub" id="header-sub">Cleaning Manager</div>
-          </div>
-        </div>
+        <div class="header-logo">HOUZLY</div>
+        <div class="header-sub" id="header-sub">Cleaning Manager</div>
       </div>
       <div class="header-right">
         <button class="sync-btn" id="sync-btn" onclick="syncSmoobu()" title="Sync Smoobu">↻</button>
@@ -1044,6 +1036,8 @@ function appInit() {
   renderAll();
   // Auto-pulizia task molto vecchi (checkout > 30 giorni fa) — solo per manager
   if (isManager) autoCleanOldTasks();
+  // Riempie silenziosamente checklist vuote su tutti i task
+  autoFillEmptyChecklists();
 }
 
 function autoCleanOldTasks() {
@@ -1733,29 +1727,39 @@ function updateHeaderSub() {
 // ═══════════════════════════════
 async function applyChecklistToUnassigned() {
   const db = clDB();
-  const today = new Date().toISOString().split('T')[0];
   const newChecklist = (db.defaultChecklist || []).map(l => ({ label: l, done: false }));
 
-  // Solo task: todo + non assegnati + data futura o oggi
+  // Applica a TUTTI i task con checklist vuota o mancante (qualsiasi data/assegnazione/stato)
   let count = 0;
   db.tasks.forEach(t => {
-    if (t.status === 'done') return;           // già completati: mai toccare
-    if (t.cleaner && (Array.isArray(t.cleaner) ? t.cleaner.length > 0 : t.cleaner)) return; // già assegnati: skip
-    const d = t.date_override || t.date;
-    if (d < today) return;                     // passati: skip
+    if (t.checklist && t.checklist.length > 0) return; // ha già checklist: skip
     t.checklist = newChecklist.map(i => ({...i}));
     count++;
   });
 
   if (count === 0) {
-    toast('Nessun task da aggiornare');
+    toast('Nessun task con checklist vuota');
     return;
   }
 
   await saveDB();
   closeSettings();
   renderAll();
-  toast(`✓ Checklist aggiornata su ${count} task`);
+  toast(`✓ Checklist applicata su ${count} task`);
+}
+
+// Chiamata silenziosamente al boot: riempie checklist vuote
+async function autoFillEmptyChecklists() {
+  const db = clDB();
+  const newChecklist = (db.defaultChecklist || []);
+  if (!newChecklist.length) return;
+  let count = 0;
+  db.tasks.forEach(t => {
+    if (t.checklist && t.checklist.length > 0) return;
+    t.checklist = newChecklist.map(l => ({ label: l, done: false }));
+    count++;
+  });
+  if (count > 0) await saveDB();
 }
 
 // ═══════════════════════════════
