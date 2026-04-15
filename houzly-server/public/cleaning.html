@@ -438,6 +438,8 @@ body {
 .cs-chip.selected {
   background: var(--accent2); color: #fff; border-color: var(--accent2);
 }
+.cs-chip.cs-none { border-color: var(--red); color: var(--red); }
+.cs-chip.cs-none.selected { background: var(--red); color: #fff; border-color: var(--red); }
 
 /* CHECKLIST in modal */
 .checklist-wrap { background: var(--surface2); border-radius: var(--radius-sm); overflow: hidden; }
@@ -1425,20 +1427,23 @@ function setStatus(s) {
 
 function renderCleanerSelect(selected) {
   const wrap = document.getElementById('cleaner-select');
-  wrap.innerHTML = CLEANERS.map(c =>
+  const noneChip = `<span class="cs-chip cs-none ${!selected?'selected':''}" data-name="" onclick="selectModalCleaner(null)">✕ Nessuno</span>`;
+  const cleanerChips = CLEANERS.map(c =>
     `<span class="cs-chip ${selected===c?'selected':''}" data-name="${c}" onclick="selectModalCleaner('${c}')">${c}</span>`
   ).join('');
+  wrap.innerHTML = noneChip + cleanerChips;
 }
 
 function selectModalCleaner(name) {
   document.querySelectorAll('.cs-chip').forEach(el => {
-    el.classList.toggle('selected', el.dataset.name === name);
+    el.classList.toggle('selected', (el.dataset.name || null) === name);
   });
 }
 
 function getSelectedModalCleaner() {
   const el = document.querySelector('.cs-chip.selected');
-  return el ? el.dataset.name : null;
+  if (!el) return null;
+  return el.dataset.name || null; // empty string → null
 }
 
 function renderModalChecklist() {
