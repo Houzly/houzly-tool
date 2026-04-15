@@ -686,7 +686,11 @@ select.field-input {
       <!-- Proprietà -->
       <div class="field-group">
         <label class="field-label">Proprietà</label>
-        <input type="text" class="field-input" id="f-prop" placeholder="Nome proprietà..." autocomplete="off">
+        <input type="text" class="field-input" id="f-prop" placeholder="Seleziona o scrivi..." autocomplete="off" list="prop-datalist" oninput="syncPropSelect(this.value)">
+        <datalist id="prop-datalist"></datalist>
+        <select class="field-input" id="f-prop-select" style="margin-top:8px;color:var(--text-mid)" onchange="document.getElementById('f-prop').value=this.value;syncPropSelect(this.value)">
+          <option value="">— Seleziona proprietà —</option>
+        </select>
       </div>
 
       <!-- Data -->
@@ -969,7 +973,20 @@ function dbDefaults() {
   if (!c.syncMonths)  c.syncMonths = '3';
   if (!c.lastSync)    c.lastSync = null;
   if (!c.defaultChecklist || !c.defaultChecklist.length) {
-    c.defaultChecklist = ['Bagni','Cucina','Camere da letto','Soggiorno','Cambio biancheria','Verifica inventario'];
+    c.defaultChecklist = [
+      '🔍 Check Danni Proprietà',
+      '🍳 Cucina — Stoviglie, Pentole e Moka',
+      '🍳 Cucina — Frigo e Freezer',
+      '🍳 Cucina — Lavastoviglie',
+      '🍳 Cucina — Forno',
+      '🍳 Cucina — Consumabili (Olio, Sale, Zucchero, Pastiglia/Sapone, Spugna)',
+      '🍳 Cucina — Asciughino',
+      '🚿 Bagni — Doccia (calcare)',
+      '🚿 Bagni — Carta igienica',
+      '🛏 Camere — Cassetti',
+      '🧺 Biancheria',
+      '🌿 Area Esterna',
+    ];
   }
 }
 
@@ -1291,6 +1308,37 @@ function renderTaskCard(t) {
 }
 
 // ═══════════════════════════════
+//  PROPERTY SELECT
+// ═══════════════════════════════
+function populatePropSelect(currentValue) {
+  const db = clDB();
+  // Build unique sorted list from existing task prop_names
+  const names = [...new Set(
+    (db.tasks || [])
+      .map(t => t.prop_name)
+      .filter(n => n && n !== 'N/D')
+  )].sort((a, b) => a.localeCompare(b, 'it'));
+
+  // Datalist (for text input autocomplete)
+  const datalist = document.getElementById('prop-datalist');
+  if (datalist) {
+    datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
+  }
+
+  // Select dropdown
+  const sel = document.getElementById('f-prop-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleziona proprietà —</option>' +
+    names.map(n => `<option value="${n}" ${n === currentValue ? 'selected' : ''}>${n}</option>`).join('');
+  if (currentValue && names.includes(currentValue)) sel.value = currentValue;
+}
+
+function syncPropSelect(val) {
+  const sel = document.getElementById('f-prop-select');
+  if (sel) sel.value = val || '';
+}
+
+// ═══════════════════════════════
 //  TOGGLE DONE (quick action)
 // ═══════════════════════════════
 function toggleDone(e, taskId) {
@@ -1314,6 +1362,7 @@ function openModal(prefillDate) {
 
   document.getElementById('modal-title').textContent = 'Nuovo Task';
   document.getElementById('f-prop').value = '';
+  populatePropSelect('');
   document.getElementById('f-date').value = prefillDate || toISO(new Date());
   document.getElementById('f-checkout').value = '10:00';
   document.getElementById('f-checkin').value = '16:00';
@@ -1340,6 +1389,7 @@ function openTaskEdit(taskId) {
 
   document.getElementById('modal-title').textContent = 'Modifica Task';
   document.getElementById('f-prop').value = t.prop_name || '';
+  populatePropSelect(t.prop_name || '');
   document.getElementById('f-date').value = t.date_override || t.date || '';
   document.getElementById('f-checkout').value = t.checkout_time || '';
   document.getElementById('f-checkin').value = t.checkin_time || '';
