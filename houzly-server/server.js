@@ -325,7 +325,7 @@ app.post('/api/smoobu/webhook', async (req, res) => {
         db.cleaning.tasks[existsIdx].checkin_time  = checkinTime;
       } else {
         const defaultCL = (db.cleaning.defaultChecklist || []).map((item, i) => ({
-          id: `dc_${Date.now()}_${i}`, text: item, done: false
+          label: typeof item === 'string' ? item : (item.label || item.text || ''), done: false
         }));
         db.cleaning.tasks.push({
           id:            `cl_${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
@@ -579,7 +579,7 @@ app.get('/api/cleaning/reset-checklist', async (req, res) => {
     let updated = 0;
     db.cleaning.tasks.forEach(t => {
       if (t.status === 'done') return; // completati: non toccare
-      t.checklist = defaultCL.map(i => ({ ...i }));
+      t.checklist = defaultCL.map(l => ({ label: l, done: false }));
       updated++;
     });
 
