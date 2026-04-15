@@ -709,7 +709,7 @@ select.field-input {
 
       <!-- Pulitrice -->
       <div class="field-group">
-        <label class="field-label">Assegnata a</label>
+        <label class="field-label">Assegnata a <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim)">(puoi selezionarne più di una)</span></label>
         <div class="cleaner-select-grid" id="cleaner-select"></div>
       </div>
 
@@ -1153,7 +1153,12 @@ function getFilteredTasks() {
   return db.tasks.filter(t => {
     const d = t.date_override || t.date;
     if (!dayISOs.has(d)) return false;
-    if (currentCleaner && t.cleaner !== currentCleaner) return false;
+    if (currentCleaner) {
+      const tc = t.cleaner;
+      if (!tc) return false; // non assegnato
+      const arr = Array.isArray(tc) ? tc : [tc];
+      if (!arr.includes(currentCleaner)) return false;
+    }
     return true;
   }).sort((a, b) => {
     const da = a.date_override || a.date;
@@ -1179,7 +1184,7 @@ function renderStats() {
     `<div class="stat-pill green"><div class="sp-val">${done}</div><div class="sp-label">Completati</div></div>`;
 
   if (isManager) {
-    const unassigned = tasks.filter(t => !t.cleaner && t.status !== 'done').length;
+    const unassigned = tasks.filter(t => { const c = t.cleaner; return (!c || (Array.isArray(c) && c.length === 0)) && t.status !== 'done'; }).length;
     if (unassigned > 0) {
       html += `<div class="stat-pill" style="border-color:var(--red)"><div class="sp-val" style="color:var(--red)">${unassigned}</div><div class="sp-label">No pulitrice</div></div>`;
     }
@@ -1259,8 +1264,11 @@ function renderTaskCard(t) {
   const checkout = t.checkout_time ? `<span>🚪 ${t.checkout_time}</span>` : '';
   const checkin  = t.checkin_time  ? `<span>🔑 ${t.checkin_time}</span>`  : '';
   // Show cleaner badge only to managers
-  const cleaner  = (isManager && t.cleaner) ? `<span class="tc-cleaner">👤 ${t.cleaner}</span>` : '';
-  const unassigned = (isManager && !t.cleaner) ? `<span class="tc-unassigned">⚠ Non assegnato</span>` : '';
+  const _cleanerArr = !t.cleaner ? [] : Array.isArray(t.cleaner) ? t.cleaner : [t.cleaner];
+  const cleaner = (isManager && _cleanerArr.length > 0)
+    ? `<span class="tc-cleaner">👤 ${_cleanerArr.join(' & ')}</span>` : '';
+  const _isUnassigned = !t.cleaner || (Array.isArray(t.cleaner) && t.cleaner.length === 0);
+  const unassigned = (isManager && _isUnassigned) ? `<span class="tc-unassigned">⚠ Non assegnato</span>` : '';
   const notes    = t.notes ? `<span class="tc-notes">📝 ${t.notes}</span>` : '';
   const smoobuBadge = t.smoobu_id ? `<span class="tc-smoobu">S</span>` : '';
   // Override indicator
@@ -1339,7 +1347,7 @@ function openTaskEdit(taskId) {
   document.getElementById('delete-btn').style.display = 'block';
 
   setStatus(currentStatus);
-  renderCleanerSelect(t.cleaner || null);
+  renderCleanerSelect(t.cleaner || null); // supports string | array | null
   renderModalChecklist();
 
   document.getElementById('task-modal').classList.add('open');
@@ -1360,24 +1368,41 @@ function setStatus(s) {
 }
 
 function renderCleanerSelect(selected) {
+  // selected: null | string | string[]
+  const sel = !selected ? [] : Array.isArray(selected) ? selected : [selected];
   const wrap = document.getElementById('cleaner-select');
-  const noneChip = `<span class="cs-chip cs-none ${!selected?'selected':''}" data-name="" onclick="selectModalCleaner(null)">✕ Nessuno</span>`;
+  const noneChip = `<span class="cs-chip cs-none ${sel.length===0?'selected':''}" data-name="" onclick="toggleModalCleaner(null)">✕ Nessuno</span>`;
   const cleanerChips = CLEANERS.map(c =>
-    `<span class="cs-chip ${selected===c?'selected':''}" data-name="${c}" onclick="selectModalCleaner('${c}')">${c}</span>`
+    `<span class="cs-chip ${sel.includes(c)?'selected':''}" data-name="${c}" onclick="toggleModalCleaner('${c}')">${c}</span>`
   ).join('');
   wrap.innerHTML = noneChip + cleanerChips;
 }
 
-function selectModalCleaner(name) {
-  document.querySelectorAll('.cs-chip').forEach(el => {
-    el.classList.toggle('selected', (el.dataset.name || null) === name);
-  });
+function toggleModalCleaner(name) {
+  if (name === null) {
+    // Nessuno: deseleziona tutto
+    document.querySelectorAll('.cs-chip').forEach(el => {
+      el.classList.toggle('selected', el.dataset.name === '');
+    });
+    return;
+  }
+  // Toggle this cleaner
+  const chip = document.querySelector(`.cs-chip[data-name="${name}"]`);
+  if (!chip) return;
+  chip.classList.toggle('selected');
+  // Se almeno uno selezionato, deseleziona "Nessuno"
+  const anySelected = [...document.querySelectorAll('.cs-chip:not(.cs-none)')].some(el => el.classList.contains('selected'));
+  const noneChip = document.querySelector('.cs-chip.cs-none');
+  if (noneChip) noneChip.classList.toggle('selected', !anySelected);
 }
 
 function getSelectedModalCleaner() {
-  const el = document.querySelector('.cs-chip.selected');
-  if (!el) return null;
-  return el.dataset.name || null; // empty string → null
+  const noneSelected = document.querySelector('.cs-chip.cs-none.selected');
+  if (noneSelected) return null;
+  const selected = [...document.querySelectorAll('.cs-chip:not(.cs-none).selected')].map(el => el.dataset.name);
+  if (selected.length === 0) return null;
+  if (selected.length === 1) return selected[0]; // stringa singola per compatibilità
+  return selected; // array multiplo
 }
 
 function renderModalChecklist() {
