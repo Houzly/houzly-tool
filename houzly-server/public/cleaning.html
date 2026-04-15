@@ -980,86 +980,20 @@ async function syncSmoobu() {
   btn.classList.add('spinning');
   try {
     const db = clDB();
-    const apiKey = db.apiKey || '';
-    if (!apiKey) { toast('⚠ API Key mancante — apri ⚙ Impostazioni'); btn.classList.remove('spinning'); return; }
+    if (!db.apiKey) { toast('⚠ API Key mancante — apri ⚙ Impostazioni'); return; }
 
-    // Calcola finestra futura
-    const today = new Date();
-    today.setDate(today.getDate() - 1);
-    const fromISO = today.toISOString().split('T')[0];
-    const toDate = new Date();
-    toDate.setMonth(toDate.getMonth() + parseInt(db.syncMonths || 3));
-    const toISO = toDate.toISOString().split('T')[0];
-
-    let allReservations = [];
-    let page = 1;
-    const MAX_PAGES = 20; // safety cap
-    while (page <= MAX_PAGES) {
-      const r = await fetch(`/api/smoobu/reservations?apiKey=${encodeURIComponent(apiKey)}&pageSize=100&page=${page}`);
-      if (!r.ok) { const t = await r.text(); throw new Error(`Smoobu ${r.status}: ${t}`); }
-      const data = await r.json();
-      // Smoobu wraps bookings in _embedded.bookings
-      const items = (data._embedded && data._embedded.bookings) || data.bookings || data.reservations || [];
-      if (items.length === 0) break;
-      allReservations = allReservations.concat(items);
-      const totalPages = data.page_count || data.total_pages || data.pages || 1;
-      if (page >= totalPages) break;
-      page++;
-    }
-
-    // Filter out blocked bookings and past/far-future checkouts
-    const relevant = allReservations.filter(b => {
-      if (b['is-blocked-booking']) return false;
-      const checkout = (b.departure || '').split('T')[0];
-      return checkout >= fromISO && checkout <= toISO;
+    const r = await fetch('/api/smoobu/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ months: parseInt(db.syncMonths || 3), apiKey: db.apiKey })
     });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Errore sconosciuto');
 
-    // Merge into existing tasks (preserve cleaner, status, notes, checklist, date_override)
-    let tasks = db.tasks || [];
-    relevant.forEach(b => {
-      const bookingId = String(b.id || '');
-      const checkout = (b.departure || '').split('T')[0];
-      const checkin = (b.arrival || '').split('T')[0];
-      const checkoutTime = b['check-out'] || '10:00';
-      const checkinTime = b['check-in'] || '15:00';
-      const propName = b.apartment?.name || b.apartmentName || 'N/D';
-
-      const existsIdx = tasks.findIndex(t => t.smoobu_id === bookingId);
-      if (existsIdx >= 0) {
-        const ex = tasks[existsIdx];
-        tasks[existsIdx] = {
-          ...ex,
-          date: checkout,
-          checkin_date: checkin,
-          checkout_time: checkoutTime,
-          checkin_time: checkinTime,
-          prop_name: propName,
-        };
-      } else {
-        tasks.push({
-          id: 'cl_' + bookingId + '_' + Date.now(),
-          smoobu_id: bookingId,
-          date: checkout,
-          date_override: null,
-          checkin_date: checkin,
-          checkout_time: checkoutTime,
-          checkin_time: checkinTime,
-          prop_name: propName,
-          cleaner: null,
-          notes: '',
-          checklist: (db.defaultChecklist || []).map(l => ({ label: l, done: false })),
-          status: 'todo',
-          created: new Date().toISOString(),
-        });
-      }
-    });
-
-    db.tasks = tasks;
-    db.lastSync = new Date().toISOString();
-    await saveDB();
+    await loadDB();
     updateHeaderSub();
     renderAll();
-    toast(`✓ Sync: ${relevant.length} prenotazioni`);
+    toast(`✓ +${data.added} aggiun. · ${data.removed} rimoss.`);
   } catch(e) {
     console.error('syncSmoobu error', e);
     toast('⚠ Errore sync: ' + e.message);
