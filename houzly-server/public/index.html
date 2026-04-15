@@ -5394,107 +5394,46 @@ function clFmtDisplay(d) {
 async function clResetAndSync() {
   if (!confirm('Cancella tutti i task pulizia esistenti e risincronizza da Smoobu?')) return;
   var db = clDB();
-  db.tasks = [];
+  db.tasks = db.tasks.filter(function(t) { return !t.smoobu_id; }); // rimuovi solo task Smoobu, tieni manuali
   clSave();
-  toast('Task resettati — avvio sync...');
+  toast('Task Smoobu rimossi — avvio sync...');
   await clSyncSmoobu();
 }
 
 async function clSyncSmoobu() {
   var db = clDB();
-  var apiKey = db.apiKey || '';
-  if (!apiKey) {
+  if (!db.apiKey) {
     toast('⚠ Configura prima la API Key Smoobu nelle impostazioni');
     showPage('cl-settings');
     return;
   }
   var statusEl = document.getElementById('cl-sync-status');
-  var timeEl = document.getElementById('cl-sync-time');
+  var timeEl   = document.getElementById('cl-sync-time');
   if (statusEl) { statusEl.textContent = 'Sincronizzazione...'; statusEl.className = 'sb-status'; }
 
   try {
-    // Smoobu API: get reservations (via server proxy to avoid CORS)
-    var resp = await fetch('/api/smoobu/reservations?apiKey=' + encodeURIComponent(apiKey) + '&page=1&pageSize=100');
+    // Chiama il sync server-side: merge + rimozione cancellati + paginazione completa
+    var resp = await fetch('/api/smoobu/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
+    });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    var data = await resp.json();
+    var result = await resp.json();
+    if (!result.ok) throw new Error(result.error || 'Errore sconosciuto');
 
-    var bookings = data.bookings || data.data || [];
+    // Ricarica DB aggiornato dal server
+    var dbResp = await fetch('/api/db');
+    var dbData = await dbResp.json();
+    if (dbData.ok && dbData.db) { DB = dbData.db; dbDefaults(); }
 
-    // ── Dedup: rimuovi task duplicati con stesso smoobu_id (tieni il più recente) ──
-    var seenIds = {};
-    db.tasks = db.tasks.filter(function(t) {
-      if (!t.smoobu_id) return true; // task manuali: tieni sempre
-      if (seenIds[t.smoobu_id]) return false; // duplicato: elimina
-      seenIds[t.smoobu_id] = true;
-      return true;
-    });
-
-    // ── Trim: elimina task con data > 90 giorni fa (risparmia spazio JSONBin) ──
-    var cutoff90 = new Date();
-    cutoff90.setDate(cutoff90.getDate() - 90);
-    var cutoff90str = cutoff90.toISOString().slice(0,10);
-    db.tasks = db.tasks.filter(function(t) {
-      if (!t.date) return true;
-      return t.date >= cutoff90str;
-    });
-
-    var imported = 0;
-    bookings.forEach(function(b) {
-      // Skip blocked bookings (closures, maintenance, etc.)
-      if (b['is-blocked-booking'] === true) return;
-
-      var checkout = b.departure || '';  // departure = checkout date
-      var checkin  = b.arrival   || '';  // arrival   = checkin date
-      if (!checkout) return;
-      // Normalize to YYYY-MM-DD
-      checkout = checkout.split('T')[0].split(' ')[0];
-      checkin  = checkin.split('T')[0].split(' ')[0];
-      // check-out / check-in are the TIMES in Smoobu
-      var checkoutTime = b['check-out'] || '10:00';
-      var checkinTime  = b['check-in']  || '15:00';
-      var propName = (b.apartment && (b.apartment.name || b.apartment.title)) || b.apartmentName || 'N/D';
-      var propId   = b.apartment && b.apartment.id ? String(b.apartment.id) : null;
-
-      // Check if task already exists for this booking
-      var existsIdx = db.tasks.findIndex(function(t){ return t.smoobu_id === String(b.id); });
-      if (existsIdx >= 0) {
-        // Update dates from Smoobu but preserve manual date_override, cleaner, status
-        db.tasks[existsIdx].date = checkout;
-        db.tasks[existsIdx].checkin_date = checkin;
-        db.tasks[existsIdx].prop_name = propName;
-        db.tasks[existsIdx].checkout_time = checkoutTime;
-        db.tasks[existsIdx].checkin_time  = checkinTime;
-        // date_override, cleaner, status, notes, checklist are intentionally NOT touched
-      } else {
-        // New task
-        var defaultCL = (db.defaultChecklist || []).map(function(item, i) {
-          return { id: 'dc_' + Date.now() + '_' + i, text: item, done: false };
-        });
-        db.tasks.push({
-          id: 'cl_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
-          smoobu_id: String(b.id),
-          prop_name: propName,
-          prop_id: propId,
-          date: checkout,
-          checkin_date: checkin,
-          checkout_time: checkoutTime,
-          checkin_time: checkinTime,
-          cleaner: '',
-          notes: '',
-          checklist: defaultCL,
-          status: 'todo',
-          created: new Date().toISOString()
-        });
-        imported++;
-      }
-    });
-
-    db.lastSync = new Date().toISOString();
-    clSave();
-    if (statusEl) { statusEl.textContent = '✓ Sincronizzato (' + imported + ' nuovi)'; statusEl.className = 'sb-status ok'; }
+    if (statusEl) {
+      statusEl.textContent = '✓ Sincronizzato (+' + result.added + ' nuovi, ' + result.removed + ' rimossi)';
+      statusEl.className = 'sb-status ok';
+    }
     if (timeEl) timeEl.textContent = 'Ultimo sync: ' + new Date().toLocaleTimeString('it-IT');
     renderCleaning();
-    toast('Sync completato — ' + imported + ' nuovi task');
+    toast('Sync completato — +' + result.added + ' nuovi · ' + result.removed + ' rimossi');
   } catch(e) {
     if (statusEl) { statusEl.textContent = '✗ Errore: ' + e.message; statusEl.className = 'sb-status err'; }
     toast('Errore sync Smoobu: ' + e.message);
