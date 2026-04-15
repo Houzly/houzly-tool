@@ -5416,7 +5416,7 @@ async function clSyncSmoobu() {
     var resp = await fetch('/api/smoobu/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
+      body: JSON.stringify({ months: parseInt(db.syncMonths || 3), apiKey: db.apiKey })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     var result = await resp.json();
