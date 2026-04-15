@@ -546,6 +546,40 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────
 
+// ── Reset checklist su tutti i task (one-shot) ───────────────────
+// GET /api/cleaning/reset-checklist
+// Sostituisce la checklist su TUTTI i task con quella di default corrente
+app.get('/api/cleaning/reset-checklist', async (req, res) => {
+  try {
+    const col = await getCollection('db');
+    const doc = await col.findOne({ _id: 'main' });
+    if (!doc) return res.status(404).json({ ok: false, error: 'db_not_found' });
+
+    const { _id, ...db } = doc;
+    if (!db.cleaning || !db.cleaning.tasks) return res.json({ ok: true, updated: 0 });
+
+    const defaultCL = (db.cleaning.defaultChecklist || []).map(l =>
+      typeof l === 'string' ? { label: l, done: false } : { ...l, done: false }
+    );
+
+    if (!defaultCL.length) return res.status(400).json({ ok: false, error: 'defaultChecklist vuota' });
+
+    let updated = 0;
+    db.cleaning.tasks.forEach(t => {
+      if (t.status === 'done') return; // completati: non toccare
+      t.checklist = defaultCL.map(i => ({ ...i }));
+      updated++;
+    });
+
+    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+    console.log(`[reset-checklist] updated ${updated} tasks`);
+    res.json({ ok: true, updated, message: `Checklist resettata su ${updated} task` });
+  } catch (e) {
+    console.error('[reset-checklist]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
   try {
