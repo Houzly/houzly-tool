@@ -558,11 +558,23 @@ app.get('/api/cleaning/reset-checklist', async (req, res) => {
     const { _id, ...db } = doc;
     if (!db.cleaning || !db.cleaning.tasks) return res.json({ ok: true, updated: 0 });
 
-    const defaultCL = (db.cleaning.defaultChecklist || []).map(l =>
-      typeof l === 'string' ? { label: l, done: false } : { ...l, done: false }
-    );
-
-    if (!defaultCL.length) return res.status(400).json({ ok: false, error: 'defaultChecklist vuota' });
+    // Checklist canonica — aggiorna anche db.cleaning.defaultChecklist
+    const CANONICAL_CHECKLIST = [
+      '🔍 Check Danni Proprietà',
+      '🍳 Cucina — Stoviglie, Pentole e Moka',
+      '🍳 Cucina — Frigo e Freezer',
+      '🍳 Cucina — Lavastoviglie',
+      '🍳 Cucina — Forno',
+      '🍳 Cucina — Consumabili (Olio, Sale, Zucchero, Pastiglia/Sapone, Spugna)',
+      '🍳 Cucina — Asciughino',
+      '🚿 Bagni — Doccia (calcare)',
+      '🚿 Bagni — Carta igienica',
+      '🛏 Camere — Cassetti',
+      '🧺 Biancheria',
+      '🌿 Area Esterna',
+    ];
+    db.cleaning.defaultChecklist = CANONICAL_CHECKLIST;
+    const defaultCL = CANONICAL_CHECKLIST;
 
     let updated = 0;
     db.cleaning.tasks.forEach(t => {
