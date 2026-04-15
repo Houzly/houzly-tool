@@ -1,1 +1,1230 @@
 
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f2e">
+<title>Houzly · Pulizie</title>
+<link rel="manifest" href="/manifest-cleaning.json">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f2e;
+  --surface: #111836;
+  --surface2: #1a2347;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f4ff;
+  --text-mid: rgba(240,244,255,0.65);
+  --text-dim: rgba(240,244,255,0.35);
+  --accent: #22d1ee;
+  --accent2: #4361ee;
+  --green: #00e5a0;
+  --orange: #ffb347;
+  --red: #ff4d6d;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  font-size: 15px;
+}
+
+/* ── AUTH ── */
+#auth-screen {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+  gap: 0;
+}
+#auth-screen.hidden { display: none; }
+
+.auth-logo {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; letter-spacing: 0.3em;
+  color: var(--accent); text-transform: uppercase;
+  margin-bottom: 6px; opacity: 0.9;
+}
+.auth-title {
+  font-size: 34px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+.auth-sub {
+  font-size: 14px; color: var(--text-mid);
+  margin-bottom: 48px; text-align: center;
+}
+.auth-icon {
+  font-size: 64px; margin-bottom: 24px;
+  filter: drop-shadow(0 0 24px rgba(34,209,238,0.4));
+}
+.pin-dots {
+  display: flex; gap: 14px; margin-bottom: 32px; align-items: center; justify-content: center;
+}
+.pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  transition: all 0.2s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--accent); }
+
+.pin-grid {
+  display: grid; grid-template-columns: repeat(3, 72px);
+  gap: 12px; margin-bottom: 24px;
+}
+.pin-btn {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  color: var(--text); font-size: 24px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none;
+}
+.pin-btn:active { background: var(--accent2); border-color: var(--accent2); transform: scale(0.93); }
+.pin-btn.del { font-size: 18px; color: var(--text-mid); }
+.pin-btn.zero { grid-column: 2; }
+
+.auth-err {
+  font-size: 13px; color: var(--red);
+  min-height: 20px; text-align: center; margin-top: -8px;
+}
+
+/* ── HEADER ── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,15,46,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: calc(var(--safe-top) + 14px) 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.header-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-logo {
+  font-family: 'DM Mono', monospace;
+  font-size: 18px; font-weight: 500;
+  color: var(--accent); letter-spacing: 0.12em;
+}
+.header-sub {
+  font-size: 11px; color: var(--text-dim);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-top: 1px;
+}
+.header-right { display: flex; align-items: center; gap: 10px; }
+.sync-btn {
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  color: var(--text-mid); border-radius: 50%; width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: all 0.15s;
+}
+.sync-btn:active { transform: scale(0.9); }
+.sync-btn.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── WHO AM I ── */
+.cleaner-bar {
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.cleaner-bar-label {
+  font-size: 12px; color: var(--text-dim);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  flex-shrink: 0;
+}
+.cleaner-chip {
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--border2);
+  background: var(--surface2); color: var(--text-mid);
+  transition: all 0.15s; white-space: nowrap;
+}
+.cleaner-chip:active { transform: scale(0.95); }
+.cleaner-chip.active {
+  background: var(--accent); color: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(34,209,238,0.3);
+}
+.cleaner-chip.tutti {
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #fff; border: none;
+}
+
+/* ── WEEK NAV ── */
+.week-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; gap: 12px;
+}
+.week-nav-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  color: var(--text-mid); font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all 0.15s;
+}
+.week-nav-btn:active { transform: scale(0.9); background: var(--accent2); color: #fff; }
+.week-label {
+  flex: 1; text-align: center;
+  font-size: 15px; font-weight: 600; color: var(--text);
+}
+.week-label span { font-size: 12px; color: var(--text-mid); display: block; margin-top: 1px; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: flex; gap: 10px; padding: 0 20px 16px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.stats-bar::-webkit-scrollbar { display: none; }
+.stat-pill {
+  flex-shrink: 0; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 16px; min-width: 90px;
+}
+.stat-pill .sp-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 22px; font-weight: 500; color: var(--text);
+}
+.stat-pill .sp-label {
+  font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+.stat-pill.green .sp-val { color: var(--green); }
+.stat-pill.orange .sp-val { color: var(--orange); }
+
+/* ── DAY GROUPS ── */
+.main-scroll { padding: 0 16px calc(var(--safe-bottom) + 100px); }
+
+.day-group { margin-bottom: 24px; }
+.day-header {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 4px 10px; position: sticky; top: 112px; z-index: 5;
+  background: linear-gradient(to bottom, var(--bg) 70%, transparent);
+}
+.day-header .dh-dow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; letter-spacing: 0.2em;
+  color: var(--accent); text-transform: uppercase; font-weight: 500;
+}
+.day-header .dh-date {
+  font-size: 20px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.3px;
+}
+.day-header .dh-count {
+  font-size: 12px; color: var(--text-dim); margin-left: auto;
+}
+.day-header.today .dh-date { color: var(--accent); }
+
+/* ── TASK CARD ── */
+.task-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  active-transform: scale(0.99);
+}
+.task-card:active { border-color: var(--accent2); }
+.task-card.done {
+  opacity: 0.55;
+  border-color: var(--border);
+}
+.task-card.done .tc-prop { text-decoration: line-through; color: var(--text-dim); }
+
+.tc-top {
+  display: flex; align-items: flex-start;
+  gap: 12px; padding: 14px 14px 10px;
+}
+.tc-check {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+  transition: all 0.2s; cursor: pointer;
+  font-size: 13px; color: transparent;
+}
+.task-card.done .tc-check {
+  background: var(--green); border-color: var(--green);
+  color: var(--bg); font-size: 12px;
+}
+.tc-body { flex: 1; min-width: 0; }
+.tc-prop {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.tc-times {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--text-mid);
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.tc-times span { display: flex; align-items: center; gap: 4px; }
+
+.tc-bottom {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px 12px; flex-wrap: wrap;
+}
+.tc-cleaner {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  background: rgba(67,97,238,0.15); color: #8fa8f8;
+}
+.tc-notes {
+  font-size: 12px; color: var(--text-mid);
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.tc-checklist-bar {
+  padding: 0 14px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.tc-progress {
+  flex: 1; height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden;
+}
+.tc-progress-fill {
+  height: 100%; background: var(--green); border-radius: 4px;
+  transition: width 0.3s;
+}
+.tc-progress-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text-dim); flex-shrink: 0;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center; padding: 60px 24px;
+  color: var(--text-dim);
+}
+.empty-state .es-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state .es-text { font-size: 15px; }
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 24px);
+  right: 24px; z-index: 200;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border: none; color: #fff; font-size: 26px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(34,209,238,0.35);
+  cursor: pointer; transition: transform 0.2s;
+}
+.fab:active { transform: scale(0.9); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(5,8,25,0.85);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end;
+  padding: 0;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal-sheet {
+  width: 100%; max-height: 92dvh;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 0 0 calc(var(--safe-bottom) + 16px);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+
+.sheet-handle {
+  width: 40px; height: 4px; border-radius: 4px;
+  background: var(--border2); margin: 12px auto 0;
+}
+.sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sheet-title {
+  font-size: 18px; font-weight: 700; color: var(--text);
+}
+.sheet-close {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--surface2); border: none;
+  color: var(--text-mid); font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+
+.sheet-body { padding: 20px; }
+
+/* FORM */
+.field-group { margin-bottom: 18px; }
+.field-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-dim); letter-spacing: 0.12em;
+  text-transform: uppercase; margin-bottom: 8px; display: block;
+}
+.field-input {
+  width: 100%; background: var(--surface2);
+  border: 1.5px solid var(--border2); border-radius: var(--radius-sm);
+  padding: 13px 14px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 15px;
+  outline: none; transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--text-dim); }
+
+.time-row { display: flex; gap: 10px; }
+.time-row .field-group { flex: 1; margin-bottom: 0; }
+
+.cleaner-select-grid {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.cs-chip {
+  padding: 8px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--border2);
+  background: var(--surface2); color: var(--text-mid);
+  cursor: pointer; transition: all 0.15s;
+}
+.cs-chip.selected {
+  background: var(--accent2); color: #fff; border-color: var(--accent2);
+}
+
+/* CHECKLIST in modal */
+.checklist-wrap { background: var(--surface2); border-radius: var(--radius-sm); overflow: hidden; }
+.cl-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+.cl-item:last-child { border-bottom: none; }
+.cl-cb {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--border2); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s;
+}
+.cl-cb.checked { background: var(--green); border-color: var(--green); }
+.cl-cb.checked::after { content: '✓'; color: var(--bg); font-size: 13px; font-weight: 700; }
+.cl-item-label { font-size: 14px; color: var(--text); flex: 1; cursor: pointer; }
+.cl-item-label.done-label { text-decoration: line-through; color: var(--text-dim); }
+.cl-item-del { color: var(--red); opacity: 0.5; font-size: 16px; cursor: pointer; padding: 4px; }
+.cl-item-del:active { opacity: 1; }
+
+.cl-add-row {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.cl-add-input {
+  flex: 1; background: var(--surface2);
+  border: 1.5px solid var(--border2); border-radius: var(--radius-sm);
+  padding: 11px 14px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none;
+}
+.cl-add-input:focus { border-color: var(--accent); }
+.cl-add-btn {
+  background: var(--accent2); border: none; color: #fff;
+  border-radius: var(--radius-sm); padding: 11px 16px;
+  font-size: 20px; cursor: pointer;
+}
+
+/* STATUS TOGGLE */
+.status-toggle {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.st-btn {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border2);
+  background: var(--surface2); color: var(--text-mid);
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.st-btn.todo.active { background: rgba(255,179,71,0.15); border-color: var(--orange); color: var(--orange); }
+.st-btn.done.active { background: rgba(0,229,160,0.12); border-color: var(--green); color: var(--green); }
+
+/* SAVE BTN */
+.save-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border: none; border-radius: var(--radius-sm);
+  color: #fff; font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  margin-top: 20px; transition: opacity 0.15s;
+}
+.save-btn:active { opacity: 0.85; }
+
+.delete-btn {
+  width: 100%; padding: 14px;
+  background: transparent; border: 1.5px solid var(--red);
+  border-radius: var(--radius-sm); color: var(--red);
+  font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: 10px; transition: all 0.15s;
+}
+.delete-btn:active { background: rgba(255,77,109,0.1); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: calc(var(--safe-bottom) + 100px); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); color: var(--text);
+  padding: 12px 20px; border-radius: 30px;
+  font-size: 14px; font-weight: 600;
+  border: 1.5px solid var(--border2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  opacity: 0; pointer-events: none;
+  transition: all 0.25s; z-index: 999;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── LOADING ── */
+#loading {
+  position: fixed; inset: 0; z-index: 998;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+#loading.hidden { display: none; }
+.loader-ring {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+.loader-text { font-size: 13px; color: var(--text-dim); letter-spacing: 0.1em; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Caricamento...</div>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-icon">🧹</div>
+  <div class="auth-logo">Houzly</div>
+  <div class="auth-title">Pulizie</div>
+  <div class="auth-sub">Inserisci il PIN per accedere</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    <button class="pin-btn zero" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinClear()">✕</button>
+  </div>
+  <div class="auth-err" id="auth-err"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <!-- Header -->
+  <div class="app-header">
+    <div class="header-row">
+      <div>
+        <div class="header-logo">HOUZLY</div>
+        <div class="header-sub">Cleaning Manager</div>
+      </div>
+      <div class="header-right">
+        <button class="sync-btn" id="sync-btn" onclick="syncSmoobu()" title="Sync Smoobu">↻</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chi sono -->
+  <div class="cleaner-bar">
+    <span class="cleaner-bar-label">Chi sei?</span>
+    <div id="cleaner-chips"></div>
+  </div>
+
+  <!-- Week nav -->
+  <div class="week-nav">
+    <button class="week-nav-btn" onclick="changeWeek(-1)">‹</button>
+    <div class="week-label" id="week-label">
+      <span id="week-range"></span>
+    </div>
+    <button class="week-nav-btn" onclick="changeWeek(1)">›</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <!-- Task list -->
+  <div class="main-scroll" id="task-list"></div>
+
+  <!-- FAB -->
+  <button class="fab" onclick="openModal()">+</button>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-overlay" id="task-modal" onclick="handleModalClick(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="modal-title">Nuovo Task</div>
+      <button class="sheet-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- Status -->
+      <div class="status-toggle" id="status-toggle">
+        <button class="st-btn todo active" id="st-todo" onclick="setStatus('todo')">⏳ Da fare</button>
+        <button class="st-btn done" id="st-done" onclick="setStatus('done')">✅ Completato</button>
+      </div>
+
+      <!-- Proprietà -->
+      <div class="field-group">
+        <label class="field-label">Proprietà</label>
+        <input type="text" class="field-input" id="f-prop" placeholder="Nome proprietà..." autocomplete="off">
+      </div>
+
+      <!-- Data -->
+      <div class="field-group">
+        <label class="field-label">Data pulizia</label>
+        <input type="date" class="field-input" id="f-date">
+      </div>
+
+      <!-- Orari -->
+      <div class="time-row" style="margin-bottom:18px">
+        <div class="field-group">
+          <label class="field-label">Check-out</label>
+          <input type="time" class="field-input" id="f-checkout">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Check-in</label>
+          <input type="time" class="field-input" id="f-checkin">
+        </div>
+      </div>
+
+      <!-- Pulitrice -->
+      <div class="field-group">
+        <label class="field-label">Assegnata a</label>
+        <div class="cleaner-select-grid" id="cleaner-select"></div>
+      </div>
+
+      <!-- Note -->
+      <div class="field-group">
+        <label class="field-label">Note</label>
+        <textarea class="field-input" id="f-notes" rows="2" placeholder="Note aggiuntive..."></textarea>
+      </div>
+
+      <!-- Checklist -->
+      <div class="field-group">
+        <label class="field-label">Checklist</label>
+        <div class="checklist-wrap" id="checklist-wrap"></div>
+        <div class="cl-add-row">
+          <input type="text" class="cl-add-input" id="cl-add-input" placeholder="Aggiungi voce..." onkeydown="if(event.key==='Enter')addCheckItem()">
+          <button class="cl-add-btn" onclick="addCheckItem()">+</button>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <button class="save-btn" onclick="saveTask()">💾 Salva</button>
+      <button class="delete-btn" id="delete-btn" onclick="deleteTask()" style="display:none">🗑 Elimina task</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════
+//  CONFIG
+// ═══════════════════════════════
+const AUTH_KEY = 'houzly_auth_v2';
+const CLEANERS = ['Ana','Luana','Caterina','Linda','Patrizia'];
+const DOW = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+const DOW_FULL = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+let DB = {};
+let currentCleaner = null; // null = tutti (per Daniele/Romeo)
+let weekOffset = 0; // 0 = questa settimana, 1 = prossima
+let editingId = null;
+let tempChecklist = [];
+let currentStatus = 'todo';
+
+// ═══════════════════════════════
+//  AUTH
+// ═══════════════════════════════
+let pinBuffer = '';
+
+function pinPress(d) {
+  if (pinBuffer.length >= 10) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length >= 4) {
+    setTimeout(doLogin, 180);
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+}
+
+function pinClear() {
+  pinBuffer = '';
+  updatePinDots();
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+async function doLogin() {
+  document.getElementById('auth-err').textContent = '';
+  try {
+    const exRes = await fetch('/api/auth/exists');
+    const exData = await exRes.json();
+    if (!exData.exists) {
+      if (pinBuffer.length < 4) {
+        showErr('Minimo 4 cifre');
+        pinBuffer = ''; updatePinDots(); return;
+      }
+      const setRes = await fetch('/api/auth/set', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({pin: pinBuffer})
+      });
+      const setData = await setRes.json();
+      if (setData.ok) { onAuthOk(); }
+      return;
+    }
+    const res = await fetch('/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({pin: pinBuffer})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      localStorage.setItem(AUTH_KEY, '1');
+      onAuthOk();
+    } else {
+      showErr('PIN errato');
+      pinBuffer = ''; updatePinDots();
+    }
+  } catch(e) {
+    showErr('Errore connessione');
+    pinBuffer = ''; updatePinDots();
+  }
+}
+
+function showErr(msg) {
+  document.getElementById('auth-err').textContent = msg;
+  setTimeout(() => { document.getElementById('auth-err').textContent = ''; }, 2000);
+}
+
+async function onAuthOk() {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('loading').classList.remove('hidden');
+  await loadDB();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+  appInit();
+}
+
+// ═══════════════════════════════
+//  DB
+// ═══════════════════════════════
+async function loadDB() {
+  try {
+    const r = await fetch('/api/db');
+    const data = await r.json();
+    if (data.ok && data.db) {
+      DB = data.db;
+      dbDefaults();
+    }
+  } catch(e) { console.error('loadDB error', e); }
+}
+
+async function saveDB() {
+  try {
+    await fetch('/api/save', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({db: DB})
+    });
+  } catch(e) { console.error('saveDB error', e); }
+}
+
+function dbDefaults() {
+  if (!DB.cleaning) DB.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], lastSync: null };
+  if (!DB.cleaning.tasks) DB.cleaning.tasks = [];
+  if (!DB.cleaning.defaultChecklist || !DB.cleaning.defaultChecklist.length) {
+    DB.cleaning.defaultChecklist = ['Bagni','Cucina','Camere da letto','Soggiorno','Cambio biancheria','Verifica inventario'];
+  }
+}
+
+function clDB() { dbDefaults(); return DB.cleaning; }
+
+async function syncSmoobu() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('spinning');
+  try {
+    const r = await fetch('/api/smoobu/sync', {method:'POST'});
+    const data = await r.json();
+    await loadDB();
+    renderAll();
+    toast('✓ Sync completato');
+  } catch(e) {
+    toast('⚠ Errore sync');
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+// ═══════════════════════════════
+//  APP INIT
+// ═══════════════════════════════
+function appInit() {
+  renderCleanerChips();
+  renderAll();
+}
+
+function renderCleanerChips() {
+  const wrap = document.getElementById('cleaner-chips');
+  // "Tutti" chip for managers
+  let html = `<div style="display:flex;gap:8px;flex-wrap:wrap">`;
+  html += `<span class="cleaner-chip tutti ${currentCleaner===null?'active':''}" onclick="selectCleaner(null)">👁 Tutti</span>`;
+  CLEANERS.forEach(c => {
+    html += `<span class="cleaner-chip ${currentCleaner===c?'active':''}" data-cleaner="${c}" onclick="selectCleaner('${c}')">${c}</span>`;
+  });
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function selectCleaner(name) {
+  currentCleaner = name;
+  renderCleanerChips();
+  renderAll();
+}
+
+// ═══════════════════════════════
+//  DATE HELPERS
+// ═══════════════════════════════
+function getWeekDays(offset) {
+  // Returns array of 14 Date objects (2 weeks starting from this Monday + offset*7)
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function toISO(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function formatDate(iso) {
+  const [y,m,dd] = iso.split('-');
+  return `${parseInt(dd)} ${MONTHS[parseInt(m)-1].slice(0,3)}`;
+}
+
+function isToday(iso) {
+  return iso === toISO(new Date());
+}
+
+// ═══════════════════════════════
+//  RENDER
+// ═══════════════════════════════
+function renderAll() {
+  renderWeekLabel();
+  renderStats();
+  renderTasks();
+}
+
+function renderWeekLabel() {
+  const days = getWeekDays(weekOffset);
+  const from = days[0], to = days[13];
+  document.getElementById('week-range').textContent =
+    `${from.getDate()} ${MONTHS[from.getMonth()].slice(0,3)} – ${to.getDate()} ${MONTHS[to.getMonth()].slice(0,3)} ${to.getFullYear()}`;
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  renderAll();
+}
+
+function getFilteredTasks() {
+  const db = clDB();
+  const days = getWeekDays(weekOffset);
+  const dayISOs = new Set(days.map(d => toISO(d)));
+
+  return db.tasks.filter(t => {
+    const d = t.date_override || t.date;
+    if (!dayISOs.has(d)) return false;
+    if (currentCleaner && t.cleaner !== currentCleaner) return false;
+    return true;
+  }).sort((a, b) => {
+    const da = a.date_override || a.date;
+    const db2 = b.date_override || b.date;
+    return da < db2 ? -1 : da > db2 ? 1 : 0;
+  });
+}
+
+function renderStats() {
+  const tasks = getFilteredTasks();
+  const total = tasks.length;
+  const done = tasks.filter(t => t.status === 'done').length;
+  const todo = total - done;
+
+  document.getElementById('stats-bar').innerHTML =
+    `<div class="stat-pill"><div class="sp-val">${total}</div><div class="sp-label">Totale</div></div>` +
+    `<div class="stat-pill orange"><div class="sp-val">${todo}</div><div class="sp-label">Da fare</div></div>` +
+    `<div class="stat-pill green"><div class="sp-val">${done}</div><div class="sp-label">Completati</div></div>`;
+}
+
+function renderTasks() {
+  const tasks = getFilteredTasks();
+  const container = document.getElementById('task-list');
+
+  if (!tasks.length) {
+    container.innerHTML = `<div class="empty-state"><div class="es-icon">✨</div><div class="es-text">Nessun task in questo periodo</div></div>`;
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  tasks.forEach(t => {
+    const d = t.date_override || t.date;
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(t);
+  });
+
+  let html = '';
+  Object.keys(groups).sort().forEach(dateISO => {
+    const dt = new Date(dateISO + 'T00:00:00');
+    const dow = DOW[dt.getDay()];
+    const isT = isToday(dateISO);
+    const count = groups[dateISO].length;
+
+    html += `<div class="day-group">`;
+    html += `<div class="day-header ${isT?'today':''}">
+      <span class="dh-dow">${dow}</span>
+      <span class="dh-date">${formatDate(dateISO)}</span>
+      <span class="dh-count">${count} task</span>
+    </div>`;
+
+    groups[dateISO].forEach(t => {
+      html += renderTaskCard(t);
+    });
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderTaskCard(t) {
+  const isDone = t.status === 'done';
+  const d = t.date_override || t.date;
+
+  // Checklist progress
+  let clBar = '';
+  if (t.checklist && t.checklist.length > 0) {
+    const checked = t.checklist.filter(i => i.done).length;
+    const pct = Math.round(checked / t.checklist.length * 100);
+    clBar = `<div class="tc-checklist-bar">
+      <div class="tc-progress"><div class="tc-progress-fill" style="width:${pct}%"></div></div>
+      <span class="tc-progress-label">${checked}/${t.checklist.length}</span>
+    </div>`;
+  }
+
+  const checkout = t.checkout_time ? `<span>🚪 ${t.checkout_time}</span>` : '';
+  const checkin = t.checkin_time ? `<span>🔑 ${t.checkin_time}</span>` : '';
+  const cleaner = t.cleaner ? `<span class="tc-cleaner">👤 ${t.cleaner}</span>` : '';
+  const notes = t.notes ? `<span class="tc-notes">📝 ${t.notes}</span>` : '';
+
+  return `<div class="task-card ${isDone?'done':''}" onclick="openTaskEdit('${t.id}')">
+    <div class="tc-top">
+      <div class="tc-check" onclick="toggleDone(event,'${t.id}')">${isDone?'✓':''}</div>
+      <div class="tc-body">
+        <div class="tc-prop">${t.prop_name || 'N/D'}</div>
+        <div class="tc-times">${checkout}${checkin}</div>
+      </div>
+    </div>
+    <div class="tc-bottom">${cleaner}${notes}</div>
+    ${clBar}
+  </div>`;
+}
+
+// ═══════════════════════════════
+//  TOGGLE DONE (quick action)
+// ═══════════════════════════════
+function toggleDone(e, taskId) {
+  e.stopPropagation();
+  const db = clDB();
+  const t = db.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  t.status = t.status === 'done' ? 'todo' : 'done';
+  saveDB();
+  renderAll();
+  toast(t.status === 'done' ? '✅ Completato' : '↩ Riaperto');
+}
+
+// ═══════════════════════════════
+//  MODAL
+// ═══════════════════════════════
+function openModal(prefillDate) {
+  editingId = null;
+  currentStatus = 'todo';
+  tempChecklist = clDB().defaultChecklist.map(l => ({label: l, done: false}));
+
+  document.getElementById('modal-title').textContent = 'Nuovo Task';
+  document.getElementById('f-prop').value = '';
+  document.getElementById('f-date').value = prefillDate || toISO(new Date());
+  document.getElementById('f-checkout').value = '10:00';
+  document.getElementById('f-checkin').value = '16:00';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('delete-btn').style.display = 'none';
+
+  setStatus('todo');
+  renderCleanerSelect(currentCleaner || null);
+  renderModalChecklist();
+
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function openTaskEdit(taskId) {
+  const db = clDB();
+  const t = db.tasks.find(x => x.id === taskId);
+  if (!t) return;
+
+  editingId = taskId;
+  currentStatus = t.status || 'todo';
+  tempChecklist = (t.checklist || []).map(i =>
+    typeof i === 'string' ? {label: i, done: false} : {...i}
+  );
+
+  document.getElementById('modal-title').textContent = 'Modifica Task';
+  document.getElementById('f-prop').value = t.prop_name || '';
+  document.getElementById('f-date').value = t.date_override || t.date || '';
+  document.getElementById('f-checkout').value = t.checkout_time || '';
+  document.getElementById('f-checkin').value = t.checkin_time || '';
+  document.getElementById('f-notes').value = t.notes || '';
+  document.getElementById('delete-btn').style.display = 'block';
+
+  setStatus(currentStatus);
+  renderCleanerSelect(t.cleaner || null);
+  renderModalChecklist();
+
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('task-modal').classList.remove('open');
+}
+
+function handleModalClick(e) {
+  if (e.target === document.getElementById('task-modal')) closeModal();
+}
+
+function setStatus(s) {
+  currentStatus = s;
+  document.getElementById('st-todo').classList.toggle('active', s === 'todo');
+  document.getElementById('st-done').classList.toggle('active', s === 'done');
+}
+
+function renderCleanerSelect(selected) {
+  const wrap = document.getElementById('cleaner-select');
+  wrap.innerHTML = CLEANERS.map(c =>
+    `<span class="cs-chip ${selected===c?'selected':''}" data-name="${c}" onclick="selectModalCleaner('${c}')">${c}</span>`
+  ).join('');
+}
+
+function selectModalCleaner(name) {
+  document.querySelectorAll('.cs-chip').forEach(el => {
+    el.classList.toggle('selected', el.dataset.name === name);
+  });
+}
+
+function getSelectedModalCleaner() {
+  const el = document.querySelector('.cs-chip.selected');
+  return el ? el.dataset.name : null;
+}
+
+function renderModalChecklist() {
+  const wrap = document.getElementById('checklist-wrap');
+  if (!tempChecklist.length) {
+    wrap.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--text-dim)">Nessuna voce. Aggiungine una sotto.</div>';
+    return;
+  }
+  wrap.innerHTML = tempChecklist.map((item, i) =>
+    `<div class="cl-item">
+      <div class="cl-cb ${item.done?'checked':''}" onclick="toggleCheckItem(${i})"></div>
+      <span class="cl-item-label ${item.done?'done-label':''}" onclick="toggleCheckItem(${i})">${item.label}</span>
+      <span class="cl-item-del" onclick="removeCheckItem(${i})">×</span>
+    </div>`
+  ).join('');
+}
+
+function toggleCheckItem(i) {
+  tempChecklist[i].done = !tempChecklist[i].done;
+  renderModalChecklist();
+}
+
+function removeCheckItem(i) {
+  tempChecklist.splice(i, 1);
+  renderModalChecklist();
+}
+
+function addCheckItem() {
+  const inp = document.getElementById('cl-add-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  tempChecklist.push({label: val, done: false});
+  inp.value = '';
+  renderModalChecklist();
+  inp.focus();
+}
+
+// ═══════════════════════════════
+//  SAVE / DELETE
+// ═══════════════════════════════
+function saveTask() {
+  const db = clDB();
+  const prop = document.getElementById('f-prop').value.trim();
+  const date = document.getElementById('f-date').value;
+  if (!date) { toast('⚠ Data obbligatoria'); return; }
+
+  const taskData = {
+    prop_name: prop || 'N/D',
+    date: date,
+    checkout_time: document.getElementById('f-checkout').value,
+    checkin_time: document.getElementById('f-checkin').value,
+    cleaner: getSelectedModalCleaner(),
+    notes: document.getElementById('f-notes').value.trim(),
+    checklist: tempChecklist.slice(),
+    status: currentStatus
+  };
+
+  if (editingId) {
+    const idx = db.tasks.findIndex(t => t.id === editingId);
+    if (idx >= 0) {
+      const ex = db.tasks[idx];
+      taskData.id = editingId;
+      taskData.smoobu_id = ex.smoobu_id;
+      taskData.created = ex.created;
+      if (ex.smoobu_id && date !== ex.date) {
+        taskData.date = ex.date;
+        taskData.date_override = date;
+      } else if (ex.smoobu_id) {
+        taskData.date = ex.date;
+        taskData.date_override = null;
+      } else {
+        taskData.date_override = ex.date_override || null;
+      }
+      db.tasks[idx] = taskData;
+    }
+  } else {
+    taskData.id = 'cl_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+    taskData.created = new Date().toISOString();
+    taskData.date_override = null;
+    db.tasks.push(taskData);
+  }
+
+  saveDB();
+  closeModal();
+  renderAll();
+  toast(editingId ? '✓ Task aggiornato' : '✓ Task aggiunto');
+}
+
+function deleteTask() {
+  if (!editingId) return;
+  if (!confirm('Eliminare questo task?')) return;
+  const db = clDB();
+  db.tasks = db.tasks.filter(t => t.id !== editingId);
+  saveDB();
+  closeModal();
+  renderAll();
+  toast('🗑 Task eliminato');
+}
+
+// ═══════════════════════════════
+//  TOAST
+// ═══════════════════════════════
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════
+//  BOOTSTRAP
+// ═══════════════════════════════
+async function boot() {
+  // Check if already logged in
+  if (localStorage.getItem(AUTH_KEY) === '1') {
+    try {
+      const r = await fetch('/api/auth/exists', {method:'POST'});
+      const d = await r.json();
+      if (d.ok) {
+        await loadDB();
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('app').style.display = 'block';
+        appInit();
+        return;
+      }
+    } catch(e) {}
+    localStorage.removeItem(AUTH_KEY);
+  }
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('auth-screen').classList.remove('hidden');
+}
+
+boot();
+</script>
+</body>
+</html>
