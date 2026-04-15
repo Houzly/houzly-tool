@@ -220,13 +220,16 @@ app.post('/api/smoobu/sync', async (req, res) => {
 
     const activeIds = new Set(relevant.map(b => String(b.id || '')));
 
-    // 1. Rimuovi task Smoobu cancellati (solo quelli nella finestra temporale)
+    // 1. Rimuovi task Smoobu cancellati (solo quelli nella finestra futura e non completati)
+    const todayISO = new Date().toISOString().split('T')[0];
     const before = db.cleaning.tasks.length;
     db.cleaning.tasks = db.cleaning.tasks.filter(t => {
-      if (!t.smoobu_id) return true; // task manuali: mai toccare
+      if (!t.smoobu_id) return true;          // task manuali: mai toccare
+      if (t.status === 'done') return true;    // già completati: mai toccare
       const d = t.date_override || t.date;
-      if (d < fromISO || d > toISO) return true; // fuori finestra: non toccare
-      return activeIds.has(t.smoobu_id);
+      if (d <= todayISO) return true;          // checkout oggi o passato: non toccare (prenotazione conclusa)
+      if (d > toISO) return true;              // fuori finestra futura: non toccare
+      return activeIds.has(t.smoobu_id);       // futuro + non completato: rimuovi se cancellato
     });
     const removed = before - db.cleaning.tasks.length;
 
