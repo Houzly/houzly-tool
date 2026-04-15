@@ -163,6 +163,133 @@ app.get('/api/smoobu/reservations', async (req, res) => {
   }
 });
 
+// ── Smoobu Full Sync (server-side merge + delete) ───────────────
+//  POST /api/smoobu/sync
+//  Body: { months: 3 }   (optional, default 3)
+//  Legge apiKey da db.cleaning.apiKey
+//  1. Scarica tutte le prenotazioni attive da Smoobu (paginazione)
+//  2. Rimuove i task con smoobu_id non più presente (cancellati)
+//  3. Aggiorna/aggiunge i task esistenti (preserva cleaner/status/notes/checklist/date_override)
+//  4. Salva su MongoDB e restituisce { ok, added, updated, removed }
+app.post('/api/smoobu/sync', async (req, res) => {
+  try {
+    const col = await getCollection('db');
+    const doc = await col.findOne({ _id: 'main' });
+    if (!doc) return res.status(404).json({ ok: false, error: 'db_not_found' });
+
+    const { _id, ...db } = doc;
+    if (!db.cleaning) db.cleaning = { tasks: [], defaultChecklist: [], apiKey: '', lastSync: null };
+    if (!db.cleaning.tasks) db.cleaning.tasks = [];
+
+    const apiKey = req.body?.apiKey || db.cleaning.apiKey || '';
+    if (!apiKey) return res.status(400).json({ ok: false, error: 'missing_api_key' });
+
+    // Finestra temporale
+    const months  = parseInt(req.body?.months || db.cleaning.syncMonths || 3);
+    const fromDate = new Date(); fromDate.setDate(fromDate.getDate() - 1);
+    const toDate   = new Date(); toDate.setMonth(toDate.getMonth() + months);
+    const fromISO  = fromDate.toISOString().split('T')[0];
+    const toISO    = toDate.toISOString().split('T')[0];
+
+    // Scarica tutte le pagine da Smoobu
+    let allReservations = [];
+    let page = 1;
+    const MAX_PAGES = 20;
+    while (page <= MAX_PAGES) {
+      const url = `https://login.smoobu.com/api/reservations?pageSize=100&page=${page}`;
+      const r = await fetch(url, { headers: { 'Api-Key': apiKey, 'Cache-Control': 'no-cache' } });
+      if (!r.ok) {
+        const text = await r.text();
+        return res.status(r.status).json({ ok: false, error: `Smoobu ${r.status}`, detail: text });
+      }
+      const data = await r.json();
+      const items = (data._embedded && data._embedded.bookings) || data.bookings || data.reservations || [];
+      if (items.length === 0) break;
+      allReservations = allReservations.concat(items);
+      const totalPages = data.page_count || data.total_pages || data.pages || 1;
+      if (page >= totalPages) break;
+      page++;
+    }
+
+    // Filtra: no blocked, solo nella finestra temporale
+    const relevant = allReservations.filter(b => {
+      if (b['is-blocked-booking']) return false;
+      const checkout = (b.departure || '').split('T')[0];
+      return checkout >= fromISO && checkout <= toISO;
+    });
+
+    const activeIds = new Set(relevant.map(b => String(b.id || '')));
+
+    // 1. Rimuovi task Smoobu cancellati (solo quelli nella finestra temporale)
+    const before = db.cleaning.tasks.length;
+    db.cleaning.tasks = db.cleaning.tasks.filter(t => {
+      if (!t.smoobu_id) return true; // task manuali: mai toccare
+      const d = t.date_override || t.date;
+      if (d < fromISO || d > toISO) return true; // fuori finestra: non toccare
+      return activeIds.has(t.smoobu_id);
+    });
+    const removed = before - db.cleaning.tasks.length;
+
+    // 2. Merge: aggiorna esistenti, aggiungi nuovi
+    let added = 0, updated = 0;
+    relevant.forEach(b => {
+      const bookingId    = String(b.id || '');
+      const checkout     = (b.departure || '').split('T')[0];
+      const checkin      = (b.arrival   || '').split('T')[0];
+      const checkoutTime = b['check-out'] || '10:00';
+      const checkinTime  = b['check-in']  || '15:00';
+      const propName     = b.apartment?.name || b.apartmentName || 'N/D';
+      const propId       = b.apartment?.id ? String(b.apartment.id) : null;
+
+      const idx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
+      if (idx >= 0) {
+        // Aggiorna campi Smoobu, preserva tutto il resto
+        db.cleaning.tasks[idx] = {
+          ...db.cleaning.tasks[idx],
+          date:          checkout,
+          checkin_date:  checkin,
+          checkout_time: checkoutTime,
+          checkin_time:  checkinTime,
+          prop_name:     propName,
+          prop_id:       propId,
+        };
+        updated++;
+      } else {
+        const defaultCL = (db.cleaning.defaultChecklist || []).map(l =>
+          typeof l === 'string' ? { label: l, done: false } : { ...l, done: false }
+        );
+        db.cleaning.tasks.push({
+          id:            `cl_${bookingId}_${Date.now()}`,
+          smoobu_id:     bookingId,
+          prop_name:     propName,
+          prop_id:       propId,
+          date:          checkout,
+          date_override: null,
+          checkin_date:  checkin,
+          checkout_time: checkoutTime,
+          checkin_time:  checkinTime,
+          cleaner:       null,
+          notes:         '',
+          checklist:     defaultCL,
+          status:        'todo',
+          created:       new Date().toISOString(),
+        });
+        added++;
+      }
+    });
+
+    db.cleaning.lastSync = new Date().toISOString();
+    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+
+    console.log(`[smoobu/sync] added:${added} updated:${updated} removed:${removed}`);
+    res.json({ ok: true, added, updated, removed, total: relevant.length });
+
+  } catch (e) {
+    console.error('[smoobu/sync]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Smoobu Webhook ────────────────────────────────────────────────
 app.post('/api/smoobu/webhook', async (req, res) => {
   try {
