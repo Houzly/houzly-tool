@@ -198,7 +198,8 @@ app.post('/api/smoobu/sync', async (req, res) => {
     let page = 1;
     const MAX_PAGES = 20;
     while (page <= MAX_PAGES) {
-      const url = `https://login.smoobu.com/api/reservations?pageSize=100&page=${page}`;
+      // departureFrom: forza Smoobu a includere prenotazioni con checkout >= fromISO
+      const url = `https://login.smoobu.com/api/reservations?pageSize=100&page=${page}&departureFrom=${fromISO}`;
       const r = await fetch(url, { headers: { 'Api-Key': apiKey, 'Cache-Control': 'no-cache' } });
       if (!r.ok) {
         const text = await r.text();
