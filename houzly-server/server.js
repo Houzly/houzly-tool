@@ -447,10 +447,13 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     let cleaningFee = 0;
     try {
       const aptData = await aptResp.json();
-      cleaningFee = aptData.cleaningFee || aptData.cleaning_fee || 0;
+      console.log('[booking/availability] apartment keys:', JSON.stringify(Object.keys(aptData)));
+      console.log('[booking/availability] apartment data:', JSON.stringify(aptData).slice(0, 500));
+      cleaningFee = aptData.cleaningFee || aptData.cleaning_fee || aptData['cleaning-fee'] || 
+                    aptData.extra_costs || aptData.extraCosts || 0;
       console.log('[booking/availability] cleaningFee:', cleaningFee);
     } catch(e) {
-      console.log('[booking/availability] could not get cleaning fee');
+      console.log('[booking/availability] could not get cleaning fee:', e.message);
     }
 
     // Calcola notti e verifica disponibilità
