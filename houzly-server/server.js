@@ -513,7 +513,6 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   console.log('[booking/create] apartmentId raw:', apartmentId, '→ parsed:', aptId);
   if (!aptId) return res.status(400).json({ ok: false, error: 'apartmentId non valido' });
   try {
-    const { address, country } = req.body || {};
     const payload = {
       apartmentId: aptId,
       arrivalDate: arrival,
@@ -521,9 +520,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
       firstName, lastName,
       email,
       adults: parseInt(adults) || 1,
-      channelId: 4090393,
-      address: address || 'Via Roma 1',
-      country: country || 'IT'
+      channelId: 4090393
     };
     if (phone) payload.phone  = phone;
     if (note)  payload.notice = note;
