@@ -520,11 +520,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
       firstName, lastName,
       email,
       adults: parseInt(adults) || 1,
-      channelId: 4090393,
-      address: 'N/A',
-      city: 'N/A',
-      country: 'IT',
-      zip: '00000'
+      channelId: 4090393
     };
     if (phone) payload.phone  = phone;
     if (note)  payload.notice = note;
