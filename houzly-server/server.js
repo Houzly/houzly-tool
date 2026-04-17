@@ -416,19 +416,29 @@ app.get('/api/booking/apartments', bookingCors, async (req, res) => {
 });
 
 // ── POST /api/booking/availability ───────────────────────────────
-// Verifica disponibilità usando l'API rates di Smoobu.
-// Controlla che tutti i giorni del periodo siano disponibili.
+// Verifica disponibilità e prezzo TOTALE (incluso pulizie, tasse, extra)
+// usando checkApartmentAvailability di Smoobu.
 // Body: { apartmentId, arrival: "YYYY-MM-DD", departure: "YYYY-MM-DD", guests }
 // Risposta: { ok, available, price, nights }
 app.post('/api/booking/availability', bookingCors, async (req, res) => {
-  const { apartmentId, arrival, departure } = req.body || {};
+  const { apartmentId, arrival, departure, guests } = req.body || {};
   if (!apartmentId || !arrival || !departure) {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure' });
   }
   try {
-    // Usa rates API per verificare disponibilità giorno per giorno
-    const url = `https://login.smoobu.com/api/rates?apartments[]=${apartmentId}&start_date=${arrival}&end_date=${departure}`;
-    const r = await fetch(url, { headers: smoobuHdr() });
+    // Usa checkApartmentAvailability — restituisce prezzo totale con pulizie e tasse
+    const checkUrl = 'https://login.smoobu.com/booking/checkApartmentAvailability';
+    const checkPayload = {
+      apartments: [parseInt(apartmentId)],
+      arrivalDate: arrival,
+      departureDate: departure,
+      adults: parseInt(guests) || 2
+    };
+    const r = await fetch(checkUrl, {
+      method: 'POST',
+      headers: smoobuHdr(),
+      body: JSON.stringify(checkPayload)
+    });
     const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch(e) {
@@ -436,45 +446,46 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Smoobu risposta non valida' });
     }
 
-    // Struttura risposta Smoobu rates: { data: { "YYYY-MM-DD": { available: 0|1, price: X } } }
-    // Struttura Smoobu: { data: { "apartmentId": { "YYYY-MM-DD": { price, available, min_length_of_stay } } } }
-    const aptDays = data && data.data && data.data[apartmentId];
-    if (!aptDays) {
-      console.error('[booking/availability] no days data:', JSON.stringify(data).slice(0, 300));
-      return res.status(404).json({ ok: false, error: 'Dati non trovati per questo appartamento' });
-    }
+    console.log('[booking/availability] checkAvailability response:', JSON.stringify(data).slice(0, 500));
 
-    // Calcola notti
-    const arrDate = new Date(arrival);
-    const depDate = new Date(departure);
-    const nights  = Math.round((depDate - arrDate) / 86400000);
+    // Struttura risposta: { [apartmentId]: { available, price, ... } }
+    const aptResult = data && (data[apartmentId] || data[String(apartmentId)]);
 
-    // Verifica tutti i giorni del soggiorno (escluso giorno di partenza)
-    let available = true;
-    let totalPrice = 0;
-    let minStay = 1;
-    for (let i = 0; i < nights; i++) {
-      const d = new Date(arrDate);
-      d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
-      const dayData = aptDays[dateStr];
-      if (!dayData || dayData.available === 0) {
-        available = false;
-        break;
+    if (!aptResult) {
+      // Fallback: usa rates API
+      const ratesUrl = `https://login.smoobu.com/api/rates?apartments[]=${apartmentId}&start_date=${arrival}&end_date=${departure}`;
+      const rr = await fetch(ratesUrl, { headers: smoobuHdr() });
+      const ratesData = await rr.json();
+      const aptDays = ratesData && ratesData.data && ratesData.data[apartmentId];
+      if (!aptDays) return res.status(404).json({ ok: false, error: 'Dati non trovati' });
+
+      const arrDate = new Date(arrival);
+      const depDate = new Date(departure);
+      const nights  = Math.round((depDate - arrDate) / 86400000);
+      let available = true, totalPrice = 0, minStay = 1;
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(arrDate); d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const dayData = aptDays[dateStr];
+        if (!dayData || dayData.available === 0) { available = false; break; }
+        totalPrice += dayData.price || 0;
+        if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
       }
-      totalPrice += dayData.price || 0;
-      if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
+      if (available && nights < minStay) available = false;
+      return res.json({
+        ok: true, available, nights,
+        price: available ? Math.round(totalPrice) : null
+      });
     }
 
-    // Controlla soggiorno minimo
-    if (available && nights < minStay) available = false;
+    // Risposta da checkApartmentAvailability
+    const available = aptResult.available === true;
+    const nights = Math.round((new Date(departure) - new Date(arrival)) / 86400000);
+    // price include già pulizie, tasse e extra come configurati su Smoobu
+    const price = available ? (aptResult.price || aptResult.total || null) : null;
 
-    res.json({
-      ok: true,
-      available,
-      nights,
-      price: available ? Math.round(totalPrice) : null
-    });
+    res.json({ ok: true, available, nights, price: price ? Math.round(price) : null });
+
   } catch (e) {
     console.error('[booking/availability]', e.message);
     res.status(500).json({ ok: false, error: e.message });
