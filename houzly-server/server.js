@@ -54,6 +54,143 @@ async function getCollection(name) {
   const db = await getDb();
   return db.collection(name);
 }
+// ── Check-in helpers ──────────────────────────────────────────────
+
+function generateCheckinToken(bookingId, checkoutDate) {
+  const checkout = new Date(checkoutDate);
+  const expiresAt = new Date(checkout.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const token = jwt.sign(
+    { bookingId, exp: Math.floor(expiresAt.getTime() / 1000) },
+    JWT_SECRET
+  );
+  return { token, expiresAt: expiresAt.toISOString() };
+}
+
+function verifyCheckinToken(token) {
+  try { return jwt.verify(token, JWT_SECRET); } catch (e) { return null; }
+}
+
+function calculateNights(arrival, departure) {
+  const a = new Date(arrival);
+  const d = new Date(departure);
+  return Math.round((d - a) / (24 * 60 * 60 * 1000));
+}
+
+function inferRegion(propertyName) {
+  if (!propertyName) return null;
+  const name = propertyName.toLowerCase();
+  if (/firenze|florence/i.test(name)) return 'firenze';
+  if (/sardegna|sardinia|porto|alghero|olbia|cagliari/i.test(name)) return 'sardinia';
+  return 'tuscany';
+}
+
+async function r2Upload(key, body, contentType = 'image/jpeg') {
+  await r2Client.send(new PutObjectCommand({
+    Bucket: R2_BUCKET, Key: key, Body: body, ContentType: contentType,
+  }));
+  return { key, bucket: R2_BUCKET };
+}
+
+async function r2GetSignedUrl(key, expiresInSec = 3600) {
+  const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  return await getSignedUrl(r2Client, command, { expiresIn: expiresInSec });
+}
+
+async function r2Delete(key) {
+  await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+}
+
+async function sendSmoobuChatMessage(reservationId, messageText) {
+  try {
+    const r = await fetch(`https://login.smoobu.com/api/reservations/${reservationId}/messages`, {
+      method: 'POST',
+      headers: { 'Api-Key': process.env.SMOOBU_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: 'Online Check-in', message: messageText, emailAddress: null }),
+    });
+    if (!r.ok) { const text = await r.text(); return { success: false, error: `Smoobu ${r.status}: ${text}` }; }
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+async function sendEmailFallback(toEmail, subject, html) {
+  try {
+    const result = await resend.emails.send({
+      from: 'Houzly Check-in <onboarding@resend.dev>',
+      to: toEmail, subject, html,
+    });
+    return { success: true, id: result.data?.id };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+function buildInitialMessage({ guestFirstName, propertyName, checkinDate, checkoutDate, checkinLink, guestLang }) {
+  const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  if (isItalian) {
+    return `Buongiorno ${guestFirstName}, benvenuto in Houzly!
+
+Grazie per aver prenotato ${propertyName}. Non vediamo l'ora di ospitarla dal ${checkinDate} al ${checkoutDate}.
+
+La legge italiana ci obbliga a registrare tutti gli ospiti presso le autorità locali prima dell'arrivo. Per rendere la procedura semplice e veloce, può completare il check-in online qui:
+
+→ ${checkinLink}
+
+Richiede circa 3 minuti per ospite. Servirà una foto del documento d'identità o passaporto di ciascun ospite. Tutti i dati vengono trasmessi in modo sicuro e utilizzati esclusivamente per la registrazione prevista dalla legge.
+
+Per qualsiasi domanda, risponda pure a questo messaggio.
+
+A presto in Toscana,
+Il Team Houzly`;
+  }
+  return `Hello ${guestFirstName}, and welcome to Houzly!
+
+Thank you for booking ${propertyName}. We're looking forward to hosting you from ${checkinDate} to ${checkoutDate}.
+
+Italian law requires us to register all guests with local authorities before arrival. To make this quick and easy, please complete your online check-in here:
+
+→ ${checkinLink}
+
+It takes about 3 minutes per guest. You'll just need a photo of each guest's ID or passport. All data is transmitted securely and used only for the legally required registration.
+
+If you have any questions, just reply to this message.
+
+See you soon in Tuscany,
+The Houzly Team`;
+}
+
+function buildReminderD3({ guestFirstName, propertyName, checkinLink, guestLang }) {
+  const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  if (isItalian) {
+    return `Salve ${guestFirstName}, un piccolo promemoria: il suo soggiorno a ${propertyName} inizia tra 3 giorni.
+
+Se non l'ha ancora fatto, può completare il check-in online qui: ${checkinLink}
+
+È richiesto dalla legge italiana e ci permette di accoglierla senza intoppi al suo arrivo. Bastano pochi minuti.
+
+Grazie!`;
+  }
+  return `Hi ${guestFirstName}, just a friendly reminder that your stay at ${propertyName} begins in 3 days.
+
+If you haven't yet, please complete the online check-in here: ${checkinLink}
+
+This is required by Italian law and helps us welcome you smoothly on arrival day. It only takes a few minutes.
+
+Thank you!`;
+}
+
+function buildReminderD1({ guestFirstName, checkinLink, guestLang }) {
+  const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  if (isItalian) {
+    return `Salve ${guestFirstName}, domani la aspettiamo!
+
+Per cortesia completi il check-in online prima dell'arrivo, altrimenti dovremo raccogliere i documenti di persona e questo potrebbe rallentare la sua sistemazione: ${checkinLink}
+
+Grazie e buon viaggio!`;
+  }
+  return `Hi ${guestFirstName}, we're almost ready to welcome you tomorrow!
+
+Please complete your online check-in before arrival, otherwise we'll need to collect documents in person which can slow down your arrival: ${checkinLink}
+
+Thank you, and safe travels!`;
+}
 
 app.use(express.json({ limit: "20mb" }));
 app.use("/api/booking", (req, res, next) => {
