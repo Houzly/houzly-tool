@@ -2,6 +2,36 @@ const express = require('express');
 const path    = require('path');
 const crypto  = require('crypto');
 const { MongoClient } = require('mongodb');
+// ── Check-in module dependencies ──────────────────────────────────
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const jwt = require('jsonwebtoken');
+const { Resend } = require('resend');
+const Anthropic = require('@anthropic-ai/sdk');
+
+// R2 client (S3-compatible)
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
+const R2_BUCKET = process.env.R2_BUCKET_NAME || 'houzly-guest-documents';
+
+// Resend client (email fallback for direct bookings)
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Anthropic client (OCR Claude Vision — used in Phase 1B)
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// JWT config
+const JWT_SECRET = process.env.JWT_SECRET;
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://houzly-tool.onrender.com';
+
+// Smoobu channel IDs
+const SMOOBU_CHANNEL_DIRECT = 4090393;  // "Direct booking" — houzly.it booking engine
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
