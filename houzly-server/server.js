@@ -756,6 +756,103 @@ app.get('/api/cleaning/reset-checklist', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+// ══════════════════════════════════════════════════════════════════
+// ── Check-in: Property Configuration ──────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+async function requireAdminAuth(req, res, next) {
+  const pin = req.headers['x-admin-pin'] || req.query.pin;
+  if (!pin) return res.status(401).json({ ok: false, error: 'missing_pin' });
+  try {
+    const col = await getCollection('auth');
+    const auth = await col.findOne({ _id: 'auth' });
+    if (!auth || !auth.hash) return res.status(401).json({ ok: false, error: 'no_auth_configured' });
+    const hash = crypto.createHash('sha256').update(pin).digest('hex');
+    if (hash !== auth.hash) return res.status(401).json({ ok: false, error: 'invalid_pin' });
+    next();
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+}
+
+app.get('/api/checkin/properties', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_properties_config');
+    const list = await col.find({}).sort({ name: 1 }).toArray();
+    res.json({ ok: true, properties: list });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/checkin/properties/sync', requireAdminAuth, async (req, res) => {
+  try {
+    const r = await fetch('https://login.smoobu.com/api/apartments', {
+      headers: { 'Api-Key': process.env.SMOOBU_API_KEY, 'Cache-Control': 'no-cache' },
+    });
+    if (!r.ok) return res.status(r.status).json({ ok: false, error: `Smoobu ${r.status}` });
+    const data = await r.json();
+    let apartments = [];
+    if (Array.isArray(data)) apartments = data;
+    else if (Array.isArray(data.apartments)) apartments = data.apartments;
+    else if (Array.isArray(data.data)) apartments = data.data;
+
+    const col = await getCollection('checkin_properties_config');
+    let added = 0, existing = 0;
+    const addedList = [];
+
+    for (const apt of apartments) {
+      const id = `prop_${apt.id}`;
+      const existingDoc = await col.findOne({ _id: id });
+      if (existingDoc) { existing++; continue; }
+      const inferredRegion = inferRegion(apt.name);
+      const newDoc = {
+        _id: id,
+        smoobu_apartment_id: String(apt.id),
+        prop_code: null,
+        name: apt.name || 'Unnamed',
+        city: null,
+        region: inferredRegion,
+        region_inferred: true,
+        checkin_required: false,
+        onboarding_checklist: {
+          alloggiati_credentials_ok: false,
+          motourist_credentials_ok: false,
+          turismo5_credentials_ok: false,
+          firenze_ids_registered: false,
+          ross1000_credentials_ok: false,
+          sardinia_tourist_tax_configured: false,
+          airbnb_city_tax_active: false,
+          booking_city_tax_active: false,
+          direct_booking_engine_city_tax_active: false,
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await col.insertOne(newDoc);
+      added++;
+      addedList.push({ id: apt.id, name: apt.name, inferredRegion });
+    }
+
+    res.json({ ok: true, added, existing, total: apartments.length, addedList });
+  } catch (e) {
+    console.error('[checkin/properties/sync]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body || {};
+    const allowed = ['prop_code', 'city', 'region', 'checkin_required', 'onboarding_checklist', 'region_inferred'];
+    const toSet = {};
+    for (const k of allowed) { if (k in updates) toSet[k] = updates[k]; }
+    toSet.updated_at = new Date().toISOString();
+
+    const col = await getCollection('checkin_properties_config');
+    const result = await col.updateOne({ _id: id }, { $set: toSet });
+    if (result.matchedCount === 0) return res.status(404).json({ ok: false, error: 'property_not_found' });
+    const updated = await col.findOne({ _id: id });
+    res.json({ ok: true, property: updated });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
