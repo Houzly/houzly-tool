@@ -79,9 +79,9 @@ function calculateNights(arrival, departure) {
 function inferRegion(propertyName) {
   if (!propertyName) return null;
   const name = propertyName.toLowerCase();
-  if (/firenze|florence/i.test(name)) return 'firenze';
-  if (/sardegna|sardinia|porto|alghero|olbia|cagliari/i.test(name)) return 'sardinia';
-  return 'tuscany';
+  if (/firenze|florence|prato|pistoia/i.test(name)) return 'tuscany_turismo5';
+  if (/sardegna|sardinia|porto|alghero|olbia|cagliari|sassari|nuoro/i.test(name)) return 'sardinia_ross1000';
+  return 'tuscany_motourist';
 }
 
 async function r2Upload(key, body, contentType = 'image/jpeg') {
