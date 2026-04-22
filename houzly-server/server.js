@@ -627,20 +627,36 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     const arrDate = new Date(arrival);
     const depDate = new Date(departure);
     const nights  = Math.round((depDate - arrDate) / 86400000);
-    let available = true, totalPrice = 0, minStay = 1;
+    let available = true, totalPrice = 0, minStay = 1, blocked = false;
     for (let i = 0; i < nights; i++) {
       const d = new Date(arrDate); d.setDate(d.getDate() + i);
       const dateStr = d.toISOString().slice(0, 10);
       const dayData = aptDays[dateStr];
-      if (!dayData || dayData.available === 0) { available = false; break; }
+      if (!dayData || dayData.available === 0) { available = false; blocked = true; break; }
       totalPrice += dayData.price || 0;
       if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
     }
-    if (available && nights < minStay) available = false;
+    // Se i giorni sono tutti liberi ma sotto il min-stay: non disponibile per min-stay
+    let minStayFail = false;
+    if (available && nights < minStay) {
+      available = false;
+      minStayFail = true;
+    }
 
     const finalPrice = available ? Math.round(totalPrice + cleaningFee) : null;
 
-    res.json({ ok: true, available, nights, price: finalPrice, cleaningFee: Math.round(cleaningFee) });
+    // reason: 'min_stay' se bloccato solo per min-stay, 'blocked' se c'è un giorno occupato, null se disponibile
+    const reason = blocked ? 'blocked' : (minStayFail ? 'min_stay' : null);
+
+    res.json({
+      ok: true,
+      available,
+      nights,
+      price: finalPrice,
+      cleaningFee: Math.round(cleaningFee),
+      reason,
+      minStay
+    });
 
   } catch (e) {
     console.error('[booking/availability]', e.message);
