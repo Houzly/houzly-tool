@@ -1,66 +1,50 @@
 // onboarding/seed.js
-// Script di seeding del catalogo onboarding.
-// Idempotente: lo puoi rilanciare per applicare modifiche fatte a catalog-seed.js
-//
-// Uso:
-//   node onboarding/seed.js              # popola SE mancano (safe default)
-//   node onboarding/seed.js --upsert     # forza update di tutti i campi (perde override manuali)
-//   node onboarding/seed.js --dry-run    # mostra cosa farebbe senza scrivere
+// Seed del catalogo onboarding — eseguito on-demand via endpoint HTTP admin.
+// Idempotente: lo puoi richiamare ogni volta che modifichi catalog-seed.js
+// per propagare i cambi al DB.
 
-const { MongoClient } = require('mongodb');
 const { CATALOG, RECIPES } = require('./catalog-seed');
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = 'houzly';
+/**
+ * Esegue il seed/upsert del catalogo onboarding.
+ * @param {Db} db - istanza MongoDB già connessa
+ * @param {Object} opts
+ * @param {boolean} opts.forceUpsert - se true, aggiorna anche i task esistenti
+ * @param {boolean} opts.dryRun - se true, conta cosa farebbe senza scrivere
+ * @returns {Promise<Object>} riepilogo dell'operazione
+ */
+async function runSeed(db, opts = {}) {
+  const { forceUpsert = false, dryRun = false } = opts;
+  const log = [];
+  const push = (s) => log.push(s);
 
-const args = process.argv.slice(2);
-const FORCE_UPSERT = args.includes('--upsert');
-const DRY_RUN = args.includes('--dry-run');
+  push(`mode: ${dryRun ? 'DRY RUN' : (forceUpsert ? 'FORCE UPSERT' : 'safe (insert if missing)')}`);
 
-(async () => {
-  if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI non settata nelle environment variables');
-    process.exit(1);
-  }
-
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  const db = client.db(DB_NAME);
-
-  console.log(`\n🌱 Onboarding seed — db: ${DB_NAME}`);
-  console.log(`   mode: ${DRY_RUN ? 'DRY RUN' : (FORCE_UPSERT ? 'FORCE UPSERT' : 'safe (insert if missing)')}\n`);
-
-  // ── Recipes ──────────────────────────────────────────────
+  // ── Recipes ──
   const recipesCol = db.collection('onboarding_recipes');
   let recIns = 0, recUpd = 0, recSkip = 0;
-
   for (const recipe of RECIPES) {
     const existing = await recipesCol.findOne({ _id: recipe._id });
     const doc = { ...recipe, created_at: existing?.created_at || new Date() };
-
     if (!existing) {
-      if (!DRY_RUN) await recipesCol.insertOne(doc);
+      if (!dryRun) await recipesCol.insertOne(doc);
       recIns++;
-      console.log(`  + recipe inserita: ${recipe._id}`);
-    } else if (FORCE_UPSERT) {
-      if (!DRY_RUN) await recipesCol.replaceOne({ _id: recipe._id }, doc);
+    } else if (forceUpsert) {
+      if (!dryRun) await recipesCol.replaceOne({ _id: recipe._id }, doc);
       recUpd++;
-      console.log(`  ↻ recipe aggiornata: ${recipe._id}`);
     } else {
       recSkip++;
     }
   }
 
-  // ── Catalog ──────────────────────────────────────────────
+  // ── Catalog ──
   const catalogCol = db.collection('onboarding_catalog');
   let catIns = 0, catUpd = 0, catSkip = 0;
-
   for (const task of CATALOG) {
     const existing = await catalogCol.findOne({ _id: task._id });
     const now = new Date();
     const doc = {
       ...task,
-      // applichi default per i campi opzionali
       is_blocking_parent: task.is_blocking_parent ?? false,
       default_status: task.default_status || 'pending',
       recurrence: task.recurrence || null,
@@ -70,48 +54,45 @@ const DRY_RUN = args.includes('--dry-run');
       created_at: existing?.created_at || now,
       updated_at: now,
     };
-
     if (!existing) {
-      if (!DRY_RUN) await catalogCol.insertOne(doc);
+      if (!dryRun) await catalogCol.insertOne(doc);
       catIns++;
-      console.log(`  + task inserito: ${task._id}`);
-    } else if (FORCE_UPSERT) {
-      if (!DRY_RUN) await catalogCol.replaceOne({ _id: task._id }, doc);
+    } else if (forceUpsert) {
+      if (!dryRun) await catalogCol.replaceOne({ _id: task._id }, doc);
       catUpd++;
-      console.log(`  ↻ task aggiornato: ${task._id}`);
     } else {
       catSkip++;
     }
   }
 
-  // ── Indici ──────────────────────────────────────────────
-  if (!DRY_RUN) {
+  // ── Indici ──
+  if (!dryRun) {
     await catalogCol.createIndex({ category: 1, order: 1 });
     await catalogCol.createIndex({ parent_id: 1 });
     await catalogCol.createIndex({ archived: 1 });
-
     const instCol = db.collection('onboarding_instances');
     await instCol.createIndex({ property_id: 1, task_id: 1 });
     await instCol.createIndex({ property_id: 1 });
     await instCol.createIndex({ status: 1, target_date: 1 });
     await instCol.createIndex({ parent_instance_id: 1 });
-    console.log('\n  ✓ indici creati/verificati');
   }
 
-  console.log(`\n📊 Riepilogo`);
-  console.log(`   Recipes:   inserite ${recIns}, aggiornate ${recUpd}, skippate ${recSkip}`);
-  console.log(`   Catalog:   inseriti ${catIns}, aggiornati ${catUpd}, skippati ${catSkip}`);
-
-  // Statistiche utili
-  const totalCat = await catalogCol.countDocuments();
+  // ── Stats finali ──
+  const totalCatalog = await catalogCol.countDocuments();
   const parentCount = await catalogCol.countDocuments({ parent_id: null });
   const childCount = await catalogCol.countDocuments({ parent_id: { $ne: null } });
 
-  console.log(`\n📦 Catalogo finale: ${totalCat} task totali (${parentCount} madre + ${childCount} sotto-task)`);
+  push(`Recipes: +${recIns} new, updated ${recUpd}, skipped ${recSkip}`);
+  push(`Catalog: +${catIns} new, updated ${catUpd}, skipped ${catSkip}`);
+  push(`Final: ${totalCatalog} task totali (${parentCount} madre + ${childCount} sotto-task)`);
 
-  await client.close();
-  console.log('\n✓ done\n');
-})().catch(err => {
-  console.error('❌ errore:', err);
-  process.exit(1);
-});
+  return {
+    ok: true,
+    recipes: { inserted: recIns, updated: recUpd, skipped: recSkip },
+    catalog: { inserted: catIns, updated: catUpd, skipped: catSkip },
+    totals: { catalog: totalCatalog, parents: parentCount, children: childCount },
+    log,
+  };
+}
+
+module.exports = { runSeed };
