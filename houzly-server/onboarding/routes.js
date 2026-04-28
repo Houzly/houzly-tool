@@ -214,6 +214,160 @@ function createOnboardingRouter(getDb) {
   });
 
   // ────────────────────────────────────────────────────────
+  // 3-bis. AVAILABLE PROPERTIES — quelle in checkin_properties_config
+  //        che NON sono ancora nell'onboarding (per dropdown "+ Nuova").
+  // ────────────────────────────────────────────────────────
+  router.get('/available-properties', async (req, res) => {
+    try {
+      const db = await getDb();
+
+      // ID già usati nell'onboarding (per escluderli)
+      const inOnboardingDocs = await db.collection('onboarding_instances')
+        .find({}, { projection: { property_id: 1 } })
+        .toArray();
+      const onboardingSet = new Set(inOnboardingDocs.map(d => d.property_id));
+      const inOnboarding = [...onboardingSet];
+
+      // Tutte le proprietà nel master config
+      const all = await db.collection('checkin_properties_config')
+        .find({})
+        .sort({ name: 1 })
+        .toArray();
+
+      // Filtra: solo quelle NON ancora in onboarding
+      const available = all
+        .filter(p => !onboardingSet.has(p._id))
+        .map(p => ({
+          _id: p._id,
+          name: p.name,
+          smoobu_apartment_id: p.smoobu_apartment_id,
+          prop_code: p.prop_code,
+          city: p.city,
+          region: p.region,
+        }));
+
+      res.json({
+        ok: true,
+        count: available.length,
+        total_in_master: all.length,
+        already_in_onboarding: inOnboarding.length,
+        properties: available,
+      });
+    } catch (e) {
+      console.error('[onboarding/available-properties]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ────────────────────────────────────────────────────────
+  // 3-ter. BULK IMPORT — importa proprietà GIÀ LIVE come "complete al 100%"
+  //         Body: { property_ids: ["prop_xxx", ...], recipe?: "standard", go_live_target?: ISO }
+  //         Se property_ids omesso → importa TUTTE le available (modo "import iniziale").
+  //         Idempotente: skippa proprietà già presenti.
+  // ────────────────────────────────────────────────────────
+  router.post('/bulk-import-live', async (req, res) => {
+    try {
+      const db = await getDb();
+      const {
+        property_ids = null,
+        recipe = 'standard',
+        go_live_target = null,
+      } = req.body || {};
+
+      // Verifica ricetta
+      const recipeDoc = await db.collection('onboarding_recipes').findOne({ _id: recipe });
+      if (!recipeDoc) {
+        return res.status(400).json({ ok: false, error: 'recipe_not_found', recipe });
+      }
+
+      // Default go_live: 90 giorni nel passato (così tutto risulta "scaduto e completato",
+      // niente task in scadenza nei prossimi giorni a sporcare il cockpit con falsi alert).
+      const goLive = go_live_target
+        ? new Date(go_live_target)
+        : new Date(Date.now() - 90 * 86400000);
+      if (isNaN(goLive.getTime())) {
+        return res.status(400).json({ ok: false, error: 'invalid_go_live_target' });
+      }
+
+      // Carica catalogo
+      const catalog = await db.collection('onboarding_catalog')
+        .find({ archived: { $ne: true } })
+        .toArray();
+
+      // Determina lista da importare
+      let masterDocs;
+      if (Array.isArray(property_ids) && property_ids.length > 0) {
+        masterDocs = await db.collection('checkin_properties_config')
+          .find({ _id: { $in: property_ids } })
+          .toArray();
+      } else {
+        masterDocs = await db.collection('checkin_properties_config')
+          .find({})
+          .toArray();
+      }
+
+      // Filtra quelle già in onboarding (skip silente)
+      const alreadyDocs = await db.collection('onboarding_instances')
+        .find({}, { projection: { property_id: 1 } })
+        .toArray();
+      const alreadySet = new Set(alreadyDocs.map(d => d.property_id));
+
+      const imported = [];
+      const skipped = [];
+      const now = new Date();
+
+      for (const m of masterDocs) {
+        if (alreadySet.has(m._id)) {
+          skipped.push({ property_id: m._id, name: m.name, reason: 'already_in_onboarding' });
+          continue;
+        }
+
+        // Genera istanze usando la stessa logica della creazione normale
+        const property = { _id: m._id, name: m.name, recipe };
+        const instances = buildInstancesFromCatalog(catalog, property, goLive);
+
+        if (instances.length === 0) {
+          skipped.push({ property_id: m._id, name: m.name, reason: 'no_applicable_tasks' });
+          continue;
+        }
+
+        // Marca TUTTE come done (eccetto quelle con default_status='na' che restano N/A)
+        const catalogById = new Map(catalog.map(t => [t._id, t]));
+        for (const inst of instances) {
+          const tpl = catalogById.get(inst.task_id);
+          if (tpl?.default_status === 'na') {
+            inst.status = 'na';
+          } else {
+            inst.status = 'done';
+            inst.completed_at = now;
+            inst.completed_by = 'bulk_import';
+          }
+        }
+
+        await db.collection('onboarding_instances').insertMany(instances);
+        imported.push({
+          property_id: m._id,
+          name: m.name,
+          tasks_created: instances.length,
+        });
+      }
+
+      console.log(`[onboarding/bulk-import] imported=${imported.length}, skipped=${skipped.length}`);
+
+      res.json({
+        ok: true,
+        imported_count: imported.length,
+        skipped_count: skipped.length,
+        imported,
+        skipped,
+      });
+    } catch (e) {
+      console.error('[onboarding/bulk-import-live]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ────────────────────────────────────────────────────────
   // 4. COCKPIT — lista di tutte le proprietà con summary aggregato
   // ────────────────────────────────────────────────────────
   router.get('/properties', async (req, res) => {
