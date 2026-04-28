@@ -8,6 +8,7 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
+const { runSeed: runOnboardingSeed } = require('./onboarding/seed');
 
 // R2 client (S3-compatible)
 const r2Client = new S3Client({
@@ -868,6 +869,23 @@ app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
     const updated = await col.findOne({ _id: id });
     res.json({ ok: true, property: updated });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// ── Onboarding: Seed catalog (admin) ──────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+app.post('/api/onboarding/seed', requireAdminAuth, async (req, res) => {
+  try {
+    const { forceUpsert = false, dryRun = false } = req.body || {};
+    const db = await getDb();
+    const result = await runOnboardingSeed(db, { forceUpsert, dryRun });
+    console.log('[Onboarding seed]', result.log.join(' | '));
+    res.json(result);
+  } catch (e) {
+    console.error('[Onboarding seed] error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.listen(PORT, async () => {
