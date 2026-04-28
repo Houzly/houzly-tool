@@ -908,7 +908,7 @@ app.post('/api/onboarding/cron-tick', async (req, res) => {
 
     const result = await runNotificationsTick(db, resend, {
       recipients: ['info@houzly.it'],
-      from: process.env.RESEND_FROM || 'Houzly Onboarding <onboarding@houzly.it>',
+      from: process.env.RESEND_FROM || 'Houzly Onboarding <onboarding@resend.dev>',
       dryRun,
       forceBriefing,
     });
