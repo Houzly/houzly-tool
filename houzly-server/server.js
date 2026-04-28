@@ -891,6 +891,36 @@ app.post('/api/onboarding/seed', requireAdminAuth, async (req, res) => {
 
 // Tutti gli altri endpoint dell'onboarding vivono in onboarding/routes.js,
 // montati qui sotto requireAdminAuth (l'auth si applica a tutto il router).
+
+// Eccezione: cron-tick è chiamato da un servizio esterno (cron-job.org),
+// non conosce il PIN admin. Si protegge con un shared secret in env var.
+app.post('/api/onboarding/cron-tick', async (req, res) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    const provided = req.headers['x-cron-secret'] || req.query.secret;
+    if (!secret) return res.status(500).json({ ok: false, error: 'cron_secret_not_configured' });
+    if (provided !== secret) return res.status(401).json({ ok: false, error: 'invalid_cron_secret' });
+
+    const { runNotificationsTick } = require('./onboarding/notifications');
+    const db = await getDb();
+    const dryRun = req.query.dryRun === '1' || (req.body && req.body.dryRun === true);
+    const forceBriefing = req.query.forceBriefing === '1' || (req.body && req.body.forceBriefing === true);
+
+    const result = await runNotificationsTick(db, resend, {
+      recipients: ['info@houzly.it'],
+      from: process.env.RESEND_FROM || 'Houzly Onboarding <onboarding@houzly.it>',
+      dryRun,
+      forceBriefing,
+    });
+
+    console.log(`[onboarding/cron-tick] briefing=${result.briefingSent} overdueAlerts=${result.overdueAlertsSent} errors=${result.errors.length}`);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[onboarding/cron-tick]', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
 
 app.listen(PORT, async () => {
