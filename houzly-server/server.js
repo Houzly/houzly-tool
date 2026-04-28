@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
 const { runSeed: runOnboardingSeed } = require('./onboarding/seed');
+const { createOnboardingRouter } = require('./onboarding/routes');
 
 // R2 client (S3-compatible)
 const r2Client = new S3Client({
@@ -887,6 +888,10 @@ app.post('/api/onboarding/seed', requireAdminAuth, async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// Tutti gli altri endpoint dell'onboarding vivono in onboarding/routes.js,
+// montati qui sotto requireAdminAuth (l'auth si applica a tutto il router).
+app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
 
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
