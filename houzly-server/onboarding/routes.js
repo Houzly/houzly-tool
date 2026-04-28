@@ -214,9 +214,67 @@ function createOnboardingRouter(getDb) {
   });
 
   // ────────────────────────────────────────────────────────
-  // 3-bis. AVAILABLE PROPERTIES — quelle in checkin_properties_config
-  //        che NON sono ancora nell'onboarding (per dropdown "+ Nuova").
+  // 3-ter. LINK MANUAL TO SMOOBU — quando una proprietà inserita
+  //        manualmente ("manual_xxx") deve essere "fusa" con il record
+  //        sincronizzato da Smoobu (es. "prop_2642823").
+  //        Body: { manual_id, master_id }
+  //        Sposta tutte le istanze sotto il master_id e rinomina.
   // ────────────────────────────────────────────────────────
+  router.post('/link-manual-to-smoobu', async (req, res) => {
+    try {
+      const db = await getDb();
+      const { manual_id, master_id } = req.body || {};
+
+      if (!manual_id || !master_id) {
+        return res.status(400).json({ ok: false, error: 'missing_fields', required: ['manual_id', 'master_id'] });
+      }
+      if (!manual_id.startsWith('manual_')) {
+        return res.status(400).json({ ok: false, error: 'manual_id_must_start_with_manual_' });
+      }
+
+      // Verifica che il master esista
+      const master = await db.collection('checkin_properties_config').findOne({ _id: master_id });
+      if (!master) {
+        return res.status(404).json({ ok: false, error: 'master_not_found', master_id });
+      }
+
+      // Verifica che la manuale esista
+      const manualSample = await db.collection('onboarding_instances').findOne({ property_id: manual_id });
+      if (!manualSample) {
+        return res.status(404).json({ ok: false, error: 'manual_property_not_found', manual_id });
+      }
+
+      // Verifica che il master non sia già in onboarding (eviterei merge complessi)
+      const masterAlready = await db.collection('onboarding_instances').countDocuments({ property_id: master_id });
+      if (masterAlready > 0) {
+        return res.status(409).json({
+          ok: false,
+          error: 'master_already_in_onboarding',
+          existing_tasks: masterAlready,
+        });
+      }
+
+      // Sposta tutte le istanze sotto il nuovo property_id e aggiorna il property_name al master
+      const result = await db.collection('onboarding_instances').updateMany(
+        { property_id: manual_id },
+        { $set: { property_id: master_id, property_name: master.name, updated_at: new Date() } }
+      );
+
+      console.log(`[onboarding] linked manual ${manual_id} → ${master_id} (${result.modifiedCount} tasks moved)`);
+
+      res.json({
+        ok: true,
+        manual_id,
+        master_id,
+        master_name: master.name,
+        tasks_moved: result.modifiedCount,
+      });
+    } catch (e) {
+      console.error('[onboarding/link-manual-to-smoobu]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   router.get('/available-properties', async (req, res) => {
     try {
       const db = await getDb();
