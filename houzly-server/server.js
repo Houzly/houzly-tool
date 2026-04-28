@@ -117,7 +117,7 @@ async function sendSmoobuChatMessage(reservationId, messageText) {
 async function sendEmailFallback(toEmail, subject, html) {
   try {
     const result = await resend.emails.send({
-      from: 'Houzly Check-in <onboarding@resend.dev>',
+      from: 'Houzly Check-in <checkin@houzly.it>',
       to: toEmail, subject, html,
     });
     return { success: true, id: result.data?.id };
@@ -908,7 +908,7 @@ app.post('/api/onboarding/cron-tick', async (req, res) => {
 
     const result = await runNotificationsTick(db, resend, {
       recipients: ['info@houzly.it'],
-      from: process.env.RESEND_FROM || 'Houzly Onboarding <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM || 'Houzly Onboarding <onboarding@houzly.it>',
       dryRun,
       forceBriefing,
     });
