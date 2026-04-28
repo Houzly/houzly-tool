@@ -860,13 +860,33 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="modal" style="max-width:520px">
     <button class="modal-close" onclick="closeModal('modal-onb-new-property')">&#10005;</button>
     <div class="modal-title">Aggiungi nuova proprietà</div>
-    <div style="font-size:12px;color:var(--text-light);margin-top:-12px;margin-bottom:18px">Genera la checklist di onboarding per una proprietà del master</div>
+    <div style="font-size:12px;color:var(--text-light);margin-top:-12px;margin-bottom:18px">Genera la checklist di onboarding per una proprietà</div>
+
+    <!-- Toggle modalità -->
+    <div style="display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:var(--radius);margin-bottom:18px">
+      <button type="button" class="onb-mode-btn active" id="onb-np-mode-master" onclick="onbNpSetMode('master')" style="flex:1;padding:8px 12px;font-size:12.5px;font-weight:600;border-radius:6px;border:none;cursor:pointer;background:var(--surface);color:var(--blue);box-shadow:0 1px 3px rgba(67,97,238,0.12)">Da master Smoobu</button>
+      <button type="button" class="onb-mode-btn" id="onb-np-mode-manual" onclick="onbNpSetMode('manual')" style="flex:1;padding:8px 12px;font-size:12.5px;font-weight:600;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--text-light)">Inserimento manuale</button>
+    </div>
+
     <div class="form-grid" style="grid-template-columns:1fr">
-      <div class="field">
+      <!-- Modalità: da master -->
+      <div class="field" id="onb-np-master-field">
         <label>Proprietà</label>
         <select id="onb-np-property"><option value="">— Caricamento —</option></select>
         <div class="field-hint" id="onb-np-property-hint">Solo le proprietà non ancora in onboarding</div>
       </div>
+      <!-- Modalità: manuale -->
+      <div class="field" id="onb-np-manual-name-field" style="display:none">
+        <label>Nome proprietà *</label>
+        <input type="text" id="onb-np-manual-name" placeholder="es. Casa Vecchia – Milva" oninput="onbUpdatePreview()">
+        <div class="field-hint">Nome libero. Quando metterai la proprietà su Smoobu potrai collegarla.</div>
+      </div>
+      <div class="field" id="onb-np-manual-city-field" style="display:none">
+        <label>Luogo (opzionale)</label>
+        <input type="text" id="onb-np-manual-city" placeholder="es. Pratovecchio (AR)">
+        <div class="field-hint">Indica città/comune per ritrovarla più facilmente</div>
+      </div>
+
       <div class="field">
         <label>Ricetta di onboarding</label>
         <select id="onb-np-recipe"><option value="standard">Standard appartamento/villa (default)</option><option value="agriturismo">Agriturismo</option><option value="urbano">Appartamento urbano</option></select>
@@ -921,6 +941,28 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px">
       <button class="btn btn-ghost" onclick="closeModal('modal-onb-task-note')">Annulla</button>
       <button class="btn btn-primary" onclick="onbSaveTaskNote()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ELIMINA PROPRIETÀ (conferma) -->
+<div class="modal-overlay" id="modal-onb-delete-property">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="closeModal('modal-onb-delete-property')">&#10005;</button>
+    <div class="modal-title" style="color:var(--red)">Eliminare la proprietà?</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:14px">
+      Stai per rimuovere <strong id="onb-del-name">—</strong> dal cockpit di onboarding. Tutti i suoi <strong id="onb-del-count">—</strong> task verranno cancellati.
+    </div>
+    <div style="background:rgba(240,64,96,0.06);border:1px solid rgba(240,64,96,0.2);border-radius:var(--radius);padding:10px 12px;font-size:11.5px;color:var(--red);margin-bottom:18px">
+      ⚠ Questa operazione è <strong>irreversibile</strong>. Il record nel master Smoobu (se presente) NON viene toccato. Potrai sempre re-istanziare l'onboarding più tardi.
+    </div>
+    <div class="field" style="margin-bottom:18px">
+      <label>Per confermare digita <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--red);font-weight:700">ELIMINA</code></label>
+      <input type="text" id="onb-del-confirm" placeholder="ELIMINA" oninput="onbDeleteValidate()">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-onb-delete-property')">Annulla</button>
+      <button class="btn btn-danger" id="onb-del-submit" onclick="onbDeletePropertyConfirm()" disabled>Elimina definitivamente</button>
     </div>
   </div>
 </div>
@@ -6513,6 +6555,7 @@ function onbRenderDetail() {
   html += '</div>';
   html += '</div>';
   html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-danger btn-sm" onclick="onbDeletePropertyPrompt()" title="Rimuovi questa proprietà dall\'onboarding">🗑 Elimina</button>';
   html += '<button class="btn btn-ghost btn-sm" onclick="onbCloseDetail()">Chiudi ✕</button>';
   html += '</div>';
   html += '</div>';
@@ -6673,21 +6716,30 @@ async function onbSaveTaskNote() {
 
 // ── Modal "+ Nuova proprietà" ─────────────────────────────────────
 async function onbOpenNewProperty() {
-  // Carico le available
+  // Default modalità: master
+  ONB.npMode = 'master';
+  onbNpSetMode('master');
+
+  // Reset campi
   document.getElementById('onb-np-property').innerHTML = '<option value="">— Caricamento —</option>';
+  document.getElementById('onb-np-manual-name').value = '';
+  document.getElementById('onb-np-manual-city').value = '';
   document.getElementById('onb-np-preview').style.display = 'none';
+
   // Default go-live: oggi + 30 giorni
   var d = new Date(); d.setDate(d.getDate() + 30);
   document.getElementById('onb-np-golive').value = d.toISOString().slice(0, 10);
   document.getElementById('onb-np-recipe').value = 'standard';
+
   openModal('modal-onb-new-property');
+
   try {
     var data = await onbFetch('GET', '/available-properties');
     ONB.available = data.properties || [];
     var sel = document.getElementById('onb-np-property');
     if (ONB.available.length === 0) {
       sel.innerHTML = '<option value="">— Nessuna proprietà disponibile —</option>';
-      document.getElementById('onb-np-property-hint').textContent = 'Tutte le proprietà del master sono già in onboarding. Sincronizza Smoobu se ne hai aggiunte di nuove.';
+      document.getElementById('onb-np-property-hint').textContent = 'Tutte le proprietà del master sono già in onboarding. Usa "Inserimento manuale" se è una nuova.';
     } else {
       var opts = '<option value="">— Seleziona dal master —</option>';
       ONB.available.forEach(function(p) {
@@ -6706,19 +6758,57 @@ async function onbOpenNewProperty() {
   }
 }
 
+function onbNpSetMode(mode) {
+  ONB.npMode = mode;
+  // Toggle visivo dei pulsanti
+  var btnM = document.getElementById('onb-np-mode-master');
+  var btnX = document.getElementById('onb-np-mode-manual');
+  if (mode === 'master') {
+    btnM.classList.add('active');
+    btnM.style.background = 'var(--surface)';
+    btnM.style.color = 'var(--blue)';
+    btnM.style.boxShadow = '0 1px 3px rgba(67,97,238,0.12)';
+    btnX.classList.remove('active');
+    btnX.style.background = 'transparent';
+    btnX.style.color = 'var(--text-light)';
+    btnX.style.boxShadow = 'none';
+    document.getElementById('onb-np-master-field').style.display = '';
+    document.getElementById('onb-np-manual-name-field').style.display = 'none';
+    document.getElementById('onb-np-manual-city-field').style.display = 'none';
+  } else {
+    btnX.classList.add('active');
+    btnX.style.background = 'var(--surface)';
+    btnX.style.color = 'var(--blue)';
+    btnX.style.boxShadow = '0 1px 3px rgba(67,97,238,0.12)';
+    btnM.classList.remove('active');
+    btnM.style.background = 'transparent';
+    btnM.style.color = 'var(--text-light)';
+    btnM.style.boxShadow = 'none';
+    document.getElementById('onb-np-master-field').style.display = 'none';
+    document.getElementById('onb-np-manual-name-field').style.display = '';
+    document.getElementById('onb-np-manual-city-field').style.display = '';
+  }
+  onbUpdatePreview();
+}
+
 function onbUpdatePreview() {
-  var pid = document.getElementById('onb-np-property').value;
   var recipe = document.getElementById('onb-np-recipe').value;
   var goLive = document.getElementById('onb-np-golive').value;
-  if (!pid || !goLive) {
+  var canPreview = false;
+  if (ONB.npMode === 'master') {
+    canPreview = !!document.getElementById('onb-np-property').value;
+  } else {
+    canPreview = !!document.getElementById('onb-np-manual-name').value.trim();
+  }
+  if (!canPreview || !goLive) {
     document.getElementById('onb-np-preview').style.display = 'none';
     return;
   }
   // Calcola task istanziabili dato recipe + go-live
-  var applicable = ONB.catalog.filter(function(t) {
+  var applicable = (ONB.catalog || []).filter(function(t) {
     return !t.archived && Array.isArray(t.recipes) && t.recipes.indexOf(recipe) >= 0;
   });
-  // Trova next deadline (task pi vicino con d_before > 0)
+  // Trova next deadline (task più vicino al go-live)
   var goLiveDate = new Date(goLive);
   var nextTask = null, nextDate = null;
   applicable.forEach(function(t) {
@@ -6734,18 +6824,32 @@ function onbUpdatePreview() {
 }
 
 async function onbCreateProperty() {
-  var pid = document.getElementById('onb-np-property').value;
   var recipe = document.getElementById('onb-np-recipe').value;
   var goLive = document.getElementById('onb-np-golive').value;
-  if (!pid || !goLive) { toast('Compila tutti i campi'); return; }
-  var available = ONB.available.find(function(p) { return p._id === pid; });
-  if (!available) { toast('Proprietà non trovata'); return; }
+  if (!goLive) { toast('Manca la data di go-live'); return; }
+
+  var pid, pname;
+  if (ONB.npMode === 'master') {
+    pid = document.getElementById('onb-np-property').value;
+    if (!pid) { toast('Seleziona una proprietà'); return; }
+    var available = ONB.available.find(function(p) { return p._id === pid; });
+    if (!available) { toast('Proprietà non trovata'); return; }
+    pname = available.name;
+  } else {
+    pname = document.getElementById('onb-np-manual-name').value.trim();
+    if (!pname) { toast('Inserisci il nome della proprietà'); return; }
+    var city = document.getElementById('onb-np-manual-city').value.trim();
+    if (city) pname += ' (' + city + ')';
+    // ID univoco per inserimento manuale
+    pid = 'manual_' + Date.now();
+  }
+
   var btn = document.getElementById('onb-np-submit');
   btn.disabled = true; btn.textContent = 'Creazione...';
   try {
     await onbFetch('POST', '/properties', {
       property_id: pid,
-      property_name: available.name,
+      property_name: pname,
       recipe: recipe,
       go_live_target: goLive,
     });
@@ -6859,6 +6963,40 @@ function onbRenderCatalogRow(t, isChild) {
 }
 
 // ── Util ──────────────────────────────────────────────────────────
+// ── Elimina proprietà ─────────────────────────────────────────────
+function onbDeletePropertyPrompt() {
+  if (!ONB.detailData || !ONB.detailData.property) return;
+  var p = ONB.detailData.property;
+  var s = ONB.detailData.summary;
+  document.getElementById('onb-del-name').textContent = p.property_name;
+  document.getElementById('onb-del-count').textContent = s.total;
+  document.getElementById('onb-del-confirm').value = '';
+  document.getElementById('onb-del-submit').disabled = true;
+  openModal('modal-onb-delete-property');
+}
+
+function onbDeleteValidate() {
+  var v = document.getElementById('onb-del-confirm').value.trim();
+  document.getElementById('onb-del-submit').disabled = (v !== 'ELIMINA');
+}
+
+async function onbDeletePropertyConfirm() {
+  if (!ONB.detailData || !ONB.detailData.property) return;
+  var pid = ONB.detailData.property.property_id;
+  var btn = document.getElementById('onb-del-submit');
+  btn.disabled = true; btn.textContent = 'Eliminazione...';
+  try {
+    var res = await onbFetch('DELETE', '/properties/' + encodeURIComponent(pid));
+    closeModal('modal-onb-delete-property');
+    onbCloseDetail();
+    toast('Proprietà eliminata · ' + res.deleted + ' task rimossi ✓');
+    await onbRefresh();
+  } catch (e) {
+    toast('Errore eliminazione: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Elimina definitivamente';
+  }
+}
+
 function onbEsc(s) {
   if (s === undefined || s === null) return '';
   return String(s).replace(/[&<>"']/g, function(c) {
