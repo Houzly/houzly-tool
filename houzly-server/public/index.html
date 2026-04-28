@@ -243,6 +243,125 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .prop-filter-chip.parent{background:var(--grad);color:#fff;border:none}
 /* Group property badges */
 .group-tag{font-size:9px;background:rgba(67,97,238,0.1);color:var(--blue);border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700}
+/* ─── ONBOARDING COCKPIT ──────────────────────────────────── */
+.onb-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.onb-tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+.onb-tab{padding:10px 18px;font-size:12.5px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:transparent;border-top:none;border-left:none;border-right:none;font-family:'Plus Jakarta Sans',sans-serif}
+.onb-tab:hover{color:var(--blue)}
+.onb-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.onb-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.onb-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.onb-kpi.warn{background:rgba(245,166,35,0.06);border-color:rgba(245,166,35,0.3)}
+.onb-kpi.danger{background:rgba(240,64,96,0.05);border-color:rgba(240,64,96,0.25)}
+.onb-kpi-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);font-weight:700;margin-bottom:8px}
+.onb-kpi.warn .onb-kpi-label{color:#a06400}
+.onb-kpi.danger .onb-kpi-label{color:#a52647}
+.onb-kpi-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--blue);line-height:1}
+.onb-kpi.warn .onb-kpi-value{color:#cc7a00}
+.onb-kpi.danger .onb-kpi-value{color:var(--red)}
+.onb-kpi-sub{font-size:11px;color:var(--text-light);margin-top:4px}
+.onb-section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+/* Cockpit table */
+.onb-cockpit-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;table-layout:fixed}
+.onb-cockpit-table th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:10px 6px;background:#0f1535;text-align:center;font-weight:700}
+.onb-cockpit-table th.tl{text-align:left;padding-left:14px}
+.onb-cockpit-table td{padding:10px 6px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;color:var(--text-mid)}
+.onb-cockpit-table tr:last-child td{border-bottom:none}
+.onb-cockpit-table tr:hover td{background:rgba(67,97,238,0.04);cursor:pointer}
+.onb-prop-cell{text-align:left;padding-left:14px;font-weight:600;color:var(--text)}
+.onb-prop-sub{font-size:10.5px;color:var(--text-light);font-weight:400;margin-top:2px}
+/* Status dots */
+.onb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle}
+.onb-dot.green{background:var(--green)}
+.onb-dot.yellow{background:var(--orange)}
+.onb-dot.red{background:var(--red)}
+.onb-dot.gray{background:#cfd5e8}
+.onb-dot.na{background:transparent;border:1px dashed #cfd5e8}
+/* Progress bar */
+.onb-prog-wrap{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding-right:14px}
+.onb-prog-bar{width:64px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.onb-prog-fill{height:100%;background:var(--green);transition:width .3s}
+.onb-prog-fill.partial{background:var(--orange)}
+.onb-prog-fill.late{background:var(--red)}
+.onb-prog-pct{font-size:11px;font-weight:700;min-width:30px;text-align:right;color:var(--text-mid);font-variant-numeric:tabular-nums}
+/* Live properties collapsed bar */
+.onb-collapsed-bar{margin-top:18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;color:var(--text-mid);transition:all .15s}
+.onb-collapsed-bar:hover{background:var(--surface);border-color:var(--blue);color:var(--blue)}
+.onb-collapsed-bar strong{color:var(--text);font-weight:700}
+.onb-empty{padding:40px 20px;text-align:center;color:var(--text-light);font-size:13px}
+.onb-empty-icon{font-size:32px;margin-bottom:10px;opacity:.4}
+.onb-legend{display:flex;gap:14px;align-items:center;font-size:10.5px;color:var(--text-light);margin-top:10px;padding:0 4px}
+.onb-legend-item{display:flex;align-items:center;gap:5px}
+/* Detail view (drawer-style inline) */
+.onb-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-top:14px;box-shadow:var(--shadow)}
+.onb-detail-h{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+.onb-detail-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);margin:0}
+.onb-detail-meta{font-size:11.5px;color:var(--text-light);margin-top:4px}
+.onb-detail-meta span{margin-right:14px}
+.onb-detail-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.onb-detail-stat{background:var(--surface2);border-radius:var(--radius);padding:10px 14px}
+.onb-detail-stat.warn{background:rgba(245,166,35,0.08)}
+.onb-detail-stat.danger{background:rgba(240,64,96,0.06)}
+.onb-detail-stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);font-weight:700;margin-bottom:3px}
+.onb-detail-stat-v{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+.onb-detail-stat.warn .onb-detail-stat-v{color:#cc7a00}
+.onb-detail-stat.danger .onb-detail-stat-v{color:var(--red)}
+.onb-phase{margin-bottom:20px}
+.onb-phase-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.onb-phase-t{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em}
+.onb-phase-c{font-size:11px;color:var(--text-light)}
+/* Task row */
+.onb-task{display:grid;grid-template-columns:24px 16px 1fr auto auto auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);margin-bottom:6px;transition:border-color .15s}
+.onb-task:hover{border-color:var(--blue)}
+.onb-task.done{opacity:.6}
+.onb-task.late{background:rgba(240,64,96,0.04);border-color:rgba(240,64,96,0.25)}
+.onb-task.soon{background:rgba(245,166,35,0.04);border-color:rgba(245,166,35,0.25)}
+.onb-task.expanded{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0;border-bottom-color:transparent}
+.onb-children{border:1px solid var(--border);border-top:0;border-bottom-left-radius:var(--radius);border-bottom-right-radius:var(--radius);background:var(--surface2);padding:6px 12px 8px 38px;margin-bottom:6px}
+.onb-task.late+.onb-children,.onb-task.soon+.onb-children{border-color:rgba(240,64,96,0.25)}
+.onb-task-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.onb-task-check:hover{border-color:var(--blue)}
+.onb-task-check.on{background:var(--green);border-color:var(--green)}
+.onb-task-check.on::after{content:'';width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.onb-task-caret{color:var(--text-light);font-size:10px;cursor:pointer;user-select:none;text-align:center;width:16px}
+.onb-task-name{font-size:13px;font-weight:600;color:var(--text)}
+.onb-task-name.done{text-decoration:line-through;font-weight:500;color:var(--text-light)}
+.onb-task-sub{font-size:10.5px;color:var(--text-light);margin-top:2px}
+.onb-pill{font-size:10.5px;padding:3px 8px;border-radius:12px;font-weight:700;white-space:nowrap}
+.onb-pill.late{background:rgba(240,64,96,0.12);color:var(--red)}
+.onb-pill.soon{background:rgba(245,166,35,0.15);color:#cc7a00}
+.onb-pill.ok{background:rgba(0,196,140,0.12);color:var(--green)}
+.onb-pill.todo{background:var(--surface2);color:var(--text-light);border:1px solid var(--border)}
+.onb-pill.na{background:transparent;color:var(--text-light);border:1px dashed var(--border)}
+.onb-pill.block{background:rgba(245,166,35,0.18);color:#a06400;font-size:9.5px}
+.onb-task-assignee{font-size:11px;color:var(--text-mid);font-weight:600;white-space:nowrap}
+.onb-task-progress{display:flex;align-items:center;gap:6px}
+/* Subtask child */
+.onb-subtask{display:grid;grid-template-columns:18px 1fr auto auto;gap:10px;align-items:center;padding:6px 10px;border-radius:var(--radius);transition:background .15s}
+.onb-subtask:hover{background:var(--surface)}
+.onb-subtask-check{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.onb-subtask-check:hover{border-color:var(--blue)}
+.onb-subtask-check.on{background:var(--green);border-color:var(--green)}
+.onb-subtask-check.on::after{content:'';width:3px;height:6px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.onb-subtask-name{font-size:12px;color:var(--text);font-weight:500}
+.onb-subtask-name.done{text-decoration:line-through;color:var(--text-light);font-weight:400}
+.onb-warn-banner{background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:var(--radius);padding:8px 12px;margin-bottom:8px;font-size:11.5px;color:#a06400;display:flex;align-items:center;gap:8px}
+/* Catalog admin view */
+.onb-catalog-info{background:rgba(67,97,238,0.06);border:1px solid rgba(67,97,238,0.2);border-radius:var(--radius);padding:10px 14px;font-size:11.5px;color:var(--blue);margin-bottom:18px;display:flex;align-items:flex-start;gap:8px}
+.onb-cat-task{display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);margin-bottom:6px}
+.onb-cat-task.child{margin-left:24px;background:var(--surface2);border:none;padding:7px 12px}
+.onb-cat-task-name{font-size:12.5px;font-weight:600;color:var(--text)}
+.onb-cat-task.child .onb-cat-task-name{font-size:11.5px;font-weight:500}
+.onb-cat-task-desc{font-size:10.5px;color:var(--text-light);margin-top:2px}
+.onb-cat-pill{font-size:10px;padding:3px 7px;border-radius:10px;font-weight:700;white-space:nowrap}
+.onb-cat-pill.day{background:var(--surface2);color:var(--text-mid);font-family:monospace;border:1px solid var(--border)}
+.onb-cat-pill.day.post{background:rgba(0,196,140,0.1);color:var(--green);border-color:rgba(0,196,140,0.3)}
+.onb-cat-pill.assignee{background:rgba(67,97,238,0.1);color:var(--blue)}
+/* Modal "+ Nuova proprietà" preview */
+.onb-modal-preview{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-top:14px;font-size:11.5px}
+.onb-modal-preview-h{font-weight:700;color:var(--text);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue)}
+.onb-modal-preview-row{display:flex;justify-content:space-between;padding:3px 0;color:var(--text-light)}
+.onb-modal-preview-row span:last-child{color:var(--text);font-weight:600}
 </style>
 </head>
 <body>
@@ -276,6 +395,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Operations</div>
     <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Tasks</div>
     <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Cleaning Manager</div>
+    <div class="nav-item" onclick="showPage('onboarding')"><span class="nav-icon">&#128203;</span> Onboarding</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Strumenti</div>
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
@@ -655,7 +775,152 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════
+     ONBOARDING — Cockpit, Dettaglio, Catalogo
+══════════════════════════════════════════════════════════════════ -->
+<div id="page-onboarding" class="page">
+
+  <div class="onb-header">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Onboarding</div>
+      <div style="font-size:11.5px;color:var(--text-light);margin-top:2px" id="onb-header-sub">Caricamento...</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="onbRefresh()" title="Aggiorna">&#8635; Aggiorna</button>
+      <button class="btn btn-outline btn-sm" onclick="onbBulkImportPrompt()">&#8595; Importa da master</button>
+      <button class="btn btn-primary" onclick="onbOpenNewProperty()">+ Nuova proprietà</button>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="onb-tabs">
+    <button class="onb-tab active" id="onb-tab-cockpit" onclick="onbSwitchTab('cockpit')">Cockpit</button>
+    <button class="onb-tab" id="onb-tab-catalog" onclick="onbSwitchTab('catalog')">Catalogo task</button>
+  </div>
+
+  <!-- VIEW: COCKPIT -->
+  <div id="onb-view-cockpit">
+
+    <!-- KPI -->
+    <div class="onb-kpis" id="onb-kpis">
+      <div class="onb-kpi"><div class="onb-kpi-label">Live & complete</div><div class="onb-kpi-value" id="onb-kpi-live">—</div><div class="onb-kpi-sub">tutto OK</div></div>
+      <div class="onb-kpi"><div class="onb-kpi-label">In onboarding</div><div class="onb-kpi-value" id="onb-kpi-active">—</div><div class="onb-kpi-sub">attivazione in corso</div></div>
+      <div class="onb-kpi warn"><div class="onb-kpi-label">In scadenza ≤ 7gg</div><div class="onb-kpi-value" id="onb-kpi-soon">—</div><div class="onb-kpi-sub">task da chiudere</div></div>
+      <div class="onb-kpi danger"><div class="onb-kpi-label">In ritardo</div><div class="onb-kpi-value" id="onb-kpi-overdue">—</div><div class="onb-kpi-sub">oltre data target</div></div>
+    </div>
+
+    <!-- TABELLA in-onboarding (proprietà non ancora live) -->
+    <div id="onb-active-section">
+      <div class="onb-section-title" id="onb-active-title">In lavorazione</div>
+      <div id="onb-active-table-wrap"></div>
+    </div>
+
+    <!-- BARRA collassata per le proprietà già live -->
+    <div id="onb-live-collapsed" style="display:none">
+      <div class="onb-collapsed-bar" onclick="onbToggleLive()">
+        <span><strong id="onb-live-count">—</strong> proprietà già live · tutte al 100%</span>
+        <span style="font-size:11px;color:var(--text-light)" id="onb-live-toggle">↓ espandi</span>
+      </div>
+      <div id="onb-live-table-wrap" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- LEGENDA -->
+    <div class="onb-legend">
+      <span class="onb-legend-item"><span class="onb-dot green"></span> completato</span>
+      <span class="onb-legend-item"><span class="onb-dot yellow"></span> in corso</span>
+      <span class="onb-legend-item"><span class="onb-dot red"></span> in ritardo</span>
+      <span class="onb-legend-item"><span class="onb-dot gray"></span> da iniziare</span>
+      <span class="onb-legend-item"><span class="onb-dot na"></span> non applicabile</span>
+    </div>
+
+    <!-- DETAIL inline drawer (riempito al click su una proprietà) -->
+    <div id="onb-detail-drawer" style="display:none"></div>
+
+  </div>
+
+  <!-- VIEW: CATALOGO -->
+  <div id="onb-view-catalog" style="display:none">
+    <div class="onb-catalog-info">
+      <span style="font-size:14px;flex-shrink:0">&#9432;</span>
+      <span>Le modifiche al catalogo si applicano solo alle <strong>nuove proprietà</strong>. Le proprietà già istanziate mantengono la loro checklist originale.</span>
+    </div>
+    <div id="onb-catalog-content">Caricamento...</div>
+  </div>
+
+</div>
 </div><!-- /main -->
+
+<!-- MODAL: + NUOVA PROPRIETÀ -->
+<div class="modal-overlay" id="modal-onb-new-property">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('modal-onb-new-property')">&#10005;</button>
+    <div class="modal-title">Aggiungi nuova proprietà</div>
+    <div style="font-size:12px;color:var(--text-light);margin-top:-12px;margin-bottom:18px">Genera la checklist di onboarding per una proprietà del master</div>
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="field">
+        <label>Proprietà</label>
+        <select id="onb-np-property"><option value="">— Caricamento —</option></select>
+        <div class="field-hint" id="onb-np-property-hint">Solo le proprietà non ancora in onboarding</div>
+      </div>
+      <div class="field">
+        <label>Ricetta di onboarding</label>
+        <select id="onb-np-recipe"><option value="standard">Standard appartamento/villa (default)</option><option value="agriturismo">Agriturismo</option><option value="urbano">Appartamento urbano</option></select>
+        <div class="field-hint">Determina quali task vengono istanziati</div>
+      </div>
+      <div class="field">
+        <label>Data prevista go-live</label>
+        <input type="date" id="onb-np-golive">
+        <div class="field-hint">Le date dei task vengono calcolate da questa data</div>
+      </div>
+    </div>
+    <div class="onb-modal-preview" id="onb-np-preview" style="display:none">
+      <div class="onb-modal-preview-h">Anteprima</div>
+      <div class="onb-modal-preview-row"><span>Task da istanziare</span><span id="onb-np-pv-tasks">—</span></div>
+      <div class="onb-modal-preview-row"><span>Prossima scadenza</span><span id="onb-np-pv-next">—</span></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-onb-new-property')">Annulla</button>
+      <button class="btn btn-primary" id="onb-np-submit" onclick="onbCreateProperty()">Crea checklist</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BULK IMPORT (conferma) -->
+<div class="modal-overlay" id="modal-onb-bulk-import">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeModal('modal-onb-bulk-import')">&#10005;</button>
+    <div class="modal-title">Importa proprietà già live</div>
+    <div style="font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:18px">
+      Importa nel cockpit le proprietà del master che <strong>NON</strong> sono ancora nell'onboarding. Verranno marcate come <strong>complete al 100%</strong> con go-live storicizzato.
+    </div>
+    <div id="onb-bulk-summary" style="background:var(--surface2);border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;font-size:12.5px">
+      Caricamento dati...
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-onb-bulk-import')">Annulla</button>
+      <button class="btn btn-primary" id="onb-bulk-submit" onclick="onbBulkImportConfirm()">Importa tutte</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOTE TASK -->
+<div class="modal-overlay" id="modal-onb-task-note">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('modal-onb-task-note')">&#10005;</button>
+    <div class="modal-title" id="onb-tn-title">Note task</div>
+    <div class="field">
+      <label>Note</label>
+      <textarea id="onb-tn-textarea" rows="5" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;resize:vertical"></textarea>
+      <div class="field-hint">Es. numero CIN, link al listing, dettagli pratica...</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-onb-task-note')">Annulla</button>
+      <button class="btn btn-primary" onclick="onbSaveTaskNote()">Salva</button>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- MODAL PROPRIETARIO -->
 <div class="modal-overlay" id="modal-proprietario">
@@ -1404,6 +1669,7 @@ async function authLogin(){
       var setData = await setRes.json();
       if(setData.ok){
         localStorage.setItem(AUTH_KEY,'1');
+        sessionStorage.setItem('onbPin', pin);
         document.getElementById('auth-overlay').classList.add('hidden');
         appInit();toast('Password impostata ✓');
       }
@@ -1414,6 +1680,7 @@ async function authLogin(){
     var data = await res.json();
     if(data.ok){
       localStorage.setItem(AUTH_KEY,'1');
+      sessionStorage.setItem('onbPin', pin);
       document.getElementById('auth-overlay').classList.add('hidden');
       appInit();
     } else {
@@ -1582,7 +1849,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie'};
+  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   renderPage(p);
 }
@@ -1598,6 +1865,7 @@ function renderPage(p){
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){if(typeof clDB==='function'){clDB();renderCleaning();}}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
+  if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
 }
 function wireTableActions(tbodyId){
   // no-op: delegation is handled globally via document listener below
@@ -5970,6 +6238,627 @@ async function restoreFromBackup(input) {
     resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore: ' + e.message + '</div>';
   }
   input.value = '';
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════
+// ONBOARDING — Cockpit, Dettaglio, Catalogo
+// ══════════════════════════════════════════════════════════════════
+
+var ONB = {
+  properties: [],
+  catalog: [],
+  recipes: [],
+  available: [],
+  detailOpen: null,         // property_id of expanded detail
+  detailData: null,         // tasks of currently open detail
+  expandedTasks: {},        // { instance_id: bool } per i sotto-task espansi
+  noteEditingId: null,      // task instance id when editing notes
+  liveExpanded: false,
+  loaded: false,
+};
+
+// ── Helpers ───────────────────────────────────────────────────────
+function onbHeaders() {
+  var pin = sessionStorage.getItem('onbPin') || '';
+  return { 'Content-Type': 'application/json', 'x-admin-pin': pin };
+}
+
+async function onbFetch(method, path, body) {
+  var opts = { method: method, headers: onbHeaders() };
+  if (body) opts.body = JSON.stringify(body);
+  var res = await fetch('/api/onboarding' + path, opts);
+  var data = await res.json();
+  if (!res.ok) {
+    var err = data.error || ('HTTP ' + res.status);
+    if (data.error === 'invalid_pin' || data.error === 'missing_pin') {
+      toast('Sessione scaduta — esci e rientra');
+      throw new Error('auth');
+    }
+    throw new Error(err);
+  }
+  return data;
+}
+
+function onbFmtDate(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function onbDaysFromNow(iso) {
+  var d = new Date(iso).getTime();
+  var now = Date.now();
+  return Math.round((d - now) / 86400000);
+}
+
+function onbStatusDot(status) {
+  return '<span class="onb-dot ' + status + '"></span>';
+}
+
+// ── Init / refresh ────────────────────────────────────────────────
+async function onbInit() {
+  if (ONB.loaded) return onbRefresh();
+  await onbRefresh();
+  ONB.loaded = true;
+}
+
+async function onbRefresh() {
+  try {
+    var [propsRes, catRes, recRes] = await Promise.all([
+      onbFetch('GET', '/properties'),
+      onbFetch('GET', '/catalog'),
+      onbFetch('GET', '/recipes'),
+    ]);
+    ONB.properties = propsRes.properties || [];
+    ONB.catalog = catRes.tasks || [];
+    ONB.recipes = recRes.recipes || [];
+    onbRenderCockpit();
+    if (document.getElementById('onb-view-catalog').style.display !== 'none') {
+      onbRenderCatalog();
+    }
+  } catch (e) {
+    if (e.message !== 'auth') {
+      console.error('[onb] refresh error', e);
+      toast('Errore caricamento onboarding: ' + e.message);
+    }
+  }
+}
+
+// ── Tab switch ────────────────────────────────────────────────────
+function onbSwitchTab(tab) {
+  document.querySelectorAll('.onb-tab').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('onb-tab-' + tab).classList.add('active');
+  document.getElementById('onb-view-cockpit').style.display = (tab === 'cockpit') ? 'block' : 'none';
+  document.getElementById('onb-view-catalog').style.display = (tab === 'catalog') ? 'block' : 'none';
+  if (tab === 'catalog') onbRenderCatalog();
+}
+
+// ── COCKPIT render ────────────────────────────────────────────────
+function onbRenderCockpit() {
+  var props = ONB.properties || [];
+  var liveCount = props.filter(function(p) { return p.summary.completion_pct === 100; }).length;
+  var activeProps = props.filter(function(p) { return p.summary.completion_pct < 100; });
+  var liveProps = props.filter(function(p) { return p.summary.completion_pct === 100; });
+
+  // KPI
+  var totalSoon = 0, totalOverdue = 0;
+  activeProps.forEach(function(p) {
+    totalSoon += p.summary.due_soon || 0;
+    totalOverdue += p.summary.overdue || 0;
+  });
+  document.getElementById('onb-kpi-live').textContent = liveCount;
+  document.getElementById('onb-kpi-active').textContent = activeProps.length;
+  document.getElementById('onb-kpi-soon').textContent = totalSoon;
+  document.getElementById('onb-kpi-overdue').textContent = totalOverdue;
+
+  document.getElementById('onb-header-sub').textContent = props.length + ' proprietà · ' + activeProps.length + ' in onboarding · ' + liveCount + ' live · aggiornato ora';
+
+  // Tabella in lavorazione
+  var activeTitle = document.getElementById('onb-active-title');
+  activeTitle.textContent = activeProps.length > 0 ? ('In lavorazione (' + activeProps.length + ')') : 'In lavorazione';
+  document.getElementById('onb-active-table-wrap').innerHTML = activeProps.length > 0
+    ? onbBuildTable(activeProps, false)
+    : '<div class="onb-empty"><div class="onb-empty-icon">📋</div>Nessuna proprietà attualmente in onboarding.<br><span style="font-size:11px">Click su <strong>+ Nuova proprietà</strong> per iniziare l\'attivazione di una struttura.</span></div>';
+
+  // Live collapsed
+  var liveDiv = document.getElementById('onb-live-collapsed');
+  if (liveProps.length > 0) {
+    liveDiv.style.display = 'block';
+    document.getElementById('onb-live-count').textContent = liveProps.length;
+    var wrap = document.getElementById('onb-live-table-wrap');
+    if (ONB.liveExpanded) {
+      wrap.style.display = 'block';
+      wrap.innerHTML = onbBuildTable(liveProps, true);
+      document.getElementById('onb-live-toggle').textContent = '↑ comprimi';
+    } else {
+      wrap.style.display = 'none';
+      document.getElementById('onb-live-toggle').textContent = '↓ espandi';
+    }
+  } else {
+    liveDiv.style.display = 'none';
+  }
+}
+
+function onbBuildTable(props, isLive) {
+  var html = '<table class="onb-cockpit-table">';
+  html += '<colgroup><col style="width:30%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:16%"></colgroup>';
+  html += '<thead><tr>';
+  html += '<th class="tl">Proprietà</th>';
+  html += '<th>Legale</th><th>Foto</th><th>OTA</th><th>Tools</th><th>Marketing</th><th>Ottimizz.</th>';
+  html += '<th style="text-align:right;padding-right:14px">Avanzamento</th></tr></thead>';
+  html += '<tbody>';
+  props.forEach(function(p) {
+    var cs = p.category_status || {};
+    var pct = p.summary.completion_pct || 0;
+    var fillClass = (p.summary.overdue > 0) ? 'late' : (pct === 100 ? '' : 'partial');
+    var goLive = p.go_live_target ? onbFmtDate(p.go_live_target) : '—';
+    var sub = '';
+    if (isLive) {
+      sub = 'live · go-live ' + goLive;
+    } else if (p.summary.overdue > 0) {
+      sub = '<span style="color:var(--red);font-weight:600">' + p.summary.overdue + ' task in ritardo</span> · go-live ' + goLive;
+    } else if (p.summary.due_soon > 0) {
+      sub = p.summary.due_soon + ' in scadenza ≤7gg · go-live ' + goLive;
+    } else {
+      sub = 'go-live ' + goLive;
+    }
+    html += '<tr onclick="onbOpenDetail(\'' + p.property_id + '\')">';
+    html += '<td class="onb-prop-cell">' + onbEsc(p.property_name) + '<div class="onb-prop-sub">' + sub + '</div></td>';
+    html += '<td>' + onbStatusDot(cs.legale_fiscale || 'gray') + '</td>';
+    html += '<td>' + onbStatusDot(cs.foto || 'gray') + '</td>';
+    html += '<td>' + onbStatusDot(cs.ota || 'gray') + '</td>';
+    html += '<td>' + onbStatusDot(cs.tools || 'gray') + '</td>';
+    html += '<td>' + onbStatusDot(cs.marketing || 'gray') + '</td>';
+    html += '<td>' + onbStatusDot(cs.ottimizzazione || 'gray') + '</td>';
+    html += '<td><div class="onb-prog-wrap"><div class="onb-prog-bar"><div class="onb-prog-fill ' + fillClass + '" style="width:' + pct + '%"></div></div><span class="onb-prog-pct">' + pct + '%</span></div></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function onbToggleLive() {
+  ONB.liveExpanded = !ONB.liveExpanded;
+  onbRenderCockpit();
+}
+
+// ── DETTAGLIO proprietà ───────────────────────────────────────────
+async function onbOpenDetail(propertyId) {
+  if (ONB.detailOpen === propertyId) {
+    onbCloseDetail();
+    return;
+  }
+  ONB.detailOpen = propertyId;
+  var drawer = document.getElementById('onb-detail-drawer');
+  drawer.style.display = 'block';
+  drawer.innerHTML = '<div class="onb-detail" style="text-align:center;padding:30px">Caricamento dettaglio...</div>';
+  drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  try {
+    var data = await onbFetch('GET', '/properties/' + encodeURIComponent(propertyId));
+    ONB.detailData = data;
+    onbRenderDetail();
+  } catch (e) {
+    drawer.innerHTML = '<div class="onb-detail" style="color:var(--red)">Errore: ' + e.message + '</div>';
+  }
+}
+
+function onbCloseDetail() {
+  ONB.detailOpen = null;
+  ONB.detailData = null;
+  document.getElementById('onb-detail-drawer').style.display = 'none';
+}
+
+function onbRenderDetail() {
+  if (!ONB.detailData) return;
+  var d = ONB.detailData;
+  var p = d.property;
+  var s = d.summary;
+  var tasks = d.tasks;
+
+  // Raggruppa task per categoria
+  var CAT_LABELS = {
+    legale_fiscale: 'Legale e fiscale',
+    foto: 'Foto e contenuti',
+    ota: 'Pubblicazione OTA',
+    tools: 'Tools (Smoobu, PriceLabs, Vikey)',
+    marketing: 'Marketing web',
+    ottimizzazione: 'Ottimizzazione (post go-live)',
+    ricorrente: 'Ricorrenti',
+    custom: 'Custom',
+  };
+  var CAT_ORDER = ['legale_fiscale', 'foto', 'ota', 'tools', 'marketing', 'ottimizzazione', 'ricorrente', 'custom'];
+
+  // Indicizzo per ID istanza per parent_instance_id lookup
+  var byId = {};
+  tasks.forEach(function(t) { byId[t._id] = t; });
+
+  // Separa madri da figli
+  var parents = tasks.filter(function(t) { return !t.parent_instance_id; });
+  var childrenByParent = {};
+  tasks.forEach(function(t) {
+    if (t.parent_instance_id) {
+      var key = (typeof t.parent_instance_id === 'object') ? t.parent_instance_id.toString() : t.parent_instance_id;
+      if (!childrenByParent[key]) childrenByParent[key] = [];
+      childrenByParent[key].push(t);
+    }
+  });
+
+  // Raggruppa madri per categoria
+  var byCategory = {};
+  parents.forEach(function(t) {
+    var cat = (t.task && t.task.category) || (t.custom_subtask ? 'custom' : 'other');
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(t);
+  });
+
+  var goLive = onbFmtDate(p.go_live_target);
+  var daysToGoLive = onbDaysFromNow(p.go_live_target);
+  var html = '<div class="onb-detail">';
+
+  // Header
+  html += '<div class="onb-detail-h">';
+  html += '<div>';
+  html += '<div class="onb-detail-title">' + onbEsc(p.property_name) + '</div>';
+  html += '<div class="onb-detail-meta">';
+  html += '<span><strong>Go-live:</strong> ' + goLive + '</span>';
+  if (daysToGoLive >= 0) html += '<span><strong>' + daysToGoLive + '</strong> giorni al go-live</span>';
+  else html += '<span>' + Math.abs(daysToGoLive) + ' giorni dal go-live</span>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-ghost btn-sm" onclick="onbCloseDetail()">Chiudi ✕</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // Stats
+  html += '<div class="onb-detail-stats">';
+  html += '<div class="onb-detail-stat"><div class="onb-detail-stat-l">Completati</div><div class="onb-detail-stat-v">' + s.done + ' / ' + (s.total - s.na) + '</div></div>';
+  html += '<div class="onb-detail-stat warn"><div class="onb-detail-stat-l">In scadenza ≤7gg</div><div class="onb-detail-stat-v">' + (s.due_soon || 0) + '</div></div>';
+  html += '<div class="onb-detail-stat danger"><div class="onb-detail-stat-l">In ritardo</div><div class="onb-detail-stat-v">' + (s.overdue || 0) + '</div></div>';
+  html += '<div class="onb-detail-stat"><div class="onb-detail-stat-l">Avanzamento</div><div class="onb-detail-stat-v">' + s.completion_pct + '%</div></div>';
+  html += '</div>';
+
+  // Fasi
+  CAT_ORDER.forEach(function(cat) {
+    var ts = byCategory[cat];
+    if (!ts || ts.length === 0) return;
+    ts.sort(function(a, b) { return ((a.task && a.task.order) || 0) - ((b.task && b.task.order) || 0); });
+
+    var doneInPhase = ts.filter(function(t) { return t.status === 'done'; }).length;
+    var totalInPhase = ts.filter(function(t) { return t.status !== 'na'; }).length;
+
+    html += '<div class="onb-phase">';
+    html += '<div class="onb-phase-h">';
+    html += '<div class="onb-phase-t">' + (CAT_LABELS[cat] || cat) + '</div>';
+    html += '<div class="onb-phase-c">' + doneInPhase + ' di ' + totalInPhase + ' completati</div>';
+    html += '</div>';
+
+    ts.forEach(function(t) {
+      var children = childrenByParent[t._id] || [];
+      var hasChildren = children.length > 0;
+      var expanded = ONB.expandedTasks[t._id];
+      html += onbRenderTaskRow(t, hasChildren, expanded);
+      if (hasChildren && expanded) {
+        // Banner blocking warn se ce ne sono
+        var blockingChildren = children.filter(function(c) {
+          return (c.task && c.task.is_blocking_parent) && c.status !== 'done' && c.status !== 'na';
+        });
+        var openChildHtml = '<div class="onb-children">';
+        if (blockingChildren.length > 0) {
+          openChildHtml += '<div class="onb-warn-banner">';
+          openChildHtml += '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><path d="M8 1L1 14h14L8 1z" stroke="#a06400" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6v3.5M8 11.5v.5" stroke="#a06400" stroke-width="1.4" stroke-linecap="round"/></svg>';
+          openChildHtml += '<span>Da chiudere <strong>prima</strong> per non perdere soldi sulle prime prenotazioni</span>';
+          openChildHtml += '</div>';
+        }
+        children.sort(function(a, b) { return ((a.task && a.task.order) || 0) - ((b.task && b.task.order) || 0); });
+        children.forEach(function(c) { openChildHtml += onbRenderSubtaskRow(c); });
+        openChildHtml += '</div>';
+        html += openChildHtml;
+      }
+    });
+
+    html += '</div>';
+  });
+
+  html += '</div>';
+  document.getElementById('onb-detail-drawer').innerHTML = html;
+}
+
+function onbRenderTaskRow(t, hasChildren, expanded) {
+  var name = (t.task && t.task.name) || t.custom_name || 'Task';
+  var isDone = t.status === 'done';
+  var isNa = t.status === 'na';
+  var dayDelta = t.target_date ? onbDaysFromNow(t.target_date) : null;
+  var isLate = !isDone && !isNa && dayDelta !== null && dayDelta < 0;
+  var isSoon = !isDone && !isNa && dayDelta !== null && dayDelta >= 0 && dayDelta <= 7;
+  var rowCls = (isDone ? 'done' : '') + (isLate ? ' late' : '') + (isSoon ? ' soon' : '') + (hasChildren && expanded ? ' expanded' : '');
+  var assignee = t.override_assignee || (t.task && t.task.default_assignee) || '';
+  var assigneeLabel = assignee === 'daniele' ? 'Daniele' : (assignee === 'romeo' ? 'Romeo' : (assignee === 'unassigned' ? '' : assignee));
+
+  var pillHtml;
+  if (isNa) pillHtml = '<span class="onb-pill na">N/A</span>';
+  else if (isDone) pillHtml = '<span class="onb-pill ok">fatto</span>';
+  else if (isLate) pillHtml = '<span class="onb-pill late">in ritardo · ' + Math.abs(dayDelta) + 'gg</span>';
+  else if (isSoon) pillHtml = '<span class="onb-pill soon">tra ' + dayDelta + 'gg</span>';
+  else pillHtml = '<span class="onb-pill todo">' + onbFmtDate(t.target_date) + '</span>';
+
+  var html = '<div class="onb-task ' + rowCls.trim() + '">';
+  html += '<div class="onb-task-check ' + (isDone ? 'on' : '') + '" onclick="onbToggleTask(\'' + t._id + '\', event)" title="Segna come completato"></div>';
+  if (hasChildren) {
+    html += '<span class="onb-task-caret" onclick="onbToggleExpand(\'' + t._id + '\')">' + (expanded ? '▼' : '▶') + '</span>';
+  } else {
+    html += '<span></span>';
+  }
+  html += '<div onclick="onbOpenTaskNote(\'' + t._id + '\')" style="cursor:pointer">';
+  html += '<div class="onb-task-name ' + (isDone ? 'done' : '') + '">' + onbEsc(name) + '</div>';
+  if (t.notes) {
+    html += '<div class="onb-task-sub">📝 ' + onbEsc(t.notes.slice(0, 80)) + (t.notes.length > 80 ? '…' : '') + '</div>';
+  } else if (t.task && t.task.description) {
+    html += '<div class="onb-task-sub">' + onbEsc(t.task.description) + '</div>';
+  }
+  html += '</div>';
+  html += pillHtml;
+  if (assigneeLabel) html += '<span class="onb-task-assignee">' + assigneeLabel + '</span>'; else html += '<span></span>';
+  html += '<span></span>';
+  html += '</div>';
+  return html;
+}
+
+function onbRenderSubtaskRow(t) {
+  var name = (t.task && t.task.name) || t.custom_name || 'Sotto-task';
+  var isDone = t.status === 'done';
+  var isBlocking = (t.task && t.task.is_blocking_parent);
+  var html = '<div class="onb-subtask">';
+  html += '<div class="onb-subtask-check ' + (isDone ? 'on' : '') + '" onclick="onbToggleTask(\'' + t._id + '\', event)"></div>';
+  html += '<div class="onb-subtask-name ' + (isDone ? 'done' : '') + '" onclick="onbOpenTaskNote(\'' + t._id + '\')" style="cursor:pointer">' + onbEsc(name) + '</div>';
+  if (isBlocking && !isDone) html += '<span class="onb-pill block">blocking</span>'; else html += '<span></span>';
+  if (isDone) html += '<span class="onb-pill ok">fatto</span>'; else html += '<span></span>';
+  html += '</div>';
+  return html;
+}
+
+function onbToggleExpand(taskId) {
+  ONB.expandedTasks[taskId] = !ONB.expandedTasks[taskId];
+  onbRenderDetail();
+}
+
+async function onbToggleTask(taskId, event) {
+  if (event) event.stopPropagation();
+  var task = (ONB.detailData.tasks || []).find(function(t) { return t._id === taskId || (t._id && t._id.toString && t._id.toString() === taskId); });
+  if (!task) return;
+  var newStatus = task.status === 'done' ? 'pending' : 'done';
+  try {
+    await onbFetch('PATCH', '/tasks/' + taskId, { status: newStatus, completed_by: (sessionStorage.getItem('onbWho') || 'daniele') });
+    // Refresh dettaglio + cockpit
+    var fresh = await onbFetch('GET', '/properties/' + encodeURIComponent(ONB.detailOpen));
+    ONB.detailData = fresh;
+    onbRenderDetail();
+    onbRefresh();
+  } catch (e) {
+    if (e.message !== 'auth') toast('Errore aggiornamento: ' + e.message);
+  }
+}
+
+// ── Note task ─────────────────────────────────────────────────────
+function onbOpenTaskNote(taskId) {
+  var task = (ONB.detailData.tasks || []).find(function(t) { return (t._id && t._id.toString && t._id.toString() === taskId) || t._id === taskId; });
+  if (!task) return;
+  ONB.noteEditingId = taskId;
+  document.getElementById('onb-tn-title').textContent = (task.task && task.task.name) || task.custom_name || 'Note';
+  document.getElementById('onb-tn-textarea').value = task.notes || '';
+  openModal('modal-onb-task-note');
+}
+
+async function onbSaveTaskNote() {
+  if (!ONB.noteEditingId) return;
+  var notes = document.getElementById('onb-tn-textarea').value;
+  try {
+    await onbFetch('PATCH', '/tasks/' + ONB.noteEditingId, { notes: notes });
+    closeModal('modal-onb-task-note');
+    toast('Note salvate ✓');
+    var fresh = await onbFetch('GET', '/properties/' + encodeURIComponent(ONB.detailOpen));
+    ONB.detailData = fresh;
+    onbRenderDetail();
+  } catch (e) {
+    if (e.message !== 'auth') toast('Errore salvataggio: ' + e.message);
+  }
+}
+
+// ── Modal "+ Nuova proprietà" ─────────────────────────────────────
+async function onbOpenNewProperty() {
+  // Carico le available
+  document.getElementById('onb-np-property').innerHTML = '<option value="">— Caricamento —</option>';
+  document.getElementById('onb-np-preview').style.display = 'none';
+  // Default go-live: oggi + 30 giorni
+  var d = new Date(); d.setDate(d.getDate() + 30);
+  document.getElementById('onb-np-golive').value = d.toISOString().slice(0, 10);
+  document.getElementById('onb-np-recipe').value = 'standard';
+  openModal('modal-onb-new-property');
+  try {
+    var data = await onbFetch('GET', '/available-properties');
+    ONB.available = data.properties || [];
+    var sel = document.getElementById('onb-np-property');
+    if (ONB.available.length === 0) {
+      sel.innerHTML = '<option value="">— Nessuna proprietà disponibile —</option>';
+      document.getElementById('onb-np-property-hint').textContent = 'Tutte le proprietà del master sono già in onboarding. Sincronizza Smoobu se ne hai aggiunte di nuove.';
+    } else {
+      var opts = '<option value="">— Seleziona dal master —</option>';
+      ONB.available.forEach(function(p) {
+        var label = p.name + (p.city ? ' (' + p.city + ')' : '');
+        opts += '<option value="' + p._id + '">' + onbEsc(label) + '</option>';
+      });
+      sel.innerHTML = opts;
+      document.getElementById('onb-np-property-hint').textContent = ONB.available.length + ' proprietà disponibili';
+      sel.onchange = onbUpdatePreview;
+    }
+    document.getElementById('onb-np-golive').onchange = onbUpdatePreview;
+    document.getElementById('onb-np-recipe').onchange = onbUpdatePreview;
+  } catch (e) {
+    if (e.message !== 'auth') toast('Errore: ' + e.message);
+    closeModal('modal-onb-new-property');
+  }
+}
+
+function onbUpdatePreview() {
+  var pid = document.getElementById('onb-np-property').value;
+  var recipe = document.getElementById('onb-np-recipe').value;
+  var goLive = document.getElementById('onb-np-golive').value;
+  if (!pid || !goLive) {
+    document.getElementById('onb-np-preview').style.display = 'none';
+    return;
+  }
+  // Calcola task istanziabili dato recipe + go-live
+  var applicable = ONB.catalog.filter(function(t) {
+    return !t.archived && Array.isArray(t.recipes) && t.recipes.indexOf(recipe) >= 0;
+  });
+  // Trova next deadline (task pi vicino con d_before > 0)
+  var goLiveDate = new Date(goLive);
+  var nextTask = null, nextDate = null;
+  applicable.forEach(function(t) {
+    var td = new Date(goLiveDate);
+    td.setDate(td.getDate() - t.days_before_golive);
+    if (!nextDate || td < nextDate) {
+      nextDate = td; nextTask = t;
+    }
+  });
+  document.getElementById('onb-np-pv-tasks').textContent = applicable.length;
+  document.getElementById('onb-np-pv-next').textContent = nextTask ? (nextTask.name + ' · ' + onbFmtDate(nextDate)) : '—';
+  document.getElementById('onb-np-preview').style.display = 'block';
+}
+
+async function onbCreateProperty() {
+  var pid = document.getElementById('onb-np-property').value;
+  var recipe = document.getElementById('onb-np-recipe').value;
+  var goLive = document.getElementById('onb-np-golive').value;
+  if (!pid || !goLive) { toast('Compila tutti i campi'); return; }
+  var available = ONB.available.find(function(p) { return p._id === pid; });
+  if (!available) { toast('Proprietà non trovata'); return; }
+  var btn = document.getElementById('onb-np-submit');
+  btn.disabled = true; btn.textContent = 'Creazione...';
+  try {
+    await onbFetch('POST', '/properties', {
+      property_id: pid,
+      property_name: available.name,
+      recipe: recipe,
+      go_live_target: goLive,
+    });
+    closeModal('modal-onb-new-property');
+    toast('Checklist creata ✓');
+    await onbRefresh();
+    onbOpenDetail(pid);
+  } catch (e) {
+    toast('Errore: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Crea checklist';
+  }
+}
+
+// ── Bulk import ───────────────────────────────────────────────────
+async function onbBulkImportPrompt() {
+  document.getElementById('onb-bulk-summary').innerHTML = 'Caricamento...';
+  openModal('modal-onb-bulk-import');
+  try {
+    var data = await onbFetch('GET', '/available-properties');
+    var n = data.count || 0;
+    var alreadyN = data.already_in_onboarding || 0;
+    var totalN = data.total_in_master || 0;
+    var html = '';
+    html += '<div style="margin-bottom:8px"><strong>Da importare:</strong> ' + n + ' proprietà</div>';
+    html += '<div style="margin-bottom:8px"><strong>Già in onboarding:</strong> ' + alreadyN + ' (verranno skippate)</div>';
+    html += '<div><strong>Totale nel master:</strong> ' + totalN + '</div>';
+    if (n === 0) html += '<div style="margin-top:10px;color:var(--text-light);font-style:italic">Nessuna proprietà da importare.</div>';
+    document.getElementById('onb-bulk-summary').innerHTML = html;
+    document.getElementById('onb-bulk-submit').disabled = (n === 0);
+  } catch (e) {
+    document.getElementById('onb-bulk-summary').innerHTML = '<span style="color:var(--red)">Errore: ' + e.message + '</span>';
+  }
+}
+
+async function onbBulkImportConfirm() {
+  var btn = document.getElementById('onb-bulk-submit');
+  btn.disabled = true; btn.textContent = 'Importazione...';
+  try {
+    var data = await onbFetch('POST', '/bulk-import-live', {});
+    closeModal('modal-onb-bulk-import');
+    toast('Importate ' + data.imported_count + ' proprietà ✓');
+    await onbRefresh();
+  } catch (e) {
+    toast('Errore: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Importa tutte';
+  }
+}
+
+// ── CATALOGO admin view ────────────────────────────────────────────
+function onbRenderCatalog() {
+  var catalog = ONB.catalog || [];
+  if (catalog.length === 0) {
+    document.getElementById('onb-catalog-content').innerHTML = '<div class="onb-empty">Catalogo vuoto.</div>';
+    return;
+  }
+
+  var CAT_LABELS = {
+    legale_fiscale: 'Legale e fiscale',
+    foto: 'Foto e contenuti',
+    ota: 'Pubblicazione OTA',
+    tools: 'Tools',
+    marketing: 'Marketing web',
+    ottimizzazione: 'Ottimizzazione',
+    ricorrente: 'Ricorrenti',
+  };
+  var CAT_ORDER = ['legale_fiscale', 'foto', 'ota', 'tools', 'marketing', 'ottimizzazione', 'ricorrente'];
+
+  var byCat = {};
+  catalog.forEach(function(t) { (byCat[t.category] = byCat[t.category] || []).push(t); });
+
+  var html = '';
+  CAT_ORDER.forEach(function(cat) {
+    var items = byCat[cat] || [];
+    if (items.length === 0) return;
+    var parents = items.filter(function(t) { return !t.parent_id; }).sort(function(a, b) { return a.order - b.order; });
+    var children = items.filter(function(t) { return t.parent_id; });
+    var childByParent = {};
+    children.forEach(function(c) { (childByParent[c.parent_id] = childByParent[c.parent_id] || []).push(c); });
+    var totalCount = parents.length + children.length;
+
+    html += '<div class="onb-phase">';
+    html += '<div class="onb-phase-h"><div class="onb-phase-t">' + (CAT_LABELS[cat] || cat) + '</div><div class="onb-phase-c">' + totalCount + ' task' + (children.length ? ' · ' + children.length + ' sotto-task' : '') + '</div></div>';
+    parents.forEach(function(t) {
+      html += onbRenderCatalogRow(t, false);
+      var subs = (childByParent[t._id] || []).sort(function(a, b) { return a.order - b.order; });
+      subs.forEach(function(c) { html += onbRenderCatalogRow(c, true); });
+    });
+    html += '</div>';
+  });
+  document.getElementById('onb-catalog-content').innerHTML = html;
+}
+
+function onbRenderCatalogRow(t, isChild) {
+  var dayLabel, dayClass = 'day';
+  if (t.days_before_golive >= 0) dayLabel = 'D-' + t.days_before_golive;
+  else { dayLabel = 'D+' + Math.abs(t.days_before_golive); dayClass += ' post'; }
+  var assigneeLabel = t.default_assignee === 'daniele' ? 'Daniele' : (t.default_assignee === 'romeo' ? 'Romeo' : '—');
+  var html = '<div class="onb-cat-task' + (isChild ? ' child' : '') + '">';
+  html += '<div>';
+  html += '<div class="onb-cat-task-name">' + onbEsc(t.name) + '</div>';
+  if (t.description) html += '<div class="onb-cat-task-desc">' + onbEsc(t.description) + '</div>';
+  html += '</div>';
+  html += '<span class="onb-cat-pill ' + dayClass + '">' + dayLabel + '</span>';
+  if (!isChild) html += '<span class="onb-cat-pill assignee">' + assigneeLabel + '</span>'; else html += '<span></span>';
+  if (t.is_blocking_parent) html += '<span class="onb-cat-pill" style="background:rgba(245,166,35,0.18);color:#a06400">blocking</span>'; else html += '<span></span>';
+  if (t.default_status === 'na') html += '<span class="onb-cat-pill" style="background:transparent;color:var(--text-light);border:1px dashed var(--border)">opzionale</span>'; else html += '<span></span>';
+  html += '</div>';
+  return html;
+}
+
+// ── Util ──────────────────────────────────────────────────────────
+function onbEsc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
 }
 
 </script>
