@@ -2202,8 +2202,27 @@ function renderDash(){
       +'<div class="stat-sub">'+sub+'</div>'
       +'</div>';
   }
+  // Conteggio proprietà coperte dai filtri attivi
+  var propsConSel=dashPropSelection.length>0;
+  var propIdsAttiviInBks={};
+  allBks.forEach(function(b){propIdsAttiviInBks[b.proprieta_id]=true;});
+  var nPropAttive=Object.keys(propIdsAttiviInBks).length;
+  var subProps;
+  if(propsConSel){
+    // Espande gruppi → conteggio proprietà selezionate
+    var selPropIds={};
+    dashPropSelection.forEach(function(id){
+      var grp=(DB.propGroups||[]).find(function(g){return g.id===id;});
+      if(grp)grp.children.forEach(function(cid){selPropIds[cid]=true;});
+      else selPropIds[id]=true;
+    });
+    var nSel=Object.keys(selPropIds).length;
+    subProps=nPropAttive+' di '+nSel+' selezionate';
+  } else {
+    subProps=nPropAttive+' di '+DB.proprieta.length+' proprietà';
+  }
   document.getElementById('stat-grid').innerHTML=
-    statCard('📋','Prenotazioni',DB.prenotazioni.length,DB.proprieta.length+' proprietà attive','var(--blue)')+
+    statCard('📋','Prenotazioni',allBks.length,subProps,'var(--blue)')+
     statCard('💰','Incasso Lordo',eur(totOTA),'Lordo da piattaforme','var(--blue)')+
     statCard('🏷️','Compenso Houzly',eur(totHouzly),'Commissioni maturate','var(--orange)')+
     statCard('🏠','Canone Proprietari',eur(totCanone),'Canone Locazione Puro','var(--green)');
