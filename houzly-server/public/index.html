@@ -221,6 +221,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cleaner-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-mid);transition:all .15s}
 .cleaner-chip:hover{border-color:var(--blue);color:var(--blue)}
 .cleaner-chip.selected{background:var(--blue);color:#fff;border-color:var(--blue)}
+/* ── Mese competenza report — badge ─────────────────────────── */
+.mese-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:0.02em;white-space:nowrap;margin-left:6px;vertical-align:middle}
+.mese-badge.override{background:rgba(67,97,238,0.12);color:var(--blue);border:1px solid rgba(67,97,238,0.25)}
+.mese-badge.warn{background:rgba(245,166,35,0.15);color:#a06400;border:1px solid rgba(245,166,35,0.4);cursor:help}
+.mese-badge .ic{font-size:10px;line-height:1}
 
 </style>
 <style>
@@ -553,6 +558,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <option>Settembre</option><option>Ottobre</option><option>Novembre</option><option>Dicembre</option>
       </select>
       <input type="number" id="pren-filter-anno" placeholder="Anno" oninput="renderPrenotazioni()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer;width:80px;cursor:text">
+      <label id="pren-filter-conferma-wrap" title="Mostra solo prenotazioni lunghe a cavallo di due mesi non ancora confermate" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-mid);cursor:pointer;padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface2);user-select:none"><input type="checkbox" id="pren-filter-daconfermare" onchange="renderPrenotazioni()" style="width:14px;height:14px;cursor:pointer"><span>&#9888; Da confermare</span></label>
       <button class="btn btn-primary" onclick="openNewModal()">+ Nuova Prenotazione</button>
     </div>
   </div>
@@ -1074,10 +1080,19 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <hr class="divider">
       <div class="form-grid">
         <div class="field form-full"><label>Propriet&agrave; *</label><select id="p-prop-sel" onchange="onPropSel()"><option value="">-- Seleziona propriet&agrave; --</option></select></div>
-        <div class="field"><label>Check-in *</label><input type="date" id="p-checkin" oninput="calcNotti()"></div>
-        <div class="field"><label>Check-out *</label><input type="date" id="p-checkout" oninput="calcNotti()"></div>
+        <div class="field"><label>Check-in *</label><input type="date" id="p-checkin" oninput="calcNotti();updateMeseCompetenzaUI()"></div>
+        <div class="field"><label>Check-out *</label><input type="date" id="p-checkout" oninput="calcNotti();updateMeseCompetenzaUI()"></div>
         <div class="field"><label>N&deg; Notti</label><input type="number" id="p-notti" readonly></div>
         <div class="field"><label>Note interne</label><input type="text" id="p-note"></div>
+      </div>
+      <div id="p-mese-cavallo-banner" style="display:none;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.4);border-radius:var(--radius);padding:10px 14px;margin-top:14px;font-size:12px;color:#a06400;line-height:1.5">
+        <strong>&#9888; Soggiorno lungo a cavallo di due mesi.</strong>
+        <span id="p-mese-cavallo-text"></span>
+        Se preferisci spostarla in un altro mese, usa il selettore qui sotto e poi conferma.
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field"><label>Mese di competenza report</label><select id="p-mese-override"><option value="">Automatico (mese del check-in)</option></select><div class="field-hint" id="p-mese-override-hint">Lascia automatico salvo eccezioni</div></div>
+        <div class="field" style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:var(--text-mid);font-weight:500"><input type="checkbox" id="p-mese-confermato" style="width:16px;height:16px;cursor:pointer"> Decisione confermata</label></div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn btn-primary" onclick="goStep(2)">Avanti &rarr;</button></div>
     </div>
@@ -1939,13 +1954,37 @@ document.addEventListener('click',function(e){
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────
 // ─── MONTH FILTER HELPER ────────────────────────────────────────────────────
-function bkInPeriod(b, meseNum, annoVal){
-  // A booking falls in a period if checkin OR checkout is in that month/year,
-  // OR if the stay spans across it (checkin before, checkout after)
-  var ci=b.checkin||'', co=b.checkout||ci;
-  var ciY=+ci.slice(0,4), ciM=+ci.slice(5,7);
-  var coY=+co.slice(0,4), coM=+co.slice(5,7);
-  // Convert to numeric month index for comparison (YYYYMM)
+// ─── PERIODO DI COMPETENZA DI UNA PRENOTAZIONE ──────────────────────
+// mode='checkin' (default) → competenza = mese di check-in,
+//   con override manuale via b.meseReportOverride ("YYYY-MM")
+//   Usato in: Prenotazioni, Documenti Fiscali, Report Mensile
+// mode='overlap' → vecchia logica "qualunque sovrapposizione"
+//   Usato in: Dashboard (lettura occupazione/revenue del periodo)
+function bkInPeriod(b, meseNum, annoVal, mode){
+  mode = mode || 'checkin';
+  if(!annoVal && !meseNum) return true;
+
+  if(mode==='checkin'){
+    // Mese effettivo di competenza: override manuale prevale sul check-in
+    var ovr = b.meseReportOverride || '';
+    var compY, compM;
+    if(/^\d{4}-\d{2}$/.test(ovr)){
+      compY = +ovr.slice(0,4); compM = +ovr.slice(5,7);
+    } else {
+      var ci = b.checkin || '';
+      if(!ci) return false;
+      compY = +ci.slice(0,4); compM = +ci.slice(5,7);
+    }
+    if(annoVal && meseNum) return compY===annoVal && compM===meseNum;
+    if(annoVal) return compY===annoVal;
+    if(meseNum) return compM===meseNum;
+    return true;
+  }
+
+  // mode === 'overlap' (legacy)
+  var ci2=b.checkin||'', co2=b.checkout||ci2;
+  var ciY=+ci2.slice(0,4), ciM=+ci2.slice(5,7);
+  var coY=+co2.slice(0,4), coM=+co2.slice(5,7);
   var ciIdx=ciY*12+ciM, coIdx=coY*12+coM;
   if(annoVal&&meseNum){
     var targetIdx=annoVal*12+meseNum;
@@ -1959,6 +1998,40 @@ function bkInPeriod(b, meseNum, annoVal){
            (ciY<coY&&(ciM<=meseNum||coM>=meseNum));
   }
   return true;
+}
+
+// Helper: restituisce il mese di competenza effettivo di una prenotazione
+// (override se presente, altrimenti mese del check-in). Formato "YYYY-MM".
+function meseCompetenza(b){
+  if(b && /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')) return b.meseReportOverride;
+  var ci=b&&b.checkin||''; return ci?ci.slice(0,7):'';
+}
+
+// Helper: prenotazione "lunga a cavallo" → notti ≥ 10 e check-in/check-out
+// in mesi diversi → richiede decisione esplicita su quale mese di report
+function isCavalloDecision(b){
+  if(!b||!b.checkin||!b.checkout)return false;
+  if((+b.notti||0)<10)return false;
+  return b.checkin.slice(0,7)!==b.checkout.slice(0,7);
+}
+
+// Helper: la prenotazione richiede attenzione (lunga a cavallo + non confermata)
+function needsMeseConferma(b){
+  return isCavalloDecision(b) && !b.meseReportConfermato;
+}
+
+// Helper: HTML dei badge mese (override + cavallo non confermato) — riusabile
+function meseBadgesHtmlGlobal(b){
+  var html='';
+  if(b&&b.meseReportOverride&&/^\d{4}-\d{2}$/.test(b.meseReportOverride)){
+    var y=+b.meseReportOverride.slice(0,4),m=+b.meseReportOverride.slice(5,7);
+    var nm=(typeof MESI_IT_FULL!=='undefined')?MESI_IT_FULL[m-1]:m;
+    html+='<span class="mese-badge override" title="Spostata manualmente: cade nel report di '+nm+' '+y+'"><span class="ic">&#x21bb;</span>'+(nm?nm.slice(0,3):m)+' '+y+'</span>';
+  }
+  if(needsMeseConferma(b)){
+    html+='<span class="mese-badge warn" title="Soggiorno lungo a cavallo di due mesi: aprire la prenotazione, scegliere il mese di competenza e confermare"><span class="ic">&#9888;</span>Da confermare</span>';
+  }
+  return html;
 }
 // Selected prop IDs for dashboard (empty = all)
 var dashPropSelection=[];
@@ -2044,7 +2117,7 @@ function getDashBks(){
     if(b.black)return false;
     if(propIds.length&&propIds.indexOf(b.proprieta_id)<0)return false;
     if(meseNum||annoVal){
-      if(!bkInPeriod(b,meseNum,annoVal))return false;
+      if(!bkInPeriod(b,meseNum,annoVal,'overlap'))return false;
     }
     return true;
   });
@@ -2513,7 +2586,12 @@ function editPren(id){
   document.getElementById('p-pulizia').value=b.pulizia||0;
   document.getElementById('p-houzly-perc').value=b.houzly_perc||20;
   document.getElementById('p-iva22').value=b.iva22?'1':'0';
-  onPropSel();calcNotti();onCanaleChange();calcScorporo();
+  // Mese competenza report
+  var elOvr=document.getElementById('p-mese-override');
+  if(elOvr)elOvr.value=b.meseReportOverride||'';
+  var elConf=document.getElementById('p-mese-confermato');
+  if(elConf)elConf.checked=!!b.meseReportConfermato;
+  onPropSel();calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
   var eBtnP=document.getElementById('btn-save-pren');
   if(eBtnP){eBtnP.setAttribute('data-edit-id',id);eBtnP.textContent='💾 Aggiorna Prenotazione';}
   goStep(1);openModal('modal-prenotazione');
@@ -2572,12 +2650,30 @@ function renderPrenotazioni(){
   var filterAnno=document.getElementById('pren-filter-anno')?+document.getElementById('pren-filter-anno').value:0;
   var mesiItP={'Gennaio':1,'Febbraio':2,'Marzo':3,'Aprile':4,'Maggio':5,'Giugno':6,'Luglio':7,'Agosto':8,'Settembre':9,'Ottobre':10,'Novembre':11,'Dicembre':12};
   var filterMeseNum=mesiItP[filterMese]||0;
+  var filterDaConfermare=document.getElementById('pren-filter-daconfermare')&&document.getElementById('pren-filter-daconfermare').checked;
+  // Aggiorna stile/contatore del toggle in base al numero di pendenze
+  var pendingCount=DB.prenotazioni.filter(function(b){return !b.black && needsMeseConferma(b);}).length;
+  var lblWrap=document.getElementById('pren-filter-conferma-wrap');
+  if(lblWrap){
+    if(pendingCount>0){
+      lblWrap.style.background='rgba(245,166,35,0.12)';
+      lblWrap.style.borderColor='rgba(245,166,35,0.5)';
+      lblWrap.style.color='#a06400';
+      lblWrap.querySelector('span').textContent='\u26a0 Da confermare ('+pendingCount+')';
+    } else {
+      lblWrap.style.background='var(--surface2)';
+      lblWrap.style.borderColor='var(--border)';
+      lblWrap.style.color='var(--text-mid)';
+      lblWrap.querySelector('span').textContent='\u26a0 Da confermare';
+    }
+  }
   // Build a map: propId → group names that contain it
   var propGroupNames={};
   (DB.propGroups||[]).forEach(function(g){
     g.children.forEach(function(cid){propGroupNames[cid]=(propGroupNames[cid]||[]); propGroupNames[cid].push(g.nome.toLowerCase());});
   });
   var bks=DB.prenotazioni.filter(function(b){
+    if(filterDaConfermare&&!needsMeseConferma(b))return false;
     if(filterCanale&&b.canale!==filterCanale)return false;
     if(filterMeseNum||filterAnno){
       if(!bkInPeriod(b,filterMeseNum,filterAnno))return false;
@@ -2605,7 +2701,7 @@ function renderPrenotazioni(){
       +'<td style="text-align:center"><div data-action="toggle-black" data-id="'+b.id+'" title="'+blackTitle+'" style="cursor:pointer;font-size:16px;line-height:1">'
       +(b.black?'<span style="color:var(--red)">&#9679;</span>':'<span style="color:var(--border)">&#9675;</span>')+'</div></td>'
       +'<td><span class="badge '+cls+'">'+chIcon(b.canale,14)+esc(b.canale)+'</span></td>'
-      +'<td class="bold">'+esc(b.ospite_nome)+'</td>'
+      +'<td class="bold">'+esc(b.ospite_nome)+meseBadgesHtmlGlobal(b)+'</td>'
       +'<td style="text-align:center">'+b.n_ospiti+'</td>'
       +'<td>'+esc(nomeProp(b.proprieta_id))+'</td>'
       +'<td>'+dateIt(b.checkin)+'</td>'
@@ -2693,6 +2789,23 @@ function viewPren(id){
   // Note
   if(b.note)html+='<div style="margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text-light)">&#128203; '+b.note+'</div>';
 
+  // Mese di competenza
+  var mc=meseCompetenza(b);
+  if(mc){
+    var mcY=+mc.slice(0,4),mcM=+mc.slice(5,7);
+    var mcLabel=(typeof MESI_IT_FULL!=='undefined'?MESI_IT_FULL[mcM-1]:mcM)+' '+mcY;
+    var mcBg=b.meseReportOverride?'rgba(67,97,238,0.06)':'var(--surface2)';
+    var mcBorder=b.meseReportOverride?'rgba(67,97,238,0.2)':'var(--border)';
+    var mcIcon=b.meseReportOverride?'&#x21bb;':'&#128197;';
+    var mcLine=b.meseReportOverride
+      ? '<strong>Mese report:</strong> '+mcLabel+' <span style="color:var(--blue);font-weight:600">(spostata manualmente)</span>'
+      : '<strong>Mese report:</strong> '+mcLabel+' <span style="color:var(--text-light)">(da check-in)</span>';
+    if(needsMeseConferma(b)){
+      mcLine+=' <span class="mese-badge warn" style="margin-left:6px"><span class="ic">&#9888;</span>Da confermare</span>';
+    }
+    html+='<div style="margin-top:8px;padding:8px 14px;background:'+mcBg+';border:1px solid '+mcBorder+';border-radius:var(--radius);font-size:12px;color:var(--text-mid)">'+mcIcon+' '+mcLine+'</div>';
+  }
+
   document.getElementById('vp-title').textContent='Prenotazione — '+(b.ospite_nome||'');
   document.getElementById('vp-body').innerHTML=html;
   openModal('modal-view-pren');
@@ -2710,11 +2823,15 @@ function openNewModal(){
   document.getElementById('p-comm-perc').value=0;
   document.getElementById('p-houzly-perc').value=20;
   document.getElementById('p-iva22').value='0';
+  // Reset mese competenza
+  var elOvr2=document.getElementById('p-mese-override');if(elOvr2)elOvr2.value='';
+  var elConf2=document.getElementById('p-mese-confermato');if(elConf2)elConf2.checked=false;
   var sel=document.getElementById('p-prop-sel');
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
   document.getElementById('prop-fiscal-info').style.display='none';
   var eBtnN=document.getElementById('btn-save-pren');
   if(eBtnN){eBtnN.removeAttribute('data-edit-id');eBtnN.textContent='✓ Salva Prenotazione';}
+  updateMeseCompetenzaUI();
   goStep(1);openModal('modal-prenotazione');
 }
 function onPropSel(){
@@ -2733,6 +2850,51 @@ function calcNotti(){
   var ci=document.getElementById('p-checkin').value,co=document.getElementById('p-checkout').value;
   if(ci&&co){var d=(new Date(co)-new Date(ci))/86400000;document.getElementById('p-notti').value=d>0?d:'';}
   calcScorporo();
+}
+
+// ─── MESE COMPETENZA REPORT — UI dinamica nel modal ────────────────
+// Popola il select con un range di mesi attorno al check-in
+// e mostra il banner se il soggiorno è ≥10 notti a cavallo di due mesi.
+var MESI_IT_FULL=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+function updateMeseCompetenzaUI(){
+  var ci=document.getElementById('p-checkin').value;
+  var co=document.getElementById('p-checkout').value;
+  var sel=document.getElementById('p-mese-override');
+  var banner=document.getElementById('p-mese-cavallo-banner');
+  var bannerText=document.getElementById('p-mese-cavallo-text');
+  var hint=document.getElementById('p-mese-override-hint');
+  if(!sel)return;
+  var prev=sel.value;
+  // Genera 12 opzioni: 2 mesi prima del check-in fino a 9 dopo
+  sel.innerHTML='<option value="">Automatico (mese del check-in)</option>';
+  if(ci&&/^\d{4}-\d{2}-\d{2}$/.test(ci)){
+    var ciY=+ci.slice(0,4), ciM=+ci.slice(5,7);
+    var startIdx=ciY*12+(ciM-1)-2;
+    for(var k=0;k<12;k++){
+      var idx=startIdx+k;
+      var y=Math.floor(idx/12), m=(idx%12)+1;
+      var key=y+'-'+(m<10?'0':'')+m;
+      var label=MESI_IT_FULL[m-1]+' '+y;
+      sel.innerHTML+='<option value="'+key+'">'+label+'</option>';
+    }
+    if(prev&&Array.prototype.slice.call(sel.options).some(function(o){return o.value===prev;})){
+      sel.value=prev;
+    }
+    var autoLabel=MESI_IT_FULL[ciM-1]+' '+ciY;
+    if(hint)hint.textContent='Lascia automatico ('+autoLabel+') salvo eccezioni';
+  } else {
+    if(hint)hint.textContent='Inserisci prima la data di check-in';
+  }
+  // Banner cavallo
+  var notti=+document.getElementById('p-notti').value||0;
+  var cavallo=ci&&co&&notti>=10&&ci.slice(0,7)!==co.slice(0,7);
+  if(cavallo){
+    var ciM2=+ci.slice(5,7),coM2=+co.slice(5,7),ciY2=+ci.slice(0,4),coY2=+co.slice(0,4);
+    bannerText.textContent=' Soggiorno di '+notti+' notti dal '+dateIt(ci)+' al '+dateIt(co)+': '+notti+' notti tra '+MESI_IT_FULL[ciM2-1]+' '+ciY2+' e '+MESI_IT_FULL[coM2-1]+' '+coY2+'. Per default verrà inclusa nel report di '+MESI_IT_FULL[ciM2-1]+' '+ciY2+' (mese del check-in).';
+    banner.style.display='block';
+  } else {
+    banner.style.display='none';
+  }
 }
 function onCanaleChange(){
   var canale=document.getElementById('p-canale').value;
@@ -2797,7 +2959,7 @@ function buildConfirm(){
 function savePren(){
   var propId=document.getElementById('p-prop-sel').value;
   if(!propId){toast('Seleziona una propriet\u00e0');return;}
-  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,calc:{}};
+  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -3131,8 +3293,7 @@ function renderDocumenti(){
   var docPropIds=propId?[propId]:(dGrpId?(function(){var g2=(DB.propGroups||[]).find(function(g){return g.id===dGrpId;});return g2?g2.children:[];})():[]);
   var bks=DB.prenotazioni.filter(function(b){
     if(docPropIds.length&&docPropIds.indexOf(b.proprieta_id)<0)return false;
-    if(mese){var mi=mesiArr().indexOf(mese)+1;if(+b.checkin.slice(5,7)!==mi)return false;}
-    if(anno&&+b.checkin.slice(0,4)!==anno)return false;
+    if(mese||anno){var mi=mese?mesiArr().indexOf(mese)+1:0;if(!bkInPeriod(b,mi,anno||0,'checkin'))return false;}
     if(q&&!((b.ospite_nome||'').toLowerCase().indexOf(q)>=0
       ||(nomeProp(b.proprieta_id)||'').toLowerCase().indexOf(q)>=0
       ||(b.canale||'').toLowerCase().indexOf(q)>=0
@@ -3163,7 +3324,7 @@ function renderDocumenti(){
       +tickHtml
       +'</div>'
       +'<div class="doc-row-body" data-action="open-doc" data-bid="'+b.id+'">'
-      +'<div class="doc-row-title">'+b.ospite_nome+'<span style="font-weight:400;color:var(--text-light);margin-left:8px">— '+nomeProp(b.proprieta_id)+'</span></div>'
+      +'<div class="doc-row-title">'+b.ospite_nome+'<span style="font-weight:400;color:var(--text-light);margin-left:8px">— '+nomeProp(b.proprieta_id)+'</span>'+meseBadgesHtmlGlobal(b)+'</div>'
       +'<div class="doc-row-meta">'
       +'<span class="badge badge-'+chCls+'" style="font-size:10px">'+chIcon(b.canale,12)+b.canale+'</span>'
       +'<span style="font-size:11.5px;color:var(--text-light)">'+dateIt(b.checkin)+' → '+dateIt(b.checkout)+' · '+b.notti+' notti</span>'
@@ -3409,6 +3570,29 @@ function previewReportProp(){
   var colSpanBase=isGroup?8:7;
   var tableHeader='<tr>'+propColHdr+'<th>Ingresso</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th>Notti</th><th>N.Osp.</th><th>Tot.Pren.</th><th>Comm.OTA</th><th>T.Soggiorno</th><th>Pulizia</th><th>Tot.Netto</th><th>Houzly</th><th>IVA 22%</th><th>Netto Prop.</th></tr>'
     +'<tr class="rpt-subheader"><td colspan="'+colSpanBase+'"></td><td>COSTI CONDIVISI</td><td colspan="2">TRATTENUTE</td><td colspan="4">TOTALI</td></tr>';
+  // ── Banner mese competenza: overrides applicati + decisioni pendenti ──
+  var nOver=bks.filter(function(b){return b.meseReportOverride;}).length+bksBlack.filter(function(b){return b.meseReportOverride;}).length;
+  // Prenotazioni "da confermare" che riguardano questa proprietà/gruppo nel periodo:
+  // mostra anche quelle che cadono in mesi diversi ma toccano il periodo selezionato
+  var rptPropIdsForWarn=[];
+  if(isGrpProp||(!propId&&groupId)){var grpW=(DB.propGroups||[]).find(function(g){return g.id===grpIdResolved;});if(grpW)rptPropIdsForWarn=grpW.children;}
+  else if(propId)rptPropIdsForWarn=[propId];
+  var pendingOnPeriod=DB.prenotazioni.filter(function(b){
+    if(b.black||!needsMeseConferma(b))return false;
+    if(rptPropIdsForWarn.indexOf(b.proprieta_id)<0)return false;
+    // Tocca il periodo selezionato (overlap) ma cade in un mese diverso da quello richiesto
+    var meseSel=document.getElementById('rpt-mese').value;
+    var annoSel=+document.getElementById('rpt-anno').value;
+    var miSel=meseSel?(['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']).indexOf(meseSel)+1:0;
+    return bkInPeriod(b,miSel,annoSel,'overlap') && !bkInPeriod(b,miSel,annoSel,'checkin');
+  });
+  var bannerHTML='';
+  if(nOver>0){
+    bannerHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:rgba(67,97,238,0.06);border:1px solid rgba(67,97,238,0.2);border-radius:var(--radius);font-size:12px;color:var(--blue)">&#x21bb; <strong>'+nOver+'</strong> prenotazion'+(nOver===1?'e inclusa':'i incluse')+' in questo report tramite spostamento manuale.</div>';
+  }
+  if(pendingOnPeriod.length){
+    bannerHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.4);border-radius:var(--radius);font-size:12px;color:#a06400">&#9888; <strong>'+pendingOnPeriod.length+'</strong> prenotazion'+(pendingOnPeriod.length===1?'e lunga toccherebbe':'i lunghe toccherebbero')+' questo periodo ma cade fuori (check-in altrove). Verificale dalla sezione Prenotazioni se vanno spostate qui.</div>';
+  }
   var sectionsHTML='';
   if(bks.length){
     sectionsHTML+='<div class="rpt-section">'
@@ -3443,6 +3627,7 @@ function previewReportProp(){
     +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:var(--blue)">Report Mensile &mdash; '+reportTitle+'</div>'
     +'<div style="font-size:12px;color:var(--text-light)">'+subLabel+' &middot; '+mese+' '+anno+' &middot; '+bks.length+' prenotazioni'+(bksBlack.length?' &middot; <span style="color:var(--red)">'+bksBlack.length+' fuori c/c</span>':'')+'</div>'
     +'</div>'
+    +bannerHTML
     +sectionsHTML
     +blackHTML
     // ── Riepilogo FATTURATO ──
