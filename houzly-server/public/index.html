@@ -274,6 +274,28 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .dr-row .dr-cell-azioni{display:flex!important;justify-content:flex-end!important;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
   .dr-row .dr-cell-azioni .btn{flex:1;justify-content:center}
   .dr-row.dr-totali .dr-cell-name{font-size:13px!important}
+
+  /* Operations Kanban — tab switcher mobile, una colonna alla volta */
+  #kanban-mobile-tabs{display:flex!important}
+  #kanban-board{display:block!important;overflow-x:visible!important;padding-bottom:8px}
+  .kb-col{display:none!important;width:100%!important;max-height:none!important}
+  .kb-col.kb-col-active{display:flex!important}
+  .kb-col-add{display:none!important}
+
+  /* Operations: griglia property cards a 1 colonna */
+  #ops-prop-grid{grid-template-columns:1fr!important}
+
+  /* Onboarding task row: layout flessibile su mobile */
+  .onb-task{grid-template-columns:24px 16px 1fr;grid-template-rows:auto auto;gap:8px 10px}
+  .onb-task > *:nth-child(4),
+  .onb-task > *:nth-child(5),
+  .onb-task > *:nth-child(6){grid-column:span 1;justify-self:start}
+  .onb-task > *:nth-child(4){grid-column:1 / 4;display:flex;justify-content:flex-start;flex-wrap:wrap;gap:6px}
+  .onb-task > *:nth-child(5),
+  .onb-task > *:nth-child(6){grid-column:auto}
+  .onb-children{padding-left:30px}
+  .onb-subtask{grid-template-columns:18px 1fr auto;gap:8px}
+  .onb-subtask > *:nth-child(4){grid-column:1 / 4}
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -283,6 +305,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .hamburger{display:none;background:none;border:none;width:40px;height:40px;align-items:center;justify-content:center;cursor:pointer;color:var(--text);padding:0;border-radius:var(--radius);flex-shrink:0}
 .hamburger:hover{background:var(--surface2)}
 .hamburger svg{width:22px;height:22px;display:block}
+
+/* FAB hamburger — fail-safe sempre visibile su mobile in qualunque sezione.
+   Garantisce il ritorno al menu anche se qualcosa nasconde la topbar. */
+.hamburger-fab{display:none;position:fixed;bottom:20px;left:20px;width:54px;height:54px;border-radius:50%;background:var(--grad);color:#fff;border:none;box-shadow:0 6px 22px rgba(67,97,238,0.4);z-index:200;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.hamburger-fab:active{transform:scale(0.95);box-shadow:0 4px 14px rgba(67,97,238,0.45)}
+.hamburger-fab svg{width:26px;height:26px;display:block}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(15,21,53,0.55);z-index:99;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .sidebar-backdrop.open{display:block}
 
@@ -294,7 +322,14 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 @media (max-width:860px){
   body{font-size:13px}
-  .hamburger{display:inline-flex}
+  .hamburger{display:none}
+  .hamburger-fab{display:inline-flex}
+
+  /* Topbar z-index alzato + fix sticky: rimuovo overflow-x:hidden da #main
+     che impedisce position:sticky di funzionare in pagine lunghe (Operations,
+     Onboarding, Ricevute, Pulizie). */
+  #main{overflow-x:visible}
+  .topbar{position:sticky;top:0;z-index:90}
 
   /* Sidebar diventa drawer */
   #sidebar{transform:translateX(-100%);transition:transform .25s ease;width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
@@ -585,6 +620,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
 </div>
 <div class="topbar-menu" id="topbar-menu" style="display:none"></div>
+
+<!-- FAB hamburger: fail-safe sempre visibile su mobile (clip-aware) -->
+<button class="hamburger-fab" onclick="toggleSidebar()" aria-label="Menu" title="Apri menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
@@ -1497,6 +1537,9 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div style="flex:1"></div>
       <button class="btn btn-ghost btn-sm" onclick="addKanbanCol()">+ Colonna</button>
     </div>
+
+    <!-- Tab switcher mobile only (una colonna alla volta) -->
+    <div id="kanban-mobile-tabs" class="mobile-only" style="display:none;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:6px;gap:6px;flex-wrap:nowrap"></div>
 
     <!-- Kanban board -->
     <div id="kanban-board" style="display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start;min-height:400px"></div>
@@ -6207,6 +6250,12 @@ function renderKanban() {
 
   var today = new Date().toISOString().slice(0,10);
 
+  // Mantieni la colonna selezionata su mobile, default = prima
+  if(!window._kanbanMobileCol || !cols.find(function(c){return c.id===window._kanbanMobileCol;})){
+    window._kanbanMobileCol = cols.length ? cols[0].id : null;
+  }
+  var activeCol = window._kanbanMobileCol;
+
   board.innerHTML = cols.map(function(col){
     var tasks = DB.ops_tasks.filter(function(t){ return t.kanban_col === col.id && !t.prop_id; });
     var open  = tasks.filter(function(t){ return t.stato!=='Completato'&&!t.done; });
@@ -6245,7 +6294,8 @@ function renderKanban() {
         +'</div>';
     }).join('');
 
-    return '<div class="kb-col" data-col-id="'+col.id+'">'
+    var isActive = col.id === activeCol;
+    return '<div class="kb-col'+(isActive?' kb-col-active':'')+'" data-col-id="'+col.id+'">'
       +'<div class="kb-col-header">'
       +'<div style="width:10px;height:10px;border-radius:50%;background:'+col.color+';flex-shrink:0;margin-right:8px"></div>'
       +'<div class="kb-col-title" data-rename-col="'+col.id+'">'+esc(col.nome)+'</div>'
@@ -6259,6 +6309,25 @@ function renderKanban() {
       +'<button class="kb-add-btn" onclick="openNewKanbanTask(\''+col.id+'\')">+ Aggiungi task</button>'
       +'</div>';
   }).join('');
+
+  // Render tab switcher mobile
+  var tabs = document.getElementById('kanban-mobile-tabs');
+  if(tabs){
+    tabs.innerHTML = cols.map(function(col){
+      var nOpen = DB.ops_tasks.filter(function(t){return t.kanban_col===col.id&&!t.prop_id&&t.stato!=='Completato'&&!t.done;}).length;
+      var isActive = col.id === activeCol;
+      return '<button onclick="switchKanbanCol(\''+col.id+'\')" class="kb-tab'+(isActive?' active':'')+'" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid '+(isActive?col.color:'var(--border)')+';background:'+(isActive?col.color+'18':'var(--surface)')+';color:'+(isActive?'var(--text)':'var(--text-mid)')+';border-radius:20px;font-size:12px;font-weight:'+(isActive?'700':'500')+';white-space:nowrap;cursor:pointer;flex-shrink:0">'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:'+col.color+'"></span>'
+        +esc(col.nome)
+        +(nOpen>0?'<span style="font-size:10.5px;font-weight:700;background:'+(isActive?col.color:'var(--surface2)')+';color:'+(isActive?'#fff':'var(--text-light)')+';padding:1px 7px;border-radius:10px">'+nOpen+'</span>':'')
+        +'</button>';
+    }).join('');
+  }
+}
+
+function switchKanbanCol(colId){
+  window._kanbanMobileCol = colId;
+  renderKanban();
 }
 
 function moveKanbanTask(taskId, colId) {
@@ -7110,7 +7179,8 @@ function onbRenderCockpit() {
 }
 
 function onbBuildTable(props, isLive) {
-  var html = '<table class="onb-cockpit-table">';
+  // Desktop table
+  var html = '<div class="desktop-only"><table class="onb-cockpit-table">';
   html += '<colgroup><col style="width:30%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:16%"></colgroup>';
   html += '<thead><tr>';
   html += '<th class="tl">Proprietà</th>';
@@ -7143,7 +7213,49 @@ function onbBuildTable(props, isLive) {
     html += '<td><div class="onb-prog-wrap"><div class="onb-prog-bar"><div class="onb-prog-fill ' + fillClass + '" style="width:' + pct + '%"></div></div><span class="onb-prog-pct">' + pct + '%</span></div></td>';
     html += '</tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
+
+  // Mobile card stack
+  html += '<div class="mobile-only mc-list">';
+  if(!props.length){
+    html += '<div class="mc-empty"><div class="ic">📋</div>Nessuna proprietà</div>';
+  } else {
+    props.forEach(function(p){
+      var cs = p.category_status || {};
+      var pct = p.summary.completion_pct || 0;
+      var fillClass = (p.summary.overdue > 0) ? 'late' : (pct === 100 ? '' : 'partial');
+      var goLive = p.go_live_target ? onbFmtDate(p.go_live_target) : '—';
+      var statusBadge = '';
+      if(isLive){statusBadge='<span class="badge badge-green" style="font-size:9.5px">Live</span>';}
+      else if(p.summary.overdue>0){statusBadge='<span class="badge badge-red" style="font-size:9.5px">'+p.summary.overdue+' in ritardo</span>';}
+      else if(p.summary.due_soon>0){statusBadge='<span class="badge badge-orange" style="font-size:9.5px">'+p.summary.due_soon+' ≤7gg</span>';}
+      else {statusBadge='<span class="badge badge-blue" style="font-size:9.5px">In corso</span>';}
+      // Categorie status come pillole
+      var catNames = {legale_fiscale:'Legale',foto:'Foto',ota:'OTA',tools:'Tools',marketing:'Mktg',ottimizzazione:'Ottim.'};
+      var catColors = {green:'#00c48c',yellow:'#f5a623',red:'#f04060',gray:'#cfd5e8',na:'transparent'};
+      var catPills = Object.keys(catNames).map(function(k){
+        var st = cs[k] || 'gray';
+        var bg = catColors[st]||'#cfd5e8';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--surface2);border-radius:10px;font-size:10.5px;color:var(--text-mid)"><span style="width:8px;height:8px;border-radius:50%;background:'+bg+(st==='na'?';border:1px dashed #ccc':'')+'"></span>'+catNames[k]+'</span>';
+      }).join('');
+      html += '<div class="mc-card" onclick="onbOpenDetail(\''+p.property_id+'\')" style="cursor:pointer">'
+        +'<div class="mc-card-h">'
+          +'<div style="min-width:0;flex:1">'
+            +'<div class="mc-card-title">'+onbEsc(p.property_name)+'</div>'
+            +'<div class="mc-card-sub">go-live '+goLive+'</div>'
+          +'</div>'
+          +statusBadge
+        +'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">'+catPills+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border)">'
+          +'<div class="onb-prog-bar" style="flex:1;width:auto"><div class="onb-prog-fill '+fillClass+'" style="width:'+pct+'%"></div></div>'
+          +'<span class="onb-prog-pct" style="min-width:36px">'+pct+'%</span>'
+        +'</div>'
+        +'</div>';
+    });
+  }
+  html += '</div>';
+
   return html;
 }
 
