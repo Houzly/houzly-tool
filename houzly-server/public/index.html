@@ -326,11 +326,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .hamburger-fab{display:none}
 
   /* Topbar fix sticky e z-index alto.
-     iOS Safari + Chrome mobile: forzo larghezza piena, sticky funzionante,
-     compositing layer per evitare bug rendering. */
-  body{overflow-x:hidden;width:100%}
-  #main{margin-left:0!important;width:100%!important;max-width:100vw;overflow-x:visible;overflow-y:visible;flex:none!important}
-  .topbar{position:sticky;top:0;z-index:100;width:100%;background:#ffffff!important;backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;border-bottom:1px solid var(--border);box-sizing:border-box}
+     Rimuovo overflow-x:hidden da #main che impedisce position:sticky di
+     funzionare in pagine lunghe (Operations, Onboarding, Ricevute, Pulizie).
+     iOS Safari ha bug con sticky+sfondo che diventa trasparente: forzo
+     compositing layer con transform e background opaco esplicito. */
+  #main{overflow-x:visible;overflow-y:visible}
+  body{overflow-x:hidden}
+  .topbar{position:sticky;top:0;z-index:100;background:#ffffff!important;backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;border-bottom:1px solid var(--border)}
 
   /* Page con padding-top più alto su mobile per separare dal section-header */
   .page{padding:14px;padding-top:14px}
@@ -619,7 +621,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini</div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v13 · 30/04 01:00</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
