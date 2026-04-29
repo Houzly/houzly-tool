@@ -228,6 +228,55 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .mese-badge .ic{font-size:10px;line-height:1}
 
 /* ════════════════════════════════════════════════════════════════════
+   MOBILE CARD STACK — pattern riusabile per Wave 2
+   Su desktop il blocco .mobile-only è nascosto, su mobile la tabella
+   .desktop-only è nascosta. Le card-stack hanno layout già responsive.
+   ════════════════════════════════════════════════════════════════════ */
+.mobile-only{display:none}
+.mc-list{display:flex;flex-direction:column;gap:10px}
+.mc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px;transition:box-shadow .15s,border-color .15s;position:relative}
+.mc-card:active{box-shadow:var(--shadow-lg)}
+.mc-card.is-black{background:rgba(240,64,96,0.04);border-color:rgba(240,64,96,0.2)}
+.mc-card.is-done{opacity:0.55}
+.mc-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.mc-card-title{font-weight:700;font-size:14px;color:var(--text);line-height:1.3;flex:1;min-width:0}
+.mc-card-sub{font-size:11.5px;color:var(--text-light);margin-top:2px;line-height:1.4}
+.mc-card-amount{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;flex-shrink:0;text-align:right}
+.mc-card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;color:var(--text-mid)}
+.mc-card-meta .sep{color:var(--border);margin:0 2px}
+.mc-card-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px}
+.mc-card-row .lbl{color:var(--text-light);font-weight:500}
+.mc-card-row .val{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.mc-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;padding-top:10px;border-top:1px solid var(--border)}
+.mc-card-actions .btn{flex:1;justify-content:center;font-size:12px;padding:8px 10px;min-width:0}
+.mc-card-cb{position:absolute;top:12px;right:12px;width:20px;height:20px;cursor:pointer}
+.mc-empty{padding:32px 18px;text-align:center;color:var(--text-light);font-size:13px}
+.mc-empty .ic{font-size:30px;margin-bottom:8px;opacity:0.5}
+
+@media (max-width:860px){
+  .mobile-only{display:block}
+  .desktop-only{display:none!important}
+
+  /* Dashboard "Report del Mese" — riga grid → card */
+  .dr-head{display:none!important}
+  .dr-row{display:block!important;padding:14px 16px!important;border-bottom:1px solid var(--border)}
+  .dr-row.is-inviato{background:var(--surface2)}
+  .dr-row .dr-cell-icon{display:none!important}
+  .dr-row .dr-cell-name{margin-bottom:10px}
+  .dr-row .dr-cell-pren,
+  .dr-row .dr-cell-lordo,
+  .dr-row .dr-cell-netto,
+  .dr-row .dr-cell-stato{display:flex!important;justify-content:space-between!important;align-items:center;text-align:left!important;padding:5px 0;font-size:12.5px!important}
+  .dr-row .dr-cell-pren::before,
+  .dr-row .dr-cell-lordo::before,
+  .dr-row .dr-cell-netto::before{content:attr(data-mlbl);color:var(--text-light);font-weight:500;font-size:11.5px;text-transform:none;letter-spacing:0;font-variant-numeric:normal}
+  .dr-row .dr-cell-stato::before{content:'Stato';color:var(--text-light);font-weight:500;font-size:11.5px}
+  .dr-row .dr-cell-azioni{display:flex!important;justify-content:flex-end!important;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .dr-row .dr-cell-azioni .btn{flex:1;justify-content:center}
+  .dr-row.dr-totali .dr-cell-name{font-size:13px!important}
+}
+
+/* ════════════════════════════════════════════════════════════════════
    MOBILE — Wave 1 Foundation (sotto 860px)
    Sidebar drawer, modali full-screen, grid responsive, form 1col
    ════════════════════════════════════════════════════════════════════ */
@@ -588,7 +637,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="section-title">Proprietari</div>
     <button class="btn btn-primary" onclick="openModalProprietario()">+ Nuovo Proprietario</button>
   </div>
-  <div class="card">
+  <div class="card desktop-only">
     <div class="table-wrap">
       <table><thead><tr>
         <th>Nome / Ragione Sociale</th><th>Tipo</th><th>CF / P.IVA</th>
@@ -598,6 +647,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <tbody id="tbody-proprietari"></tbody></table>
     </div>
   </div>
+  <div class="mobile-only mc-list" id="mclist-proprietari"></div>
 </div>
 
 <!-- PROPRIETA -->
@@ -606,12 +656,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="section-title">Propriet&agrave;</div>
     <button class="btn btn-primary" onclick="openModalProprieta()">+ Nuova Propriet&agrave;</button>
   </div>
-  <div class="card">
+  <div class="card desktop-only">
     <div class="table-wrap">
       <table><thead><tr><th>Nome Propriet&agrave;</th><th>Indirizzo</th><th>Proprietario</th><th>Tipo</th><th>CIN</th><th>Azioni</th></tr></thead>
       <tbody id="tbody-proprieta"></tbody></table>
     </div>
   </div>
+  <div class="mobile-only mc-list" id="mclist-proprieta"></div>
 </div>
 
 <!-- GRUPPI PROPRIETA -->
@@ -680,7 +731,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <button onclick="blackSelectedPren()">&#9679; Segna BLACK</button>
     <button onclick="clearSelectionPren()" style="margin-left:auto">&#10005; Deseleziona</button>
   </div>
-  <div class="card">
+  <div class="card desktop-only">
     <div class="table-wrap">
       <table><thead><tr>
         <th style="width:36px"><input type="checkbox" class="row-cb" id="cb-all-pren" title="Seleziona tutto" onchange="toggleAllPren(this)"></th>
@@ -691,6 +742,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <tbody id="tbody-prenotazioni"></tbody></table>
     </div>
   </div>
+  <div class="mobile-only mc-list" id="mclist-prenotazioni"></div>
 </div>
 
 <!-- REPORT PROPRIETARI -->
@@ -2539,7 +2591,7 @@ function renderDashReports(){
   });
 
   // Header riga (visibile solo se ci sono items)
-  var rowsHtml='<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:9px 20px;background:var(--surface2);border-bottom:1.5px solid var(--border);font-size:9.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;align-items:center">'
+  var rowsHtml='<div class="dr-row dr-head" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:9px 20px;background:var(--surface2);border-bottom:1.5px solid var(--border);font-size:9.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;align-items:center">'
     +'<div></div>'
     +'<div>Proprietà</div>'
     +'<div style="text-align:center">Prenotazioni</div>'
@@ -2577,25 +2629,25 @@ function renderDashReports(){
       : '<button class="btn btn-sm btn-ghost" data-action="dr-toggle-inviato" data-type="'+it.type+'" data-id="'+it.id+'" style="font-size:11px" title="Segna come inviato">✓ Inviato</button>'
         +' <button class="btn btn-sm btn-primary" data-action="goto-report" data-id="'+dataIdAttr+'" style="font-size:11px">Report →</button>';
 
-    return '<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
-      +'<div style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
-      +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.nome)+badgesExtra+'</div>'
+    return '<div class="dr-row'+(inviato?' is-inviato':'')+'" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s">'
+      +'<div class="dr-cell-icon" style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
+      +'<div class="dr-cell-name" style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.nome)+badgesExtra+'</div>'
       +'<div style="font-size:11px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sottotitolo||'')+'</div></div>'
-      +'<div style="text-align:center;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+it.bks.length+'</div>'
-      +'<div style="text-align:right;font-size:13px;font-weight:600;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(lordo)+'</div>'
-      +'<div style="text-align:right;font-size:13px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(netto)+'</div>'
-      +'<div style="text-align:center">'+statoHtml+'</div>'
-      +'<div style="text-align:right;display:flex;gap:4px;justify-content:flex-end">'+azioniHtml+'</div>'
+      +'<div class="dr-cell-pren" data-mlbl="Prenotazioni" style="text-align:center;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+it.bks.length+'</div>'
+      +'<div class="dr-cell-lordo" data-mlbl="Lordo" style="text-align:right;font-size:13px;font-weight:600;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(lordo)+'</div>'
+      +'<div class="dr-cell-netto" data-mlbl="Netto Proprietario" style="text-align:right;font-size:13px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(netto)+'</div>'
+      +'<div class="dr-cell-stato" style="text-align:center">'+statoHtml+'</div>'
+      +'<div class="dr-cell-azioni" style="text-align:right;display:flex;gap:4px;justify-content:flex-end">'+azioniHtml+'</div>'
       +'</div>';
   }).join('');
 
   // Riga totali
-  rowsHtml+='<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
+  rowsHtml+='<div class="dr-row dr-totali" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
     +'<div></div>'
-    +'<div style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Syne,sans-serif">Totali del mese</div>'
-    +'<div style="text-align:center;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+grandPren+'</div>'
-    +'<div style="text-align:right;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">'+eur(grandLordo)+'</div>'
-    +'<div style="text-align:right;font-size:13px;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(grandNetto)+'</div>'
+    +'<div class="dr-cell-name" style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Syne,sans-serif">Totali del mese</div>'
+    +'<div class="dr-cell-pren" data-mlbl="Totale prenotazioni" style="text-align:center;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+grandPren+'</div>'
+    +'<div class="dr-cell-lordo" data-mlbl="Totale lordo" style="text-align:right;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">'+eur(grandLordo)+'</div>'
+    +'<div class="dr-cell-netto" data-mlbl="Totale netto" style="text-align:right;font-size:13px;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(grandNetto)+'</div>'
     +'<div></div>'
     +'<div></div>'
     +'</div>';
@@ -2622,8 +2674,13 @@ function gotoReport(id){
 // ─── PROPRIETARI ──────────────────────────────────────────────────────────
 function renderProprietari(){
   var tb=document.getElementById('tbody-proprietari');
-  if(!DB.proprietari.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-light)">Nessun proprietario. Clicca &quot;+ Nuovo Proprietario&quot; per iniziare.</td></tr>';return;}
-  tb.innerHTML=DB.proprietari.map(function(p){
+  var mc=document.getElementById('mclist-proprietari');
+  if(!DB.proprietari.length){
+    if(tb)tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-light)">Nessun proprietario. Clicca &quot;+ Nuovo Proprietario&quot; per iniziare.</td></tr>';
+    if(mc)mc.innerHTML='<div class="mc-empty"><div class="ic">👤</div>Nessun proprietario.<br>Tocca «+ Nuovo Proprietario» per iniziare.</div>';
+    return;
+  }
+  if(tb){tb.innerHTML=DB.proprietari.map(function(p){
     var nome=p.tipo==='persona_fisica'?p.nome+' '+p.cognome:p.ragione_sociale;
     var cf=p.tipo==='persona_fisica'?(p.cf||'&#8212;'):(p.piva||'&#8212;');
     var ind=[p.via,p.cap?(p.cap+(p.comune?' '+p.comune:'')):p.comune,p.provincia?'('+p.provincia+')':''].filter(Boolean).join(', ')||'&#8212;';
@@ -2643,7 +2700,31 @@ function renderProprietari(){
       +'<button class="btn btn-sm btn-danger" data-action="del-owner" data-id="'+p.id+'">&#128465; Elimina</button>'
       +'</div></td>'
       +'</tr>';
-  }).join('');
+  }).join('');}
+  if(mc){mc.innerHTML=DB.proprietari.map(function(p){
+    var nome=p.tipo==='persona_fisica'?(p.nome+' '+p.cognome):p.ragione_sociale;
+    var cf=p.tipo==='persona_fisica'?(p.cf||''):(p.piva||'');
+    var indParts=[p.via,p.cap,p.comune,p.provincia?'('+p.provincia+')':''].filter(Boolean);
+    var ind=indParts.join(' ')||'—';
+    var nProp=DB.proprieta.filter(function(pr){return pr.proprietario_id===p.id;}).length;
+    return '<div class="mc-card">'
+      +'<div class="mc-card-h">'
+        +'<div style="min-width:0;flex:1">'
+          +'<div class="mc-card-title">'+esc(nome)+'</div>'
+          +'<div class="mc-card-sub">'+(cf?'<span style="font-family:monospace">'+esc(cf)+'</span> · ':'')+nProp+' propriet'+(nProp===1?'à':'à')+'</div>'
+        +'</div>'
+        +'<span class="badge '+(p.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:10px;flex-shrink:0">'+(p.tipo==='azienda'?'Azienda':'Pers.F.')+'</span>'
+      +'</div>'
+      +'<div class="mc-card-row"><span class="lbl">Indirizzo</span><span class="val" style="font-size:11px;text-align:right;max-width:60%">'+esc(ind)+'</span></div>'
+      +'<div class="mc-card-row"><span class="lbl">IVA Houzly</span><span class="val"><span class="badge '+(p.fisc_iva22?'badge-orange':'badge-green')+'" style="font-size:10px">'+(p.fisc_iva22?'IVA 22%':'Esente')+'</span></span></div>'
+      +(p.cin?'<div class="mc-card-row"><span class="lbl">CIN</span><span class="val" style="font-family:monospace;font-size:11px">'+esc(p.cin)+'</span></div>':'')
+      +(p.coprops&&p.coprops.length?'<div class="mc-card-row"><span class="lbl">Co-prop.</span><span class="val" style="font-size:11px;text-align:right">'+p.coprops.map(function(c){return esc(c.nome)+' ('+(c.perc*100).toFixed(0)+'%)';}).join(', ')+'</span></div>':'')
+      +'<div class="mc-card-actions">'
+        +'<button class="btn btn-sm btn-outline" data-action="edit-owner" data-id="'+p.id+'">✎ Modifica</button>'
+        +'<button class="btn btn-sm btn-danger" data-action="del-owner" data-id="'+p.id+'">🗑 Elimina</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');}
 }
 
 var editingTipo='persona_fisica';
@@ -2828,15 +2909,23 @@ function deleteOwner(id){
 // ─── PROPRIETA ────────────────────────────────────────────────────────────
 function renderProprieta(){
   var tb=document.getElementById('tbody-proprieta');
-  if(!DB.proprieta.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-light)">Nessuna propriet\u00e0</td></tr>';return;}
+  var mc=document.getElementById('mclist-proprieta');
+  if(!DB.proprieta.length){
+    if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-light)">Nessuna propriet\u00e0</td></tr>';
+    if(mc)mc.innerHTML='<div class="mc-empty"><div class="ic">🏠</div>Nessuna proprietà.</div>';
+    return;
+  }
   var childIds2={};
   DB.propGroups.forEach(function(g){g.children.forEach(function(cid){childIds2[cid]=true;});});
+  // Map: cid → group name (per badge mobile)
+  var childToGroup={};
+  DB.propGroups.forEach(function(g){g.children.forEach(function(cid){childToGroup[cid]=g.nome;});});
   var orderedProps2=[];
   DB.propGroups.forEach(function(g){
     g.children.forEach(function(cid){var p=DB.proprieta.find(function(x){return x.id===cid;});if(p)orderedProps2.push(p);});
   });
   DB.proprieta.forEach(function(p){if(!childIds2[p.id])orderedProps2.push(p);});
-  tb.innerHTML=orderedProps2.map(function(p){
+  if(tb){tb.innerHTML=orderedProps2.map(function(p){
     var isChild2=childIds2[p.id];
     var own=DB.proprietari.find(function(x){return x.id===p.proprietario_id;});
     return '<tr>'
@@ -2847,7 +2936,27 @@ function renderProprieta(){
       +'<td>'+(p.cin?'<span style="font-family:monospace;font-size:11px">'+p.cin+'</span>':'<em style="color:var(--text-light);font-size:11px">--</em>')+'</td>'
       +'<td><div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" data-action="edit-prop" data-id="'+p.id+'">&#9999;&#65039; Modifica</button><button class="btn btn-sm btn-danger" data-action="del-prop" data-id="'+p.id+'">&#128465; Elimina</button></div></td>'
       +'</tr>';
-  }).join('');
+  }).join('');}
+  if(mc){mc.innerHTML=orderedProps2.map(function(p){
+    var own=DB.proprietari.find(function(x){return x.id===p.proprietario_id;});
+    var grpName=childToGroup[p.id];
+    var nBks=DB.prenotazioni.filter(function(b){return b.proprieta_id===p.id&&!b.black;}).length;
+    return '<div class="mc-card">'
+      +'<div class="mc-card-h">'
+        +'<div style="min-width:0;flex:1">'
+          +'<div class="mc-card-title">'+esc(p.nome)+(grpName?' <span class="group-tag">'+esc(grpName)+'</span>':'')+'</div>'
+          +'<div class="mc-card-sub">'+(own?esc(nomeOwner(own.id))+' · ':'')+nBks+' prenotazion'+(nBks===1?'e':'i')+'</div>'
+        +'</div>'
+        +(own?'<span class="badge '+(own.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:10px;flex-shrink:0">'+(own.tipo==='azienda'?'Azienda':'Pers.F.')+'</span>':'')
+      +'</div>'
+      +(p.indirizzo?'<div class="mc-card-row"><span class="lbl">Indirizzo</span><span class="val" style="font-size:11px;text-align:right;max-width:65%">'+esc(p.indirizzo)+'</span></div>':'')
+      +(p.cin?'<div class="mc-card-row"><span class="lbl">CIN</span><span class="val" style="font-family:monospace;font-size:11px">'+esc(p.cin)+'</span></div>':'')
+      +'<div class="mc-card-actions">'
+        +'<button class="btn btn-sm btn-outline" data-action="edit-prop" data-id="'+p.id+'">✎ Modifica</button>'
+        +'<button class="btn btn-sm btn-danger" data-action="del-prop" data-id="'+p.id+'">🗑 Elimina</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');}
 }
 function openModalProprieta(){
   var btnS2=document.getElementById('btn-save-prop2');if(btnS2){btnS2.removeAttribute('data-edit-id');btnS2.textContent='Salva';}
@@ -3051,6 +3160,52 @@ function renderPrenotazioni(){
       +'<button class="btn btn-sm btn-danger" data-action="del-pren" data-id="'+b.id+'">&#128465;</button>'
       +'</td></tr>';  }).join('');
   wireTableActions('tbody-prenotazioni');
+
+  // ─── MOBILE: card stack parallelo ─────────────────────────────
+  var mc=document.getElementById('mclist-prenotazioni');
+  if(mc){
+    if(!bks.length){
+      mc.innerHTML='<div class="mc-empty"><div class="ic">📋</div>'+(q?'Nessun risultato per «'+q+'»':'Nessuna prenotazione')+'</div>';
+    } else {
+      mc.innerHTML=bks.map(function(b){
+        var own=ownerOfProp(b.proprieta_id);
+        var cls=otaBadge[b.canale]||'badge-blue';
+        var badgesM=meseBadgesHtmlGlobal(b);
+        var blackTitle=b.black?'Riattiva nei report':'Segna come BLACK';
+        var pulWarn=(b.canale==='Airbnb'&&!b.pulizia)
+          ?'<span title="Pulizie mancanti" style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;background:rgba(245,166,35,0.15);border-radius:50%;font-size:10px">⚠</span> '
+          :'';
+        return '<div class="mc-card'+(b.black?' is-black':'')+'">'
+          +'<input type="checkbox" class="mc-card-cb pren-cb" data-id="'+b.id+'" onchange="updateBulkPren()">'
+          +'<div class="mc-card-h" style="padding-right:30px">'
+          +'<div style="min-width:0;flex:1">'
+          +'<div class="mc-card-title">'+pulWarn+esc(b.ospite_nome||'-')+badgesM+'</div>'
+          +'<div class="mc-card-sub">'+esc(nomeProp(b.proprieta_id))+'</div>'
+          +'</div>'
+          +'<div class="mc-card-amount">'+eur(b.calc.canone)+'</div>'
+          +'</div>'
+          +'<div class="mc-card-meta">'
+          +'<span class="badge '+cls+'" style="font-size:10px">'+chIcon(b.canale,12)+esc(b.canale)+'</span>'
+          +'<span class="sep">·</span>'
+          +'<span>'+dateIt(b.checkin)+(b.checkout?' → '+dateIt(b.checkout):'')+'</span>'
+          +'<span class="sep">·</span>'
+          +'<span>'+b.notti+' notti</span>'
+          +'<span class="sep">·</span>'
+          +'<span>'+b.n_ospiti+' osp.</span>'
+          +'</div>'
+          +'<div class="mc-card-row"><span class="lbl">Tot. OTA</span><span class="val">'+eur(b.calc.tot)+'</span></div>'
+          +'<div class="mc-card-row"><span class="lbl">Tipo</span><span class="val"><span class="badge '+(own&&own.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:10px">'+(own&&own.tipo==='azienda'?'Azienda':'Pers. Fisica')+'</span></span></div>'
+          +'<div class="mc-card-actions">'
+            +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" title="Visualizza">🔍 Vedi</button>'
+            +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'">📄 Doc</button>'
+            +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'">✎</button>'
+            +'<button class="btn btn-sm btn-ghost" data-action="toggle-black" data-id="'+b.id+'" title="'+blackTitle+'">⊘</button>'
+            +'<button class="btn btn-sm btn-danger" data-action="del-pren" data-id="'+b.id+'">🗑</button>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+    }
+  }
 }
 function viewPren(id){
   var b=DB.prenotazioni.find(function(x){return x.id===id;});
