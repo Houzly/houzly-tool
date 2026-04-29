@@ -454,20 +454,23 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- STAT GRIDS -->
   <div class="stat-grid" id="stat-grid"></div>
   <div class="stat-grid" id="stat-grid-2" style="margin-top:0"></div>
-  <!-- BOTTOM PANELS -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border)">
-        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em">⚡ Ultime Prenotazioni</div>
+  <!-- BOTTOM PANEL: REPORT DEL MESE -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0">📤 Report del Mese</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button id="dr-prev" class="btn btn-ghost btn-sm" title="Mese precedente" onclick="dashReportShiftMonth(-1)" style="padding:4px 8px;font-size:14px;line-height:1">‹</button>
+        <select id="dr-mese-sel" onchange="renderDashReports()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:var(--text);outline:none;cursor:pointer;font-weight:600">
+          <option>Gennaio</option><option>Febbraio</option><option>Marzo</option><option>Aprile</option>
+          <option>Maggio</option><option>Giugno</option><option>Luglio</option><option>Agosto</option>
+          <option>Settembre</option><option>Ottobre</option><option>Novembre</option><option>Dicembre</option>
+        </select>
+        <input type="number" id="dr-anno-sel" min="2020" max="2035" oninput="renderDashReports()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:var(--text);outline:none;width:74px;font-weight:600">
+        <button id="dr-next" class="btn btn-ghost btn-sm" title="Mese successivo" onclick="dashReportShiftMonth(1)" style="padding:4px 8px;font-size:14px;line-height:1">›</button>
       </div>
-      <div id="dash-recent"></div>
+      <div id="dr-summary" style="font-size:11.5px;color:var(--text-light);margin-left:auto;flex-shrink:0"></div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border)">
-        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em">📤 Report da Inviare</div>
-      </div>
-      <div id="dash-reports"></div>
-    </div>
+    <div id="dash-reports"></div>
   </div>
 </div>
 <!-- PROPRIETARI -->
@@ -2211,65 +2214,209 @@ function renderDash(){
     statCardEditable('👔','Spesa Biancheria',DB.spese_biancheria,'spese_biancheria')+
     statCard('🌙','Totale Notti',totNotti,'Notti prenotate','var(--cyan)')+
     statCard('👤','Proprietari Attivi',DB.proprietari.length,DB.proprietari.filter(function(p){return p.tipo==='persona_fisica';}).length+' PF · '+DB.proprietari.filter(function(p){return p.tipo==='azienda';}).length+' Aziende','var(--blue)');
-  var recent=[].concat(allBks).reverse().slice(0,6);
-  document.getElementById('dash-recent').innerHTML=recent.length===0
-    ?'<div style="text-align:center;padding:24px;color:var(--text-light)">Nessuna prenotazione</div>'
-    :recent.map(function(b){
-      var chColors={'Airbnb':'#ff5a5f','Booking.com':'#003580','Diretta':'#00c48c','Vrbo':'#1B468F','Expedia':'#fbcc33','Altro':'#8892b0'};
-      var chColor=chColors[b.canale]||'#8892b0';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
-        +'<div style="width:3px;height:36px;border-radius:4px;background:'+chColor+';flex-shrink:0"></div>'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.ospite_nome)+'</div>'
-        +'<div style="font-size:11px;color:var(--text-light);margin-top:1px">'+esc(nomeProp(b.proprieta_id))+' · '+dateIt(b.checkin)+'</div>'
-        +'</div>'
-        +'<div style="text-align:right;flex-shrink:0">'
-        +'<div style="font-weight:700;font-size:13px;color:var(--blue)">'+eur(b.calc.tot)+'</div>'
-        +'<div style="font-size:10px;font-weight:600;color:'+chColor+';background:'+chColor+'18;padding:1px 6px;border-radius:10px;margin-top:2px">'+b.canale+'</div>'
-        +'</div>'
-        +'</div>';
-    }).join('');
-  // Dash reports: groups as single entry + standalone props, only with bookings
+  // Inizializza filtri Report del Mese se non già fatto
+  initDashReportFilters();
+  renderDashReports();
+}
+
+// ─── DASHBOARD: REPORT DEL MESE ─────────────────────────────────────
+// Inferisce il mese più recente con prenotazioni e popola i selettori
+// alla prima esecuzione. Successivamente l'utente può navigare con ‹ ›.
+var _drFiltersInit=false;
+function initDashReportFilters(){
+  if(_drFiltersInit)return;
+  var meseSel=document.getElementById('dr-mese-sel');
+  var annoInp=document.getElementById('dr-anno-sel');
+  if(!meseSel||!annoInp)return;
+  // Mese più recente con almeno una prenotazione (per check-in)
+  var maxKey='';
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(b.black)return;
+    var ci=b.checkin||''; if(!/^\d{4}-\d{2}/.test(ci))return;
+    var k=ci.slice(0,7); if(k>maxKey)maxKey=k;
+  });
+  if(!maxKey){
+    // Fallback al mese di calendario corrente
+    var d=new Date();
+    maxKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  }
+  var y=+maxKey.slice(0,4), m=+maxKey.slice(5,7);
+  meseSel.selectedIndex=m-1;
+  annoInp.value=y;
+  _drFiltersInit=true;
+}
+function dashReportShiftMonth(delta){
+  var meseSel=document.getElementById('dr-mese-sel');
+  var annoInp=document.getElementById('dr-anno-sel');
+  if(!meseSel||!annoInp)return;
+  var m=meseSel.selectedIndex+1, y=+annoInp.value||new Date().getFullYear();
+  m+=delta;
+  if(m<1){m=12;y--;}
+  if(m>12){m=1;y++;}
+  meseSel.selectedIndex=m-1;
+  annoInp.value=y;
+  renderDashReports();
+}
+// Identifica univocamente la coppia (target, mese, anno) per il flag inviato
+function _drInviatoKey(targetType,targetId,y,m){
+  return targetType+':'+targetId+':'+y+'-'+(m<10?'0':'')+m;
+}
+function isReportInviato(targetType,targetId,y,m){
+  return !!(DB.reportInviato && DB.reportInviato[_drInviatoKey(targetType,targetId,y,m)]);
+}
+function toggleReportInviato(targetType,targetId,y,m){
+  DB.reportInviato=DB.reportInviato||{};
+  var key=_drInviatoKey(targetType,targetId,y,m);
+  if(DB.reportInviato[key]){
+    delete DB.reportInviato[key];
+    toast('Report riportato in lista');
+  } else {
+    DB.reportInviato[key]={inviatoIl:new Date().toISOString()};
+    toast('Report segnato come inviato \u2713');
+  }
+  saveDB();
+  renderDashReports();
+}
+
+function renderDashReports(){
+  var meseSel=document.getElementById('dr-mese-sel');
+  var annoInp=document.getElementById('dr-anno-sel');
+  var area=document.getElementById('dash-reports');
+  var summary=document.getElementById('dr-summary');
+  if(!meseSel||!annoInp||!area)return;
+  var m=meseSel.selectedIndex+1, y=+annoInp.value||0;
+  if(!y){area.innerHTML='<div style="text-align:center;padding:24px;color:var(--text-light)">Seleziona anno</div>';return;}
+
+  // Per ogni proprietà raccogli le prenotazioni del periodo (regola check-in + override)
+  function bksForProp(propId){
+    return (DB.prenotazioni||[]).filter(function(b){
+      if(b.black)return false;
+      if(b.proprieta_id!==propId)return false;
+      return bkInPeriod(b,m,y,'checkin');
+    });
+  }
+
   var drChildIds={};
-  DB.propGroups.forEach(function(g){g.children.forEach(function(cid){drChildIds[cid]=true;});});
-  var drItems=[]; // {type:'group'|'prop', obj, bkCount}
-  // Groups first
-  DB.propGroups.forEach(function(g){
-    var bkCount=DB.prenotazioni.filter(function(b){return g.children.indexOf(b.proprieta_id)>=0&&!b.black;}).length;
-    if(bkCount>0)drItems.push({type:'group',obj:g,bkCount:bkCount});
+  (DB.propGroups||[]).forEach(function(g){g.children.forEach(function(cid){drChildIds[cid]=true;});});
+  var items=[]; // {type, id, nome, sottotitolo, bks}
+  // Gruppi prima
+  (DB.propGroups||[]).forEach(function(g){
+    var bks=[];
+    g.children.forEach(function(cid){bks=bks.concat(bksForProp(cid));});
+    if(bks.length){
+      items.push({type:'group',id:g.id,nome:g.nome,sottotitolo:g.children.length+' unità',bks:bks});
+    }
   });
-  // Standalone props (not in any group)
-  DB.proprieta.forEach(function(p){
+  // Proprietà standalone
+  (DB.proprieta||[]).forEach(function(p){
     if(drChildIds[p.id])return;
-    var bkCount=DB.prenotazioni.filter(function(b){return b.proprieta_id===p.id&&!b.black;}).length;
-    if(bkCount>0)drItems.push({type:'prop',obj:p,bkCount:bkCount});
+    var bks=bksForProp(p.id);
+    if(bks.length){
+      var own=DB.proprietari.find(function(x){return x.id===p.proprietario_id;});
+      items.push({type:'prop',id:p.id,nome:p.nome,sottotitolo:own?nomeOwner(own.id):'',bks:bks});
+    }
   });
-  document.getElementById('dash-reports').innerHTML=drItems.length===0
-    ?'<div style="text-align:center;padding:24px;color:var(--text-light)">Nessuna prenotazione attiva</div>'
-    :drItems.map(function(item){
-      if(item.type==='group'){
-        var g=item.obj;
-        return '<div style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--border);transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
-          +'<div style="width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏘️</div>'
-          +'<div style="flex:1;min-width:0">'
-          +'<div style="font-weight:700;font-size:13px;color:var(--text)">'+g.nome+'</div>'
-          +'<div style="font-size:11px;color:var(--text-light);margin-top:1px">'+g.children.length+' unità · <span style="font-weight:700;color:var(--blue)">'+item.bkCount+' prenotazioni</span></div>'
-          +'</div>'
-          +'<button class="btn btn-sm btn-primary" data-action="goto-report" data-id="grp:'+g.id+'" style="flex-shrink:0">Report →</button>'
-          +'</div>';
-      } else {
-        var pr=item.obj;
-        var own=DB.proprietari.find(function(x){return x.id===pr.proprietario_id;});
-        return '<div style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--border);transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
-          +'<div style="width:34px;height:34px;border-radius:10px;background:var(--grad-soft);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏠</div>'
-          +'<div style="flex:1;min-width:0">'
-          +'<div style="font-weight:600;font-size:13px;color:var(--text)">'+pr.nome+'</div>'
-          +'<div style="font-size:11px;color:var(--text-light);margin-top:1px">'+(own?nomeOwner(own.id)+' · ':'')+'<span style="font-weight:700;color:var(--blue)">'+item.bkCount+' prenotazioni</span></div>'
-          +'</div>'
-          +'<button class="btn btn-sm btn-outline" data-action="goto-report" data-id="'+pr.id+'" style="flex-shrink:0">Report →</button>'
-          +'</div>';
-      }
-    }).join('');
+
+  // Conteggi per summary
+  var totItems=items.length;
+  var totInviati=items.filter(function(it){return isReportInviato(it.type,it.id,y,m);}).length;
+  var totDaFare=totItems-totInviati;
+  if(summary){
+    if(totItems===0){
+      summary.innerHTML='Nessuna prenotazione';
+    } else {
+      summary.innerHTML='<span style="color:var(--orange);font-weight:700">'+totDaFare+' da fare</span> &middot; <span style="color:var(--green);font-weight:700">'+totInviati+' inviati</span> &middot; '+totItems+' totali';
+    }
+  }
+
+  if(!items.length){
+    area.innerHTML='<div style="text-align:center;padding:32px 24px;color:var(--text-light)"><div style="font-size:30px;margin-bottom:8px;opacity:0.5">📭</div><p style="font-size:13px">Nessuna prenotazione con check-in in questo mese</p></div>';
+    return;
+  }
+
+  // Ordina: prima i "da fare", poi gli inviati (in coda)
+  items.sort(function(a,b){
+    var ai=isReportInviato(a.type,a.id,y,m)?1:0;
+    var bi=isReportInviato(b.type,b.id,y,m)?1:0;
+    if(ai!==bi)return ai-bi;
+    return a.nome.localeCompare(b.nome);
+  });
+
+  // Calcola anche i totali del periodo per il footer
+  var grandLordo=0, grandNetto=0, grandPren=0;
+  items.forEach(function(it){
+    it.bks.forEach(function(b){
+      if(!b.calc||!b.calc.tot)b.calc=doCalc(b);
+      grandLordo+=b.calc.tot||0;
+      grandNetto+=(b.calc.canone_totale||b.calc.canone||0);
+      grandPren++;
+    });
+  });
+
+  // Header riga (visibile solo se ci sono items)
+  var rowsHtml='<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:9px 20px;background:var(--surface2);border-bottom:1.5px solid var(--border);font-size:9.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;align-items:center">'
+    +'<div></div>'
+    +'<div>Proprietà</div>'
+    +'<div style="text-align:center">Prenotazioni</div>'
+    +'<div style="text-align:right">Lordo</div>'
+    +'<div style="text-align:right">Netto Proprietario</div>'
+    +'<div style="text-align:center">Stato</div>'
+    +'<div style="text-align:right">Azioni</div>'
+    +'</div>';
+
+  rowsHtml+=items.map(function(it){
+    var inviato=isReportInviato(it.type,it.id,y,m);
+    var lordo=0, netto=0, nOver=0, nWarn=0;
+    it.bks.forEach(function(b){
+      if(!b.calc||!b.calc.tot)b.calc=doCalc(b);
+      lordo+=b.calc.tot||0;
+      netto+=(b.calc.canone_totale||b.calc.canone||0);
+      if(b.meseReportOverride)nOver++;
+      if(needsMeseConferma(b))nWarn++;
+    });
+    var icon=it.type==='group'?'🏘️':'🏠';
+    var iconBg=it.type==='group'?'var(--grad)':'var(--grad-soft)';
+    var iconBorder=it.type==='group'?'none':'1.5px solid var(--border)';
+    var rowOpacity=inviato?'opacity:0.55':'';
+    var dataIdAttr=it.type==='group'?'grp:'+it.id:it.id;
+    var statoHtml=inviato
+      ?'<span class="badge badge-green" style="font-size:9.5px">✓ Inviato</span>'
+      :'<span class="badge badge-orange" style="font-size:9.5px">Da inviare</span>';
+    var badgesExtra='';
+    if(nOver>0)badgesExtra+=' <span class="mese-badge override" style="margin:0;font-size:9px"><span class="ic">↻</span>'+nOver+'</span>';
+    if(nWarn>0)badgesExtra+=' <span class="mese-badge warn" style="margin:0;font-size:9px"><span class="ic">⚠</span>'+nWarn+'</span>';
+
+    var azioniHtml=inviato
+      ? '<button class="btn btn-sm btn-ghost" data-action="dr-toggle-inviato" data-type="'+it.type+'" data-id="'+it.id+'" style="font-size:11px" title="Riporta in lista">↩ Annulla</button>'
+        +' <button class="btn btn-sm btn-outline" data-action="goto-report" data-id="'+dataIdAttr+'" style="font-size:11px">Apri →</button>'
+      : '<button class="btn btn-sm btn-ghost" data-action="dr-toggle-inviato" data-type="'+it.type+'" data-id="'+it.id+'" style="font-size:11px" title="Segna come inviato">✓ Inviato</button>'
+        +' <button class="btn btn-sm btn-primary" data-action="goto-report" data-id="'+dataIdAttr+'" style="font-size:11px">Report →</button>';
+
+    return '<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
+      +'<div style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
+      +'<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.nome)+badgesExtra+'</div>'
+      +'<div style="font-size:11px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sottotitolo||'')+'</div></div>'
+      +'<div style="text-align:center;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+it.bks.length+'</div>'
+      +'<div style="text-align:right;font-size:13px;font-weight:600;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(lordo)+'</div>'
+      +'<div style="text-align:right;font-size:13px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(netto)+'</div>'
+      +'<div style="text-align:center">'+statoHtml+'</div>'
+      +'<div style="text-align:right;display:flex;gap:4px;justify-content:flex-end">'+azioniHtml+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Riga totali
+  rowsHtml+='<div style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
+    +'<div></div>'
+    +'<div style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Syne,sans-serif">Totali del mese</div>'
+    +'<div style="text-align:center;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+grandPren+'</div>'
+    +'<div style="text-align:right;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">'+eur(grandLordo)+'</div>'
+    +'<div style="text-align:right;font-size:13px;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(grandNetto)+'</div>'
+    +'<div></div>'
+    +'<div></div>'
+    +'</div>';
+
+  area.innerHTML=rowsHtml;
+  if(typeof wireDashReports==='function')wireDashReports();
 }
 function gotoReport(id){
   showPage('report_prop');
@@ -4173,8 +4320,17 @@ function wireDashReports(){
   var dr=document.getElementById('dash-reports');
   if(!dr)return;
   dr.querySelectorAll('[data-action]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      if(this.getAttribute('data-action')==='goto-report')gotoReport(this.getAttribute('data-id'));
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var action=this.getAttribute('data-action');
+      if(action==='goto-report')gotoReport(this.getAttribute('data-id'));
+      else if(action==='dr-toggle-inviato'){
+        var meseSel=document.getElementById('dr-mese-sel');
+        var annoInp=document.getElementById('dr-anno-sel');
+        if(!meseSel||!annoInp)return;
+        var m=meseSel.selectedIndex+1, y=+annoInp.value||0;
+        toggleReportInviato(this.getAttribute('data-type'),this.getAttribute('data-id'),y,m);
+      }
     });
   });
 }
