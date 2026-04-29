@@ -327,9 +327,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
   /* Topbar fix sticky e z-index alto.
      Rimuovo overflow-x:hidden da #main che impedisce position:sticky di
-     funzionare in pagine lunghe (Operations, Onboarding, Ricevute, Pulizie). */
-  #main{overflow-x:visible}
-  .topbar{position:sticky;top:0;z-index:100;background:var(--surface)!important;backdrop-filter:none;-webkit-backdrop-filter:none}
+     funzionare in pagine lunghe (Operations, Onboarding, Ricevute, Pulizie).
+     iOS Safari ha bug con sticky+sfondo che diventa trasparente: forzo
+     compositing layer con transform e background opaco esplicito. */
+  #main{overflow-x:visible;overflow-y:visible}
+  body{overflow-x:hidden}
+  .topbar{position:sticky;top:0;z-index:100;background:#ffffff!important;backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;border-bottom:1px solid var(--border)}
+
+  /* Page con padding-top più alto su mobile per separare dal section-header */
+  .page{padding:14px;padding-top:14px}
+  .section-header{margin-top:0}
 
   /* Sidebar diventa drawer */
   #sidebar{transform:translateX(-100%);transition:transform .25s ease;width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
@@ -346,8 +353,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .topbar-btn-secondary{display:none}
   .topbar-more-btn{display:inline-flex!important}
 
-  /* Pagine con padding ridotto */
-  .page{padding:14px}
+  /* (Pagine con padding già definito sopra) */
 
   /* Sezione header: titolo + actions vanno a capo naturalmente.
      Niente width:100% forzato sul second-block — non serve e crea problemi
@@ -415,14 +421,20 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 /* Mobile stretto: aggiustamenti aggiuntivi sotto 480px */
 @media (max-width:480px){
-  .stat-grid{grid-template-columns:1fr}
-  .stat-value{font-size:24px}
+  /* Statcard restano 2 colonne anche su iPhone (sono compatte abbastanza) */
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat-card{padding:12px}
+  .stat-value{font-size:20px}
+  .stat-label{font-size:9px}
+  .stat-sub{font-size:10px}
   .topbar{padding:10px 12px}
   .topbar-title{font-size:14px}
   .page{padding:12px}
   .modal{padding:14px!important}
-  .onb-kpis{grid-template-columns:1fr}
-  .onb-detail-stats{grid-template-columns:1fr}
+  .onb-kpis{grid-template-columns:repeat(2,1fr);gap:8px}
+  .onb-kpi{padding:12px}
+  .onb-kpi-value{font-size:20px}
+  .onb-detail-stats{grid-template-columns:repeat(2,1fr);gap:6px}
 }
 
 </style>
