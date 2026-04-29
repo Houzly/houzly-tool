@@ -326,13 +326,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .hamburger-fab{display:none}
 
   /* Topbar fix sticky e z-index alto.
-     Rimuovo overflow-x:hidden da #main che impedisce position:sticky di
-     funzionare in pagine lunghe (Operations, Onboarding, Ricevute, Pulizie).
-     iOS Safari ha bug con sticky+sfondo che diventa trasparente: forzo
-     compositing layer con transform e background opaco esplicito. */
-  #main{overflow-x:visible;overflow-y:visible}
-  body{overflow-x:hidden}
-  .topbar{position:sticky;top:0;z-index:100;background:#ffffff!important;backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;border-bottom:1px solid var(--border)}
+     iOS Safari + Chrome mobile: forzo larghezza piena, sticky funzionante,
+     compositing layer per evitare bug rendering. */
+  body{overflow-x:hidden;width:100%}
+  #main{margin-left:0!important;width:100%!important;max-width:100vw;overflow-x:visible;overflow-y:visible;flex:none!important}
+  .topbar{position:sticky;top:0;z-index:100;width:100%;background:#ffffff!important;backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;border-bottom:1px solid var(--border);box-sizing:border-box}
 
   /* Page con padding-top più alto su mobile per separare dal section-header */
   .page{padding:14px;padding-top:14px}
@@ -2460,13 +2458,13 @@ function renderDashPillsMobile(container){
         + '</div>';
     }
   } else if(_dpMobileExpanded === 'standalone'){
-    expandedHtml = '<div class="dp-mobile-expanded" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 8px;background:rgba(67,97,238,0.04);border-radius:var(--radius);margin-top:2px;scrollbar-width:none">'
+    expandedHtml = '<div class="dp-mobile-expanded" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 10px;background:rgba(67,97,238,0.04);border-radius:var(--radius);margin-top:4px">'
       + standaloneProps.map(function(p){
           var active = dashPropSelection.indexOf(p.id)>=0;
           var bg = active?'var(--blue)':'var(--surface)';
           var col = active?'#fff':'var(--text-mid)';
           var bd = active?'var(--blue)':'var(--border)';
-          return '<button data-dp-action="select" data-dp-id="'+p.id+'" style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:18px;font-size:11.5px;font-weight:500;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;flex-shrink:0;font-family:inherit">'+esc(p.nome)+'</button>';
+          return '<button data-dp-action="select" data-dp-id="'+p.id+'" style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:18px;font-size:11.5px;font-weight:500;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;font-family:inherit">'+esc(p.nome)+'</button>';
         }).join('')
       + '</div>';
   }
