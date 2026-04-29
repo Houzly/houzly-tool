@@ -322,14 +322,14 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 @media (max-width:860px){
   body{font-size:13px}
-  .hamburger{display:none}
-  .hamburger-fab{display:inline-flex}
+  .hamburger{display:inline-flex}
+  .hamburger-fab{display:none}
 
-  /* Topbar z-index alzato + fix sticky: rimuovo overflow-x:hidden da #main
-     che impedisce position:sticky di funzionare in pagine lunghe (Operations,
-     Onboarding, Ricevute, Pulizie). */
+  /* Topbar fix sticky e z-index alto.
+     Rimuovo overflow-x:hidden da #main che impedisce position:sticky di
+     funzionare in pagine lunghe (Operations, Onboarding, Ricevute, Pulizie). */
   #main{overflow-x:visible}
-  .topbar{position:sticky;top:0;z-index:90}
+  .topbar{position:sticky;top:0;z-index:100;background:var(--surface)!important;backdrop-filter:none;-webkit-backdrop-filter:none}
 
   /* Sidebar diventa drawer */
   #sidebar{transform:translateX(-100%);transition:transform .25s ease;width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
@@ -349,9 +349,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   /* Pagine con padding ridotto */
   .page{padding:14px}
 
-  /* Sezione header: titolo + actions vanno a capo */
-  .section-header{flex-wrap:wrap;gap:10px;align-items:flex-start}
-  .section-header > div:last-child{width:100%;flex-wrap:wrap}
+  /* Sezione header: titolo + actions vanno a capo naturalmente.
+     Niente width:100% forzato sul second-block — non serve e crea problemi
+     in pagine con wrapper di pulsanti (Operations, Cleaning, Ricevute). */
+  .section-header{flex-wrap:wrap;gap:10px;align-items:center}
+  .section-header > div:first-child{flex:1 1 auto;min-width:0}
+  .section-header > div:last-child:not(:first-child){flex-wrap:wrap}
   .section-header .search-bar{min-width:0;flex:1 1 100%}
   .section-header select,.section-header input[type="number"]{flex:0 1 auto}
 
@@ -391,6 +394,14 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
   /* Pillole filtro proprietà — possono andare a capo */
   .prop-filter-bar{padding:8px 14px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+
+  /* Dashboard pillole D+ mobile: scrollbar invisibile, scroll smooth */
+  .dp-mobile-row::-webkit-scrollbar,
+  .dp-mobile-expanded::-webkit-scrollbar{display:none}
+  .dp-mobile-row,.dp-mobile-expanded{-ms-overflow-style:none}
+  /* Override: il container delle pillole su mobile NON deve avere flex-wrap.
+     Il render mobile usa una propria riga interna. */
+  #dash-prop-pills{display:block!important;flex-wrap:nowrap!important}
 
   /* Search input nelle topbar — width auto */
   .search-bar{min-width:0;width:100%}
@@ -2120,6 +2131,8 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
   var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
+  // Reset stato espansione pillole quando torno in dashboard (parte fresco)
+  if(p==='dashboard')_dpMobileExpanded=null;
   renderPage(p);
   // Chiudi sidebar e topbar-menu su mobile dopo navigazione
   toggleSidebar(false);
@@ -2317,6 +2330,9 @@ function clearDashPropFilter(){
 function renderDashPills(){
   var container=document.getElementById('dash-prop-pills');
   if(!container)return;
+  var isMobile = window.innerWidth <= 860;
+  if(isMobile){renderDashPillsMobile(container);return;}
+  // ─── DESKTOP (immutato) ────────────────────────────────────────
   var childIds={};
   (DB.propGroups||[]).forEach(function(g){g.children.forEach(function(cid){childIds[cid]=true;});});
 
@@ -2360,6 +2376,116 @@ function renderDashPills(){
     });
   });
 }
+
+// ─── MOBILE — Render pillole compatte D+ ──────────────────────────
+// Riga unica orizzontale scrollabile: Tutte + gruppi (con ▾ per
+// espandere figlie) + "+N singole ▾" per le standalone. Solo un
+// blocco espanso alla volta. Espansione non persistente.
+var _dpMobileExpanded = null; // 'group:id' | 'standalone' | null
+function renderDashPillsMobile(container){
+  var childIds={};
+  (DB.propGroups||[]).forEach(function(g){g.children.forEach(function(cid){childIds[cid]=true;});});
+  var standaloneProps = DB.proprieta.filter(function(p){return !childIds[p.id];});
+
+  // ── Riga principale: Tutte + gruppi + bottone standalone ──
+  var allActive=dashPropSelection.length===0;
+
+  function chipAll(){
+    var bg = allActive ? 'var(--blue)' : 'var(--surface)';
+    var col = allActive ? '#fff' : 'var(--text-mid)';
+    var bd = allActive ? 'var(--blue)' : 'var(--border)';
+    return '<button class="dp-chip" data-dp-action="all" style="display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;flex-shrink:0;height:32px">Tutte</button>';
+  }
+  function chipGroup(g){
+    var active = dashPropSelection.indexOf(g.id) >= 0;
+    var expanded = _dpMobileExpanded === 'group:'+g.id;
+    var bg = active ? 'var(--blue)' : 'var(--surface)';
+    var col = active ? '#fff' : 'var(--text-mid)';
+    var bd = active ? 'var(--blue)' : 'var(--border)';
+    var arrowBg = expanded ? 'rgba(67,97,238,0.15)' : 'transparent';
+    var arrowCol = active ? 'rgba(255,255,255,0.85)' : 'var(--text-light)';
+    var sepCol = active ? 'rgba(255,255,255,0.3)' : 'var(--border)';
+    return '<div class="dp-chip-group" style="display:inline-flex;align-items:stretch;border-radius:20px;border:1.5px solid '+bd+';background:'+bg+';overflow:hidden;flex-shrink:0;height:32px">'
+      +'<button data-dp-action="select" data-dp-id="'+g.id+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px 6px 13px;background:transparent;border:none;color:'+col+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">🏘️ '+esc(g.nome)+'</button>'
+      +'<div style="width:1px;background:'+sepCol+';flex-shrink:0"></div>'
+      +'<button data-dp-action="expand" data-dp-id="group:'+g.id+'" aria-label="Espandi unità" style="display:inline-flex;align-items:center;justify-content:center;padding:0 10px;background:'+arrowBg+';border:none;color:'+arrowCol+';font-size:11px;cursor:pointer;font-family:inherit">'+(expanded?'▴':'▾')+'</button>'
+      +'</div>';
+  }
+  function chipStandaloneOpener(){
+    if(!standaloneProps.length)return '';
+    var nSelected = standaloneProps.filter(function(p){return dashPropSelection.indexOf(p.id)>=0;}).length;
+    var expanded = _dpMobileExpanded === 'standalone';
+    var anyActive = nSelected > 0;
+    var bg = anyActive ? 'rgba(67,97,238,0.1)' : 'var(--surface)';
+    var col = anyActive ? 'var(--blue)' : 'var(--text-mid)';
+    var bd = anyActive ? 'var(--blue-mid)' : 'var(--border)';
+    var label = standaloneProps.length+' singol'+(standaloneProps.length===1?'a':'e');
+    if(nSelected>0)label = nSelected+'/'+standaloneProps.length+' singole';
+    return '<button data-dp-action="expand" data-dp-id="standalone" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;flex-shrink:0;height:32px;font-family:inherit">+ '+label+' '+(expanded?'▴':'▾')+'</button>';
+  }
+
+  var rowHtml = '<div class="dp-mobile-row" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 6px;scrollbar-width:none">';
+  rowHtml += chipAll();
+  (DB.propGroups||[]).forEach(function(g){rowHtml += chipGroup(g);});
+  rowHtml += chipStandaloneOpener();
+  rowHtml += '</div>';
+
+  // ── Riga espansa (se _dpMobileExpanded è valorizzato) ──
+  var expandedHtml = '';
+  if(_dpMobileExpanded && _dpMobileExpanded.indexOf('group:')===0){
+    var grpId = _dpMobileExpanded.slice(6);
+    var grp = (DB.propGroups||[]).find(function(g){return g.id===grpId;});
+    if(grp){
+      var children = grp.children.map(function(cid){return DB.proprieta.find(function(x){return x.id===cid;});}).filter(Boolean);
+      expandedHtml = '<div class="dp-mobile-expanded" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 8px 28px;background:rgba(67,97,238,0.04);border-left:3px solid var(--blue-mid);border-radius:var(--radius);margin-top:2px;scrollbar-width:none">'
+        + children.map(function(p){
+            var active = dashPropSelection.indexOf(p.id)>=0;
+            var bg = active?'var(--blue-mid)':'var(--surface)';
+            var col = active?'#fff':'var(--text-mid)';
+            var bd = active?'var(--blue-mid)':'var(--border)';
+            return '<button data-dp-action="select" data-dp-id="'+p.id+'" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:18px;font-size:11.5px;font-weight:500;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;flex-shrink:0;font-family:inherit">↳ '+esc(p.nome)+'</button>';
+          }).join('')
+        + '</div>';
+    }
+  } else if(_dpMobileExpanded === 'standalone'){
+    expandedHtml = '<div class="dp-mobile-expanded" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 8px;background:rgba(67,97,238,0.04);border-radius:var(--radius);margin-top:2px;scrollbar-width:none">'
+      + standaloneProps.map(function(p){
+          var active = dashPropSelection.indexOf(p.id)>=0;
+          var bg = active?'var(--blue)':'var(--surface)';
+          var col = active?'#fff':'var(--text-mid)';
+          var bd = active?'var(--blue)':'var(--border)';
+          return '<button data-dp-action="select" data-dp-id="'+p.id+'" style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:18px;font-size:11.5px;font-weight:500;cursor:pointer;border:1.5px solid '+bd+';background:'+bg+';color:'+col+';white-space:nowrap;flex-shrink:0;font-family:inherit">'+esc(p.nome)+'</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  container.innerHTML = rowHtml + expandedHtml;
+
+  // Event delegation
+  container.querySelectorAll('[data-dp-action]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      var action = this.getAttribute('data-dp-action');
+      var id = this.getAttribute('data-dp-id');
+      if(action==='all'){
+        clearDashPropFilter();
+      } else if(action==='select'){
+        toggleDashProp(id);
+      } else if(action==='expand'){
+        _dpMobileExpanded = (_dpMobileExpanded === id) ? null : id;
+        renderDashPillsMobile(container);
+      }
+    });
+  });
+}
+
+// Re-render pillole quando il viewport cambia (mobile <-> desktop)
+window.addEventListener('resize', function(){
+  if(typeof renderDashPills==='function' && document.getElementById('dash-prop-pills')){
+    var page=document.getElementById('page-dashboard');
+    if(page&&page.classList.contains('active'))renderDashPills();
+  }
+});
 
 function getDashBks(){
   var meseVal=document.getElementById('dash-mese-filter')?document.getElementById('dash-mese-filter').value:'';
