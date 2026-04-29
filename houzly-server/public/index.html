@@ -227,6 +227,109 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .mese-badge.warn{background:rgba(245,166,35,0.15);color:#a06400;border:1px solid rgba(245,166,35,0.4);cursor:help}
 .mese-badge .ic{font-size:10px;line-height:1}
 
+/* ════════════════════════════════════════════════════════════════════
+   MOBILE — Wave 1 Foundation (sotto 860px)
+   Sidebar drawer, modali full-screen, grid responsive, form 1col
+   ════════════════════════════════════════════════════════════════════ */
+.hamburger{display:none;background:none;border:none;width:40px;height:40px;align-items:center;justify-content:center;cursor:pointer;color:var(--text);padding:0;border-radius:var(--radius);flex-shrink:0}
+.hamburger:hover{background:var(--surface2)}
+.hamburger svg{width:22px;height:22px;display:block}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(15,21,53,0.55);z-index:99;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.sidebar-backdrop.open{display:block}
+
+/* Topbar dropdown menu (mobile only) */
+.topbar-menu{position:fixed;top:54px;right:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);min-width:180px;z-index:60;padding:6px;display:none}
+.topbar-menu.open{display:block}
+.topbar-menu button{display:block;width:100%;padding:10px 14px;text-align:left;background:none;border:none;color:var(--text);font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;border-radius:var(--radius);font-weight:500}
+.topbar-menu button:hover{background:var(--surface2)}
+
+@media (max-width:860px){
+  body{font-size:13px}
+  .hamburger{display:inline-flex}
+
+  /* Sidebar diventa drawer */
+  #sidebar{transform:translateX(-100%);transition:transform .25s ease;width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
+  #sidebar.open{transform:translateX(0)}
+
+  /* Main content occupa tutta la larghezza */
+  #main{margin-left:0;width:100%}
+
+  /* Topbar: hamburger + titolo + actions, ridotta */
+  .topbar{padding:11px 14px;gap:8px}
+  .topbar-title{font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #topbar-actions{flex-shrink:0}
+  /* Su mobile: solo Salva visibile + menu ⋮; gli altri nel dropdown */
+  .topbar-btn-secondary{display:none}
+  .topbar-more-btn{display:inline-flex!important}
+
+  /* Pagine con padding ridotto */
+  .page{padding:14px}
+
+  /* Sezione header: titolo + actions vanno a capo */
+  .section-header{flex-wrap:wrap;gap:10px;align-items:flex-start}
+  .section-header > div:last-child{width:100%;flex-wrap:wrap}
+  .section-header .search-bar{min-width:0;flex:1 1 100%}
+  .section-header select,.section-header input[type="number"]{flex:0 1 auto}
+
+  /* Stat-grid: 4col→2col su mobile, 1col stretto */
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{padding:14px}
+  .stat-value{font-size:22px}
+  .stat-label{font-size:9.5px}
+
+  /* Form a 2 colonne → 1 colonna */
+  .form-grid{grid-template-columns:1fr;gap:12px}
+  .form-full{grid-column:auto}
+
+  /* Card padding ridotto */
+  .card{padding:14px}
+  .card-title{font-size:12px}
+
+  /* Modali full-screen */
+  .modal-overlay{align-items:stretch}
+  .modal-overlay.open{align-items:stretch}
+  .modal{max-width:100%!important;width:100%!important;max-height:100vh!important;height:100vh;border-radius:0!important;padding:18px!important;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .modal-close{top:12px;right:14px;width:36px;height:36px;font-size:18px}
+
+  /* Pulsanti azione modal — pinned bottom non serve, scroll naturale */
+  .btn{padding:10px 14px;font-size:13px}
+
+  /* Tabelle: scroll orizzontale, header scuro mantenuto */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius)}
+  .table-wrap table{min-width:640px}
+
+  /* Bulk bar: layout flessibile */
+  .bulk-bar{flex-wrap:wrap;gap:6px}
+
+  /* Onboarding KPIs: 4col→2col */
+  .onb-kpis{grid-template-columns:repeat(2,1fr);gap:10px}
+  .onb-detail-stats{grid-template-columns:repeat(2,1fr);gap:8px}
+
+  /* Pillole filtro proprietà — possono andare a capo */
+  .prop-filter-bar{padding:8px 14px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+
+  /* Search input nelle topbar — width auto */
+  .search-bar{min-width:0;width:100%}
+
+  /* Steps modal prenotazione */
+  .steps{font-size:11px;flex-wrap:wrap}
+
+  /* Action bar in section-header su mobile: pulsanti che vanno a capo */
+  .section-header .btn{flex:0 1 auto}
+}
+
+/* Mobile stretto: aggiustamenti aggiuntivi sotto 480px */
+@media (max-width:480px){
+  .stat-grid{grid-template-columns:1fr}
+  .stat-value{font-size:24px}
+  .topbar{padding:10px 12px}
+  .topbar-title{font-size:14px}
+  .page{padding:12px}
+  .modal{padding:14px!important}
+  .onb-kpis{grid-template-columns:1fr}
+  .onb-detail-stats{grid-template-columns:1fr}
+}
+
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -415,18 +518,24 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 </nav>
 <!-- MAIN -->
 <div id="main">
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
 <div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu" title="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <div class="topbar-title" id="topbar-title">Dashboard</div>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div class="topbar-actions-desktop" style="display:flex;gap:8px;align-items:center">
     <button class="btn btn-primary btn-sm" onclick="manualSave()" title="Salva tutti i dati">&#128190; Salva</button>
-    <button class="btn btn-ghost btn-sm" onclick="authLogout()" title="Esci">&#128274; Esci</button>
-    <button class="btn btn-ghost btn-sm" onclick="authSetup()" title="Cambia password">&#128273; Password</button>
-    <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">&#128190; Backup</button>
-    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">&#128204; Ripristina</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authLogout()" title="Esci">&#128274; Esci</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authSetup()" title="Cambia password">&#128273; Password</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">&#128190; Backup</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">&#128204; Ripristina</button>
+    <button class="btn btn-ghost btn-sm topbar-more-btn" onclick="toggleTopbarMenu(event)" title="Altre azioni" style="display:none">&#8942;</button>
     <input type="file" id="import-backup-file" accept=".json" style="display:none" onchange="importBackup(this)">
     <div id="topbar-actions"></div>
   </div>
 </div>
+<div class="topbar-menu" id="topbar-menu" style="display:none"></div>
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
@@ -1917,7 +2026,64 @@ function showPage(p){
   var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   renderPage(p);
+  // Chiudi sidebar e topbar-menu su mobile dopo navigazione
+  toggleSidebar(false);
+  closeTopbarMenu();
+  // Scroll-to-top quando si cambia pagina su mobile
+  if(window.innerWidth<=860){window.scrollTo(0,0);}
 }
+
+// ─── MOBILE: SIDEBAR DRAWER + TOPBAR MENU ────────────────────────
+function toggleSidebar(force){
+  var sb=document.getElementById('sidebar');
+  var bd=document.getElementById('sidebar-backdrop');
+  if(!sb||!bd)return;
+  var willOpen=(force===undefined)?!sb.classList.contains('open'):force;
+  if(willOpen){
+    sb.classList.add('open');
+    bd.classList.add('open');
+    document.body.style.overflow='hidden';
+  } else {
+    sb.classList.remove('open');
+    bd.classList.remove('open');
+    document.body.style.overflow='';
+  }
+}
+function toggleTopbarMenu(ev){
+  if(ev)ev.stopPropagation();
+  var m=document.getElementById('topbar-menu');
+  if(!m)return;
+  if(m.classList.contains('open')){
+    closeTopbarMenu();
+  } else {
+    // Popola contenuto al volo: stessi pulsanti della topbar desktop
+    m.innerHTML=
+      '<button onclick="closeTopbarMenu();authLogout()">&#128274; Esci</button>'
+     +'<button onclick="closeTopbarMenu();authSetup()">&#128273; Cambia Password</button>'
+     +'<button onclick="closeTopbarMenu();exportBackup()">&#128190; Backup</button>'
+     +'<button onclick="closeTopbarMenu();document.getElementById(\'import-backup-file\').click()">&#128204; Ripristina</button>';
+    m.classList.add('open');
+    m.style.display='block';
+    // Click fuori chiude il menu
+    setTimeout(function(){
+      document.addEventListener('click',_topbarMenuOutside,{once:true});
+    },0);
+  }
+}
+function _topbarMenuOutside(){closeTopbarMenu();}
+function closeTopbarMenu(){
+  var m=document.getElementById('topbar-menu');
+  if(!m)return;
+  m.classList.remove('open');
+  m.style.display='none';
+}
+// Resize: se torno a desktop, chiudi tutto
+window.addEventListener('resize',function(){
+  if(window.innerWidth>860){
+    toggleSidebar(false);
+    closeTopbarMenu();
+  }
+});
 function renderPage(p){
   if(p==='dashboard'){renderDash();setTimeout(wireDashReports,0);}
   if(p==='proprietari'){renderProprietari();wireTableActions('tbody-proprietari');}
