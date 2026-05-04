@@ -775,6 +775,13 @@ function cloudinaryCors(req, res, next) {
 //
 // L'optimizedUrl include `q_auto,f_auto` per coerenza col sito.
 //
+// OPTIONS preflight — required because browsers send a preflight when custom
+// headers (like X-Admin-PIN) are used. Without this, the browser blocks the
+// actual GET request before it even reaches the auth middleware.
+app.options('/api/cloudinary/list-folder', cloudinaryCors, (req, res) => {
+  res.sendStatus(204);
+});
+
 app.get('/api/cloudinary/list-folder', cloudinaryCors, requireAdminAuth, async (req, res) => {
   try {
     const folder = req.query.folder;
