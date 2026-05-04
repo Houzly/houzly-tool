@@ -727,6 +727,177 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+// ── Cloudinary Proxy (Admin API — list folder assets) ────────────
+//
+//  Risolve il problema CORS dell'Admin API Cloudinary, che non può
+//  essere chiamata direttamente da browser.
+//
+//  Usata dal Photo Studio per sincronizzare l'array `photos[]` del
+//  sito con la Media Library di Cloudinary.
+//
+//  Richiede CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET nelle Environment
+//  Variables di Render.
+//  Le credenziali si trovano su:
+//  https://console.cloudinary.com/settings/api-keys
+//
+//  Protetta da requireAdminAuth (header X-Admin-PIN o ?pin=...).
+//  CORS aperto per tutti i client (idem booking engine).
+// ══════════════════════════════════════════════════════════════════
+
+const CLOUDINARY_API_KEY    = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dhhwuufhw';
+
+// Middleware CORS aperto (come bookingCors)
+function cloudinaryCors(req, res, next) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-PIN");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+}
+
+// ── GET /api/cloudinary/list-folder ──────────────────────────────
+//
+// Lista gli asset in una cartella della Media Library Cloudinary.
+//
+// Query: ?folder=houzly-site/casa-panorama  (obbligatorio)
+//        ?max=100                             (opzionale, default 100, max 500)
+// Auth:  X-Admin-PIN: <pin>  (header)  oppure ?pin=<pin>
+//
+// Risposta:
+//   { ok: true, folder, assets: [
+//       { publicId, version, format, bytes, width, height, secureUrl,
+//         optimizedUrl, createdAt }
+//     ]
+//   }
+//
+// L'optimizedUrl include `q_auto,f_auto` per coerenza col sito.
+//
+app.get('/api/cloudinary/list-folder', cloudinaryCors, requireAdminAuth, async (req, res) => {
+  try {
+    const folder = req.query.folder;
+    const maxResults = Math.min(parseInt(req.query.max || '100', 10), 500);
+
+    if (!folder) {
+      return res.status(400).json({ ok: false, error: 'missing_folder' });
+    }
+    if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        ok: false,
+        error: 'cloudinary_credentials_not_configured',
+        hint: 'Set CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET on Render env vars',
+      });
+    }
+
+    // Endpoint Admin API — funziona sia per fixed che dynamic folders
+    // Tentiamo prima by_asset_folder (dynamic folders); fallback by_folder.
+    const auth = Buffer.from(`${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`).toString('base64');
+    const headers = { 'Authorization': `Basic ${auth}` };
+
+    let resources = [];
+    let endpointUsed = null;
+
+    // 1. Prova endpoint dynamic folders
+    const tryDynamicFolders = async () => {
+      const list = [];
+      let cursor = null;
+      do {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/by_asset_folder` +
+                    `?asset_folder=${encodeURIComponent(folder)}&max_results=100` +
+                    (cursor ? `&next_cursor=${encodeURIComponent(cursor)}` : '');
+        const r = await fetch(url, { headers });
+        if (!r.ok) {
+          const txt = await r.text();
+          throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+        }
+        const data = await r.json();
+        list.push(...(data.resources || []));
+        cursor = data.next_cursor || null;
+      } while (cursor && list.length < maxResults);
+      return list;
+    };
+
+    // 2. Fallback endpoint fixed folders
+    const tryFixedFolders = async () => {
+      const list = [];
+      let cursor = null;
+      do {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/by_folder` +
+                    `?folder=${encodeURIComponent(folder)}&max_results=100` +
+                    (cursor ? `&next_cursor=${encodeURIComponent(cursor)}` : '');
+        const r = await fetch(url, { headers });
+        if (!r.ok) {
+          const txt = await r.text();
+          throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+        }
+        const data = await r.json();
+        list.push(...(data.resources || []));
+        cursor = data.next_cursor || null;
+      } while (cursor && list.length < maxResults);
+      return list;
+    };
+
+    // 3. Prefix-based search (universal fallback — public_id starts with folder/)
+    const trySearch = async () => {
+      const list = [];
+      const prefix = folder.endsWith('/') ? folder : folder + '/';
+      let cursor = null;
+      do {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/image` +
+                    `?type=upload&prefix=${encodeURIComponent(prefix)}&max_results=100` +
+                    (cursor ? `&next_cursor=${encodeURIComponent(cursor)}` : '');
+        const r = await fetch(url, { headers });
+        if (!r.ok) {
+          const txt = await r.text();
+          throw new Error(`HTTP ${r.status}: ${txt.slice(0, 200)}`);
+        }
+        const data = await r.json();
+        list.push(...(data.resources || []));
+        cursor = data.next_cursor || null;
+      } while (cursor && list.length < maxResults);
+      return list;
+    };
+
+    try {
+      resources = await tryDynamicFolders();
+      endpointUsed = 'by_asset_folder';
+    } catch (e1) {
+      console.warn(`[cloudinary/list-folder] by_asset_folder failed: ${e1.message}, trying by_folder…`);
+      try {
+        resources = await tryFixedFolders();
+        endpointUsed = 'by_folder';
+      } catch (e2) {
+        console.warn(`[cloudinary/list-folder] by_folder failed: ${e2.message}, trying prefix search…`);
+        resources = await trySearch();
+        endpointUsed = 'prefix_search';
+      }
+    }
+
+    // Mappa in formato consistente per il client
+    const assets = resources.slice(0, maxResults).map(r => ({
+      publicId:     r.public_id,
+      version:      r.version,
+      format:       r.format,
+      bytes:        r.bytes,
+      width:        r.width,
+      height:       r.height,
+      secureUrl:    r.secure_url,
+      optimizedUrl: `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/q_auto,f_auto/v${r.version}/${r.public_id}.${r.format}`,
+      createdAt:    r.created_at,
+      assetFolder:  r.asset_folder || null,
+    }));
+
+    console.log(`[cloudinary/list-folder] ${folder}: ${assets.length} assets via ${endpointUsed}`);
+    res.json({ ok: true, folder, count: assets.length, endpointUsed, assets });
+
+  } catch (e) {
+    console.error('[cloudinary/list-folder]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────
 
 // ── Reset checklist su tutti i task (one-shot) ───────────────────
