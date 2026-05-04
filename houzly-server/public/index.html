@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v17 · 04/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v18 · 04/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2110,7 +2110,9 @@ function doCalc(b){
   // Base netto: lordo - comm - tassa - pulizie (pulizie sempre escluse dalla base houzly)
   var netto=r2(tot-comm_ota-tassa-pulizia);
   var houzly=r2(netto*(b.houzly_perc/100));
-  var iva22=b.iva22?r2(houzly*0.22):0;
+  // IVA su Houzly: NON applicata se la prenotazione è Aggiuntiva (b.black),
+  // perché Houzly non emette fattura su quelle.
+  var iva22=(!b.black && b.iva22)?r2(houzly*0.22):0;
   var canone=r2(netto-houzly-iva22);
   // Se pulizie_owner: le pulizie vengono restituite al proprietario sopra il canone
   var rimborso_pulizie=pulizieOwner?pulizia:0;
@@ -3906,7 +3908,7 @@ function loadDocSectionForBid(id){
     +'<div class="sc-section-label">Totali</div>'
     +'<div class="sc-row"><span>Tot. Netto</span><span class="amt">'+eur(c.netto)+'</span></div>'
     +'<div class="sc-row"><span>Compenso Houzly</span><span class="amt">- '+eur(c.houzly)+'</span></div>'
-    +(b.iva22&&own&&own.tipo!=='azienda'?'<div class="sc-row"><span>IVA 22% Houzly</span><span class="amt">- '+eur(c.iva22)+'</span></div>':'')
+    +(!b.black && b.iva22&&own&&own.tipo!=='azienda'?'<div class="sc-row"><span>IVA 22% Houzly</span><span class="amt">- '+eur(c.iva22)+'</span></div>':'')
     +'<div class="sc-total"><span class="label">Canone di Locazione Puro</span><span class="amt">'+eur(c.canone)+'</span></div></div>'
     +'<span class="badge '+(own&&own.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:12px;padding:5px 12px">'+(own&&own.tipo==='azienda'?'&#127970; Proprietario Azienda':'&#128100; Persona Fisica')+'</span>'
     +'<span style="font-size:12px;color:var(--text-light);margin-left:8px">'+(own?nomeOwner(own.id):'&mdash;')+'</span>'
