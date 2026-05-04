@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v15 · 30/04 02:30</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v16 · 04/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -4198,7 +4198,7 @@ function previewReportProp(){
   var sommaNetti=r2(bks.reduce(function(s,b){return s+(b.calc.canone_totale||b.calc.canone);},0));
   var cedolare=r2(sommaNetti*0.21);
   var nettoImposta=r2(sommaNetti-cedolare);
-  function buildRows(list){
+  function buildRows(list, isBlack){
     return list.map(function(b){
       var chCls=b.canale==='Airbnb'?'badge-orange':b.canale==='Booking.com'?'badge-blue':'badge-green';
       return '<tr>'
@@ -4215,7 +4215,7 @@ function previewReportProp(){
         +'<td>'+eur(b.calc.pulizia)+'</td>'
         +'<td>'+eur(b.calc.netto)+'</td>'
         +'<td>'+eur(b.calc.houzly)+'</td>'
-        +'<td>'+(b.iva22?eur(b.calc.iva22):'&mdash;')+'</td>'
+        +(isBlack?'':'<td>'+(b.iva22?eur(b.calc.iva22):'&mdash;')+'</td>')
         +(b.calc.pulizie_owner?'<td style="font-weight:700;color:var(--blue)">'+eur(b.calc.canone)+'<br><span style="font-size:10px;color:var(--green);font-weight:600">+'+eur(b.calc.rimborso_pulizie)+' pul.</span><br><span style="font-size:10.5px;color:var(--cyan);font-weight:800">= '+eur(b.calc.canone_totale)+'</span></td>':'<td style="font-weight:700;color:var(--blue)">'+eur(b.calc.canone)+'</td>')
         +'</tr>';
     }).join('');
@@ -4224,6 +4224,9 @@ function previewReportProp(){
   var colSpanBase=isGroup?8:7;
   var tableHeader='<tr>'+propColHdr+'<th>Ingresso</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th>Notti</th><th>N.Osp.</th><th>Tot.Pren.</th><th>Comm.OTA</th><th>T.Soggiorno</th><th>Pulizia</th><th>Tot.Netto</th><th>Houzly</th><th>IVA 22%</th><th>Netto Prop.</th></tr>'
     +'<tr class="rpt-subheader"><td colspan="'+colSpanBase+'"></td><td>COSTI CONDIVISI</td><td colspan="2">TRATTENUTE</td><td colspan="4">TOTALI</td></tr>';
+  // Header dedicato per BLACK: niente colonna IVA 22% (le BLACK non sono fatturate da Houzly)
+  var tableHeaderBlack='<tr>'+propColHdr+'<th>Ingresso</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th>Notti</th><th>N.Osp.</th><th>Tot.Pren.</th><th>Comm.OTA</th><th>T.Soggiorno</th><th>Pulizia</th><th>Tot.Netto</th><th>Houzly</th><th>Netto Prop.</th></tr>'
+    +'<tr class="rpt-subheader"><td colspan="'+colSpanBase+'"></td><td>COSTI CONDIVISI</td><td colspan="2">TRATTENUTE</td><td colspan="3">TOTALI</td></tr>';
   // ── Banner mese competenza: overrides applicati + decisioni pendenti ──
   var nOver=bks.filter(function(b){return b.meseReportOverride;}).length+bksBlack.filter(function(b){return b.meseReportOverride;}).length;
   // Prenotazioni "da confermare" che riguardano questa proprietà/gruppo nel periodo:
@@ -4262,7 +4265,7 @@ function previewReportProp(){
       +'<span style="font-size:11px;color:var(--text-light)">— non soggette a cedolare, non transitano da c/c</span>'
       +'</div>'
       +'<div class="rpt-section" style="opacity:0.85">'
-      +'<table class="rpt-table"><thead>'+tableHeader+'</thead><tbody>'+buildRows(bksBlack)+'</tbody></table>'
+      +'<table class="rpt-table"><thead>'+tableHeaderBlack+'</thead><tbody>'+buildRows(bksBlack, true)+'</tbody></table>'
       +'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;margin-top:8px;background:rgba(240,64,96,0.06);border:1px solid rgba(240,64,96,0.2);border-radius:var(--radius)">'
       +'<span style="font-size:12.5px;font-weight:600;color:var(--red)">Totale Fuori C/C (solo informativo)</span>'
@@ -4355,7 +4358,7 @@ function printReport(){
   var cedolare2=r2(sommaNetti2*0.21);
   var nettoImposta2=r2(sommaNetti2-cedolare2);
   var totBlk=bksBlk.reduce(function(s,b){return s+b.calc.canone;},0);
-  function prow(b,isGrp){
+  function prow(b,isGrp,isBlack){
     var chCls=b.canale==='Airbnb'?'ota-air':b.canale==='Booking.com'?'ota-bk':'ota-dir';
     return '<tr>'
       +(isGrp?'<td style="font-weight:700">'+nomeProp(b.proprieta_id)+'</td>':'')
@@ -4368,7 +4371,7 @@ function printReport(){
       +'<td class="r">'+eur(b.calc.tassa)+'</td>'
       +'<td class="r">'+eur(b.calc.pulizia)+'</td>'
       +'<td class="r">'+eur(b.calc.houzly)+'</td>'
-      +'<td class="r">'+(b.iva22?eur(b.calc.iva22):'—')+'</td>'
+      +(isBlack?'':'<td class="r">'+(b.iva22?eur(b.calc.iva22):'—')+'</td>')
       +(b.calc.pulizie_owner
         ?'<td class="r bold blue">'+eur(b.calc.canone_totale)+'</td>'
         :'<td class="r bold blue">'+eur(b.calc.canone)+'</td>')
@@ -4379,8 +4382,10 @@ function printReport(){
   }
   var propCol=isGroup2?'<th>Proprietà</th>':'';
   var thead='<thead><tr>'+propCol+'<th>Entrata</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th class="r">N.Osp.</th><th class="r">Lordo</th><th class="r">Comm.OTA</th><th class="r">T.Sogg.</th><th class="r">Pulizia</th><th class="r">Houzly</th><th class="r">IVA 22%</th><th class="r">Netto Prop.</th></tr></thead>';
-  var tableNorm=bksNorm.length?'<table>'+thead+'<tbody>'+bksNorm.map(function(b){return prow(b,isGroup2);}).join('')+'</tbody></table>':'';
-  var tableBlk=bksBlk.length?'<div class="blk-header">● Prenotazioni Fuori Conto Corrente</div><table>'+thead+'<tbody>'+bksBlk.map(function(b){return prow(b,isGroup2);}).join('')+'</tbody></table>':'';
+  // Header dedicato BLACK: niente colonna IVA 22%
+  var theadBlack='<thead><tr>'+propCol+'<th>Entrata</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th class="r">N.Osp.</th><th class="r">Lordo</th><th class="r">Comm.OTA</th><th class="r">T.Sogg.</th><th class="r">Pulizia</th><th class="r">Houzly</th><th class="r">Netto Prop.</th></tr></thead>';
+  var tableNorm=bksNorm.length?'<table>'+thead+'<tbody>'+bksNorm.map(function(b){return prow(b,isGroup2,false);}).join('')+'</tbody></table>':'';
+  var tableBlk=bksBlk.length?'<div class="blk-header">● Prenotazioni Fuori Conto Corrente</div><table>'+theadBlack+'<tbody>'+bksBlk.map(function(b){return prow(b,isGroup2,true);}).join('')+'</tbody></table>':'';
   var sumNorm=bksNorm.length
     ?'<div class="sum-wrap"><div class="sum-box">'
      +'<div class="sum-title">RIEPILOGO — PRENOTAZIONI FATTURATE</div>'
