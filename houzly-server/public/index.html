@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v19 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v20 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1319,7 +1319,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div id="prop-fiscal-info" class="alert alert-info" style="display:none"></div>
       <div class="form-grid">
         <div class="field"><label>Importo Totale OTA (&euro;) *</label><input type="number" id="p-tot" step="0.01" oninput="calcScorporo()"></div>
-        <div class="field"><label>% Commissione OTA</label><input type="number" id="p-comm-perc" step="0.1" value="15" oninput="calcScorporo()"></div>
+        <div class="field"><label>Commissione OTA (&euro;)</label><input type="number" id="p-comm-abs" step="0.01" value="0" oninput="calcScorporo()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:4px">Smoobu compila automaticamente. Modificabile a mano.</div></div>
         <div class="field"><label>Tassa di Soggiorno (&euro;/persona/notte)</label><input type="number" id="p-tassa-pn" step="0.01" value="0" oninput="calcScorporo()"><div class="field-hint">Tot = &euro;/pax &times; ospiti &times; notti</div></div><div class="field"><label>Override Tassa Totale (&euro;) <span style="font-weight:400;color:var(--text-light);font-size:11px">— opzionale, sovrascrive il calcolo</span></label><input type="number" id="p-tassa-tot" step="0.01" value="" placeholder="lascia vuoto per calcolo auto" oninput="calcScorporo()"></div>
         <div class="field"><label>Spese Pulizia (&euro;)</label><input type="number" id="p-pulizia" step="0.01" value="0" oninput="calcScorporo()"></div>
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
@@ -3248,14 +3248,18 @@ function editPren(id){
   document.getElementById('p-note').value=b.note||'';
   document.getElementById('p-prop-sel').value=b.proprieta_id||'';
   document.getElementById('p-tot').value=b.tot||'';
-  document.getElementById('p-comm-perc').value=b.comm_ota_perc||0;
+  // Campo commissione (€): se comm_ota_abs è valorizzato lo uso, altrimenti
+  // ricostruisco da % per compatibilità con prenotazioni vecchie
+  var commAbsVal = (b.comm_ota_abs!=null && +b.comm_ota_abs>0)
+    ? +b.comm_ota_abs
+    : r2((+b.tot||0)*(+b.comm_ota_perc||0)/100);
+  document.getElementById('p-comm-abs').value=commAbsVal||0;
   // Salvo i valori originali su data-attr per capire in savePren se l'utente
-  // ha toccato la % (allora si butta via comm_ota_abs) oppure no (preserva).
+  // ha toccato la commissione (allora si salva il nuovo valore in abs)
   var elBtnE=document.getElementById('btn-save-pren');
   if(elBtnE){
     elBtnE.setAttribute('data-orig-tot', b.tot||0);
-    elBtnE.setAttribute('data-orig-comm-perc', b.comm_ota_perc||0);
-    elBtnE.setAttribute('data-orig-comm-abs', b.comm_ota_abs!=null?b.comm_ota_abs:'');
+    elBtnE.setAttribute('data-orig-comm-abs', commAbsVal||0);
   }
   document.getElementById('p-tassa-pn').value=b.tassa_pn||0;document.getElementById('p-tassa-tot').value=b.tassa_tot||'';
   document.getElementById('p-pulizia').value=b.pulizia||0;
@@ -3484,7 +3488,7 @@ function viewPren(id){
   // Dettaglio economico
   html+=section('Dettaglio Economico');
   html+=row('Totale pagato dall\'ospite',eur(c.tot),true);
-  html+=row('Commissione OTA ('+r2(b.comm_ota_perc)+'%)','-'+eur(c.comm_ota),false,'var(--red)');
+  html+=row('Commissione OTA','-'+eur(c.comm_ota),false,'var(--red)');
   if(c.pulizia>0){
     html+=row('Spese pulizia','-'+eur(c.pulizia),false,'var(--red)');
   } else if(b.canale==='Airbnb'){
@@ -3541,7 +3545,7 @@ function openNewModal(){
   document.getElementById('p-tot').value='';
   document.getElementById('p-tassa-pn').value=0;document.getElementById('p-tassa-tot').value='';
   document.getElementById('p-pulizia').value=0;
-  document.getElementById('p-comm-perc').value=0;
+  document.getElementById('p-comm-abs').value=0;
   document.getElementById('p-houzly-perc').value=20;
   document.getElementById('p-iva22').value='0';
   // Reset mese competenza
@@ -3625,7 +3629,7 @@ function updateMeseCompetenzaUI(){
 }
 function onCanaleChange(){
   var canale=document.getElementById('p-canale').value;
-  var commField=document.getElementById('p-comm-perc');
+  var commField=document.getElementById('p-comm-abs');
   if(canale==='Diretta'){
     commField.value=0;
     commField.readOnly=true;
@@ -3639,13 +3643,24 @@ function onCanaleChange(){
   calcScorporo();
 }
 function calcScorporo(){
-  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
+  var canale=document.getElementById('p-canale').value;
+  var b={tot:+document.getElementById('p-tot').value||0,canale:canale,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',proprieta_id:document.getElementById('p-prop-sel').value};
   if(!b.tot){document.getElementById('sc-rows').innerHTML='<div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div>';return;}
   var c=doCalc(b);
+  // Su Booking.com mostro la decomposizione: commissione pura + 1,5% bancaria
+  var commLabel='Commissione OTA';
+  var commHint='';
+  if(canale==='Booking.com' && b.comm_ota_abs>0){
+    var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
+    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
+    var bookingFeeAbs=r2(b.tot*bfee/100);
+    commHint='<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:-4px;margin-bottom:4px;padding-left:2px">&nbsp;&nbsp;&nbsp;&nbsp;Smoobu '+eur(b.comm_ota_abs)+' + '+bfee+'% bancaria '+eur(bookingFeeAbs)+'</div>';
+  }
   document.getElementById('sc-rows').innerHTML=
     '<div class="sc-row"><span>Importo totale OTA</span><span class="amt">'+eur(c.tot)+'</span></div>'
     +'<div class="sc-section-label">Costi Condivisi</div>'
-    +'<div class="sc-row"><span>Commissione OTA ('+b.comm_ota_perc+'%)</span><span class="amt">- '+eur(c.comm_ota)+'</span></div>'
+    +'<div class="sc-row"><span>'+commLabel+'</span><span class="amt">- '+eur(c.comm_ota)+'</span></div>'
+    +commHint
     +'<div class="sc-section-label">Trattenute</div>'
     +(c.tassa>0?'<div class="sc-row"><span>Tassa di Soggiorno'+(b.tassa_tot?'<span style="font-size:10px;color:#22d1ee;margin-left:6px">[override]</span>':'')+'</span><span class="amt">- '+eur(c.tassa)+'</span></div>':'')
     +'<div class="sc-row"><span>Spese Pulizia</span><span class="amt">- '+eur(c.pulizia)+'</span></div>'
@@ -3667,7 +3682,7 @@ function goStep(n){
 function buildConfirm(){
   var propId=document.getElementById('p-prop-sel').value;
   var own=ownerOfProp(propId);
-  var b={tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1'};
+  var b={tot:+document.getElementById('p-tot').value||0,canale:document.getElementById('p-canale').value,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',proprieta_id:document.getElementById('p-prop-sel').value};
   var c=doCalc(b);
   document.getElementById('confirm-summary').innerHTML=
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
@@ -3686,21 +3701,13 @@ function buildConfirm(){
 function savePren(){
   var propId=document.getElementById('p-prop-sel').value;
   if(!propId){toast('Seleziona una propriet\u00e0');return;}
-  // Logica comm_ota_abs:
-  //  - Se l'utente non ha modificato né "tot" né "comm_ota_perc" rispetto agli
-  //    originali, preservo comm_ota_abs (era valore esatto da Smoobu)
-  //  - Se ha modificato qualcosa, butto via comm_ota_abs → doCalc userà la %
-  var elBtnSv=document.getElementById('btn-save-pren');
+  // Commissione OTA: leggo il valore € dal campo. Se Diretta → 0.
+  var canale=document.getElementById('p-canale').value;
   var newTot=+document.getElementById('p-tot').value||0;
-  var newCommPerc=+document.getElementById('p-comm-perc').value||0;
-  var origTot=elBtnSv?+elBtnSv.getAttribute('data-orig-tot')||0:0;
-  var origCommPerc=elBtnSv?+elBtnSv.getAttribute('data-orig-comm-perc')||0:0;
-  var origCommAbsRaw=elBtnSv?elBtnSv.getAttribute('data-orig-comm-abs'):'';
-  var preserveAbs = (origCommAbsRaw!=='' && origCommAbsRaw!=null
-                     && r2(newTot)===r2(origTot)
-                     && r2(newCommPerc)===r2(origCommPerc));
-  var commAbsToSave = preserveAbs ? +origCommAbsRaw : null;
-  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:commAbsToSave,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
+  var newCommAbs=(canale==='Diretta')?0:(+document.getElementById('p-comm-abs').value||0);
+  // comm_ota_perc tenuto per retrocompatibilità (visualizzazioni che usano %)
+  var newCommPerc=newTot>0?r2(newCommAbs/newTot*100):0;
+  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
