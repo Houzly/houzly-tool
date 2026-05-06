@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v18 · 04/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v19 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2021,6 +2021,41 @@ function dbDefaults(){
   if(DB.spese_pulizie===undefined)DB.spese_pulizie=0;
   if(DB.spese_biancheria===undefined)DB.spese_biancheria=0;
 }
+
+// ─── BACKFILL ONE-TIME: ricostruisce comm_ota_abs sulle Booking esistenti ─
+// Le Booking importate prima del fix v19 hanno comm_ota_perc "gonfiato" col
+// booking_fee bancario. Questo backfill scorpora i due valori e popola
+// comm_ota_abs col valore vero della commissione Booking pura.
+// Si esegue UNA SOLA VOLTA, marcato da DB.fixCommBookingV19=true.
+function backfillCommBookingV19(){
+  if(DB.fixCommBookingV19)return false;
+  if(!DB.prenotazioni||!DB.prenotazioni.length){DB.fixCommBookingV19=true;return false;}
+  var changed=0;
+  DB.prenotazioni.forEach(function(b){
+    if(b.canale!=='Booking.com')return;
+    if(b.comm_ota_abs!=null && +b.comm_ota_abs>0)return; // già migrata
+    var tot=+b.tot||0;
+    if(tot<=0)return;
+    var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
+    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
+    var oldPerc=+b.comm_ota_perc||0;
+    var oldCommTot=r2(tot*oldPerc/100);  // es. 92,07 (commissione gonfiata)
+    var bookingFeeAbs=r2(tot*bfee/100);  // es. 7,43
+    var pureCommAbs=r2(oldCommTot-bookingFeeAbs); // es. 84,62
+    if(pureCommAbs<0)pureCommAbs=0;
+    var purePerc=tot>0?r2(pureCommAbs/tot*100):0;
+    b.comm_ota_abs=pureCommAbs;
+    b.comm_ota_perc=purePerc;
+    b.calc=doCalc(b);
+    changed++;
+  });
+  DB.fixCommBookingV19=true;
+  if(changed>0){
+    console.log('[backfill] Booking commissione: '+changed+' prenotazioni migrate');
+    saveDB();
+  }
+  return changed>0;
+}
 function saveDocDoneLocal(){
   // Manteniamo anche localStorage come cache locale rapida
   try{ localStorage.setItem('houzly_docdone', JSON.stringify(DB.docDone||{})); }catch(e){}
@@ -2032,11 +2067,13 @@ function loadDB(){
     if(data.ok && data.db){
       DB=data.db;
       dbDefaults();
+      backfillCommBookingV19();
       if(DB.proprietari.length===0)seedDemo();
     } else {
       // No data on server yet
       try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
       dbDefaults();
+      backfillCommBookingV19();
       if(DB.proprietari.length===0)seedDemo();
     }
     // Refresh all UI after data loaded
@@ -2093,14 +2130,28 @@ function seedDemo(){
 // ─── CALC ─────────────────────────────────────────────────────────────────
 function doCalc(b){
   var tot=+b.tot||0;
-  // Prenotazione diretta: commissione OTA sempre 0
-  var effCommPerc=(b.canale==='Diretta')?0:(+b.comm_ota_perc||0);
-  var comm_ota=r2(tot*(effCommPerc/100));
-  // Booking.com: aggiungi booking_fee_perc della proprietà (commissione bancaria ~1.5%)
-  if(b.canale==='Booking.com'){
-    var _prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-    var _bfee=_prop&&_prop.booking_fee_perc!=null?_prop.booking_fee_perc:1.5;
-    comm_ota=r2(comm_ota+r2(tot*_bfee/100));
+  // ── Commissione OTA ────────────────────────────────────────
+  // Diretta: sempre 0
+  // Altri canali:
+  //   - Se b.comm_ota_abs è valorizzato (>0), uso il valore assoluto fissato
+  //     (tipicamente da import Smoobu: rispetta esattamente la commissione
+  //      reale Booking sul lordo netto-tassa)
+  //   - Altrimenti calcolo dalla percentuale b.comm_ota_perc su lordo (manuale)
+  // Booking: aggiungo SEMPRE la commissione bancaria booking_fee_perc della
+  //   proprietà (NON inclusa da Smoobu — applicata centralmente qui)
+  var comm_ota=0;
+  if(b.canale!=='Diretta'){
+    if(b.comm_ota_abs!=null && +b.comm_ota_abs>0){
+      comm_ota=r2(+b.comm_ota_abs);
+    } else {
+      var effCommPerc=+b.comm_ota_perc||0;
+      comm_ota=r2(tot*(effCommPerc/100));
+    }
+    if(b.canale==='Booking.com'){
+      var _prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
+      var _bfee=_prop&&_prop.booking_fee_perc!=null?_prop.booking_fee_perc:1.5;
+      comm_ota=r2(comm_ota+r2(tot*_bfee/100));
+    }
   }
   var tassa=(b.tassa_tot!==null&&b.tassa_tot!==undefined&&b.tassa_tot!==''&&+b.tassa_tot>0)?r2(+b.tassa_tot):r2((+b.tassa_pn||0)*(b.notti||0)*(b.n_ospiti||1));
   var pulizia=+b.pulizia||0;
@@ -3198,6 +3249,14 @@ function editPren(id){
   document.getElementById('p-prop-sel').value=b.proprieta_id||'';
   document.getElementById('p-tot').value=b.tot||'';
   document.getElementById('p-comm-perc').value=b.comm_ota_perc||0;
+  // Salvo i valori originali su data-attr per capire in savePren se l'utente
+  // ha toccato la % (allora si butta via comm_ota_abs) oppure no (preserva).
+  var elBtnE=document.getElementById('btn-save-pren');
+  if(elBtnE){
+    elBtnE.setAttribute('data-orig-tot', b.tot||0);
+    elBtnE.setAttribute('data-orig-comm-perc', b.comm_ota_perc||0);
+    elBtnE.setAttribute('data-orig-comm-abs', b.comm_ota_abs!=null?b.comm_ota_abs:'');
+  }
   document.getElementById('p-tassa-pn').value=b.tassa_pn||0;document.getElementById('p-tassa-tot').value=b.tassa_tot||'';
   document.getElementById('p-pulizia').value=b.pulizia||0;
   document.getElementById('p-houzly-perc').value=b.houzly_perc||20;
@@ -3492,7 +3551,13 @@ function openNewModal(){
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
   document.getElementById('prop-fiscal-info').style.display='none';
   var eBtnN=document.getElementById('btn-save-pren');
-  if(eBtnN){eBtnN.removeAttribute('data-edit-id');eBtnN.textContent='✓ Salva Prenotazione';}
+  if(eBtnN){
+    eBtnN.removeAttribute('data-edit-id');
+    eBtnN.removeAttribute('data-orig-tot');
+    eBtnN.removeAttribute('data-orig-comm-perc');
+    eBtnN.removeAttribute('data-orig-comm-abs');
+    eBtnN.textContent='✓ Salva Prenotazione';
+  }
   updateMeseCompetenzaUI();
   goStep(1);openModal('modal-prenotazione');
 }
@@ -3621,7 +3686,21 @@ function buildConfirm(){
 function savePren(){
   var propId=document.getElementById('p-prop-sel').value;
   if(!propId){toast('Seleziona una propriet\u00e0');return;}
-  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:+document.getElementById('p-tot').value||0,comm_ota_perc:+document.getElementById('p-comm-perc').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
+  // Logica comm_ota_abs:
+  //  - Se l'utente non ha modificato né "tot" né "comm_ota_perc" rispetto agli
+  //    originali, preservo comm_ota_abs (era valore esatto da Smoobu)
+  //  - Se ha modificato qualcosa, butto via comm_ota_abs → doCalc userà la %
+  var elBtnSv=document.getElementById('btn-save-pren');
+  var newTot=+document.getElementById('p-tot').value||0;
+  var newCommPerc=+document.getElementById('p-comm-perc').value||0;
+  var origTot=elBtnSv?+elBtnSv.getAttribute('data-orig-tot')||0:0;
+  var origCommPerc=elBtnSv?+elBtnSv.getAttribute('data-orig-comm-perc')||0:0;
+  var origCommAbsRaw=elBtnSv?elBtnSv.getAttribute('data-orig-comm-abs'):'';
+  var preserveAbs = (origCommAbsRaw!=='' && origCommAbsRaw!=null
+                     && r2(newTot)===r2(origTot)
+                     && r2(newCommPerc)===r2(origCommPerc));
+  var commAbsToSave = preserveAbs ? +origCommAbsRaw : null;
+  var b={id:uid(),proprieta_id:propId,canale:document.getElementById('p-canale').value,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:commAbsToSave,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -4657,12 +4736,13 @@ function processSmoobu(file){
         var commAbs=parseFloat((get('Commissione inclusa')||'0').replace(',','.'))||0;
         var detail=get('Dettagli di prezzo');
 
-        // Commissione OTA: Diretta=0
-        // Booking: (Commissione inclusa + Prezzo × booking_fee_perc%) / Prezzo × 100
-        // Altri: Commissione inclusa / Prezzo × 100
-        var bookingFeePerc=isBooking?(propObj.booking_fee_perc!=null?propObj.booking_fee_perc:1.5):0;
-        var commTot=isBooking?(commAbs+r2(tot*bookingFeePerc/100)):commAbs;
-        var comm_ota_perc=isDiretta?0:(tot>0?r2(commTot/tot*100):0);
+        // Commissione OTA dall'import:
+        // - Diretta: 0
+        // - Altri canali: salviamo VALORE ASSOLUTO esatto da CSV (commAbs).
+        //   La booking_fee 1,5% NON viene aggiunta qui — è centralizzata in doCalc().
+        var comm_ota_abs=isDiretta?0:r2(commAbs);
+        // comm_ota_perc tenuto per retrocompatibilità (modal di edit lo usa)
+        var comm_ota_perc=isDiretta?0:(tot>0?r2(commAbs/tot*100):0);
 
         // Pulizie: Booking→'costo pulizia' nei Dettagli
         // Airbnb→ NON presente nel CSV Smoobu (inserire manualmente)
@@ -4696,7 +4776,7 @@ function processSmoobu(file){
           ospite_nome:get('Ospite'),n_ospiti:n_ospiti,
           ospite_cf:'',ospite_email:ospEmail,ospite_ind:'',
           checkin:checkin,checkout:checkout,notti:notti,
-          tot:tot,comm_ota_perc:comm_ota_perc,tassa_pn:r2(tassaTot>0&&notti>0&&n_ospiti>0?tassaTot/(notti*n_ospiti):0),tassa_tot:null,
+          tot:tot,comm_ota_perc:comm_ota_perc,comm_ota_abs:comm_ota_abs,tassa_pn:r2(tassaTot>0&&notti>0&&n_ospiti>0?tassaTot/(notti*n_ospiti):0),tassa_tot:null,
           pulizia:pulizia,houzly_perc:houzly_perc,iva22:iva22,
           note:otaRef,calc:{}};
         b.calc=doCalc(b);
