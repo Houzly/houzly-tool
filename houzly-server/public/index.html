@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v20 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v21 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6083,6 +6083,11 @@ function openDestinatarioModal(bid, action) {
   document.getElementById('dest-citta').value  = b.ospite_citta || '';
   document.getElementById('dest-email').value  = b.ospite_email || '';
   document.getElementById('dest-tel').value    = b.ospite_tel   || '';
+  // Reset campi documento — non persistono tra prenotazioni diverse
+  var elDocTipo=document.getElementById('dest-doc-tipo'); if(elDocTipo)elDocTipo.value='';
+  var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value='';
+  var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value='';
+  var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value='';
   // Azienda fields reset
   document.getElementById('dest-ragione').value = '';
   document.getElementById('dest-piva').value    = '';
@@ -6185,9 +6190,18 @@ function formatDestHTML(dest) {
       +(dest.sdi ? '<br>SDI/PEC: '+escHtml(dest.sdi) : '')
       +'<br>'+escHtml(dest.ind||'—')+(dest.cap?' '+dest.cap:'')+(dest.citta?' '+dest.citta:'')+(dest.prov?' ('+dest.prov+')':'');
   }
+  // Persona fisica: includo documento d'identità e nazione se valorizzati
+  var docLine = '';
+  if(dest.doc_tipo && dest.doc_num){
+    docLine = escHtml(dest.doc_tipo)+': '+escHtml(dest.doc_num)+'<br>';
+  } else if(dest.doc_num){
+    docLine = 'Documento: '+escHtml(dest.doc_num)+'<br>';
+  }
   return '<strong>'+escHtml(dest.nome)+'</strong><br>'
-    +(dest.cf ? 'CF/Pass.: '+escHtml(dest.cf)+'<br>' : '')
-    +escHtml(dest.ind||'—')+(dest.cap?' '+dest.cap:'')+(dest.citta?' '+dest.citta:'')+(dest.prov?' ('+dest.prov+')':'');
+    +(dest.cf ? 'CF/ID Fiscale: '+escHtml(dest.cf)+'<br>' : '')
+    +docLine
+    +escHtml(dest.ind||'—')+(dest.cap?' '+dest.cap:'')+(dest.citta?' '+dest.citta:'')+(dest.prov?' ('+dest.prov+')':'')
+    +(dest.nazione ? '<br>'+escHtml(dest.nazione) : '');
 }
 
 
