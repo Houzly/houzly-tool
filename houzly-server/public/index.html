@@ -607,7 +607,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v21 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v22 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3514,6 +3514,15 @@ function viewPren(id){
   // Note
   if(b.note)html+='<div style="margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text-light)">&#128203; '+b.note+'</div>';
 
+  // Documento d'identità + Nazione (compatto, solo se valorizzato)
+  var docParts=[];
+  if(b.ospite_doc_tipo&&b.ospite_doc_num)docParts.push(esc(b.ospite_doc_tipo)+' '+esc(b.ospite_doc_num));
+  else if(b.ospite_doc_num)docParts.push('Doc. '+esc(b.ospite_doc_num));
+  if(b.ospite_nazione)docParts.push(esc(b.ospite_nazione));
+  if(docParts.length){
+    html+='<div style="margin-top:8px;padding:6px 14px;background:var(--surface2);border-radius:var(--radius);font-size:11.5px;color:var(--text-light)">&#128196; '+docParts.join(' &middot; ')+'</div>';
+  }
+
   // Mese di competenza
   var mc=meseCompetenza(b);
   if(mc){
@@ -6083,11 +6092,12 @@ function openDestinatarioModal(bid, action) {
   document.getElementById('dest-citta').value  = b.ospite_citta || '';
   document.getElementById('dest-email').value  = b.ospite_email || '';
   document.getElementById('dest-tel').value    = b.ospite_tel   || '';
-  // Reset campi documento — non persistono tra prenotazioni diverse
-  var elDocTipo=document.getElementById('dest-doc-tipo'); if(elDocTipo)elDocTipo.value='';
-  var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value='';
-  var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value='';
-  var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value='';
+  // Documento e nazione: pre-compilati dalla prenotazione se inseriti in
+  // precedenza (es. su una RNF già generata), altrimenti vuoti.
+  var elDocTipo=document.getElementById('dest-doc-tipo'); if(elDocTipo)elDocTipo.value=b.ospite_doc_tipo||'';
+  var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value=b.ospite_doc_num||'';
+  var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value=b.ospite_nazione||'';
+  var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value=b.ospite_prov||'';
   // Azienda fields reset
   document.getElementById('dest-ragione').value = '';
   document.getElementById('dest-piva').value    = '';
@@ -6176,6 +6186,29 @@ function confirmGeneraDoc() {
   if(!dest.nome){ toast('Inserisci nome o ragione sociale'); return; }
   if(dest.tipo==='azienda' && !dest.piva){ toast('Inserisci P.IVA'); return; }
   dest.bollo = action==='ricevuta' && document.getElementById('dest-bollo').checked;
+  // Persisto sulla prenotazione i dati anagrafici inseriti, così la prossima
+  // volta che generi un documento per la stessa prenotazione li ritrovi.
+  // Per le aziende non sovrascriviamo i campi "ospite_*" perché sono
+  // intestatari diversi (l'ospite resta persona fisica, l'azienda è solo
+  // una destinazione fiscale alternativa).
+  if(dest.tipo==='privato'){
+    var bSave=DB.prenotazioni.find(function(x){return x.id===bid;});
+    if(bSave){
+      var changed=false;
+      function up(field,val){if((val||'')!==(bSave[field]||'')){bSave[field]=val||'';changed=true;}}
+      up('ospite_cf', dest.cf);
+      up('ospite_doc_tipo', dest.doc_tipo);
+      up('ospite_doc_num', dest.doc_num);
+      up('ospite_nazione', dest.nazione);
+      up('ospite_ind', dest.ind);
+      up('ospite_cap', dest.cap);
+      up('ospite_citta', dest.citta);
+      up('ospite_prov', dest.prov);
+      up('ospite_email', dest.email);
+      up('ospite_tel', dest.tel);
+      if(changed)saveDB();
+    }
+  }
   closeModal('modal-destinatario');
   if(action==='ricevuta')            genRicevuta(bid, dest);
   else if(action==='fattura-ospite') genFatturaOspite(bid, dest);
