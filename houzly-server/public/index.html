@@ -160,7 +160,30 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .doc-row.is-done .doc-row-title{color:var(--text-light)}
 .doc-row.is-done .doc-row-body{opacity:0.65}
 .drop-zone .dz-icon{font-size:32px;margin-bottom:8px}.drop-zone p{font-size:13px;color:var(--text-light)}
-@media print{body *{visibility:hidden}#pm-body,#pm-body *{visibility:visible}#pm-body{position:fixed;inset:0;margin:0;padding:8mm;background:#fff;max-height:none!important;overflow:visible!important}#pm-body .doc{padding:0!important;max-width:100%!important;font-size:11px!important}#pm-body .doc-header{margin-bottom:10px!important;padding-bottom:8px!important}#pm-body .doc-parties{margin-bottom:10px!important;gap:12px!important}#pm-body .doc-ref{padding:5px 10px!important;margin-bottom:10px!important}#pm-body table.dtbl th{padding:5px 8px!important}#pm-body table.dtbl td{padding:5px 8px!important}#pm-body .doc-total{margin-bottom:10px!important}#pm-body .doc-total-box{padding:8px 14px!important}#pm-body .doc-total-box .val{font-size:18px!important}#pm-body .doc-note{margin-top:8px!important;padding:6px 8px!important;font-size:10px!important}#pm-body .doc-footer{margin-top:10px!important;padding-top:6px!important}@page{size:A4;margin:8mm}}
+@media print{
+  body *{visibility:hidden}
+  #pm-body,#pm-body *{visibility:visible}
+  /* Niente position:fixed / inset:0 — quei valori in stampa creano una
+     "pagina virtuale" alta quanto lo schermo che spesso provoca una seconda
+     pagina vuota. Lascio il flow naturale: il contenuto occupa solo lo
+     spazio che gli serve. */
+  #pm-body{position:absolute;top:0;left:0;right:0;margin:0;padding:0;background:#fff;max-height:none!important;overflow:visible!important;width:100%}
+  #pm-body .doc{padding:0!important;max-width:100%!important;font-size:11px!important;page-break-inside:avoid;break-inside:avoid}
+  #pm-body .doc-header{margin-bottom:10px!important;padding-bottom:8px!important}
+  #pm-body .doc-parties{margin-bottom:10px!important;gap:12px!important}
+  #pm-body .doc-ref{padding:5px 10px!important;margin-bottom:10px!important}
+  #pm-body table.dtbl th{padding:5px 8px!important}
+  #pm-body table.dtbl td{padding:5px 8px!important}
+  #pm-body .doc-total{margin-bottom:8px!important}
+  #pm-body .doc-total-box{padding:8px 14px!important}
+  #pm-body .doc-total-box .val{font-size:18px!important}
+  #pm-body .doc-note{margin-top:6px!important;padding:6px 8px!important;font-size:10px!important}
+  #pm-body .doc-footer{margin-top:8px!important;padding-top:6px!important}
+  /* Evita che gli ultimi elementi finiscano da soli su una nuova pagina */
+  .doc-footer,.doc-total{page-break-after:avoid;break-after:avoid}
+  @page{size:A4;margin:10mm}
+  html,body{height:auto!important}
+}
 #pm-body thead tr th{color:#fff!important}
 .bulk-bar{display:none;align-items:center;gap:10px;background:var(--blue);color:#fff;padding:9px 16px;border-radius:var(--radius);margin-bottom:10px;font-size:13px;font-weight:600}
 .bulk-bar.visible{display:flex}
@@ -607,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v22 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v23 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
