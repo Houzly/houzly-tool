@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v23 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v24 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3815,18 +3815,32 @@ var PS='<style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margi
 // ─── 1. RICEVUTA NON FISCALE ──────────────────────────────────────────────
 function genRicevuta(bid, dest){
   var b=DB.prenotazioni.find(function(x){return x.id===bid;});
+  if(!b){console.error('genRicevuta: prenotazione non trovata',bid);toast('Errore: prenotazione non trovata');return;}
   if(!dest) dest={tipo:'privato',nome:b.ospite_nome,cf:b.ospite_cf||'',ind:b.ospite_ind||''};
   var own=ownerOfProp(b.proprieta_id);
+  if(!own){console.error('genRicevuta: proprietario non trovato per propId',b.proprieta_id);toast('Errore: proprietario non trovato');return;}
   var c=b.calc;
   var num='RNF-'+nextNum('rnf');
   var oggi=new Date().toLocaleDateString('it-IT');
+  // Emittente: gestisce sia persona fisica sia azienda
+  var emittenteHTML;
+  if(own.tipo==='azienda'){
+    emittenteHTML='<strong>'+escHtml(own.ragione_sociale||'')+'</strong>'
+      +(own.piva?'<br>P.IVA: '+escHtml(own.piva):'')
+      +(own.cf?'<br>C.F.: '+escHtml(own.cf):'')
+      +'<br>'+escHtml(own.via||'')+'<br>'+escHtml(own.cap||'')+' '+escHtml(own.comune||'')+(own.provincia?' ('+escHtml(own.provincia)+')':'');
+  } else {
+    emittenteHTML='<strong>'+escHtml((own.nome||'')+' '+(own.cognome||'')).trim()+'</strong>'
+      +(own.cf?'<br>C.F.: '+escHtml(own.cf):'')
+      +'<br>'+escHtml(own.via||'')+'<br>'+escHtml(own.cap||'')+' '+escHtml(own.comune||'')+(own.provincia?' ('+escHtml(own.provincia)+')':'');
+  }
   var html=PS+'<div class="doc">'
     +'<div class="doc-header">'
     +'<div><div class="doc-logo">HOUZLY<small>per conto del proprietario</small></div><div style="font-size:10px;color:#888;margin-top:4px">'+CO.nome+' &middot; P.IVA '+CO.piva+'</div></div>'
     +'<div class="doc-type"><h2>Ricevuta Non Fiscale</h2><p>N&deg; '+num+' &middot; Data '+oggi+'</p></div>'
     +'</div>'
     +'<div class="doc-parties">'
-    +'<div class="doc-party"><h4>Emittente (Proprietario)</h4><p><strong>'+own.nome+' '+own.cognome+'</strong><br>C.F.: '+own.cf+'<br>'+(own.via||'')+'<br>'+(own.cap||'')+' '+(own.comune||'')+(own.provincia?' ('+own.provincia+')':'')+'</p></div>'
+    +'<div class="doc-party"><h4>Emittente (Proprietario)</h4><p>'+emittenteHTML+'</p></div>'
     +'<div class="doc-party"><h4>Destinatario</h4><p>'+formatDestHTML(dest)+'</p></div>'
     +'</div>'
     +'<div class="doc-ref">&#128197; <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti &middot; '+b.n_ospiti+' ospiti &middot; Rif. '+b.canale+(b.ota_num?' '+b.ota_num:'')+'</div>'
@@ -6211,9 +6225,6 @@ function confirmGeneraDoc() {
   dest.bollo = action==='ricevuta' && document.getElementById('dest-bollo').checked;
   // Persisto sulla prenotazione i dati anagrafici inseriti, così la prossima
   // volta che generi un documento per la stessa prenotazione li ritrovi.
-  // Per le aziende non sovrascriviamo i campi "ospite_*" perché sono
-  // intestatari diversi (l'ospite resta persona fisica, l'azienda è solo
-  // una destinazione fiscale alternativa).
   if(dest.tipo==='privato'){
     var bSave=DB.prenotazioni.find(function(x){return x.id===bid;});
     if(bSave){
@@ -6233,10 +6244,15 @@ function confirmGeneraDoc() {
     }
   }
   closeModal('modal-destinatario');
-  if(action==='ricevuta')            genRicevuta(bid, dest);
-  else if(action==='fattura-ospite') genFatturaOspite(bid, dest);
-  else if(action==='fattura-azienda')genFatturaAzienda(bid, dest);
-  else if(action==='xml')            genXML(bid);
+  try{
+    if(action==='ricevuta')            genRicevuta(bid, dest);
+    else if(action==='fattura-ospite') genFatturaOspite(bid, dest);
+    else if(action==='fattura-azienda')genFatturaAzienda(bid, dest);
+    else if(action==='xml')            genXML(bid);
+  } catch(e){
+    console.error('Errore generazione documento ('+action+'):',e);
+    toast('Errore generazione documento — vedi console');
+  }
 }
 
 function formatDestHTML(dest) {
