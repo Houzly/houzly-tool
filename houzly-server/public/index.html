@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v25 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v26 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6135,12 +6135,14 @@ function openDestinatarioModal(bid, action) {
   var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value=b.ospite_doc_num||'';
   var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value=b.ospite_nazione||'';
   var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value=b.ospite_prov||'';
-  // Azienda fields reset
-  document.getElementById('dest-ragione').value = '';
-  document.getElementById('dest-piva').value    = '';
-  document.getElementById('dest-cf-az').value   = '';
-  document.getElementById('dest-sdi').value     = '';
-  // Default: privato
+  // Azienda fields: pre-compila se già salvati sulla prenotazione,
+  // altrimenti vuoti (per le aziende non si usano dati Smoobu, l'ospite
+  // Smoobu è la persona fisica)
+  document.getElementById('dest-ragione').value = b.az_ragione || '';
+  document.getElementById('dest-piva').value    = b.az_piva    || '';
+  document.getElementById('dest-cf-az').value   = b.az_cf      || '';
+  document.getElementById('dest-sdi').value     = b.az_sdi     || '';
+  // Default: privato (l'utente switcha su azienda se serve)
   setDestTipo('privato');
 
   // Marca da bollo — solo per RNF
@@ -6176,6 +6178,21 @@ function setDestTipo(tipo) {
   });
   document.getElementById('dest-fields-privato').style.display = tipo==='privato' ? 'block' : 'none';
   document.getElementById('dest-fields-azienda').style.display = tipo==='azienda' ? 'block' : 'none';
+  // I campi indirizzo/email/tel sono condivisi nel form: aggiorno il loro
+  // valore con quello salvato per il tipo corrente, così l'utente vede subito
+  // i dati giusti switchando tra Persona Fisica e Azienda.
+  var bid = document.getElementById('dest-bid').value;
+  var b   = bid ? DB.prenotazioni.find(function(x){return x.id===bid;}) : null;
+  if(b){
+    var prefix = tipo==='azienda' ? 'az_' : 'ospite_';
+    function setVal(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
+    setVal('dest-ind',   b[prefix+'ind']);
+    setVal('dest-cap',   b[prefix+'cap']);
+    setVal('dest-citta', b[prefix+'citta']);
+    setVal('dest-prov',  b[prefix+'prov']);
+    setVal('dest-email', b[prefix+'email']);
+    setVal('dest-tel',   b[prefix+'tel']);
+  }
 }
 
 // Wire tipo pills
@@ -6227,11 +6244,14 @@ function confirmGeneraDoc() {
   dest.bollo = action==='ricevuta' && document.getElementById('dest-bollo').checked;
   // Persisto sulla prenotazione i dati anagrafici inseriti, così la prossima
   // volta che generi un documento per la stessa prenotazione li ritrovi.
-  if(dest.tipo==='privato'){
-    var bSave=DB.prenotazioni.find(function(x){return x.id===bid;});
-    if(bSave){
-      var changed=false;
-      function up(field,val){if((val||'')!==(bSave[field]||'')){bSave[field]=val||'';changed=true;}}
+  // Salvo separatamente i dati per Persona Fisica e per Azienda — sono
+  // intestatari diversi (l'ospite può essere una persona, ma la fattura/RNF
+  // può andare alla sua azienda; la volta dopo ritrovo entrambi i dataset).
+  var bSave=DB.prenotazioni.find(function(x){return x.id===bid;});
+  if(bSave){
+    var changed=false;
+    function up(field,val){if((val||'')!==(bSave[field]||'')){bSave[field]=val||'';changed=true;}}
+    if(dest.tipo==='privato'){
       up('ospite_cf', dest.cf);
       up('ospite_doc_tipo', dest.doc_tipo);
       up('ospite_doc_num', dest.doc_num);
@@ -6242,8 +6262,19 @@ function confirmGeneraDoc() {
       up('ospite_prov', dest.prov);
       up('ospite_email', dest.email);
       up('ospite_tel', dest.tel);
-      if(changed)saveDB();
+    } else if(dest.tipo==='azienda'){
+      up('az_ragione', dest.nome);
+      up('az_piva', dest.piva);
+      up('az_cf', dest.cf);
+      up('az_sdi', dest.sdi);
+      up('az_ind', dest.ind);
+      up('az_cap', dest.cap);
+      up('az_citta', dest.citta);
+      up('az_prov', dest.prov);
+      up('az_email', dest.email);
+      up('az_tel', dest.tel);
     }
+    if(changed)saveDB();
   }
   closeModal('modal-destinatario');
   try{
