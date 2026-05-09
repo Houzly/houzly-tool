@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v24 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v25 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6186,33 +6186,35 @@ document.addEventListener('click', function(e){
 
 function getDestOspite() {
   // Returns an override object with destinatario data
+  function getVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
   if(_destTipo === 'azienda') {
     return {
       tipo:    'azienda',
-      nome:    document.getElementById('dest-ragione').value.trim(),
-      piva:    document.getElementById('dest-piva').value.trim(),
-      cf:      document.getElementById('dest-cf-az').value.trim(),
-      sdi:     document.getElementById('dest-sdi').value.trim(),
-      ind:     document.getElementById('dest-ind').value.trim(),
-      cap:     document.getElementById('dest-cap').value.trim(),
-      citta:   document.getElementById('dest-citta').value.trim(),
-      prov:    document.getElementById('dest-prov').value.trim(),
-      email:   document.getElementById('dest-email').value.trim(),
-      tel:     document.getElementById('dest-tel').value.trim(),
+      nome:    getVal('dest-ragione'),
+      piva:    getVal('dest-piva'),
+      cf:      getVal('dest-cf-az'),
+      sdi:     getVal('dest-sdi'),
+      ind:     getVal('dest-ind'),
+      cap:     getVal('dest-cap'),
+      citta:   getVal('dest-citta'),
+      prov:    getVal('dest-prov'),
+      email:   getVal('dest-email'),
+      tel:     getVal('dest-tel'),
     };
   }
   return {
     tipo:    'privato',
-    nome:    document.getElementById('dest-nome').value.trim(),
-    cf:      document.getElementById('dest-cf').value.trim(),
-    nazione: (document.getElementById('dest-nazione')||{value:''}).value.trim(),
-    doc_tipo:(document.getElementById('dest-doc-tipo')||{value:''}).value.trim(),
-    doc_num: (document.getElementById('dest-doc-num')||{value:''}).value.trim(),
-    ind:     document.getElementById('dest-ind').value.trim(),
-    cap:     document.getElementById('dest-cap').value.trim(),
-    citta:   document.getElementById('dest-citta').value.trim(),
-    email:   document.getElementById('dest-email').value.trim(),
-    tel:     document.getElementById('dest-tel').value.trim(),
+    nome:    getVal('dest-nome'),
+    cf:      getVal('dest-cf'),
+    nazione: getVal('dest-nazione'),
+    doc_tipo:getVal('dest-doc-tipo'),
+    doc_num: getVal('dest-doc-num'),
+    ind:     getVal('dest-ind'),
+    cap:     getVal('dest-cap'),
+    citta:   getVal('dest-citta'),
+    prov:    getVal('dest-prov'),
+    email:   getVal('dest-email'),
+    tel:     getVal('dest-tel'),
   };
 }
 
