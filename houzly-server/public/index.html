@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v29 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v30 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3936,11 +3936,13 @@ function genFatturaAzienda(bid, dest){
 // prenotazione, da inviare via email al commercialista del proprietario.
 // Sarà il commercialista a generare poi la FatturaPA XML dal suo gestionale.
 // NON è una fattura fiscale valida — è una pre-fattura informativa.
-function genPreFattura(bid){
+function genPreFattura(bid, dest){
   var b=DB.prenotazioni.find(function(x){return x.id===bid;});
   if(!b){console.error('genPreFattura: prenotazione non trovata',bid);toast('Errore: prenotazione non trovata');return;}
   var own=ownerOfProp(b.proprieta_id);
   if(!own){console.error('genPreFattura: proprietario non trovato');toast('Errore: proprietario non trovato');return;}
+  // Se dest non passato (fallback), uso i dati grezzi della prenotazione
+  if(!dest) dest={tipo:'privato',nome:b.ospite_nome||'',cf:b.ospite_cf||'',ind:b.ospite_ind||'',cap:b.ospite_cap||'',citta:b.ospite_citta||'',prov:b.ospite_prov||'',nazione:b.ospite_nazione||'',doc_tipo:b.ospite_doc_tipo||'',doc_num:b.ospite_doc_num||''};
   var c=b.calc||doCalc(b);
   var num='PF-'+nextNum('xml');
   var oggi=new Date().toLocaleDateString('it-IT');
@@ -3950,6 +3952,9 @@ function genPreFattura(bid){
   var imponibile=r2(b.tot/(1+aliquotaIVA/100));
   var iva=r2(b.tot-imponibile);
   var commInfo=own.email_comm?' &middot; <a href="mailto:'+own.email_comm+'" style="color:#4361ee">'+own.email_comm+'</a>':' (email commercialista non impostata in anagrafica)';
+  // Cessionario: usa il blocco formatDestHTML così onora azienda/privato +
+  // mostra documento d'identità, nazione, ecc.
+  var cessionarioHTML=formatDestHTML(dest);
   var html=PS+'<div class="doc">'
     +'<div class="doc-header">'
     +'<div><div class="doc-logo">HOUZLY<small>Pre-Fattura per Commercialista</small></div><div style="font-size:10px;color:#888;margin-top:4px">Riepilogo dati prenotazione &middot; '+CO.nome+'</div></div>'
@@ -3965,13 +3970,7 @@ function genPreFattura(bid){
       +escHtml(own.cap||'')+' '+escHtml(own.comune||'')+(own.provincia?' ('+escHtml(own.provincia)+')':'')+'<br>'
       +(own.sdi?'SDI: '+escHtml(own.sdi):'')
       +'</p></div>'
-    +'<div class="doc-party"><h4>Cessionario / Committente (Ospite)</h4><p>'
-      +'<strong>'+escHtml(b.ospite_nome||'')+'</strong><br>'
-      +(b.ospite_cf?'CF/ID Fisc.: '+escHtml(b.ospite_cf)+'<br>':'')
-      +(b.ospite_doc_tipo&&b.ospite_doc_num?escHtml(b.ospite_doc_tipo)+': '+escHtml(b.ospite_doc_num)+'<br>':'')
-      +escHtml(b.ospite_ind||'')+(b.ospite_cap?' '+escHtml(b.ospite_cap):'')+(b.ospite_citta?' '+escHtml(b.ospite_citta):'')+'<br>'
-      +(b.ospite_nazione?escHtml(b.ospite_nazione):'Italia')
-      +'</p></div>'
+    +'<div class="doc-party"><h4>Cessionario / Committente '+(dest.tipo==='azienda'?'(Azienda)':'(Ospite)')+'</h4><p>'+cessionarioHTML+'</p></div>'
     +'</div>'
     +'<div class="doc-ref">&#127968; <strong>'+escHtml(nomeProp(b.proprieta_id))+'</strong> &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti &middot; '+b.n_ospiti+' ospiti &middot; Rif. '+escHtml(b.canale)+(b.ota_num?' '+escHtml(b.ota_num):'')+'</div>'
     +'<table class="dtbl"><thead><tr>'
@@ -4046,8 +4045,7 @@ function loadDocSectionForBid(id){
     card.addEventListener('click',function(){
       var action=this.getAttribute('data-action');
       var bid=this.getAttribute('data-bid');
-      if(action==='prefattura') genPreFattura(bid); // no destinatario editabile
-      else openDestinatarioModal(bid, action);
+      openDestinatarioModal(bid, action);
     });
   });
 }
@@ -6306,7 +6304,7 @@ function confirmGeneraDoc() {
     if(action==='ricevuta')            genRicevuta(bid, dest);
     else if(action==='fattura-ospite') genFatturaOspite(bid, dest);
     else if(action==='fattura-azienda')genFatturaAzienda(bid, dest);
-    else if(action==='prefattura')     genPreFattura(bid);
+    else if(action==='prefattura')     genPreFattura(bid, dest);
   } catch(e){
     console.error('Errore generazione documento ('+action+'):',e);
     toast('Errore generazione documento — vedi console');
