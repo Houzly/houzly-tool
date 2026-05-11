@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v28 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v29 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3978,7 +3978,7 @@ function genPreFattura(bid){
       +'<th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">Imposta</th><th class="r">Totale</th>'
       +'</tr></thead><tbody>'
       +'<tr>'
-        +'<td>Canone locazione turistica<br><span style="font-size:11px;color:#666">'+escHtml(nomeProp(b.proprieta_id))+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' ('+b.notti+' notti)<br>Rif. '+escHtml(b.canale)+(b.ota_num?' '+escHtml(b.ota_num):'')+'</span></td>'
+        +'<td>Soggiorno turistico<br><span style="font-size:11px;color:#666">'+escHtml(nomeProp(b.proprieta_id))+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' ('+b.notti+' notti)<br>Rif. '+escHtml(b.canale)+(b.ota_num?' '+escHtml(b.ota_num):'')+'</span></td>'
         +'<td class="r">'+eur(imponibile)+'</td>'
         +'<td class="r">'+aliquotaIVA+'%</td>'
         +'<td class="r">'+eur(iva)+'</td>'
@@ -3997,7 +3997,7 @@ function genPreFattura(bid){
       +'<tr style="border-top:1px solid #c0ccf8"><td style="padding:6px 0;font-weight:700">Netto Proprietario</td><td style="text-align:right;padding:6px 0;font-weight:700;color:#4361ee">'+eur(c.canone)+'</td></tr>'
       +'</table>'
       +'</div>'
-    +'<div class="doc-note">&#9888; <strong>Nota per il commercialista:</strong> i dati sopra sono indicativi e basati sul regime IVA 10% per locazione turistica esercitata da soggetto societario. Verificare il regime fiscale del cedente e applicare l\'aliquota effettiva al momento dell\'emissione della FatturaPA. Numero documento '+num+' (interno Houzly): non utilizzare come riferimento fiscale ufficiale.</div>'
+    +'<div class="doc-note">&#9888; <strong>Nota per il commercialista:</strong> i dati sopra sono indicativi e basati sull\'aliquota IVA 10% per attivit&agrave; ricettiva esercitata da soggetto societario. Verificare il regime fiscale del cedente e applicare l\'aliquota effettiva al momento dell\'emissione della FatturaPA. Numero documento '+num+' (interno Houzly): non utilizzare come riferimento fiscale ufficiale.</div>'
     +'<div class="doc-footer">Documento generato automaticamente da Houzly Tool il '+oggi+' &middot; '+CO.nome+' &middot; P.IVA '+CO.piva+'</div>'
     +'</div>';
   openPrintModal('Pre-Fattura &mdash; '+num,html);
