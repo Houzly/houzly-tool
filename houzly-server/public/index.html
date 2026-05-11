@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v26 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v28 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1364,7 +1364,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
       <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)" id="pm-title">Documento</div>
       <div style="display:flex;gap:8px">
-        <button id="pm-xml-btn" class="btn btn-primary btn-sm" onclick="downloadXML()" style="display:none">&#8595; Scarica XML</button>
         <button class="btn btn-ghost btn-sm" onclick="printModalDoc()">&#128424; Stampa / PDF</button>
         <button class="modal-close" style="position:static" onclick="closeModal('modal-print')">&#10005;</button>
       </div>
@@ -1892,7 +1891,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <input type="hidden" id="dest-action">
 
     <!-- Tipo destinatario -->
-    <div style="display:flex;gap:8px;margin-bottom:18px" id="dest-tipo-pills">
+    <div class="dest-tipo-switcher" style="display:flex;gap:8px;margin-bottom:18px" id="dest-tipo-pills">
       <span data-dest-tipo="privato" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--blue);background:var(--blue);color:#fff">&#128100; Persona Fisica</span>
       <span data-dest-tipo="azienda" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-mid)">&#127970; Azienda / P.IVA</span>
     </div>
@@ -3766,7 +3765,7 @@ function savePren(){
 }
 
 // ─── PRINT MODAL ──────────────────────────────────────────────────────────
-var _xmlBlob=null,_xmlFilename='';
+// _xmlBlob/_xmlFilename rimossi in v27 (non più necessari)
 function printModalDoc(){
   var body=document.getElementById('pm-body').innerHTML;
   var title=document.getElementById('pm-title').innerHTML;
@@ -3794,20 +3793,13 @@ function printModalDoc(){
     toast('File scaricato — aprilo e stampa con Ctrl+P');
   }
 }
-function openPrintModal(title,htmlContent,xmlData,xmlFilename){
-  _xmlBlob=xmlData||null;_xmlFilename=xmlFilename||'';
+function openPrintModal(title,htmlContent){
   document.getElementById('pm-title').innerHTML=title;
   document.getElementById('pm-body').innerHTML=htmlContent;
-  document.getElementById('pm-xml-btn').style.display=xmlData?'inline-flex':'none';
   openModal('modal-print');
 }
-function downloadXML(){
-  if(!_xmlBlob)return;
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([_xmlBlob],{type:'application/xml'}));
-  a.download=_xmlFilename;a.click();
-  toast('XML scaricato: '+_xmlFilename);
-}
+// downloadXML / pm-xml-btn rimosso in v27: la pre-fattura è solo PDF,
+// non c'è più XML SdI da scaricare.
 
 // ─── PRINT CSS ────────────────────────────────────────────────────────────
 var PS='<style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:0}.doc{max-width:740px;margin:0 auto;padding:32px}.doc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #4361ee}.doc-logo{font-weight:900;font-size:22px;color:#4361ee;letter-spacing:1px}.doc-logo small{display:block;font-size:9px;color:#888;letter-spacing:.15em;text-transform:uppercase;margin-top:2px}.doc-type h2{font-size:18px;font-weight:700;color:#0f1535;text-align:right;margin:0}.doc-type p{font-size:11px;color:#777;text-align:right;margin:3px 0 0}.doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:22px}.doc-party h4{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#999;margin:0 0 6px}.doc-party p{font-size:12.5px;line-height:1.7;margin:0}.doc-ref{background:#f0f4ff;border-left:3px solid #4361ee;padding:9px 14px;border-radius:4px;font-size:12px;margin-bottom:18px}table.dtbl{width:100%;border-collapse:collapse;margin-bottom:18px}table.dtbl th{background:#0f1535;color:#fff;padding:8px 12px;text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase}table.dtbl th.r{text-align:right}table.dtbl td{padding:8px 12px;border-bottom:1px solid #e8edfc;font-size:12.5px}table.dtbl td.r{text-align:right;font-variant-numeric:tabular-nums}table.dtbl tr:last-child td{border-bottom:none}.doc-total{display:flex;justify-content:flex-end;margin-bottom:22px}.doc-total-box{background:#0f1535;color:#fff;padding:14px 22px;border-radius:10px;text-align:right;min-width:200px}.doc-total-box .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;opacity:.6;margin-bottom:4px}.doc-total-box .val{font-size:24px;font-weight:800;color:#22d1ee}.doc-footer{margin-top:32px;padding-top:12px;border-top:1px solid #e8edfc;font-size:10px;color:#aaa;line-height:1.6}.doc-note{font-size:11px;color:#666;font-style:italic;margin-top:10px;padding:10px;background:#fafafa;border-radius:4px}.badge-iva{display:inline-block;background:#f0f4ff;color:#4361ee;border:1px solid #c0ccf8;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700}.xml-box{background:#f5f7ff;border:1px solid #dde3f8;border-radius:8px;padding:16px;margin-top:14px}.xml-box pre{font-size:9px;line-height:1.5;color:#334;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0}.info-box{background:#fffbf0;border:1px solid #f0d060;border-radius:6px;padding:10px 14px;font-size:12px;margin-bottom:16px}.tot-row td{background:#f0f4ff!important;font-weight:700}.esente-row td{background:#f0fff8!important;font-size:11px;color:#1a6b2a}.total-final td{background:#e8f4e8!important;font-weight:800;color:#1a5c2a}</style>';
@@ -3939,81 +3931,76 @@ function genFatturaAzienda(bid, dest){
 }
 
 // ─── 4. FATTURAPA XML ─────────────────────────────────────────────────────
-function genXML(bid){
+// ─── PRE-FATTURA PER COMMERCIALISTA (aziende proprietarie) ───────────────
+// Genera un documento PDF informativo con tutti i dati grezzi della
+// prenotazione, da inviare via email al commercialista del proprietario.
+// Sarà il commercialista a generare poi la FatturaPA XML dal suo gestionale.
+// NON è una fattura fiscale valida — è una pre-fattura informativa.
+function genPreFattura(bid){
   var b=DB.prenotazioni.find(function(x){return x.id===bid;});
+  if(!b){console.error('genPreFattura: prenotazione non trovata',bid);toast('Errore: prenotazione non trovata');return;}
   var own=ownerOfProp(b.proprieta_id);
-  var num='PA-'+nextNum('xml');
-  var oggi=new Date().toISOString().slice(0,10);
-  var imponibile=r2(b.tot/1.10);
-  var iva10=r2(b.tot-imponibile);
-  var progr=String((DB.counters.xml||1)-1).padStart(5,'0');
-  var nomeArr=b.ospite_nome.trim().split(' ');
-  var ospNome=nomeArr[0]||'Ospite';
-  var ospCognome=nomeArr.slice(1).join(' ')||nomeArr[0]||'Ospite';
-  var NL='\n';
-  var xmlLines=[
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<p:FatturaElettronica versione="FPR12"',
-    '  xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"',
-    '  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
-    '  xsi:schemaLocation="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd">',
-    '','  <FatturaElettronicaHeader>','    <DatiTrasmissione>',
-    '      <IdTrasmittente><IdPaese>IT</IdPaese><IdCodice>'+own.piva+'</IdCodice></IdTrasmittente>',
-    '      <ProgressivoInvio>'+progr+'</ProgressivoInvio>',
-    '      <FormatoTrasmissione>FPR12</FormatoTrasmissione>',
-    '      <CodiceDestinatario>'+(own.sdi||'0000000')+'</CodiceDestinatario>',
-    '    </DatiTrasmissione>','','    <CedentePrestatore>','      <DatiAnagrafici>',
-    '        <IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>'+own.piva+'</IdCodice></IdFiscaleIVA>',
-    '        <CodiceFiscale>'+(own.cf_az||own.piva)+'</CodiceFiscale>',
-    '        <Anagrafica><Denominazione>'+own.ragione_sociale+'</Denominazione></Anagrafica>',
-    '        <RegimeFiscale>RF01</RegimeFiscale>','      </DatiAnagrafici>','      <Sede>',
-    '        <Indirizzo>'+(own.via||'N/D')+'</Indirizzo>',
-    '        <CAP>'+(own.cap||'00000')+'</CAP>','        <Comune>'+(own.comune||'N/D')+'</Comune>',
-    '        <Provincia>'+(own.provincia||'XX')+'</Provincia>','        <Nazione>IT</Nazione>',
-    '      </Sede>','    </CedentePrestatore>','','    <CessionarioCommittente>','      <DatiAnagrafici>',
-    '        <CodiceFiscale>'+(b.ospite_cf||'XXXXXXXXXXX')+'</CodiceFiscale>',
-    '        <Anagrafica><Nome>'+ospNome+'</Nome><Cognome>'+ospCognome+'</Cognome></Anagrafica>',
-    '      </DatiAnagrafici>','      <Sede>',
-    '        <Indirizzo>'+(b.ospite_ind||'Da verificare')+'</Indirizzo>',
-    '        <CAP>00000</CAP><Comune>Da verificare</Comune><Nazione>IT</Nazione>',
-    '      </Sede>','    </CessionarioCommittente>','  </FatturaElettronicaHeader>','',
-    '  <FatturaElettronicaBody>','    <DatiGenerali>','      <DatiGeneraliDocumento>',
-    '        <TipoDocumento>TD01</TipoDocumento>','        <Divisa>EUR</Divisa>',
-    '        <Data>'+oggi+'</Data>','        <Numero>'+num+'</Numero>',
-    '        <Causale>Locazione turistica '+nomeProp(b.proprieta_id)+' - Soggiorno '+b.checkin+' / '+b.checkout+'</Causale>',
-    '      </DatiGeneraliDocumento>','    </DatiGenerali>','','    <DatiBeniServizi>','      <DettaglioLinee>',
-    '        <NumeroLinea>1</NumeroLinea>',
-    '        <Descrizione>Canone locazione turistica - '+nomeProp(b.proprieta_id)+' - '+b.checkin+' / '+b.checkout+' ('+b.notti+' notti) - Rif. '+b.canale+(b.ota_num?' '+b.ota_num:'')+'</Descrizione>',
-    '        <Quantita>1.00</Quantita>','        <PrezzoUnitario>'+imponibile.toFixed(2)+'</PrezzoUnitario>',
-    '        <PrezzoTotale>'+imponibile.toFixed(2)+'</PrezzoTotale>','        <AliquotaIVA>10.00</AliquotaIVA>',
-    '      </DettaglioLinee>','      <DatiRiepilogo>','        <AliquotaIVA>10.00</AliquotaIVA>',
-    '        <ImponibileImporto>'+imponibile.toFixed(2)+'</ImponibileImporto>',
-    '        <Imposta>'+iva10.toFixed(2)+'</Imposta>','        <EsigibilitaIVA>I</EsigibilitaIVA>',
-    '      </DatiRiepilogo>','    </DatiBeniServizi>','','    <DatiPagamento>',
-    '      <CondizioniPagamento>TP02</CondizioniPagamento>','      <DettaglioPagamento>',
-    '        <ModalitaPagamento>MP05</ModalitaPagamento>',
-    '        <DataScadenzaPagamento>'+oggi+'</DataScadenzaPagamento>',
-    '        <ImportoPagamento>'+b.tot.toFixed(2)+'</ImportoPagamento>',
-    '      </DettaglioPagamento>','    </DatiPagamento>','  </FatturaElettronicaBody>',
-    '</p:FatturaElettronica>'
-  ];
-  var xml=xmlLines.join(NL);
-  var filename='IT'+own.piva+'_'+progr+'.xml';
-  var xmlEsc=xml.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  var commInfo=own.email_comm?' ('+own.email_comm+')':' (email non impostata)';
+  if(!own){console.error('genPreFattura: proprietario non trovato');toast('Errore: proprietario non trovato');return;}
+  var c=b.calc||doCalc(b);
+  var num='PF-'+nextNum('xml');
+  var oggi=new Date().toLocaleDateString('it-IT');
+  // Scorporo IVA 10% (locazioni brevi gestite da società - aliquota indicativa,
+  // il commercialista applicherà l'aliquota effettiva al caso)
+  var aliquotaIVA=10;
+  var imponibile=r2(b.tot/(1+aliquotaIVA/100));
+  var iva=r2(b.tot-imponibile);
+  var commInfo=own.email_comm?' &middot; <a href="mailto:'+own.email_comm+'" style="color:#4361ee">'+own.email_comm+'</a>':' (email commercialista non impostata in anagrafica)';
   var html=PS+'<div class="doc">'
-    +'<div class="doc-header"><div><div class="doc-logo">HOUZLY<small>Gestione Fatturazione</small></div><div style="font-size:10px;color:#888;margin-top:4px">Preparato per conto di '+own.ragione_sociale+'</div></div><div class="doc-type"><h2>FatturaPA Elettronica</h2><p>N&deg; '+num+' &middot; '+oggi+' &middot; IVA 10%</p></div></div>'
-    +'<div class="info-box">&#128203; Inviare al commercialista di <strong>'+own.ragione_sociale+'</strong>'+commInfo+' che lo trasmettera allo SdI. Clicca <strong>Scarica XML</strong> per salvare il file.</div>'
-    +'<div class="doc-parties"><div class="doc-party"><h4>Cedente / Prestatore</h4><p><strong>'+own.ragione_sociale+'</strong><br>P.IVA: '+own.piva+'<br>'+(own.via||'')+'<br>'+(own.cap||'')+' '+(own.comune||'')+(own.provincia?' ('+own.provincia+')':'')+'<br>SDI: '+(own.sdi||'&mdash;')+'</p></div>'
-    +'<div class="doc-party"><h4>Cessionario (Ospite)</h4><p><strong>'+b.ospite_nome+'</strong><br>'+(b.ospite_cf?'CF: '+b.ospite_cf+'<br>':'')+(b.ospite_ind||'&mdash;')+'</p></div></div>'
-    +'<div class="doc-ref">&#128197; <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti &middot; Rif. '+b.canale+(b.ota_num?' '+b.ota_num:'')+'</div>'
-    +'<table class="dtbl"><thead><tr><th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">Imposta</th><th class="r">Totale</th></tr></thead>'
-    +'<tbody><tr><td>Canone locazione turistica &mdash; '+nomeProp(b.proprieta_id)+'<br><span style="font-size:11px;color:#888">'+dateIt(b.checkin)+' / '+dateIt(b.checkout)+' &middot; '+b.notti+' notti</span></td>'
-    +'<td class="r">'+eur(imponibile)+'</td><td class="r"><span class="badge-iva">10%</span></td><td class="r">'+eur(iva10)+'</td><td class="r"><strong>'+eur(b.tot)+'</strong></td></tr></tbody></table>'
-    +'<div class="doc-total"><div class="doc-total-box"><div class="lbl">Totale Fattura IVA Inclusa</div><div class="val">'+eur(b.tot)+'</div></div></div>'
-    +'<div class="xml-box"><div style="font-size:10px;font-weight:700;color:#4361ee;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">&#128196; '+filename+'</div><pre>'+xmlEsc+'</pre></div>'
-    +'<div class="doc-footer">Preparato da '+CO.nome+' per conto di '+own.ragione_sociale+'<br>Commercialista: '+(own.email_comm||'non impostata')+'</div></div>';
-  openPrintModal('FatturaPA XML &mdash; '+num,html,xml,filename);
+    +'<div class="doc-header">'
+    +'<div><div class="doc-logo">HOUZLY<small>Pre-Fattura per Commercialista</small></div><div style="font-size:10px;color:#888;margin-top:4px">Riepilogo dati prenotazione &middot; '+CO.nome+'</div></div>'
+    +'<div class="doc-type"><h2>Pre-Fattura</h2><p>N&deg; '+num+' &middot; Data '+oggi+'</p></div>'
+    +'</div>'
+    +'<div class="info-box">&#128203; <strong>Documento informativo</strong> &mdash; non &egrave; una fattura fiscale. Da inviare al commercialista di <strong>'+escHtml(own.ragione_sociale||'')+'</strong>'+commInfo+', che provveder&agrave; a emettere la FatturaPA elettronica con l\'aliquota IVA corretta secondo il regime fiscale dell\'azienda.</div>'
+    +'<div class="doc-parties">'
+    +'<div class="doc-party"><h4>Cedente / Prestatore (Proprietario)</h4><p>'
+      +'<strong>'+escHtml(own.ragione_sociale||'')+'</strong><br>'
+      +(own.piva?'P.IVA: '+escHtml(own.piva)+'<br>':'')
+      +(own.cf?'C.F.: '+escHtml(own.cf)+'<br>':'')
+      +escHtml(own.via||'')+'<br>'
+      +escHtml(own.cap||'')+' '+escHtml(own.comune||'')+(own.provincia?' ('+escHtml(own.provincia)+')':'')+'<br>'
+      +(own.sdi?'SDI: '+escHtml(own.sdi):'')
+      +'</p></div>'
+    +'<div class="doc-party"><h4>Cessionario / Committente (Ospite)</h4><p>'
+      +'<strong>'+escHtml(b.ospite_nome||'')+'</strong><br>'
+      +(b.ospite_cf?'CF/ID Fisc.: '+escHtml(b.ospite_cf)+'<br>':'')
+      +(b.ospite_doc_tipo&&b.ospite_doc_num?escHtml(b.ospite_doc_tipo)+': '+escHtml(b.ospite_doc_num)+'<br>':'')
+      +escHtml(b.ospite_ind||'')+(b.ospite_cap?' '+escHtml(b.ospite_cap):'')+(b.ospite_citta?' '+escHtml(b.ospite_citta):'')+'<br>'
+      +(b.ospite_nazione?escHtml(b.ospite_nazione):'Italia')
+      +'</p></div>'
+    +'</div>'
+    +'<div class="doc-ref">&#127968; <strong>'+escHtml(nomeProp(b.proprieta_id))+'</strong> &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti &middot; '+b.n_ospiti+' ospiti &middot; Rif. '+escHtml(b.canale)+(b.ota_num?' '+escHtml(b.ota_num):'')+'</div>'
+    +'<table class="dtbl"><thead><tr>'
+      +'<th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">Imposta</th><th class="r">Totale</th>'
+      +'</tr></thead><tbody>'
+      +'<tr>'
+        +'<td>Canone locazione turistica<br><span style="font-size:11px;color:#666">'+escHtml(nomeProp(b.proprieta_id))+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' ('+b.notti+' notti)<br>Rif. '+escHtml(b.canale)+(b.ota_num?' '+escHtml(b.ota_num):'')+'</span></td>'
+        +'<td class="r">'+eur(imponibile)+'</td>'
+        +'<td class="r">'+aliquotaIVA+'%</td>'
+        +'<td class="r">'+eur(iva)+'</td>'
+        +'<td class="r"><strong>'+eur(b.tot)+'</strong></td>'
+      +'</tr>'
+      +'<tr class="tot-row"><td colspan="4" class="r"><strong>TOTALE LORDO OSPITE</strong></td><td class="r"><strong>'+eur(b.tot)+'</strong></td></tr>'
+      +'</tbody></table>'
+    +'<div style="margin:18px 0;padding:14px;background:#f5f7ff;border:1px solid #dde3f8;border-radius:8px">'
+      +'<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#4361ee;margin-bottom:8px">Riepilogo Economico (informativo)</div>'
+      +'<table style="width:100%;font-size:12px;border-collapse:collapse">'
+      +'<tr><td style="padding:3px 0">Totale pagato dall\'ospite</td><td style="text-align:right;padding:3px 0">'+eur(b.tot)+'</td></tr>'
+      +'<tr><td style="padding:3px 0;color:#777">&nbsp;&nbsp;&#8211; Commissione OTA ('+escHtml(b.canale)+')</td><td style="text-align:right;padding:3px 0;color:#c00">'+eur(c.comm_ota)+'</td></tr>'
+      +(c.tassa>0?'<tr><td style="padding:3px 0;color:#777">&nbsp;&nbsp;&#8211; Tassa di soggiorno</td><td style="text-align:right;padding:3px 0;color:#c00">'+eur(c.tassa)+'</td></tr>':'')
+      +(c.pulizia>0?'<tr><td style="padding:3px 0;color:#777">&nbsp;&nbsp;&#8211; Spese pulizia</td><td style="text-align:right;padding:3px 0;color:#c00">'+eur(c.pulizia)+'</td></tr>':'')
+      +'<tr><td style="padding:3px 0;color:#777">&nbsp;&nbsp;&#8211; Compenso Houzly ('+b.houzly_perc+'% '+(b.iva22?'+ IVA 22%':'esente IVA')+')</td><td style="text-align:right;padding:3px 0;color:#c00">'+eur(c.houzly+(c.iva22||0))+'</td></tr>'
+      +'<tr style="border-top:1px solid #c0ccf8"><td style="padding:6px 0;font-weight:700">Netto Proprietario</td><td style="text-align:right;padding:6px 0;font-weight:700;color:#4361ee">'+eur(c.canone)+'</td></tr>'
+      +'</table>'
+      +'</div>'
+    +'<div class="doc-note">&#9888; <strong>Nota per il commercialista:</strong> i dati sopra sono indicativi e basati sul regime IVA 10% per locazione turistica esercitata da soggetto societario. Verificare il regime fiscale del cedente e applicare l\'aliquota effettiva al momento dell\'emissione della FatturaPA. Numero documento '+num+' (interno Houzly): non utilizzare come riferimento fiscale ufficiale.</div>'
+    +'<div class="doc-footer">Documento generato automaticamente da Houzly Tool il '+oggi+' &middot; '+CO.nome+' &middot; P.IVA '+CO.piva+'</div>'
+    +'</div>';
+  openPrintModal('Pre-Fattura &mdash; '+num,html);
 }
 
 // ─── loadDocSection ───────────────────────────────────────────────────────
@@ -4050,7 +4037,7 @@ function loadDocSectionForBid(id){
     html+='<div class="doc-card" data-action="ricevuta" data-bid="'+b.id+'"><div class="doc-icon">&#128220;</div><div class="doc-name">Ricevuta Non Fiscale</div><div class="doc-desc">Da '+own.nome+' '+own.cognome+' &rarr; Ospite<br><strong>'+eur(c.canone)+'</strong> esente IVA (0% N4)</div></div>';
     html+='<div class="doc-card" data-action="fattura-ospite" data-bid="'+b.id+'"><div class="doc-icon">&#129534;</div><div class="doc-name">Fattura Houzly &rarr; Ospite</div><div class="doc-desc">Comm. OTA + Houzly + Pulizia<br>IVA 22% scorporata &middot; TdS 0% N1</div></div>';
   } else {
-    html+='<div class="doc-card" data-action="xml" data-bid="'+b.id+'"><div class="doc-icon">&#128203;</div><div class="doc-name">FatturaPA XML</div><div class="doc-desc">'+(own?own.ragione_sociale:'')+' &rarr; Ospite<br>IVA 10% &middot; Scarica + invia commercialista</div></div>';
+    html+='<div class="doc-card" data-action="prefattura" data-bid="'+b.id+'"><div class="doc-icon">&#128221;</div><div class="doc-name">Pre-Fattura per Commercialista</div><div class="doc-desc">'+(own?own.ragione_sociale:'')+' &rarr; Ospite<br>Riepilogo dati &middot; IVA 10% indicativa<br><span style="color:#888;font-size:10px">Il commercialista genera la FatturaPA</span></div></div>';
     html+='<div class="doc-card" data-action="fattura-azienda" data-bid="'+b.id+'"><div class="doc-icon">&#129534;</div><div class="doc-name">Fattura Houzly &rarr; Azienda</div><div class="doc-desc">Servizi gestione IVA 22% scorporata<br>B2B</div></div>';
   }
   html+='</div>';
@@ -4059,7 +4046,7 @@ function loadDocSectionForBid(id){
     card.addEventListener('click',function(){
       var action=this.getAttribute('data-action');
       var bid=this.getAttribute('data-bid');
-      if(action==='xml') genXML(bid); // XML non ha destinatario editabile
+      if(action==='prefattura') genPreFattura(bid); // no destinatario editabile
       else openDestinatarioModal(bid, action);
     });
   });
@@ -6135,15 +6122,38 @@ function openDestinatarioModal(bid, action) {
   var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value=b.ospite_doc_num||'';
   var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value=b.ospite_nazione||'';
   var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value=b.ospite_prov||'';
-  // Azienda fields: pre-compila se già salvati sulla prenotazione,
-  // altrimenti vuoti (per le aziende non si usano dati Smoobu, l'ospite
-  // Smoobu è la persona fisica)
-  document.getElementById('dest-ragione').value = b.az_ragione || '';
-  document.getElementById('dest-piva').value    = b.az_piva    || '';
-  document.getElementById('dest-cf-az').value   = b.az_cf      || '';
-  document.getElementById('dest-sdi').value     = b.az_sdi     || '';
-  // Default: privato (l'utente switcha su azienda se serve)
-  setDestTipo('privato');
+  // Azienda fields: comportamento dipende dal flusso.
+  //  - Per "fattura-azienda" (B2B verso il proprietario azienda) il
+  //    destinatario È l'azienda proprietaria — pre-compilo dai suoi dati.
+  //  - Per altri flussi (ricevuta, fattura-ospite) il destinatario è
+  //    l'ospite; il tab azienda serve solo se l'ospite chiede fattura
+  //    intestata alla sua azienda, in quel caso i campi vengono dai dati
+  //    già salvati sulla prenotazione (b.az_*) o vuoti.
+  var own = ownerOfProp(b.proprieta_id);
+  if(action === 'fattura-azienda' && own && own.tipo === 'azienda'){
+    document.getElementById('dest-ragione').value = own.ragione_sociale || '';
+    document.getElementById('dest-piva').value    = own.piva    || '';
+    document.getElementById('dest-cf-az').value   = own.cf      || own.piva || '';
+    document.getElementById('dest-sdi').value     = own.sdi     || '';
+    // Salvo i dati indirizzo del proprietario in b.az_* temporaneamente
+    // così setDestTipo('azienda') li popola nei campi condivisi.
+    b._tmpOwnInd   = own.via      || '';
+    b._tmpOwnCap   = own.cap      || '';
+    b._tmpOwnCitta = own.comune   || '';
+    b._tmpOwnProv  = own.provincia|| '';
+    b._tmpOwnEmail = own.email    || '';
+    b._tmpOwnTel   = own.telefono || '';
+  } else {
+    document.getElementById('dest-ragione').value = b.az_ragione || '';
+    document.getElementById('dest-piva').value    = b.az_piva    || '';
+    document.getElementById('dest-cf-az').value   = b.az_cf      || '';
+    document.getElementById('dest-sdi').value     = b.az_sdi     || '';
+  }
+  // Default tab: azienda per fattura-azienda, privato per gli altri
+  setDestTipo(action === 'fattura-azienda' ? 'azienda' : 'privato');
+  // Switch tipo: nascondo o mostro a seconda del flusso
+  var tipoSwitcher = document.querySelector('.dest-tipo-switcher');
+  if(tipoSwitcher) tipoSwitcher.style.display = (action === 'fattura-azienda') ? 'none' : 'flex';
 
   // Marca da bollo — solo per RNF
   var bolloRow  = document.getElementById('dest-bollo-row');
@@ -6184,14 +6194,18 @@ function setDestTipo(tipo) {
   var bid = document.getElementById('dest-bid').value;
   var b   = bid ? DB.prenotazioni.find(function(x){return x.id===bid;}) : null;
   if(b){
-    var prefix = tipo==='azienda' ? 'az_' : 'ospite_';
+    // Se ci sono dati temporanei del proprietario (passati da
+    // openDestinatarioModal per 'fattura-azienda'), li uso preferenzialmente.
+    // Altrimenti uso i dati salvati su b (az_* o ospite_*).
+    var useOwn = (tipo === 'azienda' && b._tmpOwnInd !== undefined);
+    var prefix = tipo === 'azienda' ? 'az_' : 'ospite_';
     function setVal(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
-    setVal('dest-ind',   b[prefix+'ind']);
-    setVal('dest-cap',   b[prefix+'cap']);
-    setVal('dest-citta', b[prefix+'citta']);
-    setVal('dest-prov',  b[prefix+'prov']);
-    setVal('dest-email', b[prefix+'email']);
-    setVal('dest-tel',   b[prefix+'tel']);
+    setVal('dest-ind',   useOwn ? b._tmpOwnInd   : b[prefix+'ind']);
+    setVal('dest-cap',   useOwn ? b._tmpOwnCap   : b[prefix+'cap']);
+    setVal('dest-citta', useOwn ? b._tmpOwnCitta : b[prefix+'citta']);
+    setVal('dest-prov',  useOwn ? b._tmpOwnProv  : b[prefix+'prov']);
+    setVal('dest-email', useOwn ? b._tmpOwnEmail : b[prefix+'email']);
+    setVal('dest-tel',   useOwn ? b._tmpOwnTel   : b[prefix+'tel']);
   }
 }
 
@@ -6262,7 +6276,11 @@ function confirmGeneraDoc() {
       up('ospite_prov', dest.prov);
       up('ospite_email', dest.email);
       up('ospite_tel', dest.tel);
-    } else if(dest.tipo==='azienda'){
+    } else if(dest.tipo==='azienda' && action !== 'fattura-azienda'){
+      // Salvo az_* solo se l'azienda è un destinatario alternativo per
+      // l'ospite (es. ospite chiede fattura intestata alla sua azienda).
+      // Per 'fattura-azienda' il destinatario è il proprietario stesso,
+      // i suoi dati sono già in DB.proprietari, non vanno duplicati qui.
       up('az_ragione', dest.nome);
       up('az_piva', dest.piva);
       up('az_cf', dest.cf);
@@ -6274,6 +6292,13 @@ function confirmGeneraDoc() {
       up('az_email', dest.email);
       up('az_tel', dest.tel);
     }
+    // Cleanup dei dati temporanei _tmpOwn* (non vanno persistiti su DB)
+    delete bSave._tmpOwnInd;
+    delete bSave._tmpOwnCap;
+    delete bSave._tmpOwnCitta;
+    delete bSave._tmpOwnProv;
+    delete bSave._tmpOwnEmail;
+    delete bSave._tmpOwnTel;
     if(changed)saveDB();
   }
   closeModal('modal-destinatario');
@@ -6281,7 +6306,7 @@ function confirmGeneraDoc() {
     if(action==='ricevuta')            genRicevuta(bid, dest);
     else if(action==='fattura-ospite') genFatturaOspite(bid, dest);
     else if(action==='fattura-azienda')genFatturaAzienda(bid, dest);
-    else if(action==='xml')            genXML(bid);
+    else if(action==='prefattura')     genPreFattura(bid);
   } catch(e){
     console.error('Errore generazione documento ('+action+'):',e);
     toast('Errore generazione documento — vedi console');
