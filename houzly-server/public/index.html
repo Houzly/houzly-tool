@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v30 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v31 · 06/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3914,9 +3914,8 @@ function genFatturaAzienda(bid, dest){
   var html=PS+'<div class="doc">'
     +'<div class="doc-header"><div><div class="doc-logo">HOUZLY<small>Property Management</small></div><div style="font-size:10px;color:#888;margin-top:4px">'+CO.nome+' &middot; P.IVA '+CO.piva+'</div></div><div class="doc-type"><h2>Fattura N&deg; '+num+'</h2><p>Data '+oggi+' &middot; Servizi gestione B2B</p></div></div>'
     +'<div class="doc-parties"><div class="doc-party"><h4>Emittente</h4><p><strong>'+CO.nome+'</strong><br>P.IVA: '+CO.piva+'<br>'+CO.indirizzo+'<br>'+CO.cap+' '+CO.comune+' ('+CO.provincia+')</p></div>'
-    +'<div class="doc-party"><h4>Cliente (Azienda Proprietaria)</h4><p><strong>'+own.ragione_sociale+'</strong><br>P.IVA: '+own.piva+'<br>'+(own.via||'')+'<br>'+(own.cap||'')+' '+(own.comune||'')+(own.provincia?' ('+own.provincia+')':'')+'</p></div></div>'
-    +'<div class="doc-parties" style="margin-top:8px"><div class="doc-party"><h4>Destinatario (Ospite/Cliente Finale)</h4><p>'+formatDestHTML(dest)+'</p></div></div>'
-    +'<div class="doc-ref">&#128197; Rif. soggiorno: <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; Ospite: '+dest.nome+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+'</div>'
+    +'<div class="doc-party"><h4>Cliente (Azienda Proprietaria)</h4><p><strong>'+escHtml(dest.nome||own.ragione_sociale||'')+'</strong><br>'+(dest.piva?'P.IVA: '+escHtml(dest.piva)+'<br>':(own.piva?'P.IVA: '+escHtml(own.piva)+'<br>':''))+escHtml(dest.ind||own.via||'')+'<br>'+escHtml(dest.cap||own.cap||'')+' '+escHtml(dest.citta||own.comune||'')+(dest.prov||own.provincia?' ('+escHtml(dest.prov||own.provincia)+')':'')+'</p></div></div>'
+    +'<div class="doc-ref">&#128197; Rif. soggiorno: <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; Ospite: '+escHtml(b.ospite_nome||'&mdash;')+' &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti</div>'
     +'<table class="dtbl"><thead><tr><th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">IVA &euro;</th><th class="r">Totale</th></tr></thead>'
     +'<tbody>'+rows22+rowTassa
     +'<tr class="tot-row"><td colspan="3" style="text-align:right">Totale Imponibile IVA 22% (scorporato)</td><td></td><td class="r">'+eur(totI)+'</td></tr>'
