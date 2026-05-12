@@ -1306,6 +1306,168 @@ async function dispatchInitialMessage(session) {
   return result;
 }
 // ══════════════════════════════════════════════════════════════════
+// ── Check-in: Guest-facing routes (JWT-protected) ─────────────────
+// ══════════════════════════════════════════════════════════════════
+
+async function requireGuestAuth(req, res, next) {
+  const token = req.query.t || req.body?.token || req.headers['x-checkin-token'];
+  if (!token) return res.status(401).json({ ok: false, error: 'missing_token' });
+  const payload = verifyCheckinToken(token);
+  if (!payload) return res.status(401).json({ ok: false, error: 'invalid_or_expired_token' });
+
+  const sessionsCol = await getCollection('checkin_sessions');
+  const session = await sessionsCol.findOne({ _id: `booking_${payload.bookingId}` });
+  if (!session) return res.status(404).json({ ok: false, error: 'session_not_found' });
+  if (session.access_token !== token) return res.status(401).json({ ok: false, error: 'token_revoked' });
+
+  req.checkinSession = session;
+  next();
+}
+
+// GET /api/checkin/session?t=<JWT>
+// Restituisce dati della session: property, booking, guests (slot vuoti o parzialmente compilati)
+app.get('/api/checkin/session', requireGuestAuth, async (req, res) => {
+  const s = req.checkinSession;
+  res.json({
+    ok: true,
+    session: {
+      bookingId: s.smoobu_booking_id,
+      property: s.property,
+      booking: s.booking,
+      status: s.status,
+      guests: s.guests.map(g => ({
+        slot: g.slot,
+        first_name: g.first_name,
+        last_name: g.last_name,
+        date_of_birth: g.date_of_birth,
+        place_of_birth: g.place_of_birth,
+        country_of_residence: g.country_of_residence,
+        nationality: g.nationality,
+        document_type: g.document_type,
+        document_number: g.document_number,
+        document_issue_country: g.document_issue_country,
+        document_issue_date: g.document_issue_date,
+        document_expiry_date: g.document_expiry_date,
+        is_minor: g.is_minor,
+        has_front_photo: !!g.r2_front_key,
+        has_back_photo: !!g.r2_back_key,
+        submitted_at: g.submitted_at,
+        privacy_consent: g.privacy_consent,
+      })),
+    },
+  });
+});
+
+// POST /api/checkin/guest/save
+// Body: { token, slot, data: { first_name, last_name, date_of_birth, ... } }
+app.post('/api/checkin/guest/save', requireGuestAuth, async (req, res) => {
+  try {
+    const s = req.checkinSession;
+    const { slot, data } = req.body;
+    if (!slot || !data) return res.status(400).json({ ok: false, error: 'missing_fields' });
+
+    const allowed = ['first_name', 'last_name', 'date_of_birth', 'place_of_birth',
+      'country_of_residence', 'nationality', 'document_type', 'document_number',
+      'document_issue_country', 'document_issue_date', 'document_expiry_date', 'is_minor', 'privacy_consent'];
+
+    const updates = {};
+    for (const k of allowed) { if (k in data) updates[`guests.$.${k}`] = data[k]; }
+    if (data.privacy_consent === true) updates['guests.$.privacy_consent_at'] = new Date().toISOString();
+
+    const sessionsCol = await getCollection('checkin_sessions');
+    await sessionsCol.updateOne(
+      { _id: s._id, 'guests.slot': parseInt(slot) },
+      { $set: { ...updates, updated_at: new Date().toISOString() } }
+    );
+
+    await recalculateSessionStatus(s._id);
+    const updated = await sessionsCol.findOne({ _id: s._id });
+    res.json({ ok: true, status: updated.status });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// POST /api/checkin/guest/upload
+// Body: { token, slot, side: 'front'|'back', imageBase64, mimeType }
+// Carica foto documento su R2 Cloudflare e salva la key in MongoDB
+app.post('/api/checkin/guest/upload', requireGuestAuth, async (req, res) => {
+  try {
+    const s = req.checkinSession;
+    const { slot, side, imageBase64, mimeType } = req.body;
+    if (!slot || !side || !imageBase64) return res.status(400).json({ ok: false, error: 'missing_fields' });
+    if (!['front', 'back'].includes(side)) return res.status(400).json({ ok: false, error: 'invalid_side' });
+
+    const buffer = Buffer.from(imageBase64, 'base64');
+    if (buffer.length > 5 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'file_too_large' });
+
+    const ext = (mimeType || 'image/jpeg').split('/')[1] || 'jpg';
+    const key = `${s._id}/guest_${slot}/${side}.${ext}`;
+    await r2Upload(key, buffer, mimeType || 'image/jpeg');
+
+    const fieldName = side === 'front' ? 'r2_front_key' : 'r2_back_key';
+    const sessionsCol = await getCollection('checkin_sessions');
+    await sessionsCol.updateOne(
+      { _id: s._id, 'guests.slot': parseInt(slot) },
+      { $set: { [`guests.$.${fieldName}`]: key, updated_at: new Date().toISOString() } }
+    );
+
+    res.json({ ok: true, key });
+  } catch (e) {
+    console.error('[checkin/guest/upload]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/checkin/guest/submit
+// Body: { token, slot }
+// Marca il guest come "submitted" (validato dall'ospite)
+app.post('/api/checkin/guest/submit', requireGuestAuth, async (req, res) => {
+  try {
+    const s = req.checkinSession;
+    const { slot } = req.body;
+    const sessionsCol = await getCollection('checkin_sessions');
+
+    const guest = s.guests.find(g => g.slot === parseInt(slot));
+    if (!guest) return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
+
+    const required = ['first_name', 'last_name', 'date_of_birth', 'place_of_birth',
+      'nationality', 'document_type', 'document_number'];
+    const missing = required.filter(k => !guest[k]);
+    if (missing.length > 0) return res.status(400).json({ ok: false, error: 'missing_required_fields', missing });
+    if (!guest.r2_front_key) return res.status(400).json({ ok: false, error: 'missing_document_photo' });
+    if (!guest.privacy_consent) return res.status(400).json({ ok: false, error: 'missing_privacy_consent' });
+
+    await sessionsCol.updateOne(
+      { _id: s._id, 'guests.slot': parseInt(slot) },
+      { $set: { 'guests.$.submitted_at': new Date().toISOString(), updated_at: new Date().toISOString() } }
+    );
+
+    await recalculateSessionStatus(s._id);
+    const updated = await sessionsCol.findOne({ _id: s._id });
+    res.json({ ok: true, status: updated.status });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Helper: ricalcola lo status della session in base allo stato dei guest
+// Chiamato dopo save/submit per aggiornare pending→partial→complete
+async function recalculateSessionStatus(sessionId) {
+  const sessionsCol = await getCollection('checkin_sessions');
+  const session = await sessionsCol.findOne({ _id: sessionId });
+  if (!session) return;
+  if (!['pending', 'partial', 'complete'].includes(session.status)) return;
+
+  const allSubmitted = session.guests.every(g => !!g.submitted_at);
+  const someSubmitted = session.guests.some(g => !!g.submitted_at || !!g.first_name);
+
+  let newStatus = session.status;
+  if (allSubmitted) newStatus = 'complete';
+  else if (someSubmitted) newStatus = 'partial';
+  else newStatus = 'pending';
+
+  const updates = { status: newStatus, updated_at: new Date().toISOString() };
+  if (newStatus === 'complete' && !session.completed_at) updates.completed_at = new Date().toISOString();
+  await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
+}
+// ══════════════════════════════════════════════════════════════════
 // ── Onboarding: Seed catalog (admin) ──────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
