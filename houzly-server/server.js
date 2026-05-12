@@ -1260,6 +1260,22 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
       document_issue_date: null,
       document_expiry_date: null,
       is_minor: false,
+      // Sesso (per compliance e correlazione CF)
+      sex: null,
+      // Codice fiscale (solo ospite slot 1 italiano)
+      tax_code: null,
+      tax_code_source: null,
+      tax_code_verified: false,
+      // Indirizzo di residenza (solo ospite slot 1 italiano)
+      address_street: null,
+      address_zip: null,
+      address_city: null,
+      address_province: null,
+      address_country: null,
+      address_source: null,
+      // Metadata OCR
+      ocr_confidence_overall: null,
+      ocr_warnings: [],
       r2_front_key: null,
       r2_back_key: null,
       submitted_at: null,
