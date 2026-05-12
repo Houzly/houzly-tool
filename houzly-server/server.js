@@ -215,6 +215,75 @@ Please complete your online check-in before arrival, otherwise we'll need to col
 
 Thank you, and safe travels!`;
 }
+// ── Check-in OCR: prompt builder per tipo documento ──────────────
+function buildOcrPrompt(documentType) {
+  const baseSchema = `Estrai i dati dal documento e rispondi SOLO con un JSON valido (no markdown, no commenti, no testo prima/dopo) con questo schema esatto:
+{
+  "first_name": "stringa o null",
+  "last_name": "stringa o null",
+  "sex": "M oppure F oppure null",
+  "date_of_birth": "YYYY-MM-DD o null",
+  "place_of_birth": "stringa o null",
+  "nationality": "codice ISO 3166-1 alpha-2 (es. IT, FR, DE) o null",
+  "document_number": "stringa o null",
+  "document_issue_date": "YYYY-MM-DD o null",
+  "document_expiry_date": "YYYY-MM-DD o null",
+  "document_issue_country": "codice ISO 3166-1 alpha-2 o null",
+  "tax_code": "stringa di 16 caratteri (codice fiscale italiano) o null",
+  "address_street": "via e numero civico o null",
+  "address_zip": "CAP o null",
+  "address_city": "comune o null",
+  "address_province": "sigla 2 lettere provincia italiana o null",
+  "address_country": "codice ISO 3166-1 alpha-2 o null",
+  "confidence": "numero decimale da 0 a 1 che indica la tua confidenza media nell'estrazione",
+  "warnings": ["array di stringhe con eventuali avvisi (es. 'foto sfocata', 'campo parzialmente coperto')"]
+}
+
+Regole importanti:
+- Se un campo non è visibile o leggibile, usa null (mai stringhe vuote o placeholder).
+- Date sempre in formato ISO YYYY-MM-DD.
+- Codici nazione e provincia sempre in maiuscolo.
+- Il sesso (sex) deduci da nome/foto/dati nel documento, se non chiaro metti null.
+- Rispondi SOLO con il JSON. Nessun altro testo.`;
+
+  if (documentType === 'CIE') {
+    return `Hai ricevuto la foto fronte e retro di una Carta d'Identità Elettronica italiana (CIE).
+Sul fronte trovi: nome, cognome, data e luogo di nascita, sesso, scadenza, foto.
+Sul retro trovi: codice fiscale (testo + barcode), indirizzo di residenza completo (via, civico, CAP, comune, provincia), ente di rilascio.
+
+${baseSchema}`;
+  }
+
+  if (documentType === 'PAPER_ID') {
+    return `Hai ricevuto la foto fronte e retro di una Carta d'Identità cartacea italiana (formato vecchio, non elettronica).
+Sul fronte trovi: nome, cognome, data e luogo di nascita, sesso, foto.
+Sul retro trovi: indirizzo di residenza, ente di rilascio, data rilascio/scadenza.
+IMPORTANTE: questo tipo di documento NON contiene il codice fiscale. Lascia tax_code a null.
+
+${baseSchema}`;
+  }
+
+  if (documentType === 'DRIVING_LICENSE') {
+    return `Hai ricevuto la foto della patente di guida italiana (formato carta di credito).
+Sul fronte trovi: nome, cognome, data e luogo di nascita, numero patente, data rilascio, scadenza, foto.
+IMPORTANTE: la patente italiana NON contiene il codice fiscale né l'indirizzo di residenza. Lascia tax_code, address_* a null.
+
+${baseSchema}`;
+  }
+
+  if (documentType === 'PASSPORT') {
+    return `Hai ricevuto la foto della pagina principale di un passaporto.
+Estrai: nome, cognome, data e luogo di nascita, sesso, nazionalità, numero passaporto, data rilascio e scadenza, paese di rilascio.
+IMPORTANTE: il passaporto NON contiene codice fiscale né indirizzo di residenza. Lascia tax_code, address_* a null.
+
+${baseSchema}`;
+  }
+
+  // Fallback generico se documentType non riconosciuto
+  return `Hai ricevuto la foto di un documento d'identità. Estrai tutti i dati visibili.
+
+${baseSchema}`;
+}
 
 app.use(express.json({ limit: "20mb" }));
 app.use("/api/booking", (req, res, next) => {
