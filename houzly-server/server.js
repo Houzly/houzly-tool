@@ -1552,6 +1552,161 @@ app.post('/api/checkin/sessions/:id/override-status', requireAdminAuth, async (r
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ══════════════════════════════════════════════════════════════════
+// ── Check-in: Cron endpoints (called by cron-job.org) ─────────────
+// ══════════════════════════════════════════════════════════════════
+//
+// Protezione: shared secret in env var CRON_SECRET (riusiamo la stessa
+// dell'onboarding cron-tick). Header X-Cron-Secret o ?secret=...
+//
+// Schedule consigliato su cron-job.org:
+//   /api/cron/checkin/reminders → ogni giorno alle 10:00 Europe/Rome
+//   /api/cron/checkin/cleanup   → ogni notte alle 03:00 Europe/Rome
+
+function requireCronSecret(req, res, next) {
+  const secret = process.env.CRON_SECRET;
+  const provided = req.headers['x-cron-secret'] || req.query.secret;
+  if (!secret) return res.status(500).json({ ok: false, error: 'cron_secret_not_configured' });
+  if (provided !== secret) return res.status(401).json({ ok: false, error: 'invalid_cron_secret' });
+  next();
+}
+
+// POST /api/cron/checkin/reminders
+// Invia reminder D-3 e D-1 alle session pending/partial.
+// Marca come manual_required le prenotazioni con arrivo oggi non completate.
+app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const today = new Date();
+    const d3Target = new Date(today); d3Target.setDate(d3Target.getDate() + 3);
+    const d1Target = new Date(today); d1Target.setDate(d1Target.getDate() + 1);
+    const d3Str = d3Target.toISOString().slice(0, 10);
+    const d1Str = d1Target.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    let remindersSent = 0, manualFlagged = 0;
+
+    // D-3 reminders
+    const d3Sessions = await col.find({
+      status: { $in: ['pending', 'partial'] },
+      'booking.arrival': d3Str,
+    }).toArray();
+    for (const s of d3Sessions) {
+      const alreadySent = s.messages_sent?.some(m => m.type === 'reminder_d3');
+      if (alreadySent) continue;
+      const link = `${APP_BASE_URL}/checkin.html?t=${s.access_token}`;
+      const msg = buildReminderD3({
+        guestFirstName: s.booking.primary_guest_name?.split(' ')[0] || 'guest',
+        propertyName: s.property.name,
+        checkinLink: link,
+        guestLang: s.booking.language,
+      });
+      const isDirect = s.booking.channel_id === SMOOBU_CHANNEL_DIRECT;
+      const result = isDirect && s.booking.primary_guest_email
+        ? await sendEmailFallback(s.booking.primary_guest_email, 'Check-in reminder', msg.replace(/\n/g, '<br>'))
+        : await sendSmoobuChatMessage(s.smoobu_booking_id, msg);
+      await col.updateOne({ _id: s._id }, {
+        $push: { messages_sent: { type: 'reminder_d3', channel: isDirect ? 'email' : 'smoobu_chat', sent_at: new Date().toISOString(), success: result.success, error: result.error || null } },
+      });
+      if (result.success) remindersSent++;
+    }
+
+    // D-1 reminders (più urgenti)
+    const d1Sessions = await col.find({
+      status: { $in: ['pending', 'partial'] },
+      'booking.arrival': d1Str,
+    }).toArray();
+    for (const s of d1Sessions) {
+      const alreadySent = s.messages_sent?.some(m => m.type === 'reminder_d1');
+      if (alreadySent) continue;
+      const link = `${APP_BASE_URL}/checkin.html?t=${s.access_token}`;
+      const msg = buildReminderD1({
+        guestFirstName: s.booking.primary_guest_name?.split(' ')[0] || 'guest',
+        checkinLink: link,
+        guestLang: s.booking.language,
+      });
+      const isDirect = s.booking.channel_id === SMOOBU_CHANNEL_DIRECT;
+      const result = isDirect && s.booking.primary_guest_email
+        ? await sendEmailFallback(s.booking.primary_guest_email, 'Check-in reminder', msg.replace(/\n/g, '<br>'))
+        : await sendSmoobuChatMessage(s.smoobu_booking_id, msg);
+      await col.updateOne({ _id: s._id }, {
+        $push: { messages_sent: { type: 'reminder_d1', channel: isDirect ? 'email' : 'smoobu_chat', sent_at: new Date().toISOString(), success: result.success, error: result.error || null } },
+      });
+      if (result.success) remindersSent++;
+    }
+
+    // Arrivi oggi non ancora completi → manual_required
+    const arrivingToday = await col.find({
+      status: { $in: ['pending', 'partial'] },
+      'booking.arrival': todayStr,
+    }).toArray();
+    for (const s of arrivingToday) {
+      await col.updateOne({ _id: s._id }, { $set: { status: 'manual_required', updated_at: new Date().toISOString() } });
+      manualFlagged++;
+    }
+
+    console.log(`[cron/checkin/reminders] sent=${remindersSent} manualFlagged=${manualFlagged}`);
+    res.json({ ok: true, remindersSent, manualFlagged });
+  } catch (e) {
+    console.error('[cron/checkin/reminders]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/cron/checkin/cleanup
+// Cleanup notturno:
+// - Cancella foto R2 con checkout > 7 giorni fa (privacy GDPR + costi storage)
+// - Archivia session con checkout > 30 giorni fa (status=archived)
+app.post('/api/cron/checkin/cleanup', requireCronSecret, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const now = new Date();
+    const cutoff7 = new Date(now); cutoff7.setDate(cutoff7.getDate() - 7);
+    const cutoff30 = new Date(now); cutoff30.setDate(cutoff30.getDate() - 30);
+    const cutoff7Str = cutoff7.toISOString().slice(0, 10);
+    const cutoff30Str = cutoff30.toISOString().slice(0, 10);
+
+    // Foto da cancellare: session con checkout > 7gg fa che hanno ancora foto
+    const toCleanPhotos = await col.find({
+      'booking.departure': { $lt: cutoff7Str },
+      status: { $ne: 'archived' },
+      'guests.r2_front_key': { $ne: null },
+    }).toArray();
+
+    let photosDeleted = 0;
+    for (const s of toCleanPhotos) {
+      for (const g of s.guests) {
+        if (g.r2_front_key) {
+          try { await r2Delete(g.r2_front_key); photosDeleted++; }
+          catch (e) { console.error('[r2Delete]', e.message); }
+        }
+        if (g.r2_back_key) {
+          try { await r2Delete(g.r2_back_key); photosDeleted++; }
+          catch (e) { console.error('[r2Delete]', e.message); }
+        }
+      }
+      await col.updateOne({ _id: s._id }, {
+        $set: {
+          'guests.$[].r2_front_key': null,
+          'guests.$[].r2_back_key': null,
+          updated_at: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Archiviazione session con checkout > 30gg fa
+    const archiveResult = await col.updateMany(
+      { 'booking.departure': { $lt: cutoff30Str }, status: { $ne: 'archived' } },
+      { $set: { status: 'archived', archived_at: new Date().toISOString() } }
+    );
+
+    console.log(`[cron/checkin/cleanup] photos=${photosDeleted} archived=${archiveResult.modifiedCount}`);
+    res.json({ ok: true, photosDeleted, sessionsArchived: archiveResult.modifiedCount });
+  } catch (e) {
+    console.error('[cron/checkin/cleanup]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+// ══════════════════════════════════════════════════════════════════
 // ── Onboarding: Seed catalog (admin) ──────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
