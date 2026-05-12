@@ -1524,6 +1524,250 @@ app.post('/api/checkin/guest/upload', requireGuestAuth, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+// ── Check-in: OCR via Claude Vision (Sprint 1B.1-C.2) ─────────────
+// ══════════════════════════════════════════════════════════════════
+//
+// POST /api/checkin/guest/ocr
+// Body: {
+//   token,                      // JWT guest (oppure header X-Checkin-Token)
+//   slot,                       // 1..N (numero ospite)
+//   documentType,               // 'CIE' | 'PAPER_ID' | 'DRIVING_LICENSE' | 'PASSPORT'
+//   frontImageBase64,           // sempre obbligatorio (no prefisso data:image/...)
+//   frontMimeType,              // 'image/jpeg' | 'image/png' (default jpeg)
+//   backImageBase64?,           // obbligatorio per CIE/PAPER_ID, vietato per gli altri
+//   backMimeType?,
+// }
+//
+// Comportamento:
+// 1. Valida JWT + slot + documentType
+// 2. Verifica che r2_front_key del guest sia ancora null (errore se già caricato)
+// 3. CIE/PAPER_ID: 1 chiamata OCR con front+back insieme
+//    DRIVING_LICENSE/PASSPORT: 1 chiamata OCR con sola front
+// 4. Se OCR fallisce → 422, niente salvato su R2, niente scritto su MongoDB
+// 5. Se OCR ok → upload R2 + scrive in guests[] SOLO i campi attualmente null
+//    (non sovrascrive eventuale input manuale del guest)
+// 6. validateTaxCode: log warning ma accetta comunque (tax_code_verified flag)
+// 7. Ritorna extracted (dati grezzi OCR) + written (campi effettivamente scritti) +
+//    skipped (campi che erano già pieni) per UX di conferma frontend
+app.post('/api/checkin/guest/ocr', requireGuestAuth, async (req, res) => {
+  const s = req.checkinSession;
+  const { slot, documentType, frontImageBase64, frontMimeType,
+          backImageBase64, backMimeType } = req.body || {};
+
+  // ── 1. Validazione input ──────────────────────────────────────
+  if (!slot || !documentType || !frontImageBase64) {
+    return res.status(400).json({ ok: false, error: 'missing_fields',
+      detail: 'slot, documentType, frontImageBase64 obbligatori' });
+  }
+
+  const validTypes = ['CIE', 'PAPER_ID', 'DRIVING_LICENSE', 'PASSPORT'];
+  if (!validTypes.includes(documentType)) {
+    return res.status(400).json({ ok: false, error: 'invalid_document_type',
+      detail: `documentType deve essere uno di: ${validTypes.join(', ')}` });
+  }
+
+  const twoSided = (documentType === 'CIE' || documentType === 'PAPER_ID');
+  if (twoSided && !backImageBase64) {
+    return res.status(400).json({ ok: false, error: 'missing_back_image',
+      detail: 'CIE e PAPER_ID richiedono anche backImageBase64' });
+  }
+  if (!twoSided && backImageBase64) {
+    return res.status(400).json({ ok: false, error: 'unexpected_back_image',
+      detail: 'DRIVING_LICENSE e PASSPORT richiedono solo frontImageBase64' });
+  }
+
+  // ── 2. Verifica slot esiste e non ha già foto ─────────────────
+  const slotNum = parseInt(slot);
+  const guest = s.guests.find(g => g.slot === slotNum);
+  if (!guest) {
+    return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
+  }
+  if (guest.r2_front_key) {
+    return res.status(409).json({ ok: false, error: 'document_already_uploaded',
+      detail: 'Documento già caricato per questo ospite. Usa /api/checkin/guest/reset prima di ricaricarlo (TODO).' });
+  }
+
+  // ── 3. Decodifica base64 + check dimensione ───────────────────
+  let frontBuf, backBuf;
+  try {
+    frontBuf = Buffer.from(frontImageBase64, 'base64');
+    if (twoSided) backBuf = Buffer.from(backImageBase64, 'base64');
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: 'invalid_base64' });
+  }
+
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB per immagine
+  if (frontBuf.length > MAX_SIZE) {
+    return res.status(413).json({ ok: false, error: 'front_image_too_large',
+      detail: `Front max ${MAX_SIZE} bytes, ricevuti ${frontBuf.length}` });
+  }
+  if (twoSided && backBuf.length > MAX_SIZE) {
+    return res.status(413).json({ ok: false, error: 'back_image_too_large' });
+  }
+
+  // ── 4. Chiamata OCR a Claude Sonnet 4.6 ───────────────────────
+  const frontMime = (frontMimeType || 'image/jpeg').toLowerCase();
+  const backMime  = (backMimeType  || 'image/jpeg').toLowerCase();
+  const validMimes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validMimes.includes(frontMime) || (twoSided && !validMimes.includes(backMime))) {
+    return res.status(400).json({ ok: false, error: 'invalid_mime_type',
+      detail: `Mime types ammessi: ${validMimes.join(', ')}` });
+  }
+
+  const promptText = buildOcrPrompt(documentType);
+  const userContent = [
+    { type: 'text', text: promptText },
+    { type: 'image', source: { type: 'base64', media_type: frontMime, data: frontImageBase64 } },
+  ];
+  if (twoSided) {
+    userContent.push({ type: 'image', source: { type: 'base64', media_type: backMime, data: backImageBase64 } });
+  }
+
+  let extracted = null;
+  let rawOcrResponse = null;
+  try {
+    const ocrResp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: userContent }],
+    });
+    // La risposta è un array di content blocks; prendiamo il primo text block
+    rawOcrResponse = (ocrResp.content || []).map(c => c.text || '').join('').trim();
+
+    // Strip eventuali markdown fences ```json ... ```
+    let jsonText = rawOcrResponse
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    extracted = JSON.parse(jsonText);
+  } catch (ocrErr) {
+    console.error('[checkin/guest/ocr] OCR failed:', ocrErr.message, '| raw:', rawOcrResponse?.slice(0, 300));
+    return res.status(422).json({ ok: false, error: 'ocr_failed',
+      detail: 'Claude non è riuscito a leggere il documento. Riprovare con foto più nitida.',
+      raw_preview: rawOcrResponse?.slice(0, 200) || null });
+  }
+
+  // ── 5. Validazione struttura JSON estratto ────────────────────
+  if (!extracted || typeof extracted !== 'object') {
+    return res.status(422).json({ ok: false, error: 'ocr_invalid_response' });
+  }
+
+  // ── 6. Upload immagini su R2 (solo ORA che OCR è andato bene) ─
+  const frontExt = frontMime.split('/')[1] || 'jpg';
+  const frontKey = `${s._id}/guest_${slotNum}/front.${frontExt}`;
+  let backKey = null;
+
+  try {
+    await r2Upload(frontKey, frontBuf, frontMime);
+    if (twoSided) {
+      const backExt = backMime.split('/')[1] || 'jpg';
+      backKey = `${s._id}/guest_${slotNum}/back.${backExt}`;
+      await r2Upload(backKey, backBuf, backMime);
+    }
+  } catch (r2Err) {
+    console.error('[checkin/guest/ocr] R2 upload failed:', r2Err.message);
+    return res.status(500).json({ ok: false, error: 'r2_upload_failed', detail: r2Err.message });
+  }
+
+  // ── 7. Mappatura OCR → schema guests[] ────────────────────────
+  // Mappa: nome campo nello schema guest ← nome campo nel JSON OCR
+  const fieldMap = {
+    first_name:            extracted.first_name,
+    last_name:             extracted.last_name,
+    sex:                   extracted.sex,
+    date_of_birth:         extracted.date_of_birth,
+    place_of_birth:        extracted.place_of_birth,
+    nationality:           extracted.nationality,
+    document_number:       extracted.document_number,
+    document_issue_date:   extracted.document_issue_date,
+    document_expiry_date:  extracted.document_expiry_date,
+    document_issue_country:extracted.document_issue_country,
+    address_street:        extracted.address_street,
+    address_zip:           extracted.address_zip,
+    address_city:          extracted.address_city,
+    address_province:      extracted.address_province,
+    address_country:       extracted.address_country,
+  };
+
+  // Tax code: validazione + flag (solo se estratto e formato CF italiano)
+  let taxCodeVerified = false;
+  if (extracted.tax_code) {
+    taxCodeVerified = validateTaxCode(extracted.tax_code);
+    if (!taxCodeVerified) {
+      console.warn(`[checkin/guest/ocr] CF non valido per session ${s._id} guest ${slotNum}: "${extracted.tax_code}"`);
+    }
+  }
+
+  // ── 8. Update MongoDB: scrive SOLO campi attualmente null ─────
+  const writeUpdates = {};
+  const written = [];
+  const skipped = [];
+
+  for (const [field, value] of Object.entries(fieldMap)) {
+    if (value === null || value === undefined || value === '') continue;
+    if (guest[field] === null || guest[field] === undefined || guest[field] === '') {
+      writeUpdates[`guests.$.${field}`] = value;
+      written.push(field);
+    } else {
+      skipped.push(field);
+    }
+  }
+
+  // Tax code: campo speciale, scrive tax_code + source + verified
+  if (extracted.tax_code) {
+    if (guest.tax_code === null || guest.tax_code === undefined || guest.tax_code === '') {
+      writeUpdates['guests.$.tax_code'] = extracted.tax_code.toUpperCase().trim();
+      writeUpdates['guests.$.tax_code_source'] = 'ocr';
+      writeUpdates['guests.$.tax_code_verified'] = taxCodeVerified;
+      written.push('tax_code');
+    } else {
+      skipped.push('tax_code');
+    }
+  }
+
+  // Address source (se almeno un campo address scritto)
+  const addrFields = ['address_street','address_zip','address_city','address_province','address_country'];
+  if (addrFields.some(f => written.includes(f))) {
+    writeUpdates['guests.$.address_source'] = 'ocr';
+  }
+
+  // Document type + R2 keys + metadata OCR (sempre scritti, sono di sistema)
+  writeUpdates['guests.$.document_type'] = documentType;
+  writeUpdates['guests.$.r2_front_key']  = frontKey;
+  if (backKey) writeUpdates['guests.$.r2_back_key'] = backKey;
+  writeUpdates['guests.$.ocr_confidence_overall'] = typeof extracted.confidence === 'number'
+    ? extracted.confidence : null;
+  writeUpdates['guests.$.ocr_warnings'] = Array.isArray(extracted.warnings)
+    ? extracted.warnings : [];
+
+  const sessionsCol = await getCollection('checkin_sessions');
+  try {
+    await sessionsCol.updateOne(
+      { _id: s._id, 'guests.slot': slotNum },
+      { $set: { ...writeUpdates, updated_at: new Date().toISOString() } }
+    );
+  } catch (dbErr) {
+    console.error('[checkin/guest/ocr] MongoDB update failed:', dbErr.message);
+    // Foto già su R2 → meglio non rollback (compliance > storage cost)
+    return res.status(500).json({ ok: false, error: 'db_update_failed', detail: dbErr.message });
+  }
+
+  // ── 9. Risposta al frontend ───────────────────────────────────
+  console.log(`[checkin/guest/ocr] ${s._id} guest ${slotNum} ${documentType} ok | written: ${written.join(',')} | CF verified: ${taxCodeVerified}`);
+
+  res.json({
+    ok: true,
+    extracted,                                    // dati grezzi OCR (per UX conferma)
+    written,                                      // campi effettivamente scritti
+    skipped,                                      // campi non sovrascritti (input manuale)
+    tax_code_verified: taxCodeVerified,
+    ocr_confidence: extracted.confidence || null,
+    ocr_warnings: extracted.warnings || [],
+  });
+});
+
 // POST /api/checkin/guest/submit
 // Body: { token, slot }
 // Marca il guest come "submitted" (validato dall'ospite)
