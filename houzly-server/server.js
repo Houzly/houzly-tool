@@ -1468,6 +1468,90 @@ async function recalculateSessionStatus(sessionId) {
   await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
 }
 // ══════════════════════════════════════════════════════════════════
+// ── Check-in: Admin routes (PIN-protected) ────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/checkin/sessions
+// Query opzionali: ?status=pending&from=2026-05-01&to=2026-12-31&property_id=2846008
+// Restituisce lista delle session ordinate per data di arrivo (max 500)
+app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
+  try {
+    const { status, from, to, property_id } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (property_id) filter['property.smoobu_id'] = property_id;
+    if (from || to) {
+      filter['booking.arrival'] = {};
+      if (from) filter['booking.arrival'].$gte = from;
+      if (to) filter['booking.arrival'].$lte = to;
+    }
+    const col = await getCollection('checkin_sessions');
+    const list = await col.find(filter).sort({ 'booking.arrival': 1 }).limit(500).toArray();
+    res.json({ ok: true, sessions: list });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/checkin/sessions/:id
+// Restituisce dettaglio completo di una session.
+// Aggiunge signed URL temporanei (1h) per foto documenti su R2.
+app.get('/api/checkin/sessions/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const session = await col.findOne({ _id: req.params.id });
+    if (!session) return res.status(404).json({ ok: false, error: 'not_found' });
+
+    // Genera signed URL per ogni foto caricata (validità 1 ora)
+    const guestsWithUrls = await Promise.all(session.guests.map(async g => {
+      const urls = {};
+      if (g.r2_front_key) urls.front_url = await r2GetSignedUrl(g.r2_front_key, 3600);
+      if (g.r2_back_key) urls.back_url = await r2GetSignedUrl(g.r2_back_key, 3600);
+      return { ...g, ...urls };
+    }));
+
+    res.json({ ok: true, session: { ...session, guests: guestsWithUrls } });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// POST /api/checkin/sessions/:id/resend
+// Rigenera token JWT e reinvia il messaggio iniziale (chat Smoobu o email).
+// Utile se: token scaduto, ospite ha perso il link, vuoi forzare un reinvio.
+app.post('/api/checkin/sessions/:id/resend', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const session = await col.findOne({ _id: req.params.id });
+    if (!session) return res.status(404).json({ ok: false, error: 'not_found' });
+
+    const tokenData = generateCheckinToken(session.smoobu_booking_id, session.booking.departure);
+    await col.updateOne(
+      { _id: session._id },
+      { $set: { access_token: tokenData.token, token_expires_at: tokenData.expiresAt, updated_at: new Date().toISOString() } }
+    );
+
+    const fresh = await col.findOne({ _id: session._id });
+    await dispatchInitialMessage(fresh);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// POST /api/checkin/sessions/:id/override-status
+// Body: { status, reason? }
+// Forza manualmente lo status di una session (uso admin per casi edge).
+app.post('/api/checkin/sessions/:id/override-status', requireAdminAuth, async (req, res) => {
+  try {
+    const { status, reason } = req.body;
+    const validStatuses = ['pending', 'partial', 'complete', 'manual_required',
+      'excluded_block', 'excluded_internal', 'excluded_property_disabled',
+      'excluded_long_term', 'long_stay_review', 'needs_review', 'archived'];
+    if (!validStatuses.includes(status)) return res.status(400).json({ ok: false, error: 'invalid_status' });
+    const col = await getCollection('checkin_sessions');
+    await col.updateOne(
+      { _id: req.params.id },
+      { $set: { status, exclusion_reason: reason || null, updated_at: new Date().toISOString() } }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ══════════════════════════════════════════════════════════════════
 // ── Onboarding: Seed catalog (admin) ──────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
