@@ -457,72 +457,94 @@ app.post('/api/smoobu/sync', async (req, res) => {
   }
 });
 
-// ── Smoobu Webhook ────────────────────────────────────────────────
+// ── Smoobu Webhook (Cleaning + Check-in) ─────────────────────────
 app.post('/api/smoobu/webhook', async (req, res) => {
   try {
     const event = req.body;
     console.log('[Smoobu Webhook]', event.action, event.data?.id);
 
+    const b = event.data || event;
+    const action = event.action || '';
+    const bookingId = String(b.id || b.reservationId || '');
+
+    // ──────────────────────────────────────────────────────────────
+    // PARTE 1: CLEANING (logica esistente preservata 1:1)
+    // ──────────────────────────────────────────────────────────────
     const col = await getCollection('db');
     const doc = await col.findOne({ _id: 'main' });
-    if (!doc) return res.json({ ok: false, error: 'db_not_found' });
+    if (doc) {
+      const { _id, ...db } = doc;
+      if (!db.cleaning) db.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
 
-    const { _id, ...db } = doc;
-    if (!db.cleaning) db.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
+      if (b['is-blocked-booking'] !== true) {
+        const checkout     = (b.departure || '').split('T')[0];
+        const checkin      = (b.arrival   || '').split('T')[0];
+        const checkoutTime = b['check-out'] || '10:00';
+        const checkinTime  = b['check-in']  || '15:00';
+        const propName     = (b.apartment?.name || b.apartmentName || 'N/D');
+        const propId       = b.apartment?.id ? String(b.apartment.id) : null;
 
-    const b = event.data || event;
-    if (b['is-blocked-booking'] === true) return res.json({ ok: true, skipped: 'blocked' });
-
-    const bookingId    = String(b.id || b.reservationId || '');
-    const checkout     = (b.departure || '').split('T')[0];
-    const checkin      = (b.arrival   || '').split('T')[0];
-    const checkoutTime = b['check-out'] || '10:00';
-    const checkinTime  = b['check-in']  || '15:00';
-    const propName     = (b.apartment?.name || b.apartmentName || 'N/D');
-    const propId       = b.apartment?.id ? String(b.apartment.id) : null;
-    const action       = event.action || '';
-
-    if (action === 'cancelledReservation') {
-      db.cleaning.tasks = db.cleaning.tasks.filter(t => t.smoobu_id !== bookingId);
-    } else {
-      const existsIdx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
-      if (existsIdx >= 0) {
-        db.cleaning.tasks[existsIdx].date          = checkout;
-        db.cleaning.tasks[existsIdx].checkin_date  = checkin;
-        db.cleaning.tasks[existsIdx].prop_name     = propName;
-        db.cleaning.tasks[existsIdx].checkout_time = checkoutTime;
-        db.cleaning.tasks[existsIdx].checkin_time  = checkinTime;
-      } else {
-        const defaultCL = (db.cleaning.defaultChecklist || []).map((item, i) => ({
-          label: typeof item === 'string' ? item : (item.label || item.text || ''), done: false
-        }));
-        db.cleaning.tasks.push({
-          id:            `cl_${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
-          smoobu_id:     bookingId,
-          prop_name:     propName,
-          prop_id:       propId,
-          date:          checkout,
-          checkin_date:  checkin,
-          checkout_time: checkoutTime,
-          checkin_time:  checkinTime,
-          cleaner:       '',
-          notes:         '',
-          checklist:     defaultCL,
-          status:        'todo',
-          created:       new Date().toISOString()
-        });
+        if (action === 'cancelledReservation') {
+          db.cleaning.tasks = db.cleaning.tasks.filter(t => t.smoobu_id !== bookingId);
+        } else {
+          const existsIdx = db.cleaning.tasks.findIndex(t => t.smoobu_id === bookingId);
+          if (existsIdx >= 0) {
+            db.cleaning.tasks[existsIdx].date          = checkout;
+            db.cleaning.tasks[existsIdx].checkin_date  = checkin;
+            db.cleaning.tasks[existsIdx].prop_name     = propName;
+            db.cleaning.tasks[existsIdx].checkout_time = checkoutTime;
+            db.cleaning.tasks[existsIdx].checkin_time  = checkinTime;
+          } else {
+            const defaultCL = (db.cleaning.defaultChecklist || []).map((item) => ({
+              label: typeof item === 'string' ? item : (item.label || item.text || ''), done: false
+            }));
+            db.cleaning.tasks.push({
+              id:            `cl_${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
+              smoobu_id:     bookingId,
+              prop_name:     propName,
+              prop_id:       propId,
+              date:          checkout,
+              checkin_date:  checkin,
+              checkout_time: checkoutTime,
+              checkin_time:  checkinTime,
+              cleaner:       '',
+              notes:         '',
+              checklist:     defaultCL,
+              status:        'todo',
+              created:       new Date().toISOString()
+            });
+          }
+        }
+        db.cleaning.lastSync = new Date().toISOString();
+        await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
       }
     }
 
-    db.cleaning.lastSync = new Date().toISOString();
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
-    res.json({ ok: true });
+    // ──────────────────────────────────────────────────────────────
+    // PARTE 2: CHECK-IN (nuova logica)
+    // ──────────────────────────────────────────────────────────────
+    // I blocchi puri (manutenzione/chiusura) saltano completamente il check-in
+    if (b['is-blocked-booking'] === true) {
+      return res.json({ ok: true, skipped: 'blocked_booking' });
+    }
+
+    // Wrap in try separato per evitare che errori nel check-in
+    // rompano la risposta del webhook (cleaning è già stato salvato sopra)
+    let checkinResult = null;
+    try {
+      checkinResult = await upsertCheckinSession(b, action);
+      console.log('[Check-in]', bookingId, '→', checkinResult.action, checkinResult.status || '');
+    } catch (checkinError) {
+      console.error('[Check-in] error:', checkinError.message);
+      checkinResult = { ok: false, error: checkinError.message };
+    }
+
+    res.json({ ok: true, checkin: checkinResult });
   } catch (e) {
     console.error('[Smoobu Webhook] error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 // ══════════════════════════════════════════════════════════════════
 // ── Smoobu Booking Engine (houzly.it website proxy) ──────────────
 //
