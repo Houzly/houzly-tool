@@ -1051,6 +1051,239 @@ app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════
+// ── Check-in: Booking evaluation ──────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+async function evaluateBooking(booking) {
+  const arrival = (booking.arrival || '').split('T')[0];
+  const departure = (booking.departure || '').split('T')[0];
+  const nights = calculateNights(arrival, departure);
+
+  // Regola 1: durata > 540 giorni → locazione ordinaria, fuori perimetro
+  if (nights > 540) {
+    return { status: 'excluded_long_term', reason: `Duration ${nights} nights exceeds 540`, nights };
+  }
+
+  // Regola 2: durata > 30 giorni → locazione transitoria, decisione manuale
+  if (nights > 30) {
+    return { status: 'long_stay_review', reason: `Duration ${nights} nights > 30 (non-tourist lease)`, nights };
+  }
+
+  // Regola 3: nome ospite vuoto → blocco manutenzione/chiusura
+  const firstName = (booking['first-name'] || '').trim();
+  const lastName = (booking['last-name'] || '').trim();
+  if (!firstName && !lastName) {
+    return { status: 'excluded_block', reason: 'No guest name (maintenance/closure block)', nights };
+  }
+
+  // Regola 4: note contengono [INTERNAL] → cash off-the-books / familiari
+  const notice = (booking.notice || '').toLowerCase();
+  if (notice.includes('[internal]')) {
+    return { status: 'excluded_internal', reason: 'Marked as [INTERNAL] in Smoobu notice', nights };
+  }
+
+  // Regola 5: property disabilitata → onboarding incompleto o esclusa
+  const apartmentId = booking.apartment?.id ? String(booking.apartment.id) : null;
+  if (!apartmentId) {
+    return { status: 'needs_review', reason: 'Missing apartment ID', nights };
+  }
+  const propCol = await getCollection('checkin_properties_config');
+  const propConfig = await propCol.findOne({ _id: `prop_${apartmentId}` });
+  if (!propConfig) {
+    return { status: 'needs_review', reason: 'Property not configured (run properties/sync)', nights };
+  }
+  if (!propConfig.checkin_required) {
+    return { status: 'excluded_property_disabled', reason: 'Property has checkin_required=false', nights };
+  }
+
+  // Regola 6: safety net
+  const guestEmail = (booking.email || '').toLowerCase();
+  const fullName = `${firstName} ${lastName}`.toLowerCase();
+  const suspiciousKeywords = ['maintenance', 'manutenzione', 'blocco', 'chiusura', 'owner stay', 'test', 'houzly', 'carella', 'ruberti'];
+  const internalEmails = []; // aggiungi qui tue email personali se vuoi protezione
+  const hasSuspiciousName = suspiciousKeywords.some(k => fullName.includes(k));
+  const hasInternalEmail = internalEmails.includes(guestEmail);
+  if (hasSuspiciousName || hasInternalEmail) {
+    return { status: 'needs_review', reason: 'Suspicious name or internal email (possible forgotten [INTERNAL] marker)', nights };
+  }
+
+  // Regola 7: tutto ok → flusso normale
+  return { status: 'pending', reason: null, nights, propConfig };
+}
+
+async function upsertCheckinSession(booking, action = 'newReservation') {
+  const bookingId = String(booking.id || booking.reservationId || '');
+  if (!bookingId) return { ok: false, error: 'missing_booking_id' };
+
+  const sessionsCol = await getCollection('checkin_sessions');
+  const sessionId = `booking_${bookingId}`;
+  const existing = await sessionsCol.findOne({ _id: sessionId });
+
+  // Cancellazione
+  if (action === 'cancelledReservation') {
+    if (existing) {
+      await sessionsCol.deleteOne({ _id: sessionId });
+    }
+    return { ok: true, action: 'deleted' };
+  }
+
+  // Valuta stato
+  const evaluation = await evaluateBooking(booking);
+
+  // Costruisci snapshot booking
+  const arrival = (booking.arrival || '').split('T')[0];
+  const departure = (booking.departure || '').split('T')[0];
+  const firstName = (booking['first-name'] || '').trim();
+  const lastName = (booking['last-name'] || '').trim();
+  const adults = parseInt(booking.adults) || 1;
+  const children = parseInt(booking.children) || 0;
+  const totalGuests = adults + children;
+
+  const apartmentId = booking.apartment?.id ? String(booking.apartment.id) : null;
+  const propertyName = booking.apartment?.name || booking.apartmentName || 'N/D';
+
+  const bookingSnapshot = {
+    channel_id: booking.channel?.id || null,
+    channel_name: booking.channel?.name || null,
+    primary_guest_name: `${firstName} ${lastName}`.trim() || null,
+    primary_guest_email: booking.email || null,
+    language: booking.language || null,
+    arrival,
+    departure,
+    nights: evaluation.nights,
+    adults,
+    children,
+    total_guests_expected: totalGuests,
+    price_total: parseFloat(booking.price) || 0,
+    notice: booking.notice || '',
+  };
+
+  const propertySnapshot = {
+    smoobu_id: apartmentId,
+    name: propertyName,
+    prop_code: evaluation.propConfig?.prop_code || null,
+    region: evaluation.propConfig?.region || null,
+    city: evaluation.propConfig?.city || null,
+  };
+
+  // Token + expiry (solo per stati che richiedono link guest)
+  let tokenData = null;
+  if (evaluation.status === 'pending' && departure) {
+    tokenData = generateCheckinToken(bookingId, departure);
+  }
+
+  if (existing) {
+    // Update: preserva status workflow e guests compilati, aggiorna solo snapshot
+    const updates = {
+      property: propertySnapshot,
+      booking: bookingSnapshot,
+      updated_at: new Date().toISOString(),
+    };
+    // Se lo status attuale era excluded/review e la ri-valutazione dà pending, riattiva
+    if (existing.status.startsWith('excluded_') && evaluation.status === 'pending') {
+      updates.status = 'pending';
+      updates.exclusion_reason = null;
+      if (tokenData) {
+        updates.access_token = tokenData.token;
+        updates.token_expires_at = tokenData.expiresAt;
+      }
+    }
+    await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
+    return { ok: true, action: 'updated', status: existing.status };
+  }
+
+  // Insert nuovo
+  const newSession = {
+    _id: sessionId,
+    smoobu_booking_id: bookingId,
+    property: propertySnapshot,
+    booking: bookingSnapshot,
+    status: evaluation.status,
+    exclusion_reason: evaluation.reason,
+    access_token: tokenData?.token || null,
+    token_expires_at: tokenData?.expiresAt || null,
+    guests: Array.from({ length: totalGuests }, (_, i) => ({
+      slot: i + 1,
+      first_name: i === 0 ? firstName || null : null,
+      last_name: i === 0 ? lastName || null : null,
+      date_of_birth: null,
+      place_of_birth: null,
+      country_of_residence: null,
+      nationality: null,
+      document_type: null,
+      document_number: null,
+      document_issue_country: null,
+      document_issue_date: null,
+      document_expiry_date: null,
+      is_minor: false,
+      r2_front_key: null,
+      r2_back_key: null,
+      submitted_at: null,
+      ocr_confidence: null,
+      privacy_consent: false,
+      privacy_consent_at: null,
+    })),
+    messages_sent: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    completed_at: null,
+    archived_at: null,
+  };
+  await sessionsCol.insertOne(newSession);
+
+  // Se pending, invia subito il messaggio iniziale
+  if (evaluation.status === 'pending' && tokenData) {
+    await dispatchInitialMessage(newSession);
+  }
+
+  return { ok: true, action: 'created', status: evaluation.status };
+}
+
+async function dispatchInitialMessage(session) {
+  const checkinLink = `${APP_BASE_URL}/checkin.html?t=${session.access_token}`;
+  const messageText = buildInitialMessage({
+    guestFirstName: session.booking.primary_guest_name?.split(' ')[0] || 'guest',
+    propertyName: session.property.name,
+    checkinDate: session.booking.arrival,
+    checkoutDate: session.booking.departure,
+    checkinLink,
+    guestLang: session.booking.language,
+  });
+
+  const isDirectBooking = session.booking.channel_id === SMOOBU_CHANNEL_DIRECT;
+  let result;
+  let channel;
+
+  if (isDirectBooking && session.booking.primary_guest_email) {
+    // Direct booking → email via Resend
+    const html = messageText.replace(/\n/g, '<br>');
+    result = await sendEmailFallback(session.booking.primary_guest_email, 'Houzly Online Check-in', html);
+    channel = 'email';
+  } else {
+    // OTA → chat Smoobu (rimbalza su Airbnb/Booking nativi)
+    result = await sendSmoobuChatMessage(session.smoobu_booking_id, messageText);
+    channel = 'smoobu_chat';
+  }
+
+  const sessionsCol = await getCollection('checkin_sessions');
+  await sessionsCol.updateOne(
+    { _id: session._id },
+    {
+      $push: {
+        messages_sent: {
+          type: 'initial',
+          channel,
+          sent_at: new Date().toISOString(),
+          success: result.success,
+          error: result.error || null,
+        },
+      },
+    }
+  );
+
+  return result;
+}
+// ══════════════════════════════════════════════════════════════════
 // ── Onboarding: Seed catalog (admin) ──────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
