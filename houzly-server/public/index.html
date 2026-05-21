@@ -630,7 +630,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v31 · 06/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v32 · 13/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3838,11 +3838,15 @@ function genRicevuta(bid, dest){
     +'<div class="doc-ref">&#128197; <strong>'+nomeProp(b.proprieta_id)+'</strong> &middot; '+dateIt(b.checkin)+' &rarr; '+dateIt(b.checkout)+' &middot; '+b.notti+' notti &middot; '+b.n_ospiti+' ospiti &middot; Rif. '+b.canale+(b.ota_num?' '+b.ota_num:'')+'</div>'
     +'<table class="dtbl"><thead><tr><th>Descrizione</th><th class="r">Imponibile</th><th class="r">IVA</th><th class="r">Totale</th></tr></thead>'
     +'<tbody>'
-    +'<tr><td>Canone di locazione turistica &mdash; '+nomeProp(b.proprieta_id)+'<br><span style="font-size:11px;color:#888">Periodo '+dateIt(b.checkin)+' / '+dateIt(b.checkout)+' ('+b.notti+' notti)</span></td>'
-    +'<td class="r">'+eur(c.canone)+'</td>'
-    +'<td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N4</span></td>'
-    +'<td class="r"><strong>'+eur(c.canone)+'</strong></td></tr>'
-    +(c.pulizie_owner&&c.rimborso_pulizie>0 ? '<tr><td>Rimborso spese pulizia &mdash; '+nomeProp(b.proprieta_id)+'</td><td class="r">'+eur(c.rimborso_pulizie)+'</td><td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N4</span></td><td class="r"><strong>'+eur(c.rimborso_pulizie)+'</strong></td></tr>' : '')
+    // Importo riga canone: se pulizie_owner, già aggregato col rimborso pulizie
+    // (la voce separata "Rimborso spese pulizia" viene omessa apposta)
+    +(function(){
+      var importoCanone = (c.pulizie_owner && c.rimborso_pulizie>0) ? c.canone_totale : c.canone;
+      return '<tr><td>Canone di locazione turistica &mdash; '+nomeProp(b.proprieta_id)+'<br><span style="font-size:11px;color:#888">Periodo '+dateIt(b.checkin)+' / '+dateIt(b.checkout)+' ('+b.notti+' notti)</span></td>'
+        +'<td class="r">'+eur(importoCanone)+'</td>'
+        +'<td class="r"><span class="badge-iva" style="background:#f0fff8;color:#1a6b2a;border-color:#90c890">0% N4</span></td>'
+        +'<td class="r"><strong>'+eur(importoCanone)+'</strong></td></tr>';
+    })()
     +'<tr class="esente-row"><td colspan="2" style="text-align:right;font-style:italic">Esente IVA &mdash; Art. 10 DPR 633/72 (locazioni esenti)</td><td class="r">&#8364; 0,00</td><td class="r">'+(c.pulizie_owner&&c.rimborso_pulizie>0?eur(c.canone_totale):eur(c.canone))+'</td></tr>'
     +'</tbody></table>'
     +'<div class="doc-total"><div class="doc-total-box">'
