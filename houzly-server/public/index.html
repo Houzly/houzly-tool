@@ -426,6 +426,49 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
   /* Action bar in section-header su mobile: pulsanti che vanno a capo */
   .section-header .btn{flex:0 1 auto}
+
+  /* ===== WAVE 4: layout filtri + contenuto mobile ===== */
+  /* Report Mensile, Documenti Fiscali: grid 260px+1fr → singola colonna */
+  .layout-filter-content{grid-template-columns:1fr!important}
+  .layout-filter-sidebar{padding:12px!important}
+  .layout-filter-sidebar .card-title{font-size:12px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .layout-filter-sidebar .card-title::after{content:'▾';font-size:12px;color:var(--text-light);transition:transform .15s}
+  .layout-filter-sidebar.collapsed .card-title::after{transform:rotate(-90deg)}
+  .layout-filter-sidebar.collapsed > div:not(.card-title){display:none}
+  .layout-filter-sidebar .field label{font-size:11px}
+
+  /* Pre-anteprima report: tabelle di scorporo in scroll orizzontale */
+  #rpt-preview-area .rpt-table-wrap,
+  #rpt-preview-area table{font-size:11px}
+  #rpt-preview-area .rpt-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Documenti — riga prenotazione: meta a wrap su mobile */
+  .doc-row-meta{flex-wrap:wrap!important;gap:6px!important}
+  .doc-row-meta span{font-size:10.5px!important}
+  .doc-row-title{font-size:13px!important}
+  .doc-row{padding:10px 12px!important}
+
+  /* Documenti — card grid documenti su mobile */
+  #doc-section .doc-cards{grid-template-columns:1fr!important;display:grid!important}
+  #doc-section .scorporo-box{padding:14px!important}
+  #doc-section .scorporo-box h4{font-size:13px}
+  #doc-section .sc-row{font-size:12px}
+  #doc-section .doc-card{padding:14px!important}
+  #doc-section .doc-name{font-size:13px}
+  #doc-section .doc-desc{font-size:11px}
+
+  /* Ricevute — stats strip a 1 colonna sotto 480 fatto sotto */
+  #page-ricevute .stat-card{padding:12px}
+
+  /* Cleaning Manager — calendario settimanale: scroll H per i 7 giorni */
+  .cl-calendar{grid-template-columns:repeat(7,minmax(140px,1fr))!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+  .cl-day-col{min-height:90px}
+  .cl-toolbar{gap:8px}
+  .cl-week-label{font-size:13px!important;min-width:160px!important}
+  .cl-stats{gap:6px}
+  /* Filtro cleaner pillole: scroll H invece di wrap */
+  #cl-cleaner-filter{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 4px}
+  #cl-cleaner-filter > *{flex-shrink:0}
 }
 
 /* Mobile stretto: aggiustamenti aggiuntivi sotto 480px */
@@ -630,7 +673,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v32 · 13/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v33 · 22/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -827,8 +870,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <button class="btn btn-primary" onclick="printReport()">&#128424; Scarica PDF</button>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
-    <div class="card">
+  <div class="layout-filter-content" style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
+    <div class="card layout-filter-sidebar">
       <div class="card-title">Filtri</div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="field"><label>Gruppo</label><select id="rpt-group-sel" onchange="onRptGroupSel()"><option value="">-- Nessun gruppo --</option></select></div>
@@ -850,8 +893,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <!-- DOCUMENTI -->
 <div id="page-documenti" class="page">
   <div class="section-header"><div class="section-title">Documenti Fiscali</div></div>
-  <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
-    <div class="card">
+  <div class="layout-filter-content" style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
+    <div class="card layout-filter-sidebar">
       <div class="card-title">Filtri</div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="field"><label>Gruppo</label><select id="doc-group-sel" onchange="onDocGroupSel()"><option value="">-- Tutti i gruppi --</option></select></div>
@@ -1407,7 +1450,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <input type="text" placeholder="&#128269; Cerca cliente, n°..." oninput="filterRicevute(this.value)"
         style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:12.5px;color:var(--text);outline:none;width:220px">
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap desktop-only">
       <table id="ric-table">
         <thead><tr>
           <th>N°</th><th>Data</th><th>Cliente</th><th>Descrizione</th>
@@ -1420,6 +1463,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         </tbody>
       </table>
     </div>
+    <div class="mobile-only mc-list" id="mclist-ricevute"></div>
   </div>
 </div>
 
@@ -4934,6 +4978,13 @@ function appInit(){
   wireDashReports();
   if(typeof renderArchivioRicevute==='function')renderArchivioRicevute();
   if(typeof updateRicStats==='function')updateRicStats();
+  // Wave 4 mobile: filtri sidebar collassabili (Report + Documenti)
+  document.querySelectorAll('.layout-filter-sidebar .card-title').forEach(function(t){
+    t.addEventListener('click',function(){
+      if(window.innerWidth>860)return;
+      this.closest('.layout-filter-sidebar').classList.toggle('collapsed');
+    });
+  });
 }
 // Check auth on startup
 (async function(){
@@ -5164,12 +5215,14 @@ function renderArchivioRicevute(filter) {
   arr = arr.slice().reverse(); // più recenti prima
 
   var tbody = document.getElementById('ric-tbody');
+  var mclist = document.getElementById('mclist-ricevute');
   if (!arr.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:28px">'+
-      (filter ? 'Nessun risultato per "'+filter+'"' : 'Nessuna ricevuta. Clicca <strong>+ Nuova Ricevuta</strong> per iniziare.')+
-      '</td></tr>';
+    var emptyMsg = filter ? 'Nessun risultato per "'+filter+'"' : 'Nessuna ricevuta. Clicca <strong>+ Nuova Ricevuta</strong> per iniziare.';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:28px">'+emptyMsg+'</td></tr>';
+    if(mclist) mclist.innerHTML = '<div class="mc-empty" style="text-align:center;color:var(--text-light);padding:28px;font-size:13px">'+emptyMsg+'</div>';
     return;
   }
+  // Desktop table
   tbody.innerHTML = arr.map(function(r){
     var dataFmt = r.data ? new Date(r.data).toLocaleDateString('it-IT') : '—';
     return '<tr>'+
@@ -5185,6 +5238,26 @@ function renderArchivioRicevute(filter) {
       '</div></td>'+
     '</tr>';
   }).join('');
+  // Mobile card stack
+  if(mclist){
+    mclist.innerHTML = arr.map(function(r){
+      var dataFmt = r.data ? new Date(r.data).toLocaleDateString('it-IT') : '—';
+      var descr = r.causale || (r.righe[0] && r.righe[0].descr) || '—';
+      return '<div class="mc-card">'+
+        '<div class="mc-head"><span class="mc-title">'+escHtml(r.cliente.nome)+'</span><span class="mc-amount">'+fmtEur(r.totale)+'</span></div>'+
+        '<div class="mc-meta">'+
+          '<span class="mc-tag" style="font-weight:700;color:var(--blue)">'+r.numero+'</span>'+
+          '<span class="mc-tag">'+dataFmt+'</span>'+
+        '</div>'+
+        '<div class="mc-desc" style="font-size:12px;color:var(--text-light);margin-top:6px;line-height:1.35">'+escHtml(descr)+'</div>'+
+        '<div class="mc-actions" style="display:flex;gap:6px;margin-top:10px">'+
+          '<button class="btn btn-sm btn-outline" onclick="openPreviewRicevuta('+r.id+')" style="flex:1">&#128065; PDF</button>'+
+          '<button class="btn btn-sm btn-ghost" onclick="editRicevuta('+r.id+')" style="flex:0 0 auto">&#9998;</button>'+
+          '<button class="btn btn-sm btn-danger" onclick="deleteRicevuta('+r.id+')" style="flex:0 0 auto">&#128465;</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
 }
 
 function filterRicevute(v) { renderArchivioRicevute(v); }
