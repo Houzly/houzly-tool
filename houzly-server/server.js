@@ -451,8 +451,6 @@ app.post('/api/smoobu/sync', async (req, res) => {
     const toDate   = new Date(); toDate.setMonth(toDate.getMonth() + months);
     const fromISO  = fromDate.toISOString().split('T')[0];
     const toISO    = toDate.toISOString().split('T')[0];
-    const todayISO = new Date().toISOString().split('T')[0];
-
     // Scarica tutte le pagine da Smoobu
     let allReservations = [];
     let page = 1;
