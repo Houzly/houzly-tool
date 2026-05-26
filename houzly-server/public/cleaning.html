@@ -790,6 +790,16 @@ select.field-input {
         <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Finestra futura da importare da Smoobu</div>
       </div>
 
+      <!-- Pulitrici -->
+      <div class="field-group">
+        <label class="field-label">👤 Pulitrici</label>
+        <div class="checklist-wrap" id="s-cleaners-wrap"></div>
+        <div class="cl-add-row" style="margin-top:10px">
+          <input type="text" class="cl-add-input" id="s-cleaner-input" placeholder="Nome pulitrice..." onkeydown="if(event.key==='Enter')sAddCleaner()">
+          <button class="cl-add-btn" onclick="sAddCleaner()">+</button>
+        </div>
+      </div>
+
       <!-- Default checklist -->
       <div class="field-group">
         <label class="field-label">✅ Checklist predefinita</label>
@@ -816,7 +826,7 @@ select.field-input {
 // ═══════════════════════════════
 const AUTH_KEY = 'houzly_auth_v2';
 const CLEANER_KEY = 'houzly_cleaner_v1'; // null = tutti (Daniele/Romeo), string = nome pulitrice
-const CLEANERS = ['Ana','Luana','Caterina','Linda','Patrizia'];
+// CLEANERS now loaded from DB (db.cleaning.cleaners array)
 const DOW = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const DOW_FULL = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -920,7 +930,7 @@ function showWhoAreYou() {
   let html = `<button class="way-btn tutti-btn" onclick="selectIdentity('tutti')"><span class="way-icon">👁</span> Tutti (Manager)</button>`;
   // Pulitrici
   const icons = ['🧹','🧼','✨','🫧','💧'];
-  CLEANERS.forEach((c, i) => {
+  getCleaners().forEach((c, i) => {
     html += `<button class="way-btn" onclick="selectIdentity('${c}')"><span class="way-icon">${icons[i]||'🧹'}</span> ${c}</button>`;
   });
   wrap.innerHTML = html;
@@ -973,6 +983,9 @@ function dbDefaults() {
   if (c.apiKey === undefined) c.apiKey = '';
   if (!c.syncMonths)  c.syncMonths = '3';
   if (!c.lastSync)    c.lastSync = null;
+  if (!c.cleaners || !c.cleaners.length) {
+    c.cleaners = ['Ana','Luana','Caterina','Linda','Patrizia'];
+  }
   if (!c.defaultChecklist || !c.defaultChecklist.length) {
     c.defaultChecklist = [
       '🔍 Check Danni Proprietà',
@@ -992,6 +1005,7 @@ function dbDefaults() {
 }
 
 function clDB() { dbDefaults(); return DB.cleaning; }
+function getCleaners() { return clDB().cleaners || []; }
 
 async function syncSmoobu() {
   const btn = document.getElementById('sync-btn');
@@ -1063,7 +1077,7 @@ function renderCleanerChips() {
     // Manager: mostra tutti i filtri + chip identità
     let html = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
     html += `<span class="cleaner-chip tutti ${currentCleaner===null?'active':''}" onclick="selectCleaner(null)">👁 Tutti</span>`;
-    CLEANERS.forEach(c => {
+    getCleaners().forEach(c => {
       html += `<span class="cleaner-chip ${currentCleaner===c?'active':''}" data-cleaner="${c}" onclick="selectCleaner('${c}')">${c}</span>`;
     });
     html += `<span class="cleaner-chip" style="margin-left:auto;font-size:11px;opacity:0.6" onclick="changeIdentity()">cambia ▸</span>`;
@@ -1425,7 +1439,7 @@ function renderCleanerSelect(selected) {
   const sel = !selected ? [] : Array.isArray(selected) ? selected : [selected];
   const wrap = document.getElementById('cleaner-select');
   const noneChip = `<span class="cs-chip cs-none ${sel.length===0?'selected':''}" data-name="" onclick="toggleModalCleaner(null)">✕ Nessuno</span>`;
-  const cleanerChips = CLEANERS.map(c =>
+  const cleanerChips = getCleaners().map(c =>
     `<span class="cs-chip ${sel.includes(c)?'selected':''}" data-name="${c}" onclick="toggleModalCleaner('${c}')">${c}</span>`
   ).join('');
   wrap.innerHTML = noneChip + cleanerChips;
@@ -1645,16 +1659,49 @@ async function toggleCleanerTaskDone() {
 //  SETTINGS
 // ═══════════════════════════════
 let sTempChecklist = [];
+let sTempCleaners = [];
 
 function openSettings() {
   const db = clDB();
   document.getElementById('s-apikey').value = db.apiKey || '';
   const sel = document.getElementById('s-syncmonths');
   sel.value = db.syncMonths || '3';
-  if (!sel.value) sel.value = '3'; // fallback if stored value not in options
+  if (!sel.value) sel.value = '3';
   sTempChecklist = (db.defaultChecklist || []).slice();
+  sTempCleaners = (db.cleaners || []).slice();
   renderSettingsChecklist();
+  renderSettingsCleaners();
   document.getElementById('settings-modal').classList.add('open');
+}
+
+function renderSettingsCleaners() {
+  const wrap = document.getElementById('s-cleaners-wrap');
+  if (!sTempCleaners.length) {
+    wrap.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--text-dim)">Nessuna pulitrice.</div>';
+    return;
+  }
+  wrap.innerHTML = sTempCleaners.map((name, i) =>
+    `<div class="cl-item">
+      <span class="cl-item-label" style="cursor:default">${name}</span>
+      <span class="cl-item-del" onclick="sRemoveCleaner(${i})">×</span>
+    </div>`
+  ).join('');
+}
+
+function sAddCleaner() {
+  const inp = document.getElementById('s-cleaner-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (sTempCleaners.includes(val)) { toast('Pulitrice già presente'); return; }
+  sTempCleaners.push(val);
+  inp.value = '';
+  renderSettingsCleaners();
+  inp.focus();
+}
+
+function sRemoveCleaner(i) {
+  sTempCleaners.splice(i, 1);
+  renderSettingsCleaners();
 }
 
 function closeSettings() {
@@ -1700,6 +1747,7 @@ async function saveSettings(andSync = false) {
   const syncMonths = document.getElementById('s-syncmonths').value;
   db.apiKey = apiKey;
   db.syncMonths = syncMonths;
+  db.cleaners = sTempCleaners.slice();
   db.defaultChecklist = sTempChecklist.slice();
   await saveDB();
   closeSettings();
