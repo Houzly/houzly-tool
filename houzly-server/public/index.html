@@ -736,7 +736,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v34 · 29/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v35 · 29/05</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1018,6 +1018,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <span class="adem-tab-label">Modello 770</span>
       <span class="adem-tab-due">31/10</span>
     </div>
+    <div class="adem-tab" data-tab="manuale" onclick="adempSwitchTab('manuale')">
+      <span class="adem-tab-icon">&#9998;</span>
+      <span class="adem-tab-label">Dati Manuali</span>
+    </div>
     <div class="adem-tab" data-tab="alert" onclick="adempSwitchTab('alert')">
       <span class="adem-tab-icon">&#9888;</span>
       <span class="adem-tab-label">Alert Mandanti</span>
@@ -1096,6 +1100,24 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </div>
     </div>
     <div id="adem-m770-content"></div>
+  </div>
+
+  <!-- Pannello: Dati Manuali (override calcolo automatico) -->
+  <div id="adem-pane-manuale" class="adem-pane">
+    <div class="card" style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #c4b5fd">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="font-size:22px">&#9998;</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:#5b21b6;margin-bottom:4px">Inserimento Manuale Dati Annuali</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Quando il dato calcolato automaticamente dalle prenotazioni non è disponibile (es. anno 2025 con dati incompleti perché caricato Houzly Tool a metà anno), inserisci qui i totali esatti come da CU già emessa. Questi valori <strong>sostituiscono</strong> il calcolo automatico per CU/DAC7/770 dell'anno selezionato. Lasciali vuoti per usare il calcolo automatico.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="ademImportCSVDialog()">&#8593; Import CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="ademExportTemplateCSV()">&#8595; Template CSV</button>
+        </div>
+      </div>
+    </div>
+    <div id="adem-manuale-content"></div>
   </div>
 
   <!-- Pannello: Alert Mandanti -->
@@ -1494,10 +1516,15 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Nome *</label><input type="text" id="pf-nome"></div>
         <div class="field"><label>Cognome *</label><input type="text" id="pf-cognome"></div>
         <div class="field form-full"><label>Codice Fiscale *</label><input type="text" id="pf-cf" style="text-transform:uppercase"></div>
-        <div class="field form-full"><label>Indirizzo</label><input type="text" id="pf-via"></div>
+        <div class="field"><label>Sesso <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><select id="pf-sesso"><option value="">—</option><option value="M">M</option><option value="F">F</option></select></div>
+        <div class="field"><label>Data nascita <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="date" id="pf-data-nascita"></div>
+        <div class="field"><label>Comune nascita <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="text" id="pf-comune-nascita" placeholder="es. Montevarchi"></div>
+        <div class="field"><label>Prov. nascita</label><input type="text" id="pf-prov-nascita" maxlength="2" placeholder="AR" style="text-transform:uppercase"></div>
+        <div class="field form-full"><label>Indirizzo residenza <span style="font-weight:400;color:var(--text-light);font-size:11px">— stringa libera, usata per intestazione documenti</span></label><input type="text" id="pf-via" placeholder="Via Roma 12"></div>
         <div class="field"><label>CAP</label><input type="text" id="pf-cap"></div>
-        <div class="field"><label>Comune</label><input type="text" id="pf-comune"></div>
-        <div class="field"><label>Provincia</label><input type="text" id="pf-prov" maxlength="2"></div>
+        <div class="field"><label>Comune residenza</label><input type="text" id="pf-comune"></div>
+        <div class="field"><label>Provincia</label><input type="text" id="pf-prov" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="field"><label>Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="text" id="pf-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
         <div class="field"><label>Email</label><input type="email" id="pf-email"></div>
         <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="pf-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
         <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="pf-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
@@ -1524,7 +1551,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
-      <div class="alert alert-info">Se l'immobile ha pi&ugrave; intestatari, aggiungi tutti i co-proprietari con la quota %. La somma deve essere 100%.</div>
+      <div class="alert alert-info" style="margin-bottom:12px"><strong>Dichiarazioni separate</strong> — Se l'immobile è cointestato, ogni intestatario riceve una propria CU/DAC7 per la sua quota. Compila i dati anagrafici di ciascun co-proprietario (CF obbligatorio, IBAN richiesto per DAC7). La somma delle quote % deve essere 100% (incluso il proprietario principale, conteggiato implicitamente).</div>
       <div id="coprop-list"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="addCoProp()">+ Aggiungi Co-Proprietario</button>
       <div id="coprop-total" style="margin-top:10px;font-size:12px;color:var(--text-light)"></div>
@@ -1555,7 +1582,21 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div class="field" style="margin:0"><label style="font-size:11px">Particella</label><input type="text" id="prop-cat-part" placeholder="456"></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Subalterno</label><input type="text" id="prop-cat-sub" placeholder="7"></div>
         </div>
-        <div class="field" style="margin:0"><label style="font-size:11px">Categoria catastale</label><input type="text" id="prop-cat-cat" placeholder="A/2, A/3, A/7..." style="max-width:140px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field" style="margin:0"><label style="font-size:11px">Categoria catastale</label><input type="text" id="prop-cat-cat" placeholder="A/2, A/3, A/7..."></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:10px">(es. L123)</span></label><input type="text" id="prop-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
+        </div>
+      </div>
+      <!-- Indirizzo strutturato per CU -->
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128205; Indirizzo strutturato <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(per CU — opzionale, integra il campo Indirizzo sopra)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1fr;gap:8px">
+          <div class="field" style="margin:0"><label style="font-size:11px">Tipologia</label><select id="prop-tipo-via"><option value="">—</option><option value="VIA">VIA</option><option value="PIAZZA">PIAZZA</option><option value="VIALE">VIALE</option><option value="CORSO">CORSO</option><option value="LARGO">LARGO</option><option value="STRADA">STRADA</option><option value="VICOLO">VICOLO</option><option value="LOC">LOCALITÀ</option><option value="ALTRO">ALTRO</option></select></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">Nome via/piazza</label><input type="text" id="prop-via-nome" placeholder="es. Cave"></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">N. civico</label><input type="text" id="prop-n-civico" placeholder="1638"></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">Scala</label><input type="text" id="prop-scala" placeholder="—"></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">Interno</label><input type="text" id="prop-interno" placeholder="—"></div>
+        </div>
       </div>
       <div class="field"><label>Payment Charge Booking % <span style="font-weight:400;color:var(--text-light)">(aggiunto alla commissione)</span></label><input type="number" id="prop-booking-fee" step="0.1" value="1.5" min="0" max="10"><div class="field-hint">Booking addebita una quota per pagamento (~1.5%). Viene sommata alla commissione OTA all'import.</div></div>
       <div class="toggle-row">
@@ -3258,6 +3299,7 @@ function openModalProprietario(){
   document.getElementById('mprop-title').textContent='Nuovo Proprietario';
   setTipo('persona_fisica');
   ['pf-nome','pf-cognome','pf-cf','pf-via','pf-cap','pf-comune','pf-prov','pf-email','pf-cin','pf-iban',
+   'pf-sesso','pf-data-nascita','pf-comune-nascita','pf-prov-nascita','pf-codice-comune',
    'az-rs','az-piva','az-cf','az-via','az-cap','az-comune','az-prov','az-sdi','az-email','az-email-comm','az-cin','az-iban']
     .forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
   document.getElementById('fisc-iva22').checked=false;
@@ -3285,17 +3327,74 @@ function renderCoprops(){
   var c=document.getElementById('coprop-list');
   if(!copropsTemp.length){c.innerHTML='<div style="color:var(--text-light);font-size:12px;padding:8px 0">Nessun co-proprietario.</div>';updateCopropTotal();return;}
   c.innerHTML=copropsTemp.map(function(cp,i){
-    return '<div class="coprop-row">'
-      +'<input type="text" value="'+cp.nome+'" placeholder="Nome Cognome" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:13px" oninput="copropsTemp['+i+'].nome=this.value">'
-      +'<input type="number" value="'+(cp.perc*100).toFixed(0)+'" min="0" max="100" step="1" placeholder="%" style="width:70px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:13px" oninput="copropsTemp['+i+'].perc=this.value/100;updateCopropTotal()">'
-      +'<span style="font-size:12px;color:var(--text-light)">%</span>'
-      +'<button class="btn btn-sm btn-danger" onclick="removeCoprop('+i+')">&#10005;</button>'
+    var displayName=(cp.cognome||'')+' '+(cp.nome||'');
+    displayName=displayName.trim()||'Co-proprietario '+(i+1);
+    var hasCF=!!cp.cf;
+    var hasIBAN=!!cp.iban;
+    var statusChip='';
+    if(hasCF && hasIBAN)statusChip='<span style="font-size:10px;color:#166534;background:#dcfce7;border:1px solid #86efac;padding:2px 7px;border-radius:8px;font-weight:600">✓ Completo</span>';
+    else if(!hasCF)statusChip='<span style="font-size:10px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:2px 7px;border-radius:8px;font-weight:600">⚠ Manca CF</span>';
+    else statusChip='<span style="font-size:10px;color:#92400e;background:#fef3c7;border:1px solid #fbbf24;padding:2px 7px;border-radius:8px;font-weight:600">⚠ Manca IBAN</span>';
+    var isExpanded=!!cp._expanded;
+    var caretIcon=isExpanded?'▼':'▶';
+    var html='<div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--surface)">'
+      // Riga header (sempre visibile)
+      +'<div style="display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer" onclick="toggleCoPropExpand('+i+')">'
+        +'<span style="font-size:11px;color:var(--text-light);min-width:14px">'+caretIcon+'</span>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:2px">'+escHtml(displayName)+'</div>'
+          +'<div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text-light)">'
+            +(cp.cf?'<span>CF '+escHtml(cp.cf)+'</span><span>•</span>':'')
+            +'<span>Quota: '+((+cp.perc||0)*100).toFixed(0)+'%</span>'
+            +'<span>•</span>'+statusChip
+          +'</div>'
+        +'</div>'
+        +'<input type="number" value="'+(((+cp.perc)||0)*100).toFixed(0)+'" min="0" max="100" step="1" placeholder="%" style="width:64px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:13px;text-align:center" oninput="copropsTemp['+i+'].perc=this.value/100;updateCopropTotal()" onclick="event.stopPropagation()">'
+        +'<span style="font-size:12px;color:var(--text-light)">%</span>'
+        +'<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();removeCoprop('+i+')" style="padding:4px 8px">&#10005;</button>'
       +'</div>';
+    if(isExpanded){
+      html+='<div style="border-top:1px solid var(--border);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Cognome *</label><input type="text" value="'+escAttr(cp.cognome||'')+'" oninput="copropsTemp['+i+'].cognome=this.value;updateCoPropName('+i+')" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Nome *</label><input type="text" value="'+escAttr(cp.nome||'')+'" oninput="copropsTemp['+i+'].nome=this.value;updateCoPropName('+i+')" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">Codice Fiscale *</label><input type="text" value="'+escAttr(cp.cf||'')+'" oninput="copropsTemp['+i+'].cf=this.value.toUpperCase()" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:monospace;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Sesso</label><select onchange="copropsTemp['+i+'].sesso=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"><option value="">—</option><option value="M"'+(cp.sesso==='M'?' selected':'')+'>M</option><option value="F"'+(cp.sesso==='F'?' selected':'')+'>F</option></select></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Data nascita</label><input type="date" value="'+escAttr(cp.data_nascita||'')+'" oninput="copropsTemp['+i+'].data_nascita=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Comune nascita</label><input type="text" value="'+escAttr(cp.comune_nascita||'')+'" oninput="copropsTemp['+i+'].comune_nascita=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Prov. nascita</label><input type="text" value="'+escAttr(cp.prov_nascita||'')+'" oninput="copropsTemp['+i+'].prov_nascita=this.value.toUpperCase()" maxlength="2" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
+        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">Indirizzo residenza</label><input type="text" value="'+escAttr(cp.via||'')+'" oninput="copropsTemp['+i+'].via=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">CAP</label><input type="text" value="'+escAttr(cp.cap||'')+'" oninput="copropsTemp['+i+'].cap=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Comune residenza</label><input type="text" value="'+escAttr(cp.comune||'')+'" oninput="copropsTemp['+i+'].comune=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Prov.</label><input type="text" value="'+escAttr(cp.provincia||'')+'" oninput="copropsTemp['+i+'].provincia=this.value.toUpperCase()" maxlength="2" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
+        +'<div class="field" style="margin:0"><label style="font-size:11px">Codice Comune cat.</label><input type="text" value="'+escAttr(cp.codice_comune||'')+'" oninput="copropsTemp['+i+'].codice_comune=this.value.toUpperCase()" maxlength="4" placeholder="L123" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
+        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">Email</label><input type="email" value="'+escAttr(cp.email||'')+'" oninput="copropsTemp['+i+'].email=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
+        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">IBAN <span style="color:var(--text-light);font-weight:400">(per DAC7)</span></label><input type="text" value="'+escAttr(cp.iban||'')+'" oninput="copropsTemp['+i+'].iban=this.value.toUpperCase().replace(/\\s+/g,\'\')" placeholder="IT00..." style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:monospace;font-size:12.5px;width:100%;text-transform:uppercase;letter-spacing:0.5px"></div>'
+      +'</div>';
+    }
+    html+='</div>';
+    return html;
   }).join('');
   updateCopropTotal();
 }
-function addCoProp(){copropsTemp.push({nome:'',perc:0});renderCoprops();}
-function removeCoprop(i){copropsTemp.splice(i,1);renderCoprops();}
+function toggleCoPropExpand(i){
+  if(!copropsTemp[i])return;
+  copropsTemp[i]._expanded=!copropsTemp[i]._expanded;
+  renderCoprops();
+}
+function updateCoPropName(i){
+  // Aggiorna solo l'header senza re-renderizzare il form (per non perdere focus)
+  // Trigger soft: aggiorna prossimo paint
+  // In realtà più semplice: lasciamo che il prossimo focus-out/save lo aggiorni
+}
+function addCoProp(){
+  copropsTemp.push({nome:'',cognome:'',cf:'',sesso:'',data_nascita:'',comune_nascita:'',prov_nascita:'',via:'',cap:'',comune:'',provincia:'',codice_comune:'',email:'',iban:'',perc:0,_expanded:true});
+  renderCoprops();
+}
+function removeCoprop(i){
+  if(!confirm('Rimuovere questo co-proprietario?'))return;
+  copropsTemp.splice(i,1);renderCoprops();
+}
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function updateCopropTotal(){
   var tot=copropsTemp.reduce(function(s,c){return s+(+c.perc||0);},0);
   var el=document.getElementById('coprop-total');
@@ -3305,17 +3404,33 @@ function updateCopropTotal(){
 
 function saveProprietario(){
   var editId=document.getElementById('btn-save-prop')?document.getElementById('btn-save-prop').getAttribute('data-edit-id'):null;
+  // I co-proprietari sono validi se hanno almeno cognome o nome
+  var copropsClean=copropsTemp.filter(function(c){
+    return (c.nome && c.nome.trim()) || (c.cognome && c.cognome.trim());
+  });
   var obj={id:editId||uid(),tipo:editingTipo,
     fisc_iva22:document.getElementById('fisc-iva22').checked,
     fisc_cedolare:document.getElementById('fisc-cedolare').checked,
     houzly_perc:+document.getElementById('fisc-houzly-perc').value||20,
-    coprops:copropsTemp.filter(function(c){return c.nome;})
+    coprops:copropsClean
   };
   var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
   if(editingTipo==='persona_fisica'){
     var nome=g('pf-nome'),cognome=g('pf-cognome'),cf=g('pf-cf');
     if(!nome||!cognome||!cf){toast('Compila Nome, Cognome e CF');return;}
-    Object.assign(obj,{nome:nome,cognome:cognome,cf:cf,via:g('pf-via'),cap:g('pf-cap'),comune:g('pf-comune'),provincia:g('pf-prov'),email:g('pf-email'),email_comm:'',cin:g('pf-cin').toUpperCase(),iban:g('pf-iban').toUpperCase().replace(/\s+/g,'')});
+    Object.assign(obj,{
+      nome:nome,cognome:cognome,cf:cf.toUpperCase(),
+      via:g('pf-via'),cap:g('pf-cap'),comune:g('pf-comune'),provincia:g('pf-prov').toUpperCase(),
+      email:g('pf-email'),email_comm:'',
+      cin:g('pf-cin').toUpperCase(),
+      iban:g('pf-iban').toUpperCase().replace(/\s+/g,''),
+      // Campi CU
+      sesso:g('pf-sesso'),
+      data_nascita:g('pf-data-nascita'),
+      comune_nascita:g('pf-comune-nascita'),
+      prov_nascita:g('pf-prov-nascita').toUpperCase(),
+      codice_comune:g('pf-codice-comune').toUpperCase()
+    });
   } else {
     var rs=g('az-rs'),piva=g('az-piva');
     if(!rs||!piva){toast('Compila Ragione Sociale e P.IVA');return;}
@@ -3340,7 +3455,27 @@ function editOwner(id){
   var p=DB.proprietari.find(function(x){return x.id===id;});
   if(!p)return;
   editingTipo=p.tipo;
-  copropsTemp=(p.coprops||[]).map(function(c){return{nome:c.nome,perc:c.perc};});
+  // Normalizzo coprops legacy {nome,perc} → struttura estesa
+  copropsTemp=(p.coprops||[]).map(function(c){
+    return {
+      nome:c.nome||'',
+      cognome:c.cognome||'',
+      cf:c.cf||'',
+      sesso:c.sesso||'',
+      data_nascita:c.data_nascita||'',
+      comune_nascita:c.comune_nascita||'',
+      prov_nascita:c.prov_nascita||'',
+      via:c.via||'',
+      cap:c.cap||'',
+      comune:c.comune||'',
+      provincia:c.provincia||'',
+      codice_comune:c.codice_comune||'',
+      email:c.email||'',
+      iban:c.iban||'',
+      perc:c.perc||0,
+      _expanded:false
+    };
+  });
   setTipo(p.tipo);
   var setVal=function(elId,val){var el=document.getElementById(elId);if(el)el.value=val||'';};
   if(p.tipo==='persona_fisica'){
@@ -3348,6 +3483,12 @@ function editOwner(id){
     setVal('pf-via',p.via);setVal('pf-cap',p.cap);setVal('pf-comune',p.comune);
     setVal('pf-prov',p.provincia);setVal('pf-email',p.email);setVal('pf-cin',p.cin);
     setVal('pf-iban',p.iban);
+    // Nuovi campi CU
+    setVal('pf-sesso',p.sesso);
+    setVal('pf-data-nascita',p.data_nascita);
+    setVal('pf-comune-nascita',p.comune_nascita);
+    setVal('pf-prov-nascita',p.prov_nascita);
+    setVal('pf-codice-comune',p.codice_comune);
   } else {
     setVal('az-rs',p.ragione_sociale);setVal('az-piva',p.piva);setVal('az-cf',p.cf_az);
     setVal('az-via',p.via);setVal('az-cap',p.cap);setVal('az-comune',p.comune);
@@ -3489,8 +3630,8 @@ function openModalProprieta(){
   document.getElementById('prop-nome').value='';
   document.getElementById('prop-indirizzo').value='';
   document.getElementById('prop-cin').value='';
-  // Reset campi catastali
-  ['prop-cat-comune','prop-cat-foglio','prop-cat-part','prop-cat-sub','prop-cat-cat'].forEach(function(id){
+  // Reset campi catastali + indirizzo strutturato + codice comune
+  ['prop-cat-comune','prop-cat-foglio','prop-cat-part','prop-cat-sub','prop-cat-cat','prop-codice-comune','prop-tipo-via','prop-via-nome','prop-n-civico','prop-scala','prop-interno'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
   openModal('modal-proprieta');
@@ -3508,12 +3649,20 @@ function saveProprieta(){
     cin:document.getElementById('prop-cin').value.trim().toUpperCase(),
     booking_fee_perc:parseFloat(document.getElementById('prop-booking-fee').value)||1.5,
     pulizie_owner:document.getElementById('prop-pulizie-owner').checked,
-    // Dati catastali per DAC7
+    // Dati catastali per DAC7/CU
     cat_comune:(document.getElementById('prop-cat-comune')||{value:''}).value.trim(),
     cat_foglio:(document.getElementById('prop-cat-foglio')||{value:''}).value.trim(),
     cat_part:(document.getElementById('prop-cat-part')||{value:''}).value.trim(),
     cat_sub:(document.getElementById('prop-cat-sub')||{value:''}).value.trim(),
-    cat_cat:(document.getElementById('prop-cat-cat')||{value:''}).value.trim()
+    cat_cat:(document.getElementById('prop-cat-cat')||{value:''}).value.trim(),
+    // Codice Comune catastale (CU campo 8)
+    codice_comune:(document.getElementById('prop-codice-comune')||{value:''}).value.trim().toUpperCase(),
+    // Indirizzo strutturato per CU (campi 9-13)
+    tipo_via:(document.getElementById('prop-tipo-via')||{value:''}).value,
+    via_nome:(document.getElementById('prop-via-nome')||{value:''}).value.trim(),
+    n_civico:(document.getElementById('prop-n-civico')||{value:''}).value.trim(),
+    scala:(document.getElementById('prop-scala')||{value:''}).value.trim(),
+    interno:(document.getElementById('prop-interno')||{value:''}).value.trim()
   };
   if(editId2){var i2=DB.proprieta.findIndex(function(x){return x.id===editId2;});if(i2>=0)DB.proprieta[i2]=obj2;else DB.proprieta.push(obj2);toast('Proprietà aggiornata ✓');}
   else{DB.proprieta.push(obj2);toast('Proprietà salvata ✓');}
@@ -3540,6 +3689,12 @@ function editProp(id){
     setIfExist('prop-cat-part',p.cat_part);
     setIfExist('prop-cat-sub',p.cat_sub);
     setIfExist('prop-cat-cat',p.cat_cat);
+    setIfExist('prop-codice-comune',p.codice_comune);
+    setIfExist('prop-tipo-via',p.tipo_via);
+    setIfExist('prop-via-nome',p.via_nome);
+    setIfExist('prop-n-civico',p.n_civico);
+    setIfExist('prop-scala',p.scala);
+    setIfExist('prop-interno',p.interno);
     var btnS2=document.getElementById('btn-save-prop2');
     if(btnS2){btnS2.setAttribute('data-edit-id',id);btnS2.textContent='&#128190; Aggiorna';}
     var t2=document.getElementById('mprop2-title');if(t2)t2.textContent='Modifica Proprietà';
@@ -8579,14 +8734,109 @@ function ademCalcMandanteYearly(ownerId, anno){
   // Corrispettivo DAC7 (definizione art. 2 lett. l): netto dopo commissioni Houzly
   tot.corrispettivo_dac7 = r2(tot.lordo - tot.commOTA - tot.commHouzly);
   tot.base_cedolare = method==='ade' ? tot.canone_intero : tot.canone_puro;
+  // ─── OVERRIDE MANUALI: sostituiscono i valori calcolati quando presenti ───
+  // Es. dati 2025 già emessi in CU, inseriti manualmente nel tab "Dati Manuali"
+  var manual=ademGetManualData(anno, ownerId);
+  var hasOverride=false;
+  if(manual && Object.keys(manual).length>0){
+    hasOverride=true;
+    if(manual.nPren!=null) tot.nPren=+manual.nPren;
+    if(manual.lordo!=null) tot.lordo=+manual.lordo;
+    if(manual.commOTA!=null) tot.commOTA=+manual.commOTA;
+    if(manual.commHouzly!=null) tot.commHouzly=+manual.commHouzly;
+    if(manual.baseCedolare!=null) {
+      tot.base_cedolare=+manual.baseCedolare;
+      // Per coerenza, propago alla colonna del metodo attivo
+      if(method==='ade') tot.canone_intero=+manual.baseCedolare;
+      else tot.canone_puro=+manual.baseCedolare;
+    }
+    if(manual.ritenuta!=null) tot.ritenuta=+manual.ritenuta;
+    if(manual.tassaSogg!=null) tot.tassa_sogg=+manual.tassaSogg;
+    // Ricalcolo corrispettivo DAC7 con i nuovi valori
+    tot.corrispettivo_dac7 = r2(tot.lordo - tot.commOTA - tot.commHouzly);
+    tot.giorniLocazione = manual.giorniLocazione!=null ? +manual.giorniLocazione : null;
+    tot.note = manual.note || '';
+  }
+  // ─── DEDUPLICAZIONE FISCALE: una proprietà fisica = un'entità fiscale ───
+  // Aggrega proprietà con stesso CIN, oppure stesso (indirizzo + foglio + particella + sub)
+  // Es. "Il Borgo intero" + "Il Borgo App. 1" + "Il Borgo App. 2" → un solo immobile per CU/DAC7
+  var propertyGroups = ademDedupeProperties(propsOfOwner, bks);
+  // Calcolo dati per ogni gruppo (per la vista CU campo "immobili")
+  propertyGroups.forEach(function(g){
+    var gBks=bks.filter(function(b){return g.propIds.indexOf(b.proprieta_id)>=0;});
+    g.nPren=gBks.length;
+    g.giorniLocazione=0;
+    g.importoCorrispettivo=0;
+    g.ritenutaOperata=0;
+    gBks.forEach(function(b){
+      if(!b.calc)return;
+      var notti=+b.notti||0;
+      g.giorniLocazione+=notti;
+      var lordo=+b.calc.tot||0;
+      var canone_puro=(b.calc.pulizie_owner && b.calc.canone_totale!=null)?+b.calc.canone_totale:+b.calc.canone||0;
+      var canone_intero=lordo;
+      var base=method==='ade'?canone_intero:canone_puro;
+      g.importoCorrispettivo+=base;
+      g.ritenutaOperata+=base*0.21;
+    });
+    g.importoCorrispettivo=r2(g.importoCorrispettivo);
+    g.ritenutaOperata=r2(g.ritenutaOperata);
+  });
   return {
     owner:owner,
     properties:propsOfOwner,
+    propertyGroups:propertyGroups,
     quarters:quarters,
     totals:tot,
     method:method,
-    nProperties:propsOfOwner.length
+    nProperties:propsOfOwner.length,
+    nFiscalEntities:propertyGroups.length,
+    hasOverride:hasOverride
   };
+}
+
+// Aggrega proprietà che fiscalmente sono lo stesso immobile
+// Criterio 1 (priorità): stesso CIN
+// Criterio 2 (fallback): stesso indirizzo + foglio + particella + subalterno
+// Ritorna: [{key, propIds:[...], properties:[...], parent:proprietaPrincipale}]
+function ademDedupeProperties(properties, bks){
+  // Per ogni proprietà calcolo una "chiave fiscale"
+  var groups={};
+  properties.forEach(function(p){
+    var key=null;
+    if(p.cin && p.cin.trim()){
+      key='CIN:'+p.cin.trim().toUpperCase();
+    } else {
+      // Fallback: indirizzo+foglio+part+sub (case-insensitive, normalizzato)
+      var addrNorm=(p.indirizzo||'').trim().toLowerCase().replace(/\s+/g,' ');
+      var fps=[p.cat_foglio||'',p.cat_part||'',p.cat_sub||''].join('/');
+      if(addrNorm || fps!=='//'){
+        key='ADDR:'+addrNorm+'|'+fps;
+      } else {
+        // Nessun dato per deduplicare: gruppo singleton
+        key='ID:'+p.id;
+      }
+    }
+    if(!groups[key])groups[key]={key:key,propIds:[],properties:[]};
+    groups[key].propIds.push(p.id);
+    groups[key].properties.push(p);
+  });
+  // Trasformo in array, identificando un "rappresentante" (primary) per ogni gruppo
+  return Object.keys(groups).map(function(k){
+    var g=groups[k];
+    // Il rappresentante è la proprietà col maggior numero di prenotazioni (probabilmente il "parent")
+    // Fallback: prima per ordine alfabetico nome
+    var byBks={};
+    g.propIds.forEach(function(pid){byBks[pid]=bks.filter(function(b){return b.proprieta_id===pid;}).length;});
+    var primary=g.properties.slice().sort(function(a,b){
+      var diff=(byBks[b.id]||0)-(byBks[a.id]||0);
+      if(diff!==0)return diff;
+      return (a.nome||'').localeCompare(b.nome||'');
+    })[0];
+    g.primary=primary;
+    g.isDeduped=g.properties.length>1;
+    return g;
+  });
 }
 
 // Lista mandanti rilevanti per l'anno (= che hanno almeno una prenotazione nel periodo)
@@ -8599,6 +8849,12 @@ function ademGetActiveMandanti(anno){
       if(prop && prop.proprietario_id)ids.add(prop.proprietario_id);
     }
   });
+  // Includo anche mandanti con override manuale per l'anno (caso dati 2025 pre-app)
+  if(DB.adempimenti_manual && DB.adempimenti_manual[String(anno)]){
+    Object.keys(DB.adempimenti_manual[String(anno)]).forEach(function(oid){
+      ids.add(oid);
+    });
+  }
   return Array.from(ids).map(function(id){return DB.proprietari.find(function(o){return o.id===id;});}).filter(Boolean);
 }
 
@@ -8617,6 +8873,7 @@ function renderAdempimenti(){
   renderAdempCU();
   renderAdempSoggiorno();
   renderAdemp770();
+  renderAdempManuale();
   renderAdempAlert();
 }
 
@@ -8703,13 +8960,17 @@ function renderAdempDAC7(){
     var statusChip = issues.length===0
       ? '<span class="adem-ok-chip">✓ Pronto</span>'
       : '<span class="adem-warning-chip">⚠ '+issues.length+' dato mancante</span>';
+    var overrideChip = d.hasOverride
+      ? '<span style="font-size:10.5px;color:#5b21b6;background:#ede9fe;border:1px solid #c4b5fd;padding:2px 7px;border-radius:8px;font-weight:600">✎ Manuale</span>'
+      : '';
     return '<div class="adem-mandante-row">'
       +'<div class="m-info">'
         +'<div class="m-name">'+escHtml(nomeOwner(owner.id))+'</div>'
         +'<div class="m-meta">'
-          +'<span>'+d.nProperties+' immobil'+(d.nProperties===1?'e':'i')+'</span>'
+          +'<span>'+d.nFiscalEntities+' immobil'+(d.nFiscalEntities===1?'e':'i')+(d.nProperties>d.nFiscalEntities?' <span style="color:var(--text-light)">(da '+d.nProperties+' record)</span>':'')+'</span>'
           +'<span>•</span><span>'+t.nPren+' prenotazion'+(t.nPren===1?'e':'i')+'</span>'
           +'<span>•</span>'+statusChip
+          +(overrideChip?'<span>•</span>'+overrideChip:'')
         +'</div>'
       +'</div>'
       +'<div class="m-stat">'
@@ -8756,15 +9017,22 @@ function adempViewDAC7(ownerId){
       +escHtml(indirizzo)+'<br>'
       +'IBAN: '+iban+'</p></div>'
     +'</div>';
-  // Immobili
-  if(d.properties.length){
-    html+='<div class="sep-label">Immobili gestiti</div>';
-    html+='<table class="dtbl"><thead><tr><th>Proprietà</th><th>Indirizzo</th><th>CIN</th><th>Comune</th><th>Foglio/Part/Sub</th><th>Cat.</th></tr></thead><tbody>';
-    d.properties.forEach(function(p){
+  // Immobili — uso propertyGroups (deduplicati per CIN/indirizzo)
+  var groups=d.propertyGroups||[];
+  if(groups.length){
+    html+='<div class="sep-label">Immobili gestiti <span style="font-weight:400;color:var(--text-light);font-size:11px;margin-left:8px">'+groups.length+' entità fiscal'+(groups.length===1?'e':'i')+(d.properties.length>groups.length?' (deduplicati da '+d.properties.length+' record)':'')+'</span></div>';
+    html+='<table class="dtbl"><thead><tr><th>Immobile (entità fiscale)</th><th>CIN</th><th>Comune</th><th>Foglio/Part/Sub</th><th>Cat.</th></tr></thead><tbody>';
+    groups.forEach(function(g){
+      var p=g.primary;
       var fps=[p.cat_foglio,p.cat_part,p.cat_sub].filter(Boolean).join('/')||'<span style="color:var(--red)">—</span>';
+      // Lista record Smoobu raggruppati (se dedup multipla)
+      var childRows='';
+      if(g.isDeduped){
+        childRows='<br><span style="font-size:10.5px;color:var(--text-light);font-style:italic">↳ Raggruppa: '+g.properties.map(function(pp){return escHtml(pp.nome);}).join(', ')+'</span>';
+      }
       html+='<tr>'
-        +'<td><strong>'+escHtml(p.nome)+'</strong></td>'
-        +'<td style="font-size:11px;color:#666">'+escHtml(p.indirizzo||'—')+'</td>'
+        +'<td><strong>'+escHtml(p.nome)+'</strong>'+childRows
+        +'<br><span style="font-size:11px;color:#666">'+escHtml(p.indirizzo||'—')+'</span></td>'
         +'<td>'+(p.cin?escHtml(p.cin):'<span style="color:var(--red)">—</span>')+'</td>'
         +'<td>'+escHtml(p.cat_comune||'—')+'</td>'
         +'<td>'+fps+'</td>'
@@ -8826,17 +9094,17 @@ function renderAdempCU(){
     var issues=[];
     if(!owner.cf) issues.push('CF mancante');
     if(!owner.via||!owner.comune) issues.push('Indirizzo incompleto');
-    if(d.nProperties>=2) issues.push('2+ immobili → verifica aliquota 26% sul 2°');
-    if(d.nProperties>=3) issues.push('3+ immobili → LdB 2026 vieta cedolare dal 3°');
+    if(d.nFiscalEntities>=2) issues.push('2+ immobili fiscali → verifica aliquota 26% sul 2°');
+    if(d.nFiscalEntities>=3) issues.push('3+ immobili fiscali → LdB 2026 vieta cedolare dal 3°');
     var chip = issues.length===0
       ? '<span class="adem-ok-chip">✓ Pronto</span>'
-      : (d.nProperties>=3 ? '<span class="adem-error-chip">✗ '+issues.length+' criticità</span>' : '<span class="adem-warning-chip">⚠ '+issues.length+' avviso</span>');
+      : (d.nFiscalEntities>=3 ? '<span class="adem-error-chip">✗ '+issues.length+' criticità</span>' : '<span class="adem-warning-chip">⚠ '+issues.length+' avviso</span>');
     return '<div class="adem-mandante-row">'
       +'<div class="m-info">'
         +'<div class="m-name">'+escHtml(nomeOwner(owner.id))+'</div>'
         +'<div class="m-meta">'
           +'<span>CF '+escHtml(owner.cf||'—')+'</span>'
-          +'<span>•</span><span>'+d.nProperties+' immobili</span>'
+          +'<span>•</span><span>'+d.nFiscalEntities+' immobili fiscali'+(d.nProperties>d.nFiscalEntities?' (da '+d.nProperties+' record)':'')+'</span>'
           +'<span>•</span><span>'+t.nPren+' pren.</span>'
           +'<span>•</span>'+chip
         +'</div>'
@@ -8896,8 +9164,8 @@ function adempViewCU(ownerId){
   html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td>'+t.nPren+'</td><td class="num">'+eur(t.lordo)+'</td><td class="num">'+eur(t.base_cedolare)+'</td><td class="num"><strong>'+eur(t.ritenuta)+'</strong></td></tr>';
   html+='</tbody></table>';
   html+='<div class="doc-note" style="margin-top:14px">📌 <strong>Metodo base imponibile:</strong> '+methodLabel+'.<br>📌 <strong>Ritenuta a titolo di acconto</strong> (LdB 2024). Il mandante calcola l\'imposta definitiva (cedolare o IRPEF) in dichiarazione dei redditi.';
-  if(d.nProperties>=2)html+='<br>⚠ <strong>Avviso 2+ immobili:</strong> il Mandante deve designare in dichiarazione il "primo" immobile (21%) e versare la differenza 5% sul secondo (aliquota 26%).';
-  if(d.nProperties>=3)html+='<br>🚨 <strong>LdB 2026 — 3+ immobili:</strong> dal 1/1/2026 cedolare secca solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale.';
+  if(d.nFiscalEntities>=2)html+='<br>⚠ <strong>Avviso 2+ immobili:</strong> il Mandante deve designare in dichiarazione il "primo" immobile (21%) e versare la differenza 5% sul secondo (aliquota 26%).';
+  if(d.nFiscalEntities>=3)html+='<br>🚨 <strong>LdB 2026 — 3+ immobili:</strong> dal 1/1/2026 cedolare secca solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale.';
   html+='</div>';
   html+='<div class="doc-footer">Documento generato da Houzly Tool il '+new Date().toLocaleDateString('it-IT')+' · Da consegnare al Mandante e al suo commercialista per la dichiarazione dei redditi</div>';
   html+='</div>';
@@ -9026,12 +9294,12 @@ function ademComputeAlerts(anno){
     if(!d)return;
     var issues=[];
     var severity='low';
-    // LdB 2026 — 3+ immobili → attività imprenditoriale
-    if(d.nProperties>=3){
-      issues.push({lvl:'high',text:'<strong>LdB 2026 — '+d.nProperties+' immobili gestiti:</strong> dal 1/1/2026 la cedolare secca si applica solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale. Possibile obbligo P.IVA per il mandante. <em>Da informare urgentemente.</em>'});
+    // LdB 2026 — 3+ immobili fiscali → attività imprenditoriale
+    if(d.nFiscalEntities>=3){
+      issues.push({lvl:'high',text:'<strong>LdB 2026 — '+d.nFiscalEntities+' immobili fiscali gestiti:</strong> dal 1/1/2026 la cedolare secca si applica solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale. Possibile obbligo P.IVA per il mandante. <em>Da informare urgentemente.</em>'});
       severity='high';
-    } else if(d.nProperties===2){
-      issues.push({lvl:'medium',text:'<strong>2 immobili in locazione breve:</strong> cedolare 21% sul "primo" immobile (a scelta del mandante in dichiarazione), 26% sul secondo. Houzly applica uniformemente 21%; il Mandante deve versare il 5% di differenza autonomamente in sede di dichiarazione.'});
+    } else if(d.nFiscalEntities===2){
+      issues.push({lvl:'medium',text:'<strong>2 immobili fiscali in locazione breve:</strong> cedolare 21% sul "primo" immobile (a scelta del mandante in dichiarazione), 26% sul secondo. Houzly applica uniformemente 21%; il Mandante deve versare il 5% di differenza autonomamente in sede di dichiarazione.'});
       if(severity!=='high')severity='medium';
     }
     // Dati DAC7 mancanti
@@ -9053,7 +9321,7 @@ function ademComputeAlerts(anno){
       issues.push({lvl:'low',text:'<strong>Dati catastali incompleti</strong> (foglio/particella/subalterno) su '+propsNoCat.length+' propriet'+(propsNoCat.length===1?'à':'à')+': '+propsNoCat.map(function(p){return escHtml(p.nome);}).join(', ')+'. Richiesti per DAC7.'});
     }
     if(issues.length){
-      alerts.push({owner:owner,issues:issues,severity:severity,nProp:d.nProperties});
+      alerts.push({owner:owner,issues:issues,severity:severity,nProp:d.nProperties,nFiscal:d.nFiscalEntities});
     }
   });
   // Ordina per severity
@@ -9072,7 +9340,7 @@ function renderAdempAlert(){
   var html=alerts.map(function(a){
     return '<div class="adem-alert-card severity-'+a.severity+'">'
       +'<div class="a-head">'
-        +'<div><div class="a-name">'+escHtml(nomeOwner(a.owner.id))+'</div><div style="font-size:11.5px;color:var(--text-light);margin-top:2px">'+a.nProp+' immobil'+(a.nProp===1?'e':'i')+' in gestione</div></div>'
+        +'<div><div class="a-name">'+escHtml(nomeOwner(a.owner.id))+'</div><div style="font-size:11.5px;color:var(--text-light);margin-top:2px">'+a.nFiscal+' entità fiscal'+(a.nFiscal===1?'e':'i')+(a.nProp>a.nFiscal?' (da '+a.nProp+' record Smoobu)':'')+' in gestione</div></div>'
         +'<div class="a-severity">'+(a.severity==='high'?'CRITICO':a.severity==='medium'?'AVVISO':'INFO')+'</div>'
       +'</div>'
       +'<div class="a-issues">'+a.issues.map(function(i){return '<div class="a-issue"><span>'+i.text+'</span></div>';}).join('')+'</div>'
@@ -9080,6 +9348,225 @@ function renderAdempAlert(){
     +'</div>';
   }).join('');
   document.getElementById('adem-alert-content').innerHTML=html;
+}
+
+// ─── DATI MANUALI (override calcolo automatico) ──────────────────────
+// Struttura DB:
+//   DB.adempimenti_manual = { '2025': { <ownerId>: { lordo, commOTA, commHouzly, baseCedolare, ritenuta, tassaSogg, nPren, nGiorniLocazione, note } } }
+// Quando esiste un override per (anno, owner), ademCalcMandanteYearly usa quelli al posto del calcolo
+function ademGetManualData(anno, ownerId){
+  if(!DB.adempimenti_manual)return null;
+  var byYear=DB.adempimenti_manual[String(anno)];
+  if(!byYear)return null;
+  return byYear[ownerId]||null;
+}
+function ademSetManualData(anno, ownerId, data){
+  if(!DB.adempimenti_manual)DB.adempimenti_manual={};
+  if(!DB.adempimenti_manual[String(anno)])DB.adempimenti_manual[String(anno)]={};
+  if(data===null){
+    delete DB.adempimenti_manual[String(anno)][ownerId];
+  } else {
+    DB.adempimenti_manual[String(anno)][ownerId]=data;
+  }
+  saveDB();
+}
+
+function renderAdempManuale(){
+  var anno=ademAnno();
+  // Tutti i mandanti che hanno almeno una proprietà
+  var allMandanti=DB.proprietari.filter(function(o){
+    return DB.proprieta.some(function(p){return p.proprietario_id===o.id;});
+  });
+  if(!allMandanti.length){
+    document.getElementById('adem-manuale-content').innerHTML='<div class="adem-empty"><div style="font-size:36px;margin-bottom:8px">📭</div><p>Nessun mandante registrato</p></div>';
+    return;
+  }
+  // Statistica top
+  var nOverrides=0;
+  allMandanti.forEach(function(m){if(ademGetManualData(anno,m.id))nOverrides++;});
+  var statHtml='<div class="card" style="margin-bottom:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
+    +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Override attivi per '+anno+'</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nOverrides+' / '+allMandanti.length+'</div></div>'
+    +'<div style="font-size:11.5px;color:var(--text-light);max-width:520px;line-height:1.5">I valori che inserisci qui vengono usati al posto del calcolo automatico per CU, DAC7 e Modello 770 dell\'anno selezionato. Lascia vuoto un campo per usare il calcolo automatico per quel valore.</div>'
+  +'</div>';
+  // Lista mandanti con form
+  var rows=allMandanti.map(function(owner){
+    var m=ademGetManualData(anno,owner.id)||{};
+    var auto=ademCalcMandanteYearly(owner.id, anno);
+    var t=auto?auto.totals:{lordo:0,commOTA:0,commHouzly:0,base_cedolare:0,ritenuta:0,tassa_sogg:0,nPren:0};
+    var hasOverride=Object.keys(m).length>0;
+    var chip=hasOverride
+      ? '<span class="adem-ok-chip">✓ Override attivo</span>'
+      : '<span style="font-size:10.5px;color:var(--text-light);background:var(--surface2);padding:2px 7px;border-radius:8px;font-weight:600">Calcolo auto</span>';
+    var oid=owner.id;
+    return '<div class="adem-mandante-row" style="grid-template-columns:1fr;align-items:stretch">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+        +'<div><div class="m-name">'+escHtml(nomeOwner(oid))+'</div>'
+        +'<div class="m-meta">'+(auto?auto.nFiscalEntities:0)+' immobili fiscali · '+chip+'</div></div>'
+        +(hasOverride?'<button class="btn btn-sm btn-danger" onclick="ademClearManual(\''+oid+'\')">&times; Rimuovi override</button>':'')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;font-size:11.5px">'
+        +ademManualField('n_pren', oid, 'N. prenotazioni', m.nPren, t.nPren, 0)
+        +ademManualField('giorni_loc', oid, 'Giorni locazione (CU campo 5)', m.giorniLocazione, '—', 0)
+        +ademManualField('lordo', oid, 'Lordo incassato', m.lordo, t.lordo, 2)
+        +ademManualField('comm_ota', oid, 'Commissioni OTA', m.commOTA, t.commOTA, 2)
+        +ademManualField('comm_houzly', oid, 'Commissione Houzly', m.commHouzly, t.commHouzly, 2)
+        +ademManualField('base_cedolare', oid, 'Base imponibile cedolare (CU "Imp. corr.")', m.baseCedolare, t.base_cedolare, 2)
+        +ademManualField('ritenuta', oid, 'Ritenuta 21% (CU "Ritenuta op.")', m.ritenuta, t.ritenuta, 2)
+        +ademManualField('tassa_sogg', oid, 'Tassa di soggiorno', m.tassaSogg, t.tassa_sogg, 2)
+      +'</div>'
+      +'<div style="margin-top:10px"><div class="field" style="margin:0"><label style="font-size:11px">Note (uso interno)</label><textarea id="man-note-'+oid+'" rows="2" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12px;width:100%;resize:vertical" onblur="ademSaveManualField(\''+oid+'\',\'note\',this.value)">'+escHtml(m.note||'')+'</textarea></div></div>'
+    +'</div>';
+  }).join('');
+  document.getElementById('adem-manuale-content').innerHTML=statHtml+rows;
+}
+
+function ademManualField(name, ownerId, label, currentVal, autoVal, decimals){
+  var val=currentVal!=null && currentVal!==''?currentVal:'';
+  var autoLabel=autoVal==null||autoVal===''?'—':(decimals===0?String(autoVal):eur(autoVal));
+  return '<div>'
+    +'<label style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;display:block;margin-bottom:4px">'+escHtml(label)+'</label>'
+    +'<input type="number" step="'+(decimals===0?'1':'0.01')+'" min="0" value="'+val+'" placeholder="auto: '+autoLabel+'" data-field="'+name+'" data-owner="'+ownerId+'" onblur="ademSaveManualField(\''+ownerId+'\',\''+name+'\',this.value)" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 9px;font-family:inherit;font-size:12.5px;font-variant-numeric:tabular-nums">'
+    +'<div style="font-size:9.5px;color:var(--text-light);margin-top:2px">Auto: '+autoLabel+'</div>'
+  +'</div>';
+}
+
+function ademSaveManualField(ownerId, field, value){
+  var anno=ademAnno();
+  var current=ademGetManualData(anno, ownerId)||{};
+  // Mapping nome campo nella struttura DB
+  var mapping={
+    n_pren:'nPren', giorni_loc:'giorniLocazione', lordo:'lordo',
+    comm_ota:'commOTA', comm_houzly:'commHouzly', base_cedolare:'baseCedolare',
+    ritenuta:'ritenuta', tassa_sogg:'tassaSogg', note:'note'
+  };
+  var dbKey=mapping[field];
+  if(!dbKey)return;
+  var trimmed=(value==null?'':String(value)).trim();
+  if(trimmed===''){
+    delete current[dbKey];
+  } else if(field==='note'){
+    current[dbKey]=trimmed;
+  } else {
+    var num=parseFloat(trimmed);
+    if(isNaN(num)){delete current[dbKey];}else{current[dbKey]=num;}
+  }
+  if(Object.keys(current).length===0){
+    ademSetManualData(anno, ownerId, null);
+  } else {
+    ademSetManualData(anno, ownerId, current);
+  }
+  // Re-render solo per aggiornare il chip "Override attivo / Calcolo auto"
+  renderAdempManuale();
+}
+
+function ademClearManual(ownerId){
+  if(!confirm('Rimuovere tutti i dati manuali per questo mandante? Tornerà al calcolo automatico.'))return;
+  ademSetManualData(ademAnno(), ownerId, null);
+  toast('Override rimosso ✓');
+  renderAdempManuale();
+  renderAdempimenti();
+}
+
+function ademExportTemplateCSV(){
+  var anno=ademAnno();
+  var rows=[
+    ['# Template per import dati manuali — Anno '+anno],
+    ['# Compila le colonne numeriche; lascia vuoto per usare il calcolo automatico'],
+    ['# Salva come CSV (UTF-8 con BOM) e ricarica con "Import CSV"'],
+    [],
+    ['CF_o_PIVA','Nome_Mandante','N_Prenotazioni','Giorni_Locazione','Lordo','Comm_OTA','Comm_Houzly','Base_Cedolare','Ritenuta_21','Tassa_Soggiorno','Note']
+  ];
+  // Includo solo mandanti attivi
+  DB.proprietari.forEach(function(o){
+    var hasProps=DB.proprieta.some(function(p){return p.proprietario_id===o.id;});
+    if(!hasProps)return;
+    var cf=o.tipo==='persona_fisica'?(o.cf||''):(o.piva||o.cf_az||'');
+    rows.push([cf,nomeOwner(o.id),'','','','','','','','','']);
+  });
+  ademDownloadCSV('Template_DatiManuali_'+anno+'.csv', rows);
+  toast('Template scaricato ✓');
+}
+
+function ademImportCSVDialog(){
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='.csv,text/csv';
+  input.onchange=function(){
+    var f=input.files[0];if(!f)return;
+    var reader=new FileReader();
+    reader.onload=function(){ademImportCSVProcess(reader.result);};
+    reader.readAsText(f,'UTF-8');
+  };
+  input.click();
+}
+
+function ademImportCSVProcess(text){
+  var anno=ademAnno();
+  // Rimuovo BOM
+  text=text.replace(/^\ufeff/,'');
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim() && !l.trim().startsWith('#');});
+  if(!lines.length){toast('CSV vuoto o solo commenti');return;}
+  // Parse CSV semplice
+  function parseLine(l){
+    var out=[],cur='',inQ=false;
+    for(var i=0;i<l.length;i++){
+      var c=l[i];
+      if(inQ){
+        if(c==='"' && l[i+1]==='"'){cur+='"';i++;}
+        else if(c==='"'){inQ=false;}
+        else cur+=c;
+      } else {
+        if(c==='"')inQ=true;
+        else if(c===',' || c===';'){out.push(cur);cur='';}
+        else cur+=c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+  var header=parseLine(lines[0]).map(function(h){return h.trim().toLowerCase();});
+  var idxCF=header.indexOf('cf_o_piva');
+  var idxName=header.indexOf('nome_mandante');
+  if(idxCF<0){toast('CSV non valido: manca colonna CF_o_PIVA');return;}
+  var fieldMap={
+    'n_prenotazioni':'nPren',
+    'giorni_locazione':'giorniLocazione',
+    'lordo':'lordo',
+    'comm_ota':'commOTA',
+    'comm_houzly':'commHouzly',
+    'base_cedolare':'baseCedolare',
+    'ritenuta_21':'ritenuta',
+    'tassa_soggiorno':'tassaSogg',
+    'note':'note'
+  };
+  var imported=0, skipped=0;
+  for(var r=1;r<lines.length;r++){
+    var row=parseLine(lines[r]);
+    var cf=(row[idxCF]||'').trim().toUpperCase();
+    if(!cf){skipped++;continue;}
+    // Cerca mandante per CF (PF) o P.IVA (Azienda)
+    var owner=DB.proprietari.find(function(o){
+      return (o.cf||'').toUpperCase()===cf || (o.piva||'').toUpperCase()===cf || (o.cf_az||'').toUpperCase()===cf;
+    });
+    if(!owner){skipped++;continue;}
+    var data={};
+    Object.keys(fieldMap).forEach(function(col){
+      var idx=header.indexOf(col);
+      if(idx<0)return;
+      var v=(row[idx]||'').trim();
+      if(!v)return;
+      if(col==='note'){data[fieldMap[col]]=v;}
+      else {var n=parseFloat(v.replace(/\./g,'').replace(',','.'));if(!isNaN(n))data[fieldMap[col]]=n;}
+    });
+    if(Object.keys(data).length>0){
+      ademSetManualData(anno, owner.id, data);
+      imported++;
+    } else {
+      skipped++;
+    }
+  }
+  toast('Import completato: '+imported+' mandanti, '+skipped+' saltati');
+  renderAdempimenti();
 }
 
 // ─── EXPORT CSV ────────────────────────────────────────────────────
