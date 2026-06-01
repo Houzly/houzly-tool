@@ -736,7 +736,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v36 · 01/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v37 · 01/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1654,12 +1654,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Note interne</label><input type="text" id="p-note"></div>
       </div>
       <div id="p-mese-cavallo-banner" style="display:none;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.4);border-radius:var(--radius);padding:10px 14px;margin-top:14px;font-size:12px;color:#a06400;line-height:1.5">
-        <strong>&#9888; Soggiorno lungo a cavallo di due mesi.</strong>
+        <strong>&#9888; Soggiorno a cavallo di due mesi.</strong>
         <span id="p-mese-cavallo-text"></span>
         Se preferisci spostarla in un altro mese, usa il selettore qui sotto e poi conferma.
       </div>
+      <div id="p-mese-warning" style="display:none;border-radius:var(--radius);padding:10px 14px;margin-top:14px;font-size:12px;line-height:1.5"></div>
       <div class="form-grid" style="margin-top:14px">
-        <div class="field"><label>Mese di competenza report</label><select id="p-mese-override"><option value="">Automatico (mese del check-in)</option></select><div class="field-hint" id="p-mese-override-hint">Lascia automatico salvo eccezioni</div></div>
+        <div class="field"><label>Mese di competenza report <span style="font-weight:400;color:var(--text-light);font-size:11px">(applica a Report Mensile, DAC7, CU, Documenti, Dashboard)</span></label><select id="p-mese-override" onchange="updateMeseOverrideWarning()"><option value="">Automatico</option></select><div class="field-hint" id="p-mese-override-hint">Lascia automatico salvo eccezioni</div></div>
         <div class="field" style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:var(--text-mid);font-weight:500"><input type="checkbox" id="p-mese-confermato" style="width:16px;height:16px;cursor:pointer"> Decisione confermata</label></div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn btn-primary" onclick="goStep(2)">Avanti &rarr;</button></div>
@@ -4084,7 +4085,8 @@ function calcNotti(){
 }
 
 // ─── MESE COMPETENZA REPORT — UI dinamica nel modal ────────────────
-// Popola il select con un range di mesi attorno al check-in
+// Popola il select con un range di mesi attorno al check-out
+// (la data fiscale di riferimento è la fine soggiorno, non l'inizio)
 // e mostra il banner se il soggiorno è ≥10 notti a cavallo di due mesi.
 var MESI_IT_FULL=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 function updateMeseCompetenzaUI(){
@@ -4096,12 +4098,14 @@ function updateMeseCompetenzaUI(){
   var hint=document.getElementById('p-mese-override-hint');
   if(!sel)return;
   var prev=sel.value;
-  // Genera 12 opzioni: 2 mesi prima del check-in fino a 9 dopo
-  sel.innerHTML='<option value="">Automatico (mese del check-in)</option>';
-  if(ci&&/^\d{4}-\d{2}-\d{2}$/.test(ci)){
-    var ciY=+ci.slice(0,4), ciM=+ci.slice(5,7);
-    var startIdx=ciY*12+(ciM-1)-2;
-    for(var k=0;k<12;k++){
+  // Base = checkout (data fiscale di accredito), fallback checkin
+  var baseDate=co||ci;
+  sel.innerHTML='<option value="">Automatico</option>';
+  if(baseDate&&/^\d{4}-\d{2}-\d{2}$/.test(baseDate)){
+    var baseY=+baseDate.slice(0,4), baseM=+baseDate.slice(5,7);
+    // 12 opzioni: 3 mesi prima fino a 9 dopo (così copri sempre cavallo aprile→maggio)
+    var startIdx=baseY*12+(baseM-1)-3;
+    for(var k=0;k<13;k++){
       var idx=startIdx+k;
       var y=Math.floor(idx/12), m=(idx%12)+1;
       var key=y+'-'+(m<10?'0':'')+m;
@@ -4111,21 +4115,80 @@ function updateMeseCompetenzaUI(){
     if(prev&&Array.prototype.slice.call(sel.options).some(function(o){return o.value===prev;})){
       sel.value=prev;
     }
-    var autoLabel=MESI_IT_FULL[ciM-1]+' '+ciY;
-    if(hint)hint.textContent='Lascia automatico ('+autoLabel+') salvo eccezioni';
+    // Per chiarezza: il default cambia tra moduli
+    //  - Report Mensile / Documenti / Dashboard / Ricevute → check-in (legacy)
+    //  - Adempimenti Fiscali (DAC7/CU/770) → check-out (fiscale)
+    // Override prevale ovunque
+    var ciDate=ci, coDate=co;
+    var defaultText='';
+    if(ciDate&&/^\d{4}-\d{2}-\d{2}$/.test(ciDate)){
+      var ciY=+ciDate.slice(0,4),ciM=+ciDate.slice(5,7);
+      defaultText='Report/Documenti → '+MESI_IT_FULL[ciM-1]+' '+ciY+' (check-in)';
+    }
+    if(coDate&&/^\d{4}-\d{2}-\d{2}$/.test(coDate)){
+      var coY=+coDate.slice(0,4),coM=+coDate.slice(5,7);
+      if(ciDate && ciDate.slice(0,7)!==coDate.slice(0,7)){
+        defaultText+=' · Adempimenti Fiscali → '+MESI_IT_FULL[coM-1]+' '+coY+' (check-out)';
+      }
+    }
+    if(hint)hint.innerHTML=defaultText?defaultText+'.<br>Modifica solo per casi a cavallo o particolari — l\'override prevale in TUTTI i moduli.':'Inserisci prima le date.';
   } else {
-    if(hint)hint.textContent='Inserisci prima la data di check-in';
+    if(hint)hint.textContent='Inserisci prima le date di check-in/check-out';
   }
   // Banner cavallo
   var notti=+document.getElementById('p-notti').value||0;
-  var cavallo=ci&&co&&notti>=10&&ci.slice(0,7)!==co.slice(0,7);
+  var cavallo=ci&&co&&ci.slice(0,7)!==co.slice(0,7);
   if(cavallo){
     var ciM2=+ci.slice(5,7),coM2=+co.slice(5,7),ciY2=+ci.slice(0,4),coY2=+co.slice(0,4);
-    bannerText.textContent=' Soggiorno di '+notti+' notti dal '+dateIt(ci)+' al '+dateIt(co)+': '+notti+' notti tra '+MESI_IT_FULL[ciM2-1]+' '+ciY2+' e '+MESI_IT_FULL[coM2-1]+' '+coY2+'. Per default verrà inclusa nel report di '+MESI_IT_FULL[ciM2-1]+' '+ciY2+' (mese del check-in).';
+    bannerText.textContent=' Soggiorno di '+notti+' notti dal '+dateIt(ci)+' al '+dateIt(co)+': a cavallo tra '+MESI_IT_FULL[ciM2-1]+' '+ciY2+' e '+MESI_IT_FULL[coM2-1]+' '+coY2+'. Per default verrà inclusa nel report di '+MESI_IT_FULL[coM2-1]+' '+coY2+' (mese del check-out).';
     banner.style.display='block';
   } else {
     banner.style.display='none';
   }
+  updateMeseOverrideWarning();
+}
+
+// v37: warning quando l'override sposta tra trimestri DAC7 o anni fiscali
+function updateMeseOverrideWarning(){
+  var sel=document.getElementById('p-mese-override');
+  var warn=document.getElementById('p-mese-warning');
+  if(!sel||!warn){return;}
+  var override=sel.value;
+  if(!override){warn.style.display='none';return;}
+  var ci=document.getElementById('p-checkin').value;
+  var co=document.getElementById('p-checkout').value;
+  // Per il warning fiscale uso check-out (Adempimenti è dove conta)
+  var fiscalDate=co||ci;
+  if(!fiscalDate||!/^\d{4}-\d{2}-\d{2}$/.test(fiscalDate)){warn.style.display='none';return;}
+  var autoY=+fiscalDate.slice(0,4), autoM=+fiscalDate.slice(5,7);
+  var autoQ=Math.ceil(autoM/3);
+  var ovY=+override.slice(0,4), ovM=+override.slice(5,7);
+  var ovQ=Math.ceil(ovM/3);
+  if(autoY===ovY && autoM===ovM){warn.style.display='none';return;}
+  // Cambia anno fiscale → ROSSO
+  if(autoY!==ovY){
+    warn.style.background='rgba(244,67,54,0.08)';
+    warn.style.border='1px solid rgba(244,67,54,0.4)';
+    warn.style.color='#991b1b';
+    warn.innerHTML='&#128680; <strong>Cambio anno fiscale.</strong> Stai spostando questa prenotazione dall\'anno fiscale <strong>'+autoY+'</strong> a <strong>'+ovY+'</strong>. La prenotazione finirà in CU e DAC7 dell\'anno '+ovY+'. <strong>Verifica con il commercialista</strong> prima di confermare — gli importi competerebbero fiscalmente all\'anno '+autoY+' secondo la data di check-out ('+dateIt(fiscalDate)+').';
+    warn.style.display='block';
+    return;
+  }
+  // Cambia trimestre DAC7 → GIALLO
+  if(autoQ!==ovQ){
+    warn.style.background='rgba(245,158,11,0.1)';
+    warn.style.border='1px solid rgba(245,158,11,0.4)';
+    warn.style.color='#92400e';
+    warn.innerHTML='&#9888; <strong>Cambio trimestre DAC7.</strong> Stai spostando questa prenotazione dal trimestre <strong>T'+autoQ+' '+autoY+'</strong> al trimestre <strong>T'+ovQ+' '+ovY+'</strong>. In caso di controllo AdE, il dato comunicato da Houzly potrebbe non quadrare con la piattaforma (Booking/Airbnb) che comunica per trimestre di incasso effettivo.';
+    warn.style.display='block';
+    return;
+  }
+  // Cambia solo mese (stesso trimestre stesso anno) → BLU info
+  warn.style.background='rgba(67,97,238,0.06)';
+  warn.style.border='1px solid rgba(67,97,238,0.3)';
+  warn.style.color='var(--blue)';
+  warn.innerHTML='&#8634; <strong>Override mese.</strong> Questa prenotazione verrà inclusa nel report di <strong>'+MESI_IT_FULL[ovM-1]+' '+ovY+'</strong> al posto del default. Stesso trimestre DAC7, stesso anno fiscale: nessun impatto fiscale.';
+  warn.style.display='block';
 }
 function onCanaleChange(){
   var canale=document.getElementById('p-canale').value;
@@ -8924,7 +8987,20 @@ function ademAnno(){
 // Mese (1-12) di una prenotazione per assegnazione trimestrale
 // Convenzione AdE: usa la data di accredito al venditore (≈ check-out o fine soggiorno)
 // In assenza di tracciamento accredito puntuale, usiamo checkout
+// v37: rispetta override meseReportOverride se presente (es. prenotazioni a cavallo
+// che l'utente ha deciso di rendicontare in un mese diverso)
+function ademAnnoEffettivo(b){
+  if(b && /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')){
+    return +b.meseReportOverride.slice(0,4);
+  }
+  if(!b.checkout)return 0;
+  var d=new Date(b.checkout);
+  return isNaN(d)?0:d.getFullYear();
+}
 function ademMeseDi(b){
+  if(b && /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')){
+    return +b.meseReportOverride.slice(5,7);
+  }
   if(!b.checkout)return 0;
   var d=new Date(b.checkout);
   return isNaN(d)?0:(d.getMonth()+1);
@@ -8945,7 +9021,7 @@ function ademCalcMandanteYearly(ownerId, anno){
   var bks=DB.prenotazioni.filter(function(b){
     if(propIds.indexOf(b.proprieta_id)<0)return false;
     var co=b.checkout?new Date(b.checkout):null;
-    return co && !isNaN(co) && co.getFullYear()===anno;
+    return ademAnnoEffettivo(b)===anno;
   });
   // Inizializzo struttura per trimestre
   var quarters=[1,2,3,4].map(function(q){return{q:q,nPren:0,lordo:0,commOTA:0,commHouzly:0,pulizia:0,canone_puro:0,canone_intero:0,ritenuta:0,tassa_sogg:0};});
@@ -9093,7 +9169,7 @@ function ademGetActiveMandanti(anno){
   var ids=new Set();
   DB.prenotazioni.forEach(function(b){
     var co=b.checkout?new Date(b.checkout):null;
-    if(co && !isNaN(co) && co.getFullYear()===anno){
+    if(ademAnnoEffettivo(b)===anno){
       var prop=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
       if(prop && prop.proprietario_id)ids.add(prop.proprietario_id);
     }
@@ -9384,10 +9460,10 @@ function adempViewCU(ownerId){
   DB.prenotazioni.forEach(function(b){
     if(propIds.indexOf(b.proprieta_id)<0)return;
     var co=b.checkout?new Date(b.checkout):null;
-    if(!co||isNaN(co)||co.getFullYear()!==anno)return;
+    if(ademAnnoEffettivo(b)!==anno)return;
     if(!b.calc)return;
     var c=b.calc;
-    var m=co.getMonth();
+    var m=ademMeseDi(b)-1;
     var base = d.method==='ade' ? (+c.tot||0) : ((c.pulizie_owner && c.canone_totale!=null) ? +c.canone_totale : +c.canone||0);
     monthly[m].lordo+=+c.tot||0;
     monthly[m].base+=base;
@@ -9432,7 +9508,7 @@ function renderAdempSoggiorno(){
   DB.prenotazioni.forEach(function(b){
     if(!b.calc)return;
     var co=b.checkout?new Date(b.checkout):null;
-    if(!co||isNaN(co)||co.getFullYear()!==anno)return;
+    if(ademAnnoEffettivo(b)!==anno)return;
     var prop=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
     if(!prop)return;
     var comune=(prop.cat_comune||'').trim();
@@ -9499,10 +9575,10 @@ function renderAdemp770(){
     DB.prenotazioni.forEach(function(b){
       if(propIds.indexOf(b.proprieta_id)<0)return;
       var co=b.checkout?new Date(b.checkout):null;
-      if(!co||isNaN(co)||co.getFullYear()!==anno)return;
+      if(ademAnnoEffettivo(b)!==anno)return;
       if(!b.calc)return;
       var c=b.calc;
-      var mese=co.getMonth();
+      var mese=ademMeseDi(b)-1;
       var base = d.method==='ade' ? (+c.tot||0) : ((c.pulizie_owner && c.canone_totale!=null) ? +c.canone_totale : +c.canone||0);
       monthly[mese].base+=base;
       monthly[mese].ritenuta+=base*0.21;
@@ -9918,8 +9994,8 @@ function adempExportCUMandante(ownerId){
   DB.prenotazioni.forEach(function(b){
     if(propIds.indexOf(b.proprieta_id)<0)return;
     var co=b.checkout?new Date(b.checkout):null;
-    if(!co||isNaN(co)||co.getFullYear()!==anno||!b.calc)return;
-    var c=b.calc;var m=co.getMonth();
+    if(ademAnnoEffettivo(b)!==anno||!b.calc)return;
+    var c=b.calc;var m=ademMeseDi(b)-1;
     var base = d.method==='ade' ? (+c.tot||0) : ((c.pulizie_owner && c.canone_totale!=null) ? +c.canone_totale : +c.canone||0);
     monthly[m].nPren++;
     monthly[m].lordo+=+c.tot||0;
@@ -9941,7 +10017,7 @@ function adempExportSoggiornoCSV(){
   DB.prenotazioni.forEach(function(b){
     if(!b.calc)return;
     var co=b.checkout?new Date(b.checkout):null;
-    if(!co||isNaN(co)||co.getFullYear()!==anno)return;
+    if(ademAnnoEffettivo(b)!==anno)return;
     var prop=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});if(!prop)return;
     var owner=DB.proprietari.find(function(o){return o.id===prop.proprietario_id;});
     var key=(prop.cat_comune||'')+'|'+prop.id;
@@ -9966,8 +10042,8 @@ function adempExport770CSV(){
     DB.prenotazioni.forEach(function(b){
       if(propIds.indexOf(b.proprieta_id)<0)return;
       var co=b.checkout?new Date(b.checkout):null;
-      if(!co||isNaN(co)||co.getFullYear()!==anno||!b.calc)return;
-      var c=b.calc;var mese=co.getMonth();
+      if(ademAnnoEffettivo(b)!==anno||!b.calc)return;
+      var c=b.calc;var mese=ademMeseDi(b)-1;
       var base = d.method==='ade' ? (+c.tot||0) : ((c.pulizie_owner && c.canone_totale!=null) ? +c.canone_totale : +c.canone||0);
       monthly[mese].base+=base;monthly[mese].ritenuta+=base*0.21;
     });
