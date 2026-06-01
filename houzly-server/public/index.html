@@ -736,7 +736,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v38 · 01/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v40 · 01/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -914,7 +914,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <table><thead><tr>
         <th style="width:36px"><input type="checkbox" class="row-cb" id="cb-all-pren" title="Seleziona tutto" onchange="toggleAllPren(this)"></th>
         <th>&#9679;</th><th>Canale</th><th>Ospite</th><th>N.Osp.</th><th>Propriet&agrave;</th>
-        <th>Check-in</th><th>Notti</th><th>Tot. OTA</th>
+        <th>Check-in</th><th>Notti</th><th>Tot. Pren.</th>
         <th>Netto Prop.</th><th>Tipo Prop.</th><th>Azioni</th>
       </tr></thead>
       <tbody id="tbody-prenotazioni"></tbody></table>
@@ -1675,7 +1675,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
         <div class="field"><label>IVA 22% su Houzly</label><select id="p-iva22" onchange="calcScorporo()"><option value="0">No (esente)</option><option value="1">S&igrave; (+ 22%)</option></select></div>
       </div>
-      <div class="scorporo-box" id="sc-box"><h4>&#8595; Scorporo Live</h4><div id="sc-rows"><div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div></div></div>
+      <div class="scorporo-box" id="sc-box"><h4>&#8595; Scorporo Live</h4><div id="sc-rows"><div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci totale prenotazione</div></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:18px"><button class="btn btn-ghost" onclick="goStep(1)">&larr; Indietro</button><button class="btn btn-primary" onclick="goStep(3)">Avanti &rarr;</button></div>
     </div>
     <div id="ps3" style="display:none">
@@ -3923,7 +3923,7 @@ function renderPrenotazioni(){
           +'<span class="sep">·</span>'
           +'<span>'+b.n_ospiti+' osp.</span>'
           +'</div>'
-          +'<div class="mc-card-row"><span class="lbl">Tot. OTA</span><span class="val">'+eur(b.calc.tot)+'</span></div>'
+          +'<div class="mc-card-row"><span class="lbl">Tot. Pren.</span><span class="val">'+eur(b.calc.tot)+'</span></div>'
           +'<div class="mc-card-row"><span class="lbl">Tipo</span><span class="val"><span class="badge '+(own&&own.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:10px">'+(own&&own.tipo==='azienda'?'Azienda':'Pers. Fisica')+'</span></span></div>'
           +'<div class="mc-card-actions">'
             +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" title="Visualizza">🔍 Vedi</button>'
@@ -5611,7 +5611,7 @@ function processSmoobu(file){
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Canale</th>';
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Check-in</th>';
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Notti</th>';
-        html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Tot. OTA</th>';
+        html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Tot. Pren.</th>';
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Comm.%</th>';
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Pulizie</th>';
         html+='<th style="padding:6px 10px;border-bottom:1px solid var(--border)">Tassa/notte</th>';
