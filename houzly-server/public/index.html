@@ -736,7 +736,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v35 · 29/05</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v36 · 01/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1169,6 +1169,20 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('smoobu-csv').click()"><div class="dz-icon">&#128193;</div><p><strong>Clicca o trascina</strong> il CSV da Smoobu</p></div>
       <input type="file" id="smoobu-csv" accept=".csv,.xlsx" style="display:none" onchange="importSmoobu(this)">
       <div id="import-result" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Verifica DB row -->
+  <div style="margin-top:16px">
+    <div class="card">
+      <div class="card-title">&#128270; Verifica integrità DB <span style="font-weight:400;color:var(--text-light);font-size:12px;margin-left:8px">controllo passivo, non modifica nulla</span></div>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px;line-height:1.5">Carica un CSV Smoobu per confrontarlo col database e ottenere un riepilogo di: prenotazioni presenti, mancanti, doppione. <strong>Nessuna modifica viene fatta al DB</strong>. Utile per verificare dopo un import che non sia stato perso nulla.</p>
+      <div class="drop-zone" style="padding:20px" onclick="document.getElementById('verify-csv').click()">
+        <div class="dz-icon">&#128270;</div>
+        <p><strong>Clicca o trascina</strong> il CSV da verificare</p>
+      </div>
+      <input type="file" id="verify-csv" accept=".csv,.xlsx" style="display:none" onchange="verifyCSV(this)">
+      <div id="verify-result" style="margin-top:14px"></div>
     </div>
   </div>
 
@@ -5099,6 +5113,167 @@ function setupDropZone(){
 }
 function importSmoobu(input){if(input.files[0])processSmoobu(input.files[0]);}
 
+// v36: Verifica passiva — confronta CSV con DB senza scrivere nulla
+function verifyCSV(input){
+  if(!input.files[0])return;
+  var file=input.files[0];
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      verifyCSVProcess(e.target.result);
+    } catch(err){
+      document.getElementById('verify-result').innerHTML='<div class="alert alert-danger">Errore lettura CSV: '+esc(err.message)+'</div>';
+    }
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function verifyCSVProcess(text){
+  // Reuse parsing logic come processSmoobu
+  text=text.replace(/^\ufeff/,'');
+  var lines=text.split(/\r?\n/);
+  if(lines.length<2){document.getElementById('verify-result').innerHTML='<div class="alert alert-danger">CSV vuoto o non valido</div>';return;}
+  // Parse header
+  function parseLine(l){
+    var out=[],cur='',inQ=false;
+    for(var i=0;i<l.length;i++){
+      var c=l[i];
+      if(inQ){
+        if(c==='"' && l[i+1]==='"'){cur+='"';i++;}
+        else if(c==='"'){inQ=false;}
+        else cur+=c;
+      } else {
+        if(c==='"')inQ=true;
+        else if(c===';'){out.push(cur);cur='';}
+        else cur+=c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+  var header=parseLine(lines[0]).map(function(h){return h.trim();});
+  var idx={};
+  header.forEach(function(h,i){idx[h]=i;});
+  // Multi-line cell handling (come processSmoobu)
+  var rawRows=[];
+  var cur=null;
+  for(var i=1;i<lines.length;i++){
+    var l=lines[i];
+    if(cur===null){cur=l;}
+    else{
+      var qCount=(cur.match(/"/g)||[]).length;
+      if(qCount%2!==0)cur+='\n'+l;
+      else{rawRows.push(cur);cur=l;}
+    }
+  }
+  if(cur)rawRows.push(cur);
+  rawRows=rawRows.filter(function(l){return l.trim();});
+
+  // Indicizzo le prenotazioni del DB per ota_num (Position di Smoobu)
+  var dbByPos={};
+  DB.prenotazioni.forEach(function(b){if(b.ota_num)dbByPos[b.ota_num]=b;});
+
+  // Categorie:
+  // - inDb: presente in CSV e nel DB
+  // - missing: presente in CSV ma NON nel DB (potenziale problema, da importare)
+  // - cancellate: nel CSV con stato cancellata
+  // - noProp: prop non in anagrafica
+  var inDb=[], missing=[], cancellate=[], noProp=[];
+  rawRows.forEach(function(line){
+    var cols=parseLine(line);
+    var get=function(key){
+      var i=idx[key];
+      if(i===undefined)return'';
+      return(cols[i]||'').replace(/^"|"$/g,'').trim();
+    };
+    var pos=get('Position');
+    var arrivo=get('Arrivo');
+    var ospite=get('Ospite');
+    var portale=get('Portale');
+    var propName=get('Proprietà')||get('Proprieta');
+    var stato=get('stato');
+    var rec={pos:pos,arrivo:arrivo,ospite:ospite,portale:portale,prop:propName,stato:stato};
+    if(stato.toLowerCase().indexOf('cancellat')>=0){cancellate.push(rec);return;}
+    var propObj=findPropByName(propName);
+    if(!propObj){noProp.push(rec);return;}
+    if(dbByPos[pos]){
+      var b=dbByPos[pos];
+      var dbProp=DB.proprieta.find(function(pp){return pp.id===b.proprieta_id;});
+      rec.db_checkin=b.checkin;
+      rec.db_propname=dbProp?dbProp.nome:'?';
+      inDb.push(rec);
+    } else {
+      missing.push(rec);
+    }
+  });
+  var totalRows=rawRows.length;
+  var sanity=(inDb.length+missing.length+cancellate.length+noProp.length)===totalRows;
+  // HTML
+  var html='';
+  var hasMissing=missing.length>0;
+  // Banner principale
+  html+='<div class="alert '+(hasMissing?'alert-warning':'alert-success')+'" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">';
+  if(hasMissing){
+    html+='<div>&#9888; <strong>'+missing.length+' prenotazioni nel CSV NON sono nel DB</strong> &mdash; potenziali mancanti</div>';
+  } else {
+    html+='<div>&#10003; <strong>Tutte le prenotazioni del CSV sono presenti nel DB</strong> (oppure correttamente escluse)</div>';
+  }
+  html+='<div style="font-size:11.5px;color:var(--text-light);font-variant-numeric:tabular-nums">CSV: '+totalRows+' = '+inDb.length+' nel DB + '+missing.length+' mancanti + '+cancellate.length+' cancellate + '+noProp.length+' senza prop. '+(sanity?'<span style="color:var(--green)">&#10003;</span>':'<span style="color:var(--red);font-weight:700">&#10005;</span>')+'</div>';
+  html+='</div>';
+  // Tabelle dettaglio
+  var renderTbl=function(rows, showDbInfo){
+    var t='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px;overflow:hidden"><thead><tr style="background:var(--surface2)">';
+    t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Pos.</th>';
+    t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Arrivo</th>';
+    t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Ospite</th>';
+    t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Portale</th>';
+    t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Proprietà CSV</th>';
+    if(showDbInfo)t+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">DB</th>';
+    t+='</tr></thead><tbody>';
+    t+=rows.map(function(r){
+      var extra='';
+      if(showDbInfo)extra='<td style="padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-mid);font-size:11px">'+esc(r.db_propname||'?')+' &middot; check-in '+dateIt(r.db_checkin||'')+'</td>';
+      return '<tr>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px">'+esc(r.pos||'—')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.arrivo||'—')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.ospite||'—')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+esc(r.portale||'—')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.prop||'—')+'</td>'
+        +extra
+      +'</tr>';
+    }).join('');
+    t+='</tbody></table>';
+    return t;
+  };
+  if(missing.length){
+    html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5">';
+    html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+missing.length+' prenotazioni MANCANTI nel DB</div>';
+    html+='<div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5">Queste righe sono nel CSV ma <strong>non sono state importate</strong>. Verifica perché — potrebbero essere prenotazioni nuove da importare con il bottone "Import CSV" sopra, oppure errori di sincronizzazione.</div>';
+    html+=renderTbl(missing, false);
+    html+='</div>';
+  }
+  // Dettagli espandibili (collassati di default per le categorie OK)
+  html+='<div class="card" style="padding:14px">';
+  html+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;padding:8px 0;color:var(--green)">';
+  html+='&#10003; '+inDb.length+' presenti nel DB <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; correttamente sincronizzate</span></summary>';
+  html+=renderTbl(inDb, true);
+  html+='</details>';
+  if(cancellate.length){
+    html+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;padding:8px 0;color:var(--text-mid)">';
+    html+='&#10060; '+cancellate.length+' cancellate <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; correttamente escluse</span></summary>';
+    html+=renderTbl(cancellate, false);
+    html+='</details>';
+  }
+  if(noProp.length){
+    html+='<details><summary style="cursor:pointer;font-weight:700;padding:8px 0;color:#991b1b">';
+    html+='&#9888; '+noProp.length+' propriet&agrave; NON in anagrafica <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; da aggiungere</span></summary>';
+    html+=renderTbl(noProp, false);
+    html+='</details>';
+  }
+  html+='</div>';
+  document.getElementById('verify-result').innerHTML=html;
+}
+
 function smoobuDateToISO(s){
   if(!s||s==='00:00')return'';
   var p=s.trim().split('.');
@@ -5194,6 +5369,8 @@ function processSmoobu(file){
 
       var imported=0,skipped=0,unmatched=[];
       var newBks=[];
+      // Tracking dettagliato per riepilogo trasparente (v36)
+      var skipReasons={cancellate:[],dup:[],noProp:[]};
 
       rawRows.forEach(function(line){
         if(!line.trim())return;
@@ -5204,20 +5381,34 @@ function processSmoobu(file){
           return(cols[i]||'').replace(/^"|"$/g,'').trim();
         };
 
-        var stato=get('stato');
-        if(stato.toLowerCase().indexOf('cancellat')>=0){skipped++;return;}
+        // Catturo i dati comuni per uso nei tracking di skip
+        var _pos=get('Position');
+        var _arrivo=get('Arrivo');
+        var _ospite=get('Ospite');
+        var _portale=get('Portale');
+        var _propName=get('Proprietà')||get('Proprieta');
 
-        var propName=get('Proprietà');
-        if(!propName)propName=get('Proprieta');
-        var propObj=findPropByName(propName);
-        if(!propObj){
-          if(propName&&unmatched.indexOf(propName)<0)unmatched.push(propName);
+        var stato=get('stato');
+        if(stato.toLowerCase().indexOf('cancellat')>=0){
+          skipReasons.cancellate.push({pos:_pos,arrivo:_arrivo,ospite:_ospite,portale:_portale,prop:_propName,stato:stato});
           skipped++;return;
         }
 
-        var pos=get('Position');
+        var propName=_propName;
+        var propObj=findPropByName(propName);
+        if(!propObj){
+          if(propName&&unmatched.indexOf(propName)<0)unmatched.push(propName);
+          skipReasons.noProp.push({pos:_pos,arrivo:_arrivo,ospite:_ospite,portale:_portale,prop:_propName});
+          skipped++;return;
+        }
+
+        var pos=_pos;
         var dup=DB.prenotazioni.find(function(b){return b.ota_num===pos;});
-        if(dup){skipped++;return;}
+        if(dup){
+          var dupProp=DB.proprieta.find(function(pp){return pp.id===dup.proprieta_id;});
+          skipReasons.dup.push({pos:_pos,arrivo:_arrivo,ospite:_ospite,portale:_portale,prop:_propName,db_checkin:dup.checkin,db_checkout:dup.checkout,db_propname:dupProp?dupProp.nome:'?'});
+          skipped++;return;
+        }
 
         // Portale DEVE essere dichiarato prima di qualsiasi utilizzo
         var portale=smoobuPortale(get('Portale'));
@@ -5282,11 +5473,69 @@ function processSmoobu(file){
       DB.prenotazioni=DB.prenotazioni.concat(newBks);
       saveDB();
 
+      // Riepilogo trasparente con conteggi separati per motivo (v36)
+      var totalRows = rawRows.filter(function(l){return l.trim();}).length;
+      var sanityCheck = (imported + skipped) === totalRows;
       var html='';
-      html+='<div class="alert alert-success" style="margin-bottom:10px">&#10003; <strong>'+imported+' prenotazioni importate</strong>'+(skipped?' &middot; '+skipped+' saltate (non trovate / doppioni)':'')+'</div>';
-      if(unmatched.length){
-        html+='<div class="alert alert-warning">&#9888; <strong>Propriet\u00e0 non in anagrafica</strong> &mdash; aggiungerle nella sezione Propriet\u00e0 e reimportare:<ul style="margin:6px 0 0 18px">';
-        html+=unmatched.map(function(n){return'<li><strong>'+n+'</strong></li>';}).join('');
+      // Banner principale con sanity check
+      html+='<div class="alert alert-success" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">';
+      html+='<div>&#10003; <strong>'+imported+' prenotazioni importate</strong>';
+      if(skipped)html+=' &middot; <span style="color:var(--text-mid)">'+skipped+' saltate (dettaglio sotto)</span>';
+      html+='</div>';
+      html+='<div style="font-size:11.5px;color:var(--text-light);font-variant-numeric:tabular-nums">Righe CSV: <strong>'+totalRows+'</strong> = '+imported+' + '+skipped+' '+(sanityCheck?'<span style="color:var(--green)">&#10003; coerente</span>':'<span style="color:var(--red);font-weight:700">&#10005; INCOERENTE</span>')+'</div>';
+      html+='</div>';
+      if(!sanityCheck){
+        html+='<div class="alert alert-danger" style="margin-bottom:10px">&#9888; <strong>Conteggi non tornano</strong> &mdash; il CSV ha '+totalRows+' righe ma il sistema ha processato '+(imported+skipped)+'. Potrebbe esserci un errore di parsing.</div>';
+      }
+      // Breakdown saltate
+      if(skipped > 0){
+        var renderSkipTable=function(rows, motivo){
+          var tbl='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px;overflow:hidden"><thead><tr style="background:var(--surface2)">';
+          tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Pos.</th>';
+          tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Arrivo</th>';
+          tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Ospite</th>';
+          tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Portale</th>';
+          tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Propriet&agrave; CSV</th>';
+          if(motivo==='dup')tbl+='<th style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:left">Gi&agrave; nel DB</th>';
+          tbl+='</tr></thead><tbody>';
+          tbl+=rows.map(function(r){
+            var extraCol='';
+            if(motivo==='dup')extraCol='<td style="padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-mid);font-size:11px">'+esc(r.db_propname||'?')+' &middot; check-in '+dateIt(r.db_checkin||'')+'</td>';
+            return '<tr>'
+              +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px">'+esc(r.pos||'—')+'</td>'
+              +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.arrivo||'—')+'</td>'
+              +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.ospite||'—')+'</td>'
+              +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+esc(r.portale||'—')+'</td>'
+              +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+esc(r.prop||'—')+'</td>'
+              +extraCol
+            +'</tr>';
+          }).join('');
+          tbl+='</tbody></table>';
+          return tbl;
+        };
+        html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fbbf24">';
+        html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#92400e;margin-bottom:10px">&#128203; Dettaglio delle '+skipped+' prenotazioni saltate</div>';
+        if(skipReasons.cancellate.length){
+          html+='<details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:700;color:var(--text);padding:8px 0">';
+          html+='&#10060; <strong>'+skipReasons.cancellate.length+' cancellate</strong> <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; correttamente escluse (stato "Cancellata" su Smoobu)</span>';
+          html+='</summary>'+renderSkipTable(skipReasons.cancellate,'cancellate')+'</details>';
+        }
+        if(skipReasons.dup.length){
+          html+='<details style="margin-bottom:10px" open><summary style="cursor:pointer;font-weight:700;color:var(--text);padding:8px 0">';
+          html+='&#8635; <strong>'+skipReasons.dup.length+' gi&agrave; presenti</strong> <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; gi&agrave; importate in precedenza (Position duplicata)</span>';
+          html+='</summary>'+renderSkipTable(skipReasons.dup,'dup')+'</details>';
+        }
+        if(skipReasons.noProp.length){
+          html+='<details style="margin-bottom:0" open><summary style="cursor:pointer;font-weight:700;color:#991b1b;padding:8px 0">';
+          html+='&#9888; <strong>'+skipReasons.noProp.length+' propriet&agrave; NON in anagrafica</strong> <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; da aggiungere in "Propriet&agrave;" e reimportare per recuperarle</span>';
+          html+='</summary>'+renderSkipTable(skipReasons.noProp,'noProp')+'</details>';
+        }
+        html+='</div>';
+      }
+      if(unmatched.length && !skipReasons.noProp.length){
+        // Fallback se per qualche motivo unmatched è popolato ma skipReasons.noProp è vuoto
+        html+='<div class="alert alert-warning">&#9888; <strong>Propriet\u00e0 non in anagrafica</strong> &mdash; aggiungerle e reimportare:<ul style="margin:6px 0 0 18px">';
+        html+=unmatched.map(function(n){return'<li><strong>'+esc(n)+'</strong></li>';}).join('');
         html+='</ul></div>';
       }
       if(newBks.length){
