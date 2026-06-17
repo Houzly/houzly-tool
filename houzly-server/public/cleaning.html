@@ -910,14 +910,66 @@ function showErr(msg) {
   setTimeout(() => { document.getElementById('auth-err').textContent = ''; }, 2000);
 }
 
+// Costanti per gestione force-logout admin (v2)
+// ADMIN_REAUTH_DEADLINE = data di deploy v2 (17 Giu 2026 00:00 UTC)
+// Tutti gli admin con timestamp di auth PRECEDENTE devono re-autenticarsi
+// Le nuove autenticazioni (post 17 Giu 2026) sono valide per 7 giorni
+const ADMIN_REAUTH_DEADLINE = '2026-06-17T00:00:00Z';
+const ADMIN_REAUTH_VALIDITY_MS = 7 * 24 * 60 * 60 * 1000; // 7 giorni
+const ADMIN_REAUTH_KEY = 'houzly_admin_last_auth';
+
+// Verifica se l'admin loggato è ancora "fresco"
+// Regole:
+//   1. Deve esistere un timestamp di auth
+//   2. Il timestamp deve essere DOPO la deadline di deploy (invalida sessioni vecchie)
+//   3. Non deve essere passato più tempo di ADMIN_REAUTH_VALIDITY_MS dall'auth
+function isAdminAuthFresh() {
+  const lastAuth = localStorage.getItem(ADMIN_REAUTH_KEY);
+  if (!lastAuth) return false; // mai autenticato (o solo pre-v2 senza timestamp)
+  const lastAuthMs = parseInt(lastAuth, 10);
+  if (isNaN(lastAuthMs)) return false;
+  const deadlineMs = new Date(ADMIN_REAUTH_DEADLINE).getTime();
+  // Auth precedente al deploy → sessione admin pre-v2, invalida
+  if (lastAuthMs < deadlineMs) return false;
+  // Auth scaduta (>7 giorni)
+  if ((Date.now() - lastAuthMs) > ADMIN_REAUTH_VALIDITY_MS) return false;
+  return true;
+}
+
 async function onAuthOk() {
   document.getElementById('auth-screen').classList.add('hidden');
+  const stored = localStorage.getItem(CLEANER_KEY);
   // Se l'identità non è ancora stata scelta, mostra "Chi sei?"
-  if (localStorage.getItem(CLEANER_KEY) === null) {
+  if (stored === null) {
     showWhoAreYou();
     return;
   }
-  myIdentity = localStorage.getItem(CLEANER_KEY); // 'tutti' o nome pulitrice
+  // v2: Force re-auth admin se l'autenticazione non è fresca (entro 7 giorni)
+  // Questo invalida qualsiasi sessione admin precedente al deploy di questa versione
+  if (stored === 'tutti' && !isAdminAuthFresh()) {
+    console.warn('[cleaning] Sessione admin scaduta o non valida. Richiesta re-autenticazione.');
+    localStorage.removeItem(CLEANER_KEY);
+    localStorage.removeItem(ADMIN_REAUTH_KEY);
+    myIdentity = null;
+    currentCleaner = null;
+    showWhoAreYou();
+    return;
+  }
+  // Validazione: se identità è una pulitrice che non esiste più nella lista, reset
+  if (stored !== 'tutti') {
+    // Carica DB per avere lista cleaner aggiornata
+    await loadDB();
+    const validCleaners = getCleaners();
+    if (!validCleaners.includes(stored)) {
+      console.warn('[cleaning] Identità memorizzata "'+stored+'" non è più nella lista pulitrici. Reset.');
+      localStorage.removeItem(CLEANER_KEY);
+      myIdentity = null;
+      currentCleaner = null;
+      showWhoAreYou();
+      return;
+    }
+  }
+  myIdentity = stored;
   currentCleaner = myIdentity === 'tutti' ? null : myIdentity;
   await enterApp();
 }
@@ -926,14 +978,31 @@ function showWhoAreYou() {
   const screen = document.getElementById('whoareyou-screen');
   screen.classList.remove('hidden');
   const wrap = document.getElementById('way-chips');
-  // Tutti (Daniele/Romeo)
-  let html = `<button class="way-btn tutti-btn" onclick="selectIdentity('tutti')"><span class="way-icon">👁</span> Tutti (Manager)</button>`;
-  // Pulitrici
+  // PULITRICI in evidenza per evitare click accidentali su "Tutti"
+  let html = '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:12px;text-align:center">Seleziona il tuo nome</div>';
   const icons = ['🧹','🧼','✨','🫧','💧'];
   getCleaners().forEach((c, i) => {
     html += `<button class="way-btn" onclick="selectIdentity('${c}')"><span class="way-icon">${icons[i]||'🧹'}</span> ${c}</button>`;
   });
+  // Amministratore in fondo, separato visivamente e protetto con PIN
+  html += '<div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:18px;padding-top:14px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Solo Daniele/Romeo</div>';
+  html += `<button class="way-btn tutti-btn" onclick="requestAdminAccess()" style="opacity:0.7"><span class="way-icon">🔑</span> Amministratore Houzly</button></div>`;
   wrap.innerHTML = html;
+}
+
+// Admin access richiede PIN aggiuntivo per evitare che le pulitrici lo selezionino per errore
+function requestAdminAccess() {
+  const pin = prompt('Inserisci il PIN amministratore Houzly:');
+  if (pin === null) return; // cancel
+  // PIN admin: '2912' (modificabile da console se cambia)
+  const ADMIN_PIN = (window.localStorage.getItem('cleaning_admin_pin') || '2912');
+  if (pin !== ADMIN_PIN) {
+    alert('PIN errato. Solo Daniele/Romeo hanno accesso amministratore.');
+    return;
+  }
+  // v2: salvo timestamp di autenticazione (per finestra 7 giorni)
+  localStorage.setItem(ADMIN_REAUTH_KEY, String(Date.now()));
+  selectIdentity('tutti');
 }
 
 async function selectIdentity(name) {
@@ -1187,11 +1256,15 @@ function getFilteredTasks() {
   return db.tasks.filter(t => {
     const d = t.date_override || t.date;
     if (!dayISOs.has(d)) return false;
+    // PULITRICI: filtra solo i task assegnati a loro (anche multi-cleaner)
+    // currentCleaner === null SOLO per myIdentity === 'tutti' (manager)
     if (currentCleaner) {
       const tc = t.cleaner;
       if (!tc) return false; // non assegnato
       const arr = Array.isArray(tc) ? tc : [tc];
-      if (!arr.includes(currentCleaner)) return false;
+      // Confronto case-insensitive per essere robusti contro typo
+      const arrLower = arr.map(x => String(x).trim().toLowerCase());
+      if (!arrLower.includes(String(currentCleaner).trim().toLowerCase())) return false;
     }
     return true;
   }).sort((a, b) => {
@@ -1761,13 +1834,19 @@ async function saveSettings(andSync = false) {
 function updateHeaderSub() {
   const db = clDB();
   const sub = document.getElementById('header-sub');
+  let parts = [];
+  // Identità sempre visibile per evitare confusione su dispositivi multi-utente
+  if (myIdentity && myIdentity !== 'tutti') {
+    parts.push(`🧹 ${myIdentity}`);
+  } else if (myIdentity === 'tutti') {
+    parts.push('🔑 Admin');
+  }
   if (db.lastSync) {
     const d = new Date(db.lastSync);
     const fmt = `${d.getDate()} ${['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'][d.getMonth()]} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    sub.textContent = `Sync: ${fmt}`;
-  } else {
-    sub.textContent = 'Cleaning Manager';
+    parts.push(`Sync ${fmt}`);
   }
+  sub.textContent = parts.length ? parts.join(' · ') : 'Cleaning Manager';
 }
 
 // ═══════════════════════════════
