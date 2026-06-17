@@ -578,6 +578,64 @@ select.field-input {
   padding-right: 36px;
   cursor: pointer;
 }
+/* Logout button nell'header — distinto dai sync-btn perché ha testo */
+.logout-btn-header {
+  background: rgba(244,67,54,0.15);
+  border: 1px solid rgba(244,67,54,0.35);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.logout-btn-header:active { transform: scale(0.95); background: rgba(244,67,54,0.25); }
+
+/* Logout menu */
+.logout-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 10000; display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px; padding-bottom: 32px;
+  animation: lo-fadein 0.15s ease-out;
+}
+@keyframes lo-fadein { from { opacity: 0; } to { opacity: 1; } }
+.logout-card {
+  background: #1c2030; border-radius: 18px; width: 100%; max-width: 420px;
+  padding: 20px; box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  animation: lo-slideup 0.2s ease-out;
+}
+@keyframes lo-slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.logout-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.logout-sub { font-size: 12.5px; color: rgba(255,255,255,0.55); margin-bottom: 18px; }
+.logout-action {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 14px; margin-bottom: 8px;
+  color: #fff; cursor: pointer; text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.logout-action:hover, .logout-action:active {
+  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);
+}
+.logout-action-danger { background: rgba(244,67,54,0.08); border-color: rgba(244,67,54,0.25); }
+.logout-action-danger:hover, .logout-action-danger:active { background: rgba(244,67,54,0.12); border-color: rgba(244,67,54,0.4); }
+.logout-icon { font-size: 22px; flex-shrink: 0; }
+.logout-action-text { flex: 1; min-width: 0; }
+.logout-action-title { font-size: 14.5px; font-weight: 600; margin-bottom: 2px; }
+.logout-action-desc { font-size: 11.5px; color: rgba(255,255,255,0.5); line-height: 1.4; }
+.logout-cancel {
+  width: 100%; background: transparent; border: 0; padding: 12px;
+  color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer;
+  margin-top: 4px;
+}
+.logout-cancel:hover { color: rgba(255,255,255,0.8); }
+
 </style>
 </head>
 <body>
@@ -638,7 +696,31 @@ select.field-input {
       <div class="header-right">
         <button class="sync-btn" id="sync-btn" onclick="syncSmoobu()" title="Sync Smoobu">↻</button>
         <button class="sync-btn" id="settings-btn" onclick="openSettings()" title="Impostazioni" style="display:none">⚙</button>
+        <button class="logout-btn-header" id="logout-btn" onclick="openLogoutMenu()" title="Esci">🚪 Esci</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Logout menu modal -->
+  <div id="logout-menu" class="logout-overlay" style="display:none" onclick="closeLogoutMenu(event)">
+    <div class="logout-card" onclick="event.stopPropagation()">
+      <div class="logout-title">Esci dall'app</div>
+      <div class="logout-sub" id="logout-currentid"></div>
+      <button class="logout-action" onclick="doChangeIdentity()">
+        <span class="logout-icon">👤</span>
+        <div class="logout-action-text">
+          <div class="logout-action-title">Cambia utente</div>
+          <div class="logout-action-desc">Torna a "Chi sei?" senza chiudere l'app</div>
+        </div>
+      </button>
+      <button class="logout-action logout-action-danger" onclick="doFullLogout()">
+        <span class="logout-icon">🔒</span>
+        <div class="logout-action-text">
+          <div class="logout-action-title">Esci completamente</div>
+          <div class="logout-action-desc">Richiede di reinserire il PIN per rientrare</div>
+        </div>
+      </button>
+      <button class="logout-cancel" onclick="closeLogoutMenu()">Annulla</button>
     </div>
   </div>
 
@@ -1053,7 +1135,7 @@ function dbDefaults() {
   if (!c.syncMonths)  c.syncMonths = '3';
   if (!c.lastSync)    c.lastSync = null;
   if (!c.cleaners || !c.cleaners.length) {
-    c.cleaners = ['Ana','Luana','Caterina','Linda','Patrizia'];
+    c.cleaners = ['Ana','Luana','Caterina','GL Servizi','Patrizia','Carla'];
   }
   if (!c.defaultChecklist || !c.defaultChecklist.length) {
     c.defaultChecklist = [
@@ -1101,6 +1183,47 @@ async function syncSmoobu() {
   } finally {
     btn.classList.remove('spinning');
   }
+}
+
+// ═══════════════════════════════
+//  LOGOUT MENU (v3)
+// ═══════════════════════════════
+function openLogoutMenu() {
+  const sub = document.getElementById('logout-currentid');
+  if (myIdentity === 'tutti') {
+    sub.textContent = 'Sei loggato come 🔑 Amministratore Houzly';
+  } else if (myIdentity) {
+    sub.textContent = `Sei loggato come 🧹 ${myIdentity}`;
+  } else {
+    sub.textContent = 'Sessione attiva';
+  }
+  document.getElementById('logout-menu').style.display = 'flex';
+}
+function closeLogoutMenu(e) {
+  // Se chiamato da click su overlay, ignora se target non è l'overlay
+  if (e && e.target && e.target.id !== 'logout-menu' && e.target.closest('.logout-card')) return;
+  document.getElementById('logout-menu').style.display = 'none';
+}
+function doChangeIdentity() {
+  // Rimuove solo identità — il PIN dell'app resta valido
+  localStorage.removeItem(CLEANER_KEY);
+  localStorage.removeItem(ADMIN_REAUTH_KEY); // anche timestamp admin
+  myIdentity = null;
+  currentCleaner = null;
+  document.getElementById('logout-menu').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  showWhoAreYou();
+}
+function doFullLogout() {
+  if (!confirm('Vuoi davvero uscire? Dovrai reinserire il PIN per rientrare.')) return;
+  // Rimuove TUTTO: PIN, identità, admin reauth
+  localStorage.removeItem(AUTH_KEY);
+  localStorage.removeItem(CLEANER_KEY);
+  localStorage.removeItem(ADMIN_REAUTH_KEY);
+  myIdentity = null;
+  currentCleaner = null;
+  // Ricarica la pagina per pulizia totale (sicuro che lo stato JS sia resettato)
+  location.reload();
 }
 
 // ═══════════════════════════════
