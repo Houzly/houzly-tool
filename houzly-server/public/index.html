@@ -736,7 +736,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v42 · 01/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v43 · 18/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1058,7 +1058,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div style="font-size:22px">&#128196;</div>
         <div style="flex:1">
           <div style="font-weight:700;color:#92400e;margin-bottom:4px">Certificazione Unica — Locazioni Brevi</div>
-          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Per ogni Mandante dove Houzly opera come sostituto d'imposta. Riepilogo ritenute cedolare 21% versate con codice tributo <strong>1919</strong>. Da trasmettere telematicamente entro il <strong>16 marzo</strong> e copia al Mandante.</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Per ogni Mandante dove Houzly opera come sostituto d'imposta. Riepilogo ritenute d'acconto 21% versate con codice tributo <strong>1919</strong>. Da trasmettere telematicamente entro il <strong>16 marzo</strong> e copia al Mandante.</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="adempExportCUCSV()">&#8595; CSV consolidato</button>
@@ -1092,7 +1092,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div style="font-size:22px">&#128202;</div>
         <div style="flex:1">
           <div style="font-weight:700;color:#6b21a8;margin-bottom:4px">Modello 770 — Sostituti d'Imposta</div>
-          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Dichiarazione annuale consolidata Houzly Snc come sostituto d'imposta: totale ritenute cedolare operate, F24 versati per mese, quadro mandanti. Scadenza <strong>31 ottobre</strong>.</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Dichiarazione annuale consolidata Houzly Snc come sostituto d'imposta: totale ritenute d'acconto operate, F24 versati per mese, quadro mandanti. Scadenza <strong>31 ottobre</strong>.</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="adempExport770CSV()">&#8595; CSV consolidato</button>
@@ -1561,7 +1561,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div id="ptab-fiscale" style="display:none">
       <div class="alert alert-info">Le impostazioni fiscali dipendono dal contratto firmato con il proprietario.</div>
       <div class="toggle-row"><div><div class="toggle-label">IVA 22% sul Compenso Houzly</div><div class="toggle-sub">Attiva se previsto dal contratto</div></div><label class="toggle"><input type="checkbox" id="fisc-iva22"><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div><div class="toggle-label">Ritenuta 21% (Cedolare)</div><div class="toggle-sub">Calcola cedolare sul canone locazione</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-label">Ritenuta d'Acconto 21%</div><div class="toggle-sub">Houzly trattiene il 21% sul canone come sostituto d'imposta (LdB 2024 — a titolo di acconto)</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
       <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
@@ -5016,7 +5016,7 @@ function previewReportProp(){
   }
   var copropsHTML='';
   if(own&&own.coprops&&own.coprops.length&&own.fisc_cedolare){
-    copropsHTML='<div class="rpt-coprop"><h5>Cedolare Secca per Co-Proprietari</h5>'
+    copropsHTML='<div class="rpt-coprop"><h5>Ritenuta d\'Acconto per Co-Proprietari</h5>'
       +own.coprops.map(function(cp){return'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span>'+cp.nome+' ('+(cp.perc*100).toFixed(0)+'%)</span><strong style="color:var(--cyan)">'+eur(r2(nettoImposta*cp.perc))+'</strong></div>';}).join('')+'</div>';
   }
   var reportTitle=isGroup&&grp?grp.nome:(prop?prop.nome:'');
@@ -5043,12 +5043,12 @@ function previewReportProp(){
          :'')
        +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale guadagno proprietario</span><span style="font-weight:700">'+eur(sommaNetti)+'</span></div>'
        +(((own&&own.fisc_cedolare)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return _fo&&_fo.fisc_cedolare;}())))
-         ?'<div class="rpt-sum-row" style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px"><span>Cedolare Secca 21%</span><span style="color:var(--red);font-weight:700">- '+eur(cedolare)+'</span></div>'
+         ?'<div class="rpt-sum-row" style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px"><span>Ritenuta d\'Acconto 21%</span><span style="color:var(--red);font-weight:700">- '+eur(cedolare)+'</span></div>'
           +'<div class="rpt-sum-row"><span>Netto da bonificare al proprietario dopo imposta</span><span class="rpt-sum-total">'+eur(nettoImposta)+'</span></div>'
           +(own&&own.coprops&&own.coprops.length
             ?'<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">'
              +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">Suddivisione per proprietario</div>'
-             +'<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;font-style:italic">Solo informativo — cedolare versata per quota di proprietà</div>'
+             +'<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;font-style:italic">Solo informativo — ritenuta d\'acconto versata per quota di proprietà</div>'
              +own.coprops.map(function(cp){
                var quotaCedolare=r2(sommaNetti*cp.perc*0.21);
                return'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'
@@ -5070,7 +5070,7 @@ function previewReportProp(){
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Spese pulizia</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.pulizia;},0)))+'</span></div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Compenso Houzly</span><span style="color:#b85c00">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.houzly;},0)))+'</span></div>'
        +'<div style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;color:#3d2020"><span style="font-weight:700">Totale spettante al proprietario</span><span style="font-weight:800;font-size:16px;color:#c0122c">'+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.canone;},0)))+'</span></div>'
-       +'<div style="margin-top:8px;font-size:11px;color:#a06070;font-style:italic">Solo informativo — nessuna cedolare applicata</div>'
+       +'<div style="margin-top:8px;font-size:11px;color:#a06070;font-style:italic">Solo informativo — nessuna ritenuta applicata</div>'
        +'</div>'
       :'')
     ;
@@ -5143,12 +5143,12 @@ function printReport(){
      +(bksNorm.some(function(b){return b.calc.pulizie_owner&&b.calc.rimborso_pulizie>0;})?srow('Rimborso pulizie al proprietario','+ '+eur(bksNorm.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0)),'pos'):'')
      +srow('Totale guadagno proprietario',eur(sommaNetti2),'total')
      +(((own&&own.fisc_cedolare)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return _fo2&&_fo2.fisc_cedolare;})()))
-       ?srow('Cedolare Secca 21%','- '+eur(cedolare2),'neg')
+       ?srow('Ritenuta d\'Acconto 21%','- '+eur(cedolare2),'neg')
         +srow('Netto dopo imposta',eur(nettoImposta2),'grand')
         +(own&&own.coprops&&own.coprops.length
           ?own.coprops.map(function(cp){
              var qC=r2(sommaNetti2*cp.perc*0.21);
-             return srow(cp.nome+' ('+(cp.perc*100).toFixed(0)+'%) — cedolare di competenza','- '+eur(qC),'coprop');
+             return srow(cp.nome+' ('+(cp.perc*100).toFixed(0)+'%) — ritenuta di competenza','- '+eur(qC),'coprop');
            }).join('')
           :'')
        :'')
@@ -5238,10 +5238,10 @@ function exportReportExcel(){
   var sommaNetti=r2(bks.reduce(function(s,b){return s+b.calc.canone;},0));
   var cedolare=r2(sommaNetti*0.21);
   var nettoImposta=r2(sommaNetti-cedolare);
-  data.push([]);data.push(['','','','','','SOMMA NETTI PROPRIETARIO','CEDOLARE 21%','TOTALE AL NETTO D\'IMPOSTA']);
+  data.push([]);data.push(['','','','','','SOMMA NETTI PROPRIETARIO','RITENUTA 21%','TOTALE AL NETTO D\'IMPOSTA']);
   data.push(['','','','','',sommaNetti,cedolare,nettoImposta]);
   if(own.coprops&&own.coprops.length&&own.fisc_cedolare){
-    data.push([]);data.push(['','','','','','CEDOLARE SECCA PROPRIETARI','QUOTA PROPRIETARIO','TOTALE']);
+    data.push([]);data.push(['','','','','','RITENUTA D\'ACCONTO PROPRIETARI','QUOTA PROPRIETARIO','TOTALE']);
     own.coprops.forEach(function(cp){data.push(['','','','','',cp.nome,cp.perc,r2(nettoImposta*cp.perc)]);});
   }
   var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=Array(13).fill({wch:16});
@@ -9341,7 +9341,7 @@ function renderAdempOverview(){
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">'
         +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Mandanti attivi</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+totMandanti+'</div></div>'
         +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Lordo totale incassato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+eur(totLordo)+'</div></div>'
-        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute cedolare 21%</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
+        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute d\'acconto 21%</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
         +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Tassa Soggiorno</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(totTassaSogg)+'</div></div>'
       +'</div>'
       +'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-light);line-height:1.5">'
