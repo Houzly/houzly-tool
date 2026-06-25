@@ -737,7 +737,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v44 · 18/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v45 · 18/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1158,7 +1158,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div id="page-anticipi" class="page">
   <div class="section-header">
     <div class="section-title">&#128184; Anticipi Spese</div>
-    <button class="btn btn-primary" onclick="openModalAnticipo()">+ Nuovo Anticipo</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="openImportAnticipi()">📥 Import Excel</button>
+      <button class="btn btn-primary" onclick="openModalAnticipo()">+ Nuovo Anticipo</button>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b">
@@ -1175,7 +1178,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="card" style="padding:12px;margin-bottom:14px">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end">
       <div class="field" style="margin:0"><label style="font-size:11px">Proprietà</label><select id="ant-filter-prop"><option value="">Tutte</option></select></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Stato</label><select id="ant-filter-status"><option value="">Tutti</option><option value="pending">Da recuperare</option><option value="done">Recuperati</option></select></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Stato</label><select id="ant-filter-status"><option value="">Tutti</option><option value="open">Aperto (saldo > 0)</option><option value="partial">Parziale</option><option value="done">Saldato</option></select></div>
       <div class="field" style="margin:0"><label style="font-size:11px">Mese recupero</label><select id="ant-filter-mese"><option value="">Tutti</option></select></div>
       <div class="field" style="margin:0"><label style="font-size:11px">Cerca</label><input type="text" id="ant-filter-search" placeholder="Causale, note..."></div>
     </div>
@@ -1188,8 +1191,9 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="card" style="padding:0;overflow:hidden">
     <table id="ant-table" style="width:100%">
       <thead><tr>
-        <th>Data</th><th>Proprietà</th><th>Proprietario</th><th>Causale</th>
-        <th style="text-align:right">Importo</th><th>Mese Recupero</th><th>Stato</th><th>Azioni</th>
+        <th>Data</th><th>Proprietà</th><th>Proprietario</th><th>Categoria</th><th>Causale</th>
+        <th style="text-align:right">Importo</th><th style="text-align:right">Recuperato</th><th style="text-align:right">Saldo</th>
+        <th>Mese Recupero</th><th>Stato</th><th>Azioni</th>
       </tr></thead>
       <tbody id="ant-tbody"></tbody>
     </table>
@@ -1205,20 +1209,32 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field"><label>Proprietà *</label><select id="ant-prop-sel" onchange="updateAntPreview()"><option value="">-- Seleziona --</option></select><div class="field-hint" id="ant-owner-hint" style="font-size:11px;color:var(--text-light);margin-top:4px"></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field" style="margin:0"><label>Data spesa *</label><input type="date" id="ant-data"></div>
-        <div class="field" style="margin:0"><label>Importo (&euro;) *</label><input type="number" id="ant-importo" step="0.01" min="0"></div>
+        <div class="field" style="margin:0"><label>Categoria *</label><select id="ant-categoria"><option value="">-- Seleziona --</option><option value="Riparazioni">Riparazioni</option><option value="Utenze">Utenze</option><option value="Pulizie straordinarie">Pulizie straordinarie</option><option value="Acquisti / Arredo">Acquisti / Arredo</option><option value="Manutenzione">Manutenzione</option><option value="Altro">Altro</option></select></div>
       </div>
       <div class="field"><label>Causale *</label><input type="text" id="ant-causale" placeholder="es. Riparazione idraulico — sostituzione lavandino bagno"></div>
-      <div class="field"><label>Mese di recupero *</label><select id="ant-mese-recupero"></select><div class="field-hint">In quale mese verrà mostrato e detratto dal Report Mensile</div></div>
-      <div class="field"><label>Note (opzionale)</label><textarea id="ant-note" rows="2" placeholder="Riferimento fattura, dettagli aggiuntivi..."></textarea></div>
-      <div class="toggle-row">
-        <div><div class="toggle-label">Recuperato</div><div class="toggle-sub">Spunta quando l'anticipo è stato detratto dal payout</div></div>
-        <label class="toggle"><input type="checkbox" id="ant-done"><span class="toggle-slider"></span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label>Importo (&euro;) *</label><input type="number" id="ant-importo" step="0.01" min="0" oninput="updateAntSaldo()"></div>
+        <div class="field" style="margin:0"><label>Recuperato (&euro;)</label><input type="number" id="ant-recuperato" step="0.01" min="0" value="0" oninput="updateAntSaldo()"><div class="field-hint" style="font-size:10px;color:var(--text-light)">Lascia 0 se non ancora detratto</div></div>
+        <div class="field" style="margin:0"><label>Saldo residuo</label><input type="text" id="ant-saldo" readonly style="background:var(--surface2);font-family:Syne,sans-serif;font-weight:700;color:var(--blue)"></div>
       </div>
+      <div class="field"><label>Mese di recupero *</label><select id="ant-mese-recupero"></select><div class="field-hint">Mese in cui mostrare l'anticipo nel Report e detrarre dal payout</div></div>
+      <div class="field"><label>Note (opzionale)</label><textarea id="ant-note" rows="2" placeholder="Riferimento fattura, dettagli aggiuntivi..."></textarea></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button class="btn btn-ghost" onclick="closeModal('modal-anticipo')">Annulla</button>
         <button class="btn btn-primary" id="ant-save-btn" onclick="saveAnticipo()">Salva</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Modal Import Excel Anticipi -->
+<div class="modal-overlay" id="modal-import-anticipi">
+  <div class="modal" style="max-width:920px;padding:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">📥 Import Anticipi da Excel</div>
+      <button class="modal-close" style="position:static" onclick="closeModal('modal-import-anticipi')">&#10005;</button>
+    </div>
+    <div id="imp-ant-body" style="padding:24px;max-height:78vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -5026,9 +5042,15 @@ function previewReportProp(){
       else if(prop) reportPropIds = [prop.id];
       ensureAnticipiDB();
       anticipiRecuperi = DB.anticipi.filter(function(a){
-        return reportPropIds.indexOf(a.proprieta_id)>=0 && a.mese_recupero===meseRecKey;
+        if(a.proprieta_id===undefined || reportPropIds.indexOf(a.proprieta_id)<0) return false;
+        if(a.mese_recupero!==meseRecKey) return false;
+        var saldo = (+a.importo||0) - (+a.recuperato||0);
+        return saldo > 0.005; // solo anticipi con saldo residuo
       });
-      anticipiTot = r2(anticipiRecuperi.reduce(function(s,a){return s+(+a.importo||0);},0));
+      anticipiTot = r2(anticipiRecuperi.reduce(function(s,a){
+        var saldo = (+a.importo||0) - (+a.recuperato||0);
+        return s + saldo;
+      },0));
     }
   }
   var nettoBonifico = r2(nettoImposta - anticipiTot);
@@ -5144,11 +5166,16 @@ function previewReportProp(){
              +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">&#128184; Recuperi Anticipi Spese</div>'
              +anticipiRecuperi.map(function(a){
                var propAnt=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
-               var meta = dateIt(a.data);
-               if(isGroup && propAnt) meta += ' · ' + propAnt.nome;
+               var meta = a.data?dateIt(a.data):'';
+               if(isGroup && propAnt) meta += (meta?' · ':'') + propAnt.nome;
+               var saldoRes = r2((+a.importo||0) - (+a.recuperato||0));
+               var isPartial = (+a.recuperato||0) > 0;
+               var saldoLabel = isPartial
+                 ? '<div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px">Anticipato '+eur(+a.importo||0)+' · Recuperato in precedenza '+eur(+a.recuperato||0)+'</div>'
+                 : '';
                return '<div class="rpt-sum-row" style="padding:5px 0">'
-                 +'<span><span style="color:rgba(255,255,255,0.7)">'+escHtml(a.causale||'—')+'</span><div style="font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:2px">'+meta+(a.note?' · '+escHtml(a.note):'')+'</div></span>'
-                 +'<span style="color:#f87096;font-weight:600">- '+eur(+a.importo||0)+'</span>'
+                 +'<span><span style="color:rgba(255,255,255,0.7)">'+escHtml(a.causale||'—')+'</span>'+(a.categoria?' <span style="font-size:9.5px;background:rgba(67,209,238,0.15);color:#67e8f9;padding:1px 5px;border-radius:4px;font-weight:600">'+escHtml(a.categoria)+'</span>':'')+'<div style="font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:2px">'+meta+(a.note?' · '+escHtml(a.note):'')+'</div>'+saldoLabel+'</span>'
+                 +'<span style="color:#f87096;font-weight:600">- '+eur(saldoRes)+'</span>'
                  +'</div>';
              }).join('')
              +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale recuperi anticipi</span><span style="color:#f87096;font-weight:700">- '+eur(anticipiTot)+'</span></div>'
@@ -5224,9 +5251,15 @@ function printReport(){
       else if(prop) reportPropIds2 = [prop.id];
       ensureAnticipiDB();
       anticipiRecuperi2 = DB.anticipi.filter(function(a){
-        return reportPropIds2.indexOf(a.proprieta_id)>=0 && a.mese_recupero===meseRecKey2;
+        if(reportPropIds2.indexOf(a.proprieta_id)<0) return false;
+        if(a.mese_recupero!==meseRecKey2) return false;
+        var saldo = (+a.importo||0) - (+a.recuperato||0);
+        return saldo > 0.005;
       });
-      anticipiTot2 = r2(anticipiRecuperi2.reduce(function(s,a){return s+(+a.importo||0);},0));
+      anticipiTot2 = r2(anticipiRecuperi2.reduce(function(s,a){
+        var saldo = (+a.importo||0) - (+a.recuperato||0);
+        return s + saldo;
+      },0));
     }
   }
   var nettoBonifico2 = r2(nettoImposta2 - anticipiTot2);
@@ -5277,8 +5310,9 @@ function printReport(){
           ?'<div class="sum-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #555"><span class="lbl" style="font-weight:700;color:#666;text-transform:uppercase;font-size:10px;letter-spacing:0.06em">&#128184; Recuperi Anticipi Spese</span><span class="val"></span></div>'
            +anticipiRecuperi2.map(function(a){
              var propA=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
-             var labelMeta = dateIt(a.data) + (isGroup2 && propA ? ' · '+propA.nome : '');
-             return srow((a.causale||'—')+' <span style="font-size:9px;color:#888">'+labelMeta+'</span>','- '+eur(+a.importo||0),'neg');
+             var labelMeta = (a.data?dateIt(a.data):'') + (isGroup2 && propA ? ' · '+propA.nome : '');
+             var saldoRes = r2((+a.importo||0) - (+a.recuperato||0));
+             return srow((a.causale||'—')+(a.categoria?' ['+escHtml(a.categoria)+']':'')+' <span style="font-size:9px;color:#888">'+labelMeta+'</span>','- '+eur(saldoRes),'neg');
            }).join('')
            +srow('Totale recuperi anticipi','- '+eur(anticipiTot2),'neg')
            +srow('Netto bonificato al proprietario',eur(nettoBonifico2),'grand')
@@ -9203,19 +9237,25 @@ function ensureAnticipiDB(){
 }
 
 // Restituisce gli anticipi di una proprietà per un certo mese di recupero
+// (solo quelli con saldo residuo > 0)
 function getAnticipiForReport(propId, anno, mese){
   ensureAnticipiDB();
   var key = anno + '-' + (mese<10?'0':'') + mese;
   return DB.anticipi.filter(function(a){
-    return a.proprieta_id===propId && a.mese_recupero===key;
+    if(a.proprieta_id!==propId || a.mese_recupero!==key) return false;
+    var saldo = (+a.importo||0) - (+a.recuperato||0);
+    return saldo > 0.005;
   });
 }
 
-// Totale anticipi non recuperati per una proprietà
+// Totale saldo residuo per una proprietà (sommando tutti gli anticipi aperti)
 function totAnticipiPending(propId){
   ensureAnticipiDB();
-  return DB.anticipi.filter(function(a){return a.proprieta_id===propId && !a.done;})
-    .reduce(function(s,a){return s+(+a.importo||0);},0);
+  return DB.anticipi.filter(function(a){return a.proprieta_id===propId;})
+    .reduce(function(s,a){
+      var saldo = (+a.importo||0) - (+a.recuperato||0);
+      return s + (saldo > 0 ? saldo : 0);
+    },0);
 }
 
 function renderAnticipi(){
@@ -9266,14 +9306,17 @@ function anticipiMeseLabel(yyyymm){
 function renderAnticipiStats(){
   ensureAnticipiDB();
   var tot = DB.anticipi.reduce(function(s,a){return s+(+a.importo||0);},0);
-  var pending = DB.anticipi.filter(function(a){return !a.done;}).reduce(function(s,a){return s+(+a.importo||0);},0);
-  var done = tot - pending;
-  var nProps = new Set(DB.anticipi.filter(function(a){return !a.done;}).map(function(a){return a.proprieta_id;})).size;
+  var recuperato = DB.anticipi.reduce(function(s,a){return s+(+a.recuperato||0);},0);
+  var residuo = r2(tot - recuperato);
+  var nProps = new Set(DB.anticipi.filter(function(a){
+    var saldo = (+a.importo||0) - (+a.recuperato||0);
+    return saldo > 0.005;
+  }).map(function(a){return a.proprieta_id;})).size;
   var html = ''
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Totale anticipi</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+eur(tot)+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Da recuperare</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(pending)+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Recuperati</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(done)+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Proprietà coinvolte</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nProps+'</div></div>';
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Totale anticipato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+eur(r2(tot))+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Già recuperato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(r2(recuperato))+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Saldo residuo</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(residuo)+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Proprietà con saldo</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nProps+'</div></div>';
   document.getElementById('ant-stats').innerHTML = html;
 }
 
@@ -9285,17 +9328,28 @@ function renderAnticipiTable(){
   var fSearch = ((document.getElementById('ant-filter-search')||{value:''}).value||'').toLowerCase().trim();
   var rows = DB.anticipi.slice().filter(function(a){
     if(fProp && a.proprieta_id!==fProp) return false;
-    if(fStatus==='pending' && a.done) return false;
-    if(fStatus==='done' && !a.done) return false;
+    var importo = +a.importo || 0;
+    var recuperato = +a.recuperato || 0;
+    var saldo = importo - recuperato;
+    var isSaldato = saldo <= 0.005 && importo > 0;
+    var isPartial = recuperato > 0 && !isSaldato;
+    var isOpen = !isSaldato;
+    if(fStatus==='open' && !isOpen) return false;
+    if(fStatus==='partial' && !isPartial) return false;
+    if(fStatus==='done' && !isSaldato) return false;
     if(fMese && a.mese_recupero!==fMese) return false;
     if(fSearch){
-      var hay = (a.causale||'')+' '+(a.note||'');
+      var hay = (a.causale||'')+' '+(a.note||'')+' '+(a.categoria||'');
       if(hay.toLowerCase().indexOf(fSearch)<0) return false;
     }
     return true;
   }).sort(function(a,b){
-    // Ordine: pending prima, poi per data desc
-    if(a.done !== b.done) return a.done ? 1 : -1;
+    // Ordine: con saldo aperto prima, poi per data desc
+    var saldoA = (+a.importo||0) - (+a.recuperato||0);
+    var saldoB = (+b.importo||0) - (+b.recuperato||0);
+    var openA = saldoA > 0.005;
+    var openB = saldoB > 0.005;
+    if(openA !== openB) return openA ? -1 : 1;
     return (b.data||'').localeCompare(a.data||'');
   });
   var tbody = document.getElementById('ant-tbody');
@@ -9306,15 +9360,29 @@ function renderAnticipiTable(){
   tbody.innerHTML = rows.map(function(a){
     var prop = DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
     var owner = prop ? DB.proprietari.find(function(o){return o.id===prop.proprietario_id;}) : null;
-    var statusChip = a.done
-      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">✓ Recuperato</span>'
-      : '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⏳ Pending</span>';
+    var importo = +a.importo || 0;
+    var recuperato = +a.recuperato || 0;
+    var saldo = r2(importo - recuperato);
+    // Stato deriva da recuperato vs importo
+    var isSaldato = saldo <= 0.005 && importo > 0;
+    var isPartial = recuperato > 0 && !isSaldato;
+    var statusChip = isSaldato
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">✓ Saldato</span>'
+      : isPartial
+        ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">↺ Parziale</span>'
+        : '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⏳ Aperto</span>';
+    var catChip = a.categoria
+      ? '<span style="font-size:10.5px;background:rgba(67,209,238,0.08);color:#0891b2;padding:2px 7px;border-radius:6px;font-weight:600;white-space:nowrap">'+escHtml(a.categoria)+'</span>'
+      : '<span style="font-size:10.5px;color:var(--text-light)">—</span>';
     return '<tr>'
-      +'<td style="font-variant-numeric:tabular-nums">'+dateIt(a.data||'')+'</td>'
+      +'<td style="font-variant-numeric:tabular-nums">'+(a.data?dateIt(a.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
       +'<td><strong>'+escHtml(prop?prop.nome:'—')+'</strong></td>'
       +'<td style="font-size:11.5px;color:var(--text-mid)">'+escHtml(owner?nomeOwner(owner.id):'—')+'</td>'
+      +'<td>'+catChip+'</td>'
       +'<td><div style="font-size:13px">'+escHtml(a.causale||'—')+'</div>'+(a.note?'<div style="font-size:10.5px;color:var(--text-light);margin-top:2px">'+escHtml(a.note)+'</div>':'')+'</td>'
-      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(+a.importo||0)+'</td>'
+      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(importo)+'</td>'
+      +'<td style="text-align:right;font-family:Syne,sans-serif;color:var(--green)">'+(recuperato>0?eur(recuperato):'<span style="color:var(--text-light)">—</span>')+'</td>'
+      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700;color:'+(saldo>0?'var(--orange)':'var(--text-light)')+'">'+eur(saldo)+'</td>'
       +'<td><span style="font-size:11.5px;background:rgba(67,97,238,0.08);color:var(--blue);padding:2px 8px;border-radius:6px;font-weight:600">'+anticipiMeseLabel(a.mese_recupero)+'</span></td>'
       +'<td>'+statusChip+'</td>'
       +'<td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="editAnticipo(\''+a.id+'\')">✎</button><button class="btn btn-sm btn-danger" onclick="deleteAnticipo(\''+a.id+'\')">🗑</button></div></td>'
@@ -9328,9 +9396,11 @@ function openModalAnticipo(){
   document.getElementById('ant-modal-title').textContent = 'Nuovo Anticipo Spesa';
   // Reset campi
   document.getElementById('ant-importo').value = '';
+  document.getElementById('ant-recuperato').value = '0';
+  document.getElementById('ant-saldo').value = '';
   document.getElementById('ant-causale').value = '';
   document.getElementById('ant-note').value = '';
-  document.getElementById('ant-done').checked = false;
+  document.getElementById('ant-categoria').value = '';
   // Data default oggi
   var today = new Date();
   var todayISO = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
@@ -9345,7 +9415,21 @@ function openModalAnticipo(){
   // Popola mese recupero: 12 mesi attorno a oggi
   populateAntMeseRecupero(todayISO);
   document.getElementById('ant-save-btn').textContent = 'Salva';
+  updateAntSaldo();
   openModal('modal-anticipo');
+}
+
+function updateAntSaldo(){
+  var imp = parseFloat(document.getElementById('ant-importo').value) || 0;
+  var rec = parseFloat(document.getElementById('ant-recuperato').value) || 0;
+  var saldo = r2(imp - rec);
+  var el = document.getElementById('ant-saldo');
+  if(!el) return;
+  el.value = eur(saldo);
+  // Visual hint se recuperato > importo
+  if(rec > imp + 0.005) el.style.color = 'var(--red)';
+  else if(saldo <= 0.005 && imp > 0) el.style.color = 'var(--green)';
+  else el.style.color = 'var(--blue)';
 }
 
 function populateAntMeseRecupero(refDate){
@@ -9390,23 +9474,32 @@ function saveAnticipo(){
   var propId = document.getElementById('ant-prop-sel').value;
   var data = document.getElementById('ant-data').value;
   var importo = parseFloat(document.getElementById('ant-importo').value);
+  var recuperato = parseFloat(document.getElementById('ant-recuperato').value) || 0;
+  var categoria = document.getElementById('ant-categoria').value;
   var causale = document.getElementById('ant-causale').value.trim();
   var meseRec = document.getElementById('ant-mese-recupero').value;
   var note = document.getElementById('ant-note').value.trim();
-  var done = document.getElementById('ant-done').checked;
   if(!propId){toast('Seleziona la proprietà');return;}
   if(!data){toast('Inserisci la data');return;}
   if(isNaN(importo)||importo<=0){toast('Inserisci un importo valido');return;}
+  if(!categoria){toast('Seleziona la categoria');return;}
   if(!causale){toast('Inserisci la causale');return;}
   if(!meseRec){toast('Seleziona il mese di recupero');return;}
+  if(recuperato < 0){toast('Importo recuperato non può essere negativo');return;}
+  if(recuperato > importo + 0.005){
+    if(!confirm('L\'importo recuperato ('+eur(recuperato)+') supera l\'importo anticipato ('+eur(importo)+'). Confermi?'))return;
+  }
   ensureAnticipiDB();
   if(_editingAnticipoId){
     var i = DB.anticipi.findIndex(function(a){return a.id===_editingAnticipoId;});
     if(i>=0){
       DB.anticipi[i] = Object.assign({},DB.anticipi[i],{
-        proprieta_id:propId, data:data, importo:importo, causale:causale,
-        mese_recupero:meseRec, note:note, done:done
+        proprieta_id:propId, data:data, importo:importo, recuperato:recuperato,
+        categoria:categoria, causale:causale,
+        mese_recupero:meseRec, note:note
       });
+      // Backward compat: aggiorno anche done (derivato)
+      DB.anticipi[i].done = (recuperato >= importo - 0.005);
     }
     toast('Anticipo aggiornato ✓');
   } else {
@@ -9415,10 +9508,12 @@ function saveAnticipo(){
       proprieta_id: propId,
       data: data,
       importo: importo,
+      recuperato: recuperato,
+      categoria: categoria,
       causale: causale,
       mese_recupero: meseRec,
       note: note,
-      done: done,
+      done: (recuperato >= importo - 0.005),
       created_at: Date.now()
     });
     toast('Anticipo salvato ✓');
@@ -9442,12 +9537,14 @@ function editAnticipo(id){
   sel.value = a.proprieta_id;
   document.getElementById('ant-data').value = a.data;
   document.getElementById('ant-importo').value = a.importo;
+  document.getElementById('ant-recuperato').value = a.recuperato!=null ? a.recuperato : (a.done?a.importo:0);
+  document.getElementById('ant-categoria').value = a.categoria || '';
   document.getElementById('ant-causale').value = a.causale;
   document.getElementById('ant-note').value = a.note||'';
-  document.getElementById('ant-done').checked = !!a.done;
   populateAntMeseRecupero(a.data);
   document.getElementById('ant-mese-recupero').value = a.mese_recupero;
   updateAntPreview();
+  updateAntSaldo();
   document.getElementById('ant-save-btn').textContent = 'Aggiorna';
   openModal('modal-anticipo');
 }
@@ -9456,10 +9553,379 @@ function deleteAnticipo(id){
   ensureAnticipiDB();
   var a = DB.anticipi.find(function(x){return x.id===id;});
   if(!a) return;
-  if(!confirm('Eliminare l\'anticipo di '+eur(+a.importo||0)+' ('+(a.causale||'')+')?')) return;
+  // Confermo eliminazione spiegando il caso
+  var prop = DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+  var msg = 'Eliminare l\'anticipo di '+eur(+a.importo||0)+'\n\n';
+  msg += '  Causale: '+(a.causale||'—')+'\n';
+  msg += '  Proprietà: '+(prop?prop.nome:'—')+'\n';
+  msg += '  Mese recupero: '+anticipiMeseLabel(a.mese_recupero)+'\n\n';
+  msg += 'Questa operazione NON è reversibile.\n';
+  msg += 'Usa l\'eliminazione se l\'anticipo è stato rimborsato fuori dal payout (es. cash o bonifico separato dal proprietario).';
+  if(!confirm(msg)) return;
   DB.anticipi = DB.anticipi.filter(function(x){return x.id!==id;});
   saveDB();
   toast('Anticipo eliminato ✓');
+  renderAnticipi();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// IMPORT EXCEL ANTICIPI (v45)
+// Carica file XLSX strutturato come "Piano_Rientro_Houzly"
+// ════════════════════════════════════════════════════════════════════
+
+function openImportAnticipi(){
+  var body = document.getElementById('imp-ant-body');
+  // Schermata iniziale: dropzone + scelta mese recupero default
+  var mesiSel = buildMeseRecuperoOptions();
+  body.innerHTML = ''
+    +'<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:var(--radius);padding:14px;margin-bottom:18px">'
+      +'<div style="font-weight:700;color:#92400e;margin-bottom:6px">📋 Formato file atteso</div>'
+      +'<div style="font-size:12px;color:var(--text-mid);line-height:1.5">Sheet con nome <strong>"Piano di Rientro"</strong> (o primo sheet). Colonne attese: <strong>Proprietà / Struttura</strong>, <strong>Categoria anticipo</strong>, <strong>Descrizione / Causale</strong>, <strong>Data anticipo</strong>, <strong>Importo anticipato</strong>, <strong>Importo recuperato</strong> (opzionale), <strong>Stato</strong>, <strong>Note</strong>.<br>Le proprietà vengono matchate per nome con l\'anagrafica del Tool (case-insensitive).</div>'
+    +'</div>'
+    +'<div class="field" style="margin-bottom:18px">'
+      +'<label>Mese di recupero da assegnare a TUTTI gli anticipi importati *</label>'
+      +'<select id="imp-ant-mese" style="font-weight:600">'+mesiSel+'</select>'
+      +'<div class="field-hint">Lo decidi tu in base a quando inizi a recuperare. Puoi modificarlo poi su singolo anticipo se serve.</div>'
+    +'</div>'
+    +'<div id="imp-ant-dropzone" class="drop-zone" onclick="document.getElementById(\'imp-ant-file\').click()" style="cursor:pointer">'
+      +'<div class="dz-icon">📁</div>'
+      +'<p><strong>Clicca o trascina</strong> il file Excel (.xlsx)</p>'
+    +'</div>'
+    +'<input type="file" id="imp-ant-file" accept=".xlsx,.xls" style="display:none" onchange="processImportAnticipi(this.files[0])">'
+    +'<div id="imp-ant-result" style="margin-top:18px"></div>';
+  // Drag & drop
+  var dz = document.getElementById('imp-ant-dropzone');
+  if(dz){
+    dz.addEventListener('dragover',function(e){e.preventDefault();dz.style.borderColor='var(--blue)';});
+    dz.addEventListener('dragleave',function(e){e.preventDefault();dz.style.borderColor='';});
+    dz.addEventListener('drop',function(e){
+      e.preventDefault();
+      dz.style.borderColor='';
+      if(e.dataTransfer.files[0]) processImportAnticipi(e.dataTransfer.files[0]);
+    });
+  }
+  openModal('modal-import-anticipi');
+}
+
+function buildMeseRecuperoOptions(){
+  // 6 mesi prima fino a 6 mesi avanti, default = corrente
+  var today = new Date();
+  var baseY = today.getFullYear(), baseM = today.getMonth()+1;
+  var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var html = '';
+  for(var k=-6; k<=6; k++){
+    var idx = baseY*12 + (baseM-1) + k;
+    var y = Math.floor(idx/12), m = (idx%12)+1;
+    var key = y+'-'+(m<10?'0':'')+m;
+    var label = mesi[m-1]+' '+y + (k===0?' (corrente)':'');
+    var selected = k===0 ? ' selected' : '';
+    html += '<option value="'+key+'"'+selected+'>'+label+'</option>';
+  }
+  return html;
+}
+
+function processImportAnticipi(file){
+  if(!file) return;
+  var meseRecKey = document.getElementById('imp-ant-mese').value;
+  if(!meseRecKey){toast('Seleziona il mese di recupero');return;}
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array', cellDates:true});
+      // Cerca sheet "Piano di Rientro" o primo non vuoto
+      var sheetName = wb.SheetNames.find(function(n){return n.toLowerCase().indexOf('piano')>=0 || n.toLowerCase().indexOf('rientro')>=0;}) || wb.SheetNames[0];
+      var ws = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'yyyy-mm-dd'});
+      analyzeImportAnticipi(rows, sheetName, meseRecKey);
+    } catch(err){
+      console.error('Import error:',err);
+      document.getElementById('imp-ant-result').innerHTML = '<div class="alert alert-danger">Errore lettura file: '+escHtml(err.message)+'</div>';
+    }
+  };
+  reader.onerror = function(){
+    document.getElementById('imp-ant-result').innerHTML = '<div class="alert alert-danger">Errore lettura file</div>';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Trova l'header row e mappa colonne a indici
+function findImportHeaderRow(rows){
+  // Cerca riga che contiene "Proprietà" o "Struttura"
+  for(var i=0; i<Math.min(rows.length, 10); i++){
+    var row = rows[i] || [];
+    var rowStr = row.map(function(c){return String(c||'').toLowerCase();}).join('|');
+    if(rowStr.indexOf('proprietà')>=0 || rowStr.indexOf('struttura')>=0 || (rowStr.indexOf('importo')>=0 && rowStr.indexOf('causale')>=0)){
+      return i;
+    }
+  }
+  return -1;
+}
+
+function mapImportColumns(headerRow){
+  // Mappa nome colonna → indice
+  var map = {};
+  (headerRow||[]).forEach(function(cell, i){
+    var name = String(cell||'').toLowerCase().trim();
+    if(!name) return;
+    if(name.indexOf('proprietà')>=0 || name.indexOf('struttura')>=0) map.proprieta = i;
+    else if(name.indexOf('categoria')>=0) map.categoria = i;
+    else if(name.indexOf('descrizione')>=0 || name.indexOf('causale')>=0) map.causale = i;
+    else if(name.indexOf('data')>=0 && name.indexOf('anticipo')>=0) map.data = i;
+    else if(name.indexOf('importo')>=0 && name.indexOf('anticipato')>=0) map.importo = i;
+    else if(name.indexOf('importo')>=0 && name.indexOf('recuperato')>=0) map.recuperato = i;
+    else if(name.indexOf('saldo')>=0 && name.indexOf('residuo')>=0) map.saldo = i;
+    else if(name.indexOf('stato')>=0) map.stato = i;
+    else if(name.indexOf('note')>=0) map.note = i;
+    else if(name.indexOf('proprietario')>=0) map.proprietario = i;
+  });
+  return map;
+}
+
+// Normalizza nome proprietà per matching (lowercase, no spazi multipli)
+function _normProp(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
+
+function findPropByImportName(name){
+  if(!name) return null;
+  var n = _normProp(name);
+  // Match esatto
+  var hit = DB.proprieta.find(function(p){return _normProp(p.nome)===n;});
+  if(hit) return hit;
+  // Match contiene (es. "VILLA TOMMASINI - LA TORRE" → "La Torre - Villa Tommasini")
+  hit = DB.proprieta.find(function(p){
+    var pn = _normProp(p.nome);
+    return pn.indexOf(n)>=0 || n.indexOf(pn)>=0;
+  });
+  if(hit) return hit;
+  // Match parole chiave (almeno 2 parole in comune con lunghezza ≥4)
+  var words = n.split(/[\s\-—,]+/).filter(function(w){return w.length>=4;});
+  if(words.length>=2){
+    hit = DB.proprieta.find(function(p){
+      var pn = _normProp(p.nome);
+      var matched = words.filter(function(w){return pn.indexOf(w)>=0;}).length;
+      return matched >= 2;
+    });
+    if(hit) return hit;
+  }
+  return null;
+}
+
+// Parser data: accetta Date object, "2026-05-15", "15/05/2026", "15-05-26"
+function parseImportDate(v){
+  if(!v) return null;
+  if(v instanceof Date && !isNaN(v)){
+    return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  }
+  var s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){
+    var d=m[1].padStart(2,'0'),mo=m[2].padStart(2,'0'),y=m[3];
+    if(y.length===2) y = (parseInt(y,10)>50?'19':'20')+y;
+    return y+'-'+mo+'-'+d;
+  }
+  return null;
+}
+
+function parseImportNumber(v){
+  if(v==null || v==='') return null;
+  if(typeof v === 'number') return v;
+  var s = String(v).trim().replace(/€/g,'').replace(/\s/g,'');
+  // "1.700,50" → "1700.50"  oppure "1700.50" → "1700.50"
+  if(s.indexOf(',')>=0 && s.indexOf('.')>=0){
+    // Formato IT: punto migliaia, virgola decimale
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if(s.indexOf(',')>=0){
+    s = s.replace(',','.');
+  }
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function analyzeImportAnticipi(rows, sheetName, meseRecKey){
+  var headerIdx = findImportHeaderRow(rows);
+  if(headerIdx<0){
+    document.getElementById('imp-ant-result').innerHTML = '<div class="alert alert-danger">Non trovo la riga di intestazione. Verifica che il file contenga colonne come "Proprietà", "Descrizione", "Importo".</div>';
+    return;
+  }
+  var colMap = mapImportColumns(rows[headerIdx]);
+  if(colMap.proprieta===undefined || colMap.causale===undefined || colMap.importo===undefined){
+    document.getElementById('imp-ant-result').innerHTML = '<div class="alert alert-danger">Colonne obbligatorie mancanti. Servono almeno: Proprietà/Struttura, Descrizione/Causale, Importo anticipato.</div>';
+    return;
+  }
+  // Analizza righe dati (dopo header)
+  var parsed = [];
+  var skipped = { empty:[], noProperty:[], noImport:[], invalidData:[], totalRow:[] };
+  for(var i=headerIdx+1; i<rows.length; i++){
+    var row = rows[i] || [];
+    // Skip se riga vuota
+    var hasAny = row.some(function(c){return c!=null && String(c).trim()!=='';});
+    if(!hasAny){ skipped.empty.push({rowNum:i+1}); continue; }
+    var propRaw = row[colMap.proprieta];
+    var causaleRaw = row[colMap.causale];
+    var importoRaw = row[colMap.importo];
+    var dataRaw = colMap.data!==undefined ? row[colMap.data] : null;
+    var recRaw = colMap.recuperato!==undefined ? row[colMap.recuperato] : null;
+    var statoRaw = colMap.stato!==undefined ? row[colMap.stato] : '';
+    var noteRaw = colMap.note!==undefined ? row[colMap.note] : '';
+    var categoriaRaw = colMap.categoria!==undefined ? row[colMap.categoria] : '';
+    // Skip riga TOTALI
+    if(String(propRaw||'').toUpperCase().indexOf('TOTAL')>=0){
+      skipped.totalRow.push({rowNum:i+1, raw:String(propRaw)});
+      continue;
+    }
+    // Tutto vuoto tranne numero progressivo
+    if(!propRaw && !causaleRaw && !importoRaw){
+      skipped.empty.push({rowNum:i+1});
+      continue;
+    }
+    var prop = findPropByImportName(propRaw);
+    if(!prop){
+      skipped.noProperty.push({rowNum:i+1, raw:String(propRaw||''), causale:String(causaleRaw||'')});
+      continue;
+    }
+    var importo = parseImportNumber(importoRaw);
+    if(importo==null || importo<=0){
+      skipped.noImport.push({rowNum:i+1, proprieta:prop.nome, causale:String(causaleRaw||''), raw:String(importoRaw||'')});
+      continue;
+    }
+    var recuperato = parseImportNumber(recRaw) || 0;
+    if(recuperato < 0) recuperato = 0;
+    var data = parseImportDate(dataRaw);
+    // Se stato Saldato e recuperato=0, marco recuperato=importo (caso file utente)
+    var statoStr = String(statoRaw||'').toLowerCase();
+    if(statoStr.indexOf('saldat')>=0 && recuperato===0){
+      recuperato = importo;
+    }
+    parsed.push({
+      rowNum: i+1,
+      proprieta_id: prop.id,
+      proprieta_nome: prop.nome,
+      data: data,
+      categoria: String(categoriaRaw||'').trim(),
+      causale: String(causaleRaw||'').trim(),
+      importo: importo,
+      recuperato: recuperato,
+      note: String(noteRaw||'').trim(),
+      stato_originale: String(statoRaw||'').trim()
+    });
+  }
+  renderImportPreview(parsed, skipped, meseRecKey, rows.length, headerIdx);
+}
+
+function renderImportPreview(parsed, skipped, meseRecKey, totalRows, headerIdx){
+  var box = document.getElementById('imp-ant-result');
+  var totSkipped = skipped.empty.length + skipped.noProperty.length + skipped.noImport.length + skipped.totalRow.length;
+  var totProcessed = parsed.length + totSkipped;
+  var sanity = (totProcessed + headerIdx + 1) === totalRows || (parsed.length + skipped.empty.length + skipped.noProperty.length + skipped.noImport.length + skipped.totalRow.length) === (totalRows - headerIdx - 1);
+  var html = '';
+  // Banner riepilogo
+  html += '<div class="alert '+(parsed.length?'alert-success':'alert-warning')+'" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
+    +'<div>✓ <strong>'+parsed.length+' anticipi pronti per l\'import</strong>'+(totSkipped?' · <span style="color:var(--text-mid)">'+totSkipped+' righe scartate</span>':'')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text-light);font-variant-numeric:tabular-nums">Righe Excel: '+totalRows+' = '+(headerIdx+1)+' header + '+parsed.length+' valide + '+totSkipped+' scartate</div>'
+    +'</div>';
+  // Mese recupero scelto
+  html += '<div style="background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--blue)">'
+    +'<strong>Mese di recupero:</strong> '+anticipiMeseLabel(meseRecKey)+' — applicato a tutti gli anticipi importati'
+    +'</div>';
+  // Lista valide
+  if(parsed.length){
+    var tot = parsed.reduce(function(s,p){return s+p.importo;},0);
+    var totRec = parsed.reduce(function(s,p){return s+p.recuperato;},0);
+    html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
+      +'<div style="padding:10px 14px;background:#dcfce7;border-bottom:1px solid #86efac;font-weight:700;color:#166534;display:flex;justify-content:space-between;align-items:center">'
+        +'<span>✓ '+parsed.length+' anticipi da importare</span>'
+        +'<span style="font-family:Syne,sans-serif">Tot: '+eur(r2(tot))+' · Già rec.: '+eur(r2(totRec))+' · Saldo: '+eur(r2(tot-totRec))+'</span>'
+      +'</div>'
+      +'<table style="width:100%;font-size:12px">'
+        +'<thead><tr style="background:var(--surface2)"><th style="padding:6px 10px;text-align:left">Riga</th><th style="padding:6px 10px;text-align:left">Proprietà</th><th style="padding:6px 10px;text-align:left">Categoria</th><th style="padding:6px 10px;text-align:left">Causale</th><th style="padding:6px 10px;text-align:left">Data</th><th style="padding:6px 10px;text-align:right">Importo</th><th style="padding:6px 10px;text-align:right">Recuperato</th></tr></thead>'
+        +'<tbody>'
+        + parsed.map(function(p){
+          return '<tr>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text-light)">R'+p.rowNum+'</td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)"><strong>'+escHtml(p.proprieta_nome)+'</strong></td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px"><span style="background:rgba(67,209,238,0.08);color:#0891b2;padding:1px 6px;border-radius:5px">'+escHtml(p.categoria||'—')+'</span></td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+escHtml(p.causale)+(p.note?'<div style="font-size:10px;color:var(--text-light)">'+escHtml(p.note)+'</div>':'')+'</td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(p.data?dateIt(p.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(p.importo)+'</td>'
+            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--green)">'+(p.recuperato>0?eur(p.recuperato):'—')+'</td>'
+          +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+  }
+  // Sezioni scartate
+  if(totSkipped > 0){
+    html += '<div class="card" style="padding:14px;margin-bottom:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fbbf24">'
+      +'<div style="font-weight:700;color:#92400e;margin-bottom:10px">⚠ '+totSkipped+' righe scartate</div>';
+    if(skipped.noProperty.length){
+      html += '<details open style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:#991b1b;padding:6px 0">⚠ '+skipped.noProperty.length+' proprietà NON in anagrafica</summary>'
+        +'<table style="width:100%;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px"><thead><tr><th style="padding:5px 10px;text-align:left">Riga</th><th style="padding:5px 10px;text-align:left">Proprietà nel file</th><th style="padding:5px 10px;text-align:left">Causale</th></tr></thead><tbody>'
+        + skipped.noProperty.map(function(s){return '<tr><td style="padding:4px 10px;font-family:monospace">R'+s.rowNum+'</td><td style="padding:4px 10px">'+escHtml(s.raw)+'</td><td style="padding:4px 10px">'+escHtml(s.causale)+'</td></tr>';}).join('')
+        +'</tbody></table>'
+        +'<div style="font-size:11px;color:var(--text-mid);margin-top:6px;font-style:italic">Aggiungi la proprietà nell\'anagrafica del Tool e reimporta il file per recuperarle.</div>'
+        +'</details>';
+    }
+    if(skipped.noImport.length){
+      html += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:#92400e;padding:6px 0">⚠ '+skipped.noImport.length+' righe senza importo valido</summary>'
+        +'<table style="width:100%;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px"><thead><tr><th style="padding:5px 10px;text-align:left">Riga</th><th style="padding:5px 10px;text-align:left">Proprietà</th><th style="padding:5px 10px;text-align:left">Causale</th></tr></thead><tbody>'
+        + skipped.noImport.map(function(s){return '<tr><td style="padding:4px 10px;font-family:monospace">R'+s.rowNum+'</td><td style="padding:4px 10px">'+escHtml(s.proprieta)+'</td><td style="padding:4px 10px">'+escHtml(s.causale)+'</td></tr>';}).join('')
+        +'</tbody></table>'
+        +'<div style="font-size:11px;color:var(--text-mid);margin-top:6px;font-style:italic">Compila l\'importo nel file Excel e reimporta.</div>'
+        +'</details>';
+    }
+    if(skipped.empty.length){
+      html += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:6px 0">○ '+skipped.empty.length+' righe vuote (ignorate)</summary>'
+        +'<div style="font-size:11px;color:var(--text-light);padding:6px 0">Righe '+skipped.empty.map(function(s){return 'R'+s.rowNum;}).join(', ')+'</div>'
+        +'</details>';
+    }
+    if(skipped.totalRow.length){
+      html += '<details style="margin-bottom:0"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:6px 0">∑ '+skipped.totalRow.length+' righe TOTALI (ignorate)</summary>'
+        +'<div style="font-size:11px;color:var(--text-light);padding:6px 0">'+skipped.totalRow.map(function(s){return 'R'+s.rowNum+' ('+escHtml(s.raw)+')';}).join(', ')+'</div>'
+        +'</details>';
+    }
+    html += '</div>';
+  }
+  // Bottoni
+  if(parsed.length){
+    html += '<div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border)">'
+      +'<button class="btn btn-ghost" onclick="closeModal(\'modal-import-anticipi\')">Annulla</button>'
+      +'<button class="btn btn-primary" id="imp-ant-confirm">✓ Conferma import di '+parsed.length+' anticipi</button>'
+    +'</div>';
+  }
+  box.innerHTML = html;
+  // Bind conferma
+  if(parsed.length){
+    document.getElementById('imp-ant-confirm').addEventListener('click', function(){
+      confirmImportAnticipi(parsed, meseRecKey);
+    });
+  }
+}
+
+function confirmImportAnticipi(parsed, meseRecKey){
+  ensureAnticipiDB();
+  var today = new Date();
+  var todayISO = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var added = 0;
+  parsed.forEach(function(p){
+    DB.anticipi.push({
+      id: uid(),
+      proprieta_id: p.proprieta_id,
+      data: p.data || todayISO,
+      importo: p.importo,
+      recuperato: p.recuperato,
+      categoria: p.categoria,
+      causale: p.causale,
+      mese_recupero: meseRecKey,
+      note: p.note,
+      done: (p.recuperato >= p.importo - 0.005),
+      created_at: Date.now(),
+      imported: true
+    });
+    added++;
+  });
+  saveDB();
+  closeModal('modal-import-anticipi');
+  toast('✓ '+added+' anticipi importati');
   renderAnticipi();
 }
 
