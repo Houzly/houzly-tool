@@ -725,6 +725,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('report_prop')"><span class="nav-icon">&#128202;</span> Report Proprietari</div>
     <div class="nav-item" onclick="showPage('documenti')"><span class="nav-icon">&#128196;</span> Documenti Fiscali</div>
     <div class="nav-item" onclick="showPage('adempimenti')"><span class="nav-icon">&#127974;</span> Adempimenti Fiscali</div>
+    <div class="nav-item" onclick="showPage('anticipi')"><span class="nav-icon">&#128184;</span> Anticipi Spese</div>
     <div class="nav-item" onclick="showPage('ricevute')"><span class="nav-icon">&#128523;</span> Ricevute</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Operations</div>
@@ -736,7 +737,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v43 · 18/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v44 · 18/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1148,6 +1149,76 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </div>
     </div>
     <div id="pm-body-adem" style="padding:24px;max-height:78vh;overflow-y:auto;background:#fff;border-radius:0 0 var(--radius-lg) var(--radius-lg)"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PAGE: ANTICIPI SPESE
+════════════════════════════════════════════════════════════════════ -->
+<div id="page-anticipi" class="page">
+  <div class="section-header">
+    <div class="section-title">&#128184; Anticipi Spese</div>
+    <button class="btn btn-primary" onclick="openModalAnticipo()">+ Nuovo Anticipo</button>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="font-size:22px">&#128176;</div>
+      <div style="flex:1">
+        <div style="font-weight:700;color:#92400e;margin-bottom:4px">Recuperi spese anticipate ai Proprietari</div>
+        <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Registra qui le spese anticipate per conto del proprietario (es. riparazioni, manutenzioni, materiali). Indica in quale <strong>mese di report</strong> dovrà essere recuperato dal bonifico. Gli anticipi vengono detratti <strong>dopo</strong> la ritenuta d'acconto (non modificano CU/DAC7/770) e mostrati nel Report Mensile del proprietario.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtri -->
+  <div class="card" style="padding:12px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end">
+      <div class="field" style="margin:0"><label style="font-size:11px">Proprietà</label><select id="ant-filter-prop"><option value="">Tutte</option></select></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Stato</label><select id="ant-filter-status"><option value="">Tutti</option><option value="pending">Da recuperare</option><option value="done">Recuperati</option></select></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Mese recupero</label><select id="ant-filter-mese"><option value="">Tutti</option></select></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Cerca</label><input type="text" id="ant-filter-search" placeholder="Causale, note..."></div>
+    </div>
+  </div>
+
+  <!-- Statistiche -->
+  <div id="ant-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px"></div>
+
+  <!-- Tabella -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <table id="ant-table" style="width:100%">
+      <thead><tr>
+        <th>Data</th><th>Proprietà</th><th>Proprietario</th><th>Causale</th>
+        <th style="text-align:right">Importo</th><th>Mese Recupero</th><th>Stato</th><th>Azioni</th>
+      </tr></thead>
+      <tbody id="ant-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Anticipo -->
+<div class="modal-overlay" id="modal-anticipo">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('modal-anticipo')">&#10005;</button>
+    <div class="modal-title" id="ant-modal-title">Nuovo Anticipo Spesa</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label>Proprietà *</label><select id="ant-prop-sel" onchange="updateAntPreview()"><option value="">-- Seleziona --</option></select><div class="field-hint" id="ant-owner-hint" style="font-size:11px;color:var(--text-light);margin-top:4px"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label>Data spesa *</label><input type="date" id="ant-data"></div>
+        <div class="field" style="margin:0"><label>Importo (&euro;) *</label><input type="number" id="ant-importo" step="0.01" min="0"></div>
+      </div>
+      <div class="field"><label>Causale *</label><input type="text" id="ant-causale" placeholder="es. Riparazione idraulico — sostituzione lavandino bagno"></div>
+      <div class="field"><label>Mese di recupero *</label><select id="ant-mese-recupero"></select><div class="field-hint">In quale mese verrà mostrato e detratto dal Report Mensile</div></div>
+      <div class="field"><label>Note (opzionale)</label><textarea id="ant-note" rows="2" placeholder="Riferimento fattura, dettagli aggiuntivi..."></textarea></div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Recuperato</div><div class="toggle-sub">Spunta quando l'anticipo è stato detratto dal payout</div></div>
+        <label class="toggle"><input type="checkbox" id="ant-done"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-ghost" onclick="closeModal('modal-anticipo')">Annulla</button>
+        <button class="btn btn-primary" id="ant-save-btn" onclick="saveAnticipo()">Salva</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2565,7 +2636,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
+  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -2637,6 +2708,7 @@ function renderPage(p){
   if(p==='report_prop')setupReportFiltri();
   if(p==='documenti')renderDocumenti();
   if(p==='adempimenti')renderAdempimenti();
+  if(p==='anticipi')renderAnticipi();
   if(p==='operations'){switchOpsTab('generici');}
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){if(typeof clDB==='function'){clDB();renderCleaning();}}
@@ -4939,6 +5011,27 @@ function previewReportProp(){
   var sommaNetti=r2(bks.reduce(function(s,b){return s+(b.calc.canone_totale||b.calc.canone);},0));
   var cedolare=r2(sommaNetti*0.21);
   var nettoImposta=r2(sommaNetti-cedolare);
+  // v44: Anticipi spese da recuperare nel mese corrente
+  // Solo se il filtro è singolo mese+anno (non "Tutti i mesi")
+  var anticipiRecuperi = [];
+  var anticipiTot = 0;
+  var meseRecKey = '';
+  if(mese && mese!=='Tutti i mesi' && anno){
+    var miNum = mesiArr().indexOf(mese)+1;
+    if(miNum>0){
+      meseRecKey = anno+'-'+(miNum<10?'0':'')+miNum;
+      // Raccolta propIds del report (singola prop o gruppo)
+      var reportPropIds = [];
+      if(isGroup && grp) reportPropIds = grp.children.slice();
+      else if(prop) reportPropIds = [prop.id];
+      ensureAnticipiDB();
+      anticipiRecuperi = DB.anticipi.filter(function(a){
+        return reportPropIds.indexOf(a.proprieta_id)>=0 && a.mese_recupero===meseRecKey;
+      });
+      anticipiTot = r2(anticipiRecuperi.reduce(function(s,a){return s+(+a.importo||0);},0));
+    }
+  }
+  var nettoBonifico = r2(nettoImposta - anticipiTot);
   function buildRows(list, isBlack){
     return list.map(function(b){
       var chCls=b.canale==='Airbnb'?'badge-orange':b.canale==='Booking.com'?'badge-blue':'badge-green';
@@ -5044,7 +5137,24 @@ function previewReportProp(){
        +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale guadagno proprietario</span><span style="font-weight:700">'+eur(sommaNetti)+'</span></div>'
        +(((own&&own.fisc_cedolare)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return _fo&&_fo.fisc_cedolare;}())))
          ?'<div class="rpt-sum-row" style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px"><span>Ritenuta d\'Acconto 21%</span><span style="color:var(--red);font-weight:700">- '+eur(cedolare)+'</span></div>'
-          +'<div class="rpt-sum-row"><span>Netto da bonificare al proprietario dopo imposta</span><span class="rpt-sum-total">'+eur(nettoImposta)+'</span></div>'
+          +'<div class="rpt-sum-row"><span>Netto da bonificare al proprietario dopo imposta</span><span class="'+(anticipiRecuperi.length?'':'rpt-sum-total')+'" style="'+(anticipiRecuperi.length?'font-weight:600':'')+'">'+eur(nettoImposta)+'</span></div>'
+          // v44: sezione recuperi anticipi
+          +(anticipiRecuperi.length
+            ?'<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15)">'
+             +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">&#128184; Recuperi Anticipi Spese</div>'
+             +anticipiRecuperi.map(function(a){
+               var propAnt=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+               var meta = dateIt(a.data);
+               if(isGroup && propAnt) meta += ' · ' + propAnt.nome;
+               return '<div class="rpt-sum-row" style="padding:5px 0">'
+                 +'<span><span style="color:rgba(255,255,255,0.7)">'+escHtml(a.causale||'—')+'</span><div style="font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:2px">'+meta+(a.note?' · '+escHtml(a.note):'')+'</div></span>'
+                 +'<span style="color:#f87096;font-weight:600">- '+eur(+a.importo||0)+'</span>'
+                 +'</div>';
+             }).join('')
+             +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale recuperi anticipi</span><span style="color:#f87096;font-weight:700">- '+eur(anticipiTot)+'</span></div>'
+             +'<div class="rpt-sum-row" style="margin-top:10px;padding-top:10px;border-top:2px solid rgba(67,209,238,0.4)"><span style="font-weight:700;font-size:14px">Netto bonificato al proprietario</span><span class="rpt-sum-total">'+eur(nettoBonifico)+'</span></div>'
+            +'</div>'
+            :'')
           +(own&&own.coprops&&own.coprops.length
             ?'<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">'
              +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">Suddivisione per proprietario</div>'
@@ -5102,6 +5212,24 @@ function printReport(){
   var sommaNetti2=bksNorm.reduce(function(s,b){return s+r2(b.calc.canone_totale||b.calc.canone);},0);
   var cedolare2=r2(sommaNetti2*0.21);
   var nettoImposta2=r2(sommaNetti2-cedolare2);
+  // v44: Anticipi spese recuperati nel mese corrente
+  var anticipiRecuperi2 = [];
+  var anticipiTot2 = 0;
+  if(mese && mese!=='Anno' && anno){
+    var miNum2 = mesiArr().indexOf(mese)+1;
+    if(miNum2>0){
+      var meseRecKey2 = anno+'-'+(miNum2<10?'0':'')+miNum2;
+      var reportPropIds2 = [];
+      if(isGroup2 && grp2) reportPropIds2 = grp2.children.slice();
+      else if(prop) reportPropIds2 = [prop.id];
+      ensureAnticipiDB();
+      anticipiRecuperi2 = DB.anticipi.filter(function(a){
+        return reportPropIds2.indexOf(a.proprieta_id)>=0 && a.mese_recupero===meseRecKey2;
+      });
+      anticipiTot2 = r2(anticipiRecuperi2.reduce(function(s,a){return s+(+a.importo||0);},0));
+    }
+  }
+  var nettoBonifico2 = r2(nettoImposta2 - anticipiTot2);
   var totBlk=bksBlk.reduce(function(s,b){return s+b.calc.canone;},0);
   function prow(b,isGrp,isBlack){
     var chCls=b.canale==='Airbnb'?'ota-air':b.canale==='Booking.com'?'ota-bk':'ota-dir';
@@ -5144,7 +5272,17 @@ function printReport(){
      +srow('Totale guadagno proprietario',eur(sommaNetti2),'total')
      +(((own&&own.fisc_cedolare)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return _fo2&&_fo2.fisc_cedolare;})()))
        ?srow('Ritenuta d\'Acconto 21%','- '+eur(cedolare2),'neg')
-        +srow('Netto dopo imposta',eur(nettoImposta2),'grand')
+        +srow('Netto dopo imposta',eur(nettoImposta2), anticipiRecuperi2.length?'total':'grand')
+        +(anticipiRecuperi2.length
+          ?'<div class="sum-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #555"><span class="lbl" style="font-weight:700;color:#666;text-transform:uppercase;font-size:10px;letter-spacing:0.06em">&#128184; Recuperi Anticipi Spese</span><span class="val"></span></div>'
+           +anticipiRecuperi2.map(function(a){
+             var propA=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+             var labelMeta = dateIt(a.data) + (isGroup2 && propA ? ' · '+propA.nome : '');
+             return srow((a.causale||'—')+' <span style="font-size:9px;color:#888">'+labelMeta+'</span>','- '+eur(+a.importo||0),'neg');
+           }).join('')
+           +srow('Totale recuperi anticipi','- '+eur(anticipiTot2),'neg')
+           +srow('Netto bonificato al proprietario',eur(nettoBonifico2),'grand')
+          :'')
         +(own&&own.coprops&&own.coprops.length
           ?own.coprops.map(function(cp){
              var qC=r2(sommaNetti2*cp.perc*0.21);
@@ -9052,9 +9190,280 @@ function onbEsc(s) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// MODULO ADEMPIMENTI FISCALI
-// DAC7 · CU · Tassa Soggiorno · Modello 770 · Alert Mandanti
+// MODULO ANTICIPI SPESE (v44)
+// Spese anticipate per conto del proprietario, da recuperare dal payout
+// Detratte DOPO la ritenuta d'acconto (no impatto fiscale CU/DAC7/770)
 // ════════════════════════════════════════════════════════════════════
+
+// Struttura DB:
+//   DB.anticipi = [{id, proprieta_id, data ('YYYY-MM-DD'), causale, importo, mese_recupero ('YYYY-MM'), note, done (bool), created_at}]
+
+function ensureAnticipiDB(){
+  if(!Array.isArray(DB.anticipi)) DB.anticipi = [];
+}
+
+// Restituisce gli anticipi di una proprietà per un certo mese di recupero
+function getAnticipiForReport(propId, anno, mese){
+  ensureAnticipiDB();
+  var key = anno + '-' + (mese<10?'0':'') + mese;
+  return DB.anticipi.filter(function(a){
+    return a.proprieta_id===propId && a.mese_recupero===key;
+  });
+}
+
+// Totale anticipi non recuperati per una proprietà
+function totAnticipiPending(propId){
+  ensureAnticipiDB();
+  return DB.anticipi.filter(function(a){return a.proprieta_id===propId && !a.done;})
+    .reduce(function(s,a){return s+(+a.importo||0);},0);
+}
+
+function renderAnticipi(){
+  ensureAnticipiDB();
+  // Popola filtro proprietà
+  var selProp = document.getElementById('ant-filter-prop');
+  if(selProp){
+    var current = selProp.value;
+    selProp.innerHTML = '<option value="">Tutte</option>' + DB.proprieta.slice().sort(function(a,b){
+      return (a.nome||'').localeCompare(b.nome||'');
+    }).map(function(p){return '<option value="'+p.id+'">'+escHtml(p.nome)+'</option>';}).join('');
+    selProp.value = current;
+  }
+  // Popola filtro mese (tutti i mesi presenti in DB)
+  var selMese = document.getElementById('ant-filter-mese');
+  if(selMese){
+    var current2 = selMese.value;
+    var mesi = {};
+    DB.anticipi.forEach(function(a){if(a.mese_recupero)mesi[a.mese_recupero]=1;});
+    var sortedMesi = Object.keys(mesi).sort().reverse();
+    selMese.innerHTML = '<option value="">Tutti</option>' + sortedMesi.map(function(m){
+      return '<option value="'+m+'">'+anticipiMeseLabel(m)+'</option>';
+    }).join('');
+    selMese.value = current2;
+  }
+  // Aggancio listener filtri (una volta sola)
+  if(!window._anticipiListenersAttached){
+    ['ant-filter-prop','ant-filter-status','ant-filter-mese','ant-filter-search'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){
+        var ev = el.tagName==='INPUT' ? 'input' : 'change';
+        el.addEventListener(ev, renderAnticipiTable);
+      }
+    });
+    window._anticipiListenersAttached = true;
+  }
+  renderAnticipiStats();
+  renderAnticipiTable();
+}
+
+function anticipiMeseLabel(yyyymm){
+  if(!/^\d{4}-\d{2}$/.test(yyyymm||''))return yyyymm||'—';
+  var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var y=yyyymm.slice(0,4), m=+yyyymm.slice(5,7);
+  return mesi[m-1]+' '+y;
+}
+
+function renderAnticipiStats(){
+  ensureAnticipiDB();
+  var tot = DB.anticipi.reduce(function(s,a){return s+(+a.importo||0);},0);
+  var pending = DB.anticipi.filter(function(a){return !a.done;}).reduce(function(s,a){return s+(+a.importo||0);},0);
+  var done = tot - pending;
+  var nProps = new Set(DB.anticipi.filter(function(a){return !a.done;}).map(function(a){return a.proprieta_id;})).size;
+  var html = ''
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Totale anticipi</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+eur(tot)+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Da recuperare</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(pending)+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Recuperati</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(done)+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Proprietà coinvolte</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nProps+'</div></div>';
+  document.getElementById('ant-stats').innerHTML = html;
+}
+
+function renderAnticipiTable(){
+  ensureAnticipiDB();
+  var fProp = (document.getElementById('ant-filter-prop')||{value:''}).value;
+  var fStatus = (document.getElementById('ant-filter-status')||{value:''}).value;
+  var fMese = (document.getElementById('ant-filter-mese')||{value:''}).value;
+  var fSearch = ((document.getElementById('ant-filter-search')||{value:''}).value||'').toLowerCase().trim();
+  var rows = DB.anticipi.slice().filter(function(a){
+    if(fProp && a.proprieta_id!==fProp) return false;
+    if(fStatus==='pending' && a.done) return false;
+    if(fStatus==='done' && !a.done) return false;
+    if(fMese && a.mese_recupero!==fMese) return false;
+    if(fSearch){
+      var hay = (a.causale||'')+' '+(a.note||'');
+      if(hay.toLowerCase().indexOf(fSearch)<0) return false;
+    }
+    return true;
+  }).sort(function(a,b){
+    // Ordine: pending prima, poi per data desc
+    if(a.done !== b.done) return a.done ? 1 : -1;
+    return (b.data||'').localeCompare(a.data||'');
+  });
+  var tbody = document.getElementById('ant-tbody');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-light)"><div style="font-size:30px;margin-bottom:6px">📭</div>Nessun anticipo registrato</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(a){
+    var prop = DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+    var owner = prop ? DB.proprietari.find(function(o){return o.id===prop.proprietario_id;}) : null;
+    var statusChip = a.done
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">✓ Recuperato</span>'
+      : '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⏳ Pending</span>';
+    return '<tr>'
+      +'<td style="font-variant-numeric:tabular-nums">'+dateIt(a.data||'')+'</td>'
+      +'<td><strong>'+escHtml(prop?prop.nome:'—')+'</strong></td>'
+      +'<td style="font-size:11.5px;color:var(--text-mid)">'+escHtml(owner?nomeOwner(owner.id):'—')+'</td>'
+      +'<td><div style="font-size:13px">'+escHtml(a.causale||'—')+'</div>'+(a.note?'<div style="font-size:10.5px;color:var(--text-light);margin-top:2px">'+escHtml(a.note)+'</div>':'')+'</td>'
+      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(+a.importo||0)+'</td>'
+      +'<td><span style="font-size:11.5px;background:rgba(67,97,238,0.08);color:var(--blue);padding:2px 8px;border-radius:6px;font-weight:600">'+anticipiMeseLabel(a.mese_recupero)+'</span></td>'
+      +'<td>'+statusChip+'</td>'
+      +'<td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="editAnticipo(\''+a.id+'\')">✎</button><button class="btn btn-sm btn-danger" onclick="deleteAnticipo(\''+a.id+'\')">🗑</button></div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+var _editingAnticipoId = null;
+function openModalAnticipo(){
+  _editingAnticipoId = null;
+  document.getElementById('ant-modal-title').textContent = 'Nuovo Anticipo Spesa';
+  // Reset campi
+  document.getElementById('ant-importo').value = '';
+  document.getElementById('ant-causale').value = '';
+  document.getElementById('ant-note').value = '';
+  document.getElementById('ant-done').checked = false;
+  // Data default oggi
+  var today = new Date();
+  var todayISO = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  document.getElementById('ant-data').value = todayISO;
+  // Popola proprietà
+  var sel = document.getElementById('ant-prop-sel');
+  sel.innerHTML = '<option value="">-- Seleziona --</option>' + DB.proprieta.slice().sort(function(a,b){
+    return (a.nome||'').localeCompare(b.nome||'');
+  }).map(function(p){return '<option value="'+p.id+'">'+escHtml(p.nome)+'</option>';}).join('');
+  sel.value = '';
+  document.getElementById('ant-owner-hint').textContent = '';
+  // Popola mese recupero: 12 mesi attorno a oggi
+  populateAntMeseRecupero(todayISO);
+  document.getElementById('ant-save-btn').textContent = 'Salva';
+  openModal('modal-anticipo');
+}
+
+function populateAntMeseRecupero(refDate){
+  var sel = document.getElementById('ant-mese-recupero');
+  if(!sel) return;
+  var prev = sel.value;
+  var base = refDate ? new Date(refDate) : new Date();
+  var baseY = base.getFullYear(), baseM = base.getMonth()+1; // 1-12
+  var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  // 2 mesi indietro e 12 in avanti
+  var opts = [];
+  for(var k=-2; k<=12; k++){
+    var idx = baseY*12 + (baseM-1) + k;
+    var y = Math.floor(idx/12), m = (idx%12)+1;
+    var key = y+'-'+(m<10?'0':'')+m;
+    var label = mesi[m-1]+' '+y + (k===0?' (corrente)':'');
+    opts.push('<option value="'+key+'">'+label+'</option>');
+  }
+  sel.innerHTML = opts.join('');
+  if(prev && Array.prototype.slice.call(sel.options).some(function(o){return o.value===prev;})) sel.value = prev;
+  else {
+    // Default: mese corrente
+    var defKey = baseY+'-'+(baseM<10?'0':'')+baseM;
+    sel.value = defKey;
+  }
+}
+
+function updateAntPreview(){
+  var propId = document.getElementById('ant-prop-sel').value;
+  var hint = document.getElementById('ant-owner-hint');
+  if(!propId){hint.textContent='';return;}
+  var prop = DB.proprieta.find(function(p){return p.id===propId;});
+  var owner = prop ? DB.proprietari.find(function(o){return o.id===prop.proprietario_id;}) : null;
+  if(owner){
+    var pending = totAnticipiPending(propId);
+    var pendingTxt = pending>0 ? ' · Anticipi pending su questa proprietà: '+eur(pending) : '';
+    hint.textContent = 'Proprietario: '+nomeOwner(owner.id)+pendingTxt;
+  } else hint.textContent = '';
+}
+
+function saveAnticipo(){
+  var propId = document.getElementById('ant-prop-sel').value;
+  var data = document.getElementById('ant-data').value;
+  var importo = parseFloat(document.getElementById('ant-importo').value);
+  var causale = document.getElementById('ant-causale').value.trim();
+  var meseRec = document.getElementById('ant-mese-recupero').value;
+  var note = document.getElementById('ant-note').value.trim();
+  var done = document.getElementById('ant-done').checked;
+  if(!propId){toast('Seleziona la proprietà');return;}
+  if(!data){toast('Inserisci la data');return;}
+  if(isNaN(importo)||importo<=0){toast('Inserisci un importo valido');return;}
+  if(!causale){toast('Inserisci la causale');return;}
+  if(!meseRec){toast('Seleziona il mese di recupero');return;}
+  ensureAnticipiDB();
+  if(_editingAnticipoId){
+    var i = DB.anticipi.findIndex(function(a){return a.id===_editingAnticipoId;});
+    if(i>=0){
+      DB.anticipi[i] = Object.assign({},DB.anticipi[i],{
+        proprieta_id:propId, data:data, importo:importo, causale:causale,
+        mese_recupero:meseRec, note:note, done:done
+      });
+    }
+    toast('Anticipo aggiornato ✓');
+  } else {
+    DB.anticipi.push({
+      id: uid(),
+      proprieta_id: propId,
+      data: data,
+      importo: importo,
+      causale: causale,
+      mese_recupero: meseRec,
+      note: note,
+      done: done,
+      created_at: Date.now()
+    });
+    toast('Anticipo salvato ✓');
+  }
+  saveDB();
+  closeModal('modal-anticipo');
+  renderAnticipi();
+}
+
+function editAnticipo(id){
+  ensureAnticipiDB();
+  var a = DB.anticipi.find(function(x){return x.id===id;});
+  if(!a){toast('Anticipo non trovato');return;}
+  _editingAnticipoId = id;
+  document.getElementById('ant-modal-title').textContent = 'Modifica Anticipo';
+  // Popola proprietà
+  var sel = document.getElementById('ant-prop-sel');
+  sel.innerHTML = '<option value="">-- Seleziona --</option>' + DB.proprieta.slice().sort(function(x,y){
+    return (x.nome||'').localeCompare(y.nome||'');
+  }).map(function(p){return '<option value="'+p.id+'">'+escHtml(p.nome)+'</option>';}).join('');
+  sel.value = a.proprieta_id;
+  document.getElementById('ant-data').value = a.data;
+  document.getElementById('ant-importo').value = a.importo;
+  document.getElementById('ant-causale').value = a.causale;
+  document.getElementById('ant-note').value = a.note||'';
+  document.getElementById('ant-done').checked = !!a.done;
+  populateAntMeseRecupero(a.data);
+  document.getElementById('ant-mese-recupero').value = a.mese_recupero;
+  updateAntPreview();
+  document.getElementById('ant-save-btn').textContent = 'Aggiorna';
+  openModal('modal-anticipo');
+}
+
+function deleteAnticipo(id){
+  ensureAnticipiDB();
+  var a = DB.anticipi.find(function(x){return x.id===id;});
+  if(!a) return;
+  if(!confirm('Eliminare l\'anticipo di '+eur(+a.importo||0)+' ('+(a.causale||'')+')?')) return;
+  DB.anticipi = DB.anticipi.filter(function(x){return x.id!==id;});
+  saveDB();
+  toast('Anticipo eliminato ✓');
+  renderAnticipi();
+}
+
+
 
 // Configurazione modulo: metodo base imponibile cedolare
 // 'aigab' = canone puro (Lordo − OTA − Pulizia − Houzly) — modello attuale Houzly v1.4
