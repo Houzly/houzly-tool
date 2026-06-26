@@ -737,7 +737,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v45 · 18/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v47 · 26/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1178,7 +1178,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="card" style="padding:12px;margin-bottom:14px">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end">
       <div class="field" style="margin:0"><label style="font-size:11px">Proprietà</label><select id="ant-filter-prop"><option value="">Tutte</option></select></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Stato</label><select id="ant-filter-status"><option value="">Tutti</option><option value="open">Aperto (saldo > 0)</option><option value="partial">Parziale</option><option value="done">Saldato</option></select></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Stato</label><select id="ant-filter-status"><option value="">Tutti</option><option value="incomplete">⚠ Da completare</option><option value="open">Aperto (saldo > 0)</option><option value="partial">Parziale</option><option value="done">Saldato</option></select></div>
       <div class="field" style="margin:0"><label style="font-size:11px">Mese recupero</label><select id="ant-filter-mese"><option value="">Tutti</option></select></div>
       <div class="field" style="margin:0"><label style="font-size:11px">Cerca</label><input type="text" id="ant-filter-search" placeholder="Causale, note..."></div>
     </div>
@@ -1235,6 +1235,17 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <button class="modal-close" style="position:static" onclick="closeModal('modal-import-anticipi')">&#10005;</button>
     </div>
     <div id="imp-ant-body" style="padding:24px;max-height:78vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- Modal Selezione Anticipi prima del PDF Report (v47) -->
+<div class="modal-overlay" id="modal-ant-select">
+  <div class="modal" style="max-width:920px;padding:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">💸 Anticipi da includere nel Report PDF</div>
+      <button class="modal-close" style="position:static" onclick="closeModal('modal-ant-select')">&#10005;</button>
+    </div>
+    <div id="ant-sel-body" style="padding:24px;max-height:78vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -5163,7 +5174,8 @@ function previewReportProp(){
           // v44: sezione recuperi anticipi
           +(anticipiRecuperi.length
             ?'<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15)">'
-             +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">&#128184; Recuperi Anticipi Spese</div>'
+             +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">&#128184; Recuperi Anticipi Spese (anteprima)</div>'
+             +'<div style="font-size:10.5px;color:rgba(245,158,11,0.9);margin-bottom:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:6px 10px;line-height:1.5">⓵ Questa è solo un\'anteprima informativa. Quando esporti il PDF, deciderai esplicitamente quali anticipi includere.</div>'
              +anticipiRecuperi.map(function(a){
                var propAnt=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
                var meta = a.data?dateIt(a.data):'';
@@ -5212,7 +5224,179 @@ function previewReportProp(){
       :'')
     ;
 }
+// v47: Intercetto la richiesta di stampa PDF per mostrare dialogo selezione anticipi.
+// Se non ci sono anticipi pending per la proprietà → procede subito.
+// Altrimenti → apre dialogo (printReportContinue viene chiamato dopo conferma).
 function printReport(){
+  var area=document.getElementById('rpt-preview-area');
+  if(!area||!area.innerHTML||area.innerHTML.indexOf('Seleziona')>=0){toast('Genera prima l\u2019anteprima');return;}
+  var propId=document.getElementById('rpt-prop-sel').value;
+  var groupId=document.getElementById('rpt-group-sel').value;
+  // Raccolgo TUTTI gli anticipi con saldo > 0 per le proprietà del report
+  ensureAnticipiDB();
+  var reportPropIds = [];
+  var isGrpProp_R=(propId&&propId.indexOf('grp:')==0);
+  var isGroup_R=(!propId&&!!groupId)||isGrpProp_R;
+  var grpId_R=isGrpProp_R?propId.slice(4):groupId;
+  var grp_R=isGroup_R?(DB.propGroups||[]).find(function(g){return g.id===grpId_R;}):null;
+  if(isGroup_R && grp_R) reportPropIds = grp_R.children.slice();
+  else if(propId) reportPropIds = [propId];
+  else { toast('Seleziona una proprietà o un gruppo'); return; }
+  var allPending = DB.anticipi.filter(function(a){
+    if(reportPropIds.indexOf(a.proprieta_id)<0) return false;
+    if(!a.proprieta_id) return false; // escludi "da assegnare"
+    var saldo = (+a.importo||0) - (+a.recuperato||0);
+    return saldo > 0.005;
+  });
+  if(!allPending.length){
+    // Nessun anticipo da decidere: procede subito senza inclusioni
+    printReportContinue([]);
+    return;
+  }
+  openAnticipiSelectionDialog(allPending);
+}
+
+// v47: dialogo selezione anticipi prima del PDF
+function openAnticipiSelectionDialog(allPending){
+  var mese=document.getElementById('rpt-mese').value||'Anno';
+  var anno=document.getElementById('rpt-anno').value;
+  var meseRecKeyTarget = '';
+  if(mese && mese!=='Anno' && anno){
+    var miNum = mesiArr().indexOf(mese)+1;
+    if(miNum>0) meseRecKeyTarget = anno+'-'+(miNum<10?'0':'')+miNum;
+  }
+  // Ordino: corrente prima, poi precedenti (più recenti), poi futuri
+  function meseToOrder(a){
+    if(!a.mese_recupero) return 9999;
+    if(a.mese_recupero === meseRecKeyTarget) return 0;
+    if(a.mese_recupero < meseRecKeyTarget) return 1000 - parseInt(a.mese_recupero.replace('-',''),10);
+    return 2000 + parseInt(a.mese_recupero.replace('-',''),10);
+  }
+  var sorted = allPending.slice().sort(function(a,b){
+    var oa=meseToOrder(a), ob=meseToOrder(b);
+    if(oa!==ob) return oa-ob;
+    return (a.data||'').localeCompare(b.data||'');
+  });
+  // Pre-spunto quelli del mese corrente
+  var preselectedIds = {};
+  sorted.forEach(function(a){
+    if(meseRecKeyTarget && a.mese_recupero === meseRecKeyTarget) preselectedIds[a.id] = true;
+  });
+  // Costruisco HTML dialog
+  var html = '<div style="font-size:13px;color:var(--text-mid);margin-bottom:14px;line-height:1.5">'
+    +'Seleziona quali anticipi includere nel PDF del Report Mensile. <strong>I selezionati verranno marcati come "Recuperati"</strong> dopo la generazione del PDF — il saldo residuo verrà azzerato.'
+    +'</div>';
+  // Banner mese del report
+  html += '<div style="background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--blue)">'
+    +'<strong>Report:</strong> '+(mese==='Anno'?'Anno '+anno : mese+' '+anno)+' · '
+    +'<strong>'+sorted.length+'</strong> anticipi disponibili con saldo > 0'
+    +'</div>';
+  // Tabella checkbox
+  html += '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:52vh;overflow-y:auto">'
+    +'<table style="width:100%;font-size:12px">'
+    +'<thead style="position:sticky;top:0;background:var(--surface2);z-index:1"><tr>'
+      +'<th style="padding:8px 10px;text-align:center;width:36px"><input type="checkbox" id="ant-sel-all" onclick="toggleAllAntSel(this)"></th>'
+      +'<th style="padding:8px 10px;text-align:left">Mese Recupero</th>'
+      +'<th style="padding:8px 10px;text-align:left">Proprietà</th>'
+      +'<th style="padding:8px 10px;text-align:left">Categoria</th>'
+      +'<th style="padding:8px 10px;text-align:left">Causale</th>'
+      +'<th style="padding:8px 10px;text-align:left">Data</th>'
+      +'<th style="padding:8px 10px;text-align:right">Saldo</th>'
+    +'</tr></thead><tbody>';
+  html += sorted.map(function(a){
+    var propA = DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+    var importo = +a.importo||0;
+    var recuperato = +a.recuperato||0;
+    var saldo = r2(importo - recuperato);
+    var isCorrente = a.mese_recupero === meseRecKeyTarget;
+    var isPast = meseRecKeyTarget && a.mese_recupero < meseRecKeyTarget;
+    var meseChip;
+    if(isCorrente){
+      meseChip = '<span style="background:#dcfce7;color:#166534;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600">↪ '+anticipiMeseLabel(a.mese_recupero)+'</span>';
+    } else if(isPast){
+      meseChip = '<span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600">⏰ '+anticipiMeseLabel(a.mese_recupero)+' (in ritardo)</span>';
+    } else {
+      meseChip = '<span style="background:#e0e7ff;color:#3730a3;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600">⏩ '+anticipiMeseLabel(a.mese_recupero)+'</span>';
+    }
+    var partialNote = recuperato>0 ? '<div style="font-size:10px;color:var(--text-light)">Anticipato '+eur(importo)+' · già rec. '+eur(recuperato)+'</div>' : '';
+    return '<tr>'
+      +'<td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border)"><input type="checkbox" class="ant-sel-cb" data-id="'+a.id+'"'+(preselectedIds[a.id]?' checked':'')+' onchange="updateAntSelTotal()"></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+meseChip+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11.5px">'+escHtml(propA?propA.nome:'—')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(a.categoria?'<span style="background:rgba(67,209,238,0.08);color:#0891b2;padding:1px 6px;border-radius:5px">'+escHtml(a.categoria)+'</span>':'<span style="color:var(--text-light)">—</span>')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+escHtml(a.causale||'—')+partialNote+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(a.data?dateIt(a.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700;color:var(--orange)">'+eur(saldo)+'</td>'
+    +'</tr>';
+  }).join('');
+  html += '</tbody></table></div>';
+  // Footer totale + bottoni
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:14px;margin-top:14px;border-top:1px solid var(--border);flex-wrap:wrap">'
+    +'<div style="font-size:13px;color:var(--text-mid)"><strong id="ant-sel-count">0</strong> selezionati · Totale recupero: <strong id="ant-sel-total" style="color:var(--orange);font-family:Syne,sans-serif">€0,00</strong></div>'
+    +'<div style="display:flex;gap:8px">'
+      +'<button class="btn btn-ghost" onclick="closeModal(\'modal-ant-select\')">Annulla</button>'
+      +'<button class="btn btn-outline" onclick="proceedReportPDFNoUpdate()">Solo PDF (non aggiornare stato)</button>'
+      +'<button class="btn btn-primary" onclick="proceedReportPDFWithUpdate()">📄 Genera PDF + marca recuperati</button>'
+    +'</div>'
+  +'</div>';
+  document.getElementById('ant-sel-body').innerHTML = html;
+  openModal('modal-ant-select');
+  setTimeout(updateAntSelTotal, 50);
+  // Sincronizzo checkbox "all"
+  var cbAll = document.getElementById('ant-sel-all');
+  if(cbAll){
+    var allChecked = sorted.length>0 && sorted.every(function(a){return preselectedIds[a.id];});
+    cbAll.checked = allChecked;
+  }
+}
+
+function toggleAllAntSel(cb){
+  document.querySelectorAll('.ant-sel-cb').forEach(function(el){el.checked = cb.checked;});
+  updateAntSelTotal();
+}
+
+function updateAntSelTotal(){
+  var cbs = document.querySelectorAll('.ant-sel-cb:checked');
+  var count = cbs.length;
+  var tot = 0;
+  cbs.forEach(function(cb){
+    var id = cb.getAttribute('data-id');
+    var a = DB.anticipi.find(function(x){return x.id===id;});
+    if(a){
+      tot += (+a.importo||0) - (+a.recuperato||0);
+    }
+  });
+  var elCount = document.getElementById('ant-sel-count');
+  var elTot = document.getElementById('ant-sel-total');
+  if(elCount) elCount.textContent = count;
+  if(elTot) elTot.textContent = eur(r2(tot));
+  // Aggiorno checkbox "all"
+  var allCb = document.getElementById('ant-sel-all');
+  if(allCb){
+    var total = document.querySelectorAll('.ant-sel-cb').length;
+    allCb.checked = (count > 0 && count === total);
+    allCb.indeterminate = (count > 0 && count < total);
+  }
+}
+
+function proceedReportPDFWithUpdate(){
+  var ids = [];
+  document.querySelectorAll('.ant-sel-cb:checked').forEach(function(cb){ ids.push(cb.getAttribute('data-id')); });
+  closeModal('modal-ant-select');
+  printReportContinue(ids, true); // true = aggiorna stato
+}
+
+function proceedReportPDFNoUpdate(){
+  var ids = [];
+  document.querySelectorAll('.ant-sel-cb:checked').forEach(function(cb){ ids.push(cb.getAttribute('data-id')); });
+  closeModal('modal-ant-select');
+  printReportContinue(ids, false); // false = non aggiornare
+}
+
+// v47: la funzione vera di generazione PDF (separata da printReport)
+// selectedAntIds: array di id anticipi da includere
+// markRecuperati: se true, dopo generazione marca gli anticipi come saldo zero
+function printReportContinue(selectedAntIds, markRecuperati){
   var area=document.getElementById('rpt-preview-area');
   if(!area||!area.innerHTML||area.innerHTML.indexOf('Seleziona')>=0){toast('Genera prima l\u2019anteprima');return;}
   var propId=document.getElementById('rpt-prop-sel').value;
@@ -5239,28 +5423,24 @@ function printReport(){
   var sommaNetti2=bksNorm.reduce(function(s,b){return s+r2(b.calc.canone_totale||b.calc.canone);},0);
   var cedolare2=r2(sommaNetti2*0.21);
   var nettoImposta2=r2(sommaNetti2-cedolare2);
-  // v44: Anticipi spese recuperati nel mese corrente
+  // v47: Anticipi selezionati esplicitamente dall'utente (non più filtro automatico)
   var anticipiRecuperi2 = [];
   var anticipiTot2 = 0;
-  if(mese && mese!=='Anno' && anno){
-    var miNum2 = mesiArr().indexOf(mese)+1;
-    if(miNum2>0){
-      var meseRecKey2 = anno+'-'+(miNum2<10?'0':'')+miNum2;
-      var reportPropIds2 = [];
-      if(isGroup2 && grp2) reportPropIds2 = grp2.children.slice();
-      else if(prop) reportPropIds2 = [prop.id];
-      ensureAnticipiDB();
-      anticipiRecuperi2 = DB.anticipi.filter(function(a){
-        if(reportPropIds2.indexOf(a.proprieta_id)<0) return false;
-        if(a.mese_recupero!==meseRecKey2) return false;
+  if(selectedAntIds && selectedAntIds.length){
+    ensureAnticipiDB();
+    selectedAntIds.forEach(function(id){
+      var a = DB.anticipi.find(function(x){return x.id===id;});
+      if(a){
         var saldo = (+a.importo||0) - (+a.recuperato||0);
-        return saldo > 0.005;
-      });
-      anticipiTot2 = r2(anticipiRecuperi2.reduce(function(s,a){
-        var saldo = (+a.importo||0) - (+a.recuperato||0);
-        return s + saldo;
-      },0));
-    }
+        if(saldo > 0.005){
+          anticipiRecuperi2.push(a);
+        }
+      }
+    });
+    anticipiTot2 = r2(anticipiRecuperi2.reduce(function(s,a){
+      var saldo = (+a.importo||0) - (+a.recuperato||0);
+      return s + saldo;
+    },0));
   }
   var nettoBonifico2 = r2(nettoImposta2 - anticipiTot2);
   var totBlk=bksBlk.reduce(function(s,b){return s+b.calc.canone;},0);
@@ -5384,6 +5564,24 @@ function printReport(){
     // ── Riepilogo ──
     +sumNorm+sumBlk;
   openPrintModal(title, html);
+  // v47: marca gli anticipi inclusi come "Recuperati" se richiesto dall'utente
+  if(markRecuperati && anticipiRecuperi2.length){
+    ensureAnticipiDB();
+    var updated = 0;
+    anticipiRecuperi2.forEach(function(a){
+      var i = DB.anticipi.findIndex(function(x){return x.id===a.id;});
+      if(i>=0){
+        // Marca saldo a 0: recuperato = importo
+        DB.anticipi[i].recuperato = +DB.anticipi[i].importo || 0;
+        DB.anticipi[i].done = true;
+        updated++;
+      }
+    });
+    if(updated > 0){
+      saveDB();
+      toast('✓ '+updated+' anticipi marcati come Recuperati');
+    }
+  }
 }
 
 function exportReportExcel(){
@@ -9331,20 +9529,27 @@ function renderAnticipiTable(){
     var importo = +a.importo || 0;
     var recuperato = +a.recuperato || 0;
     var saldo = importo - recuperato;
-    var isSaldato = saldo <= 0.005 && importo > 0;
-    var isPartial = recuperato > 0 && !isSaldato;
-    var isOpen = !isSaldato;
-    if(fStatus==='open' && !isOpen) return false;
+    var needsAssignment = !a.proprieta_id || a._needs_assignment;
+    var needsAmount = importo === 0 || a._needs_amount;
+    var isIncomplete = needsAssignment || needsAmount;
+    var isSaldato = saldo <= 0.005 && importo > 0 && !isIncomplete;
+    var isPartial = recuperato > 0 && !isSaldato && !isIncomplete;
+    var isOpen = !isSaldato && !isIncomplete;
+    if(fStatus==='incomplete' && !isIncomplete) return false;
+    if(fStatus==='open' && (!isOpen || isIncomplete)) return false;
     if(fStatus==='partial' && !isPartial) return false;
     if(fStatus==='done' && !isSaldato) return false;
     if(fMese && a.mese_recupero!==fMese) return false;
     if(fSearch){
-      var hay = (a.causale||'')+' '+(a.note||'')+' '+(a.categoria||'');
+      var hay = (a.causale||'')+' '+(a.note||'')+' '+(a.categoria||'')+' '+(a._import_prop_raw||'');
       if(hay.toLowerCase().indexOf(fSearch)<0) return false;
     }
     return true;
   }).sort(function(a,b){
-    // Ordine: con saldo aperto prima, poi per data desc
+    // Da completare in cima, poi aperti, poi data desc
+    var aIncomplete = !a.proprieta_id || a._needs_assignment || (+a.importo||0)===0 || a._needs_amount;
+    var bIncomplete = !b.proprieta_id || b._needs_assignment || (+b.importo||0)===0 || b._needs_amount;
+    if(aIncomplete !== bIncomplete) return aIncomplete ? -1 : 1;
     var saldoA = (+a.importo||0) - (+a.recuperato||0);
     var saldoB = (+b.importo||0) - (+b.recuperato||0);
     var openA = saldoA > 0.005;
@@ -9363,29 +9568,58 @@ function renderAnticipiTable(){
     var importo = +a.importo || 0;
     var recuperato = +a.recuperato || 0;
     var saldo = r2(importo - recuperato);
+    // v46: stato "da completare" prevale su altri stati
+    var needsAssignment = !a.proprieta_id || a._needs_assignment;
+    var needsAmount = (importo === 0) || a._needs_amount;
+    var needsAttention = needsAssignment || needsAmount;
     // Stato deriva da recuperato vs importo
     var isSaldato = saldo <= 0.005 && importo > 0;
     var isPartial = recuperato > 0 && !isSaldato;
-    var statusChip = isSaldato
-      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">✓ Saldato</span>'
-      : isPartial
-        ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">↺ Parziale</span>'
-        : '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⏳ Aperto</span>';
+    var statusChip;
+    if(needsAssignment && needsAmount){
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⚠ Da completare</span>';
+    } else if(needsAssignment){
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⚠ Assegna prop.</span>';
+    } else if(needsAmount){
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#fed7aa;color:#9a3412;border:1px solid #fdba74;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⚠ Importo €0</span>';
+    } else if(isSaldato){
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">✓ Saldato</span>';
+    } else if(isPartial){
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">↺ Parziale</span>';
+    } else {
+      statusChip = '<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">⏳ Aperto</span>';
+    }
     var catChip = a.categoria
       ? '<span style="font-size:10.5px;background:rgba(67,209,238,0.08);color:#0891b2;padding:2px 7px;border-radius:6px;font-weight:600;white-space:nowrap">'+escHtml(a.categoria)+'</span>'
       : '<span style="font-size:10.5px;color:var(--text-light)">—</span>';
-    return '<tr>'
+    // Celle proprietà / importo con evidenza se da completare
+    var propCell;
+    if(needsAssignment){
+      var rawHint = a._import_prop_raw ? '<div style="font-size:10px;color:var(--text-light);margin-top:2px;font-style:italic">File: '+escHtml(a._import_prop_raw)+'</div>' : '';
+      propCell = '<td style="background:rgba(244,67,54,0.06)"><span style="color:#991b1b;font-weight:700;background:#fee2e2;padding:2px 8px;border-radius:6px;font-size:11px">⚠ DA ASSEGNARE</span>'+rawHint+'</td>';
+    } else {
+      propCell = '<td><strong>'+escHtml(prop?prop.nome:'—')+'</strong></td>';
+    }
+    var importoCell;
+    if(needsAmount){
+      importoCell = '<td style="text-align:right;background:rgba(249,115,22,0.08)"><span style="color:#9a3412;font-weight:700;background:#fed7aa;padding:2px 8px;border-radius:6px;font-size:11px">⚠ €0,00</span></td>';
+    } else {
+      importoCell = '<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(importo)+'</td>';
+    }
+    // Riga intera con sfondo leggero se da completare
+    var rowStyle = needsAttention ? ' style="background:rgba(244,67,54,0.02)"' : '';
+    return '<tr'+rowStyle+'>'
       +'<td style="font-variant-numeric:tabular-nums">'+(a.data?dateIt(a.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
-      +'<td><strong>'+escHtml(prop?prop.nome:'—')+'</strong></td>'
+      + propCell
       +'<td style="font-size:11.5px;color:var(--text-mid)">'+escHtml(owner?nomeOwner(owner.id):'—')+'</td>'
       +'<td>'+catChip+'</td>'
       +'<td><div style="font-size:13px">'+escHtml(a.causale||'—')+'</div>'+(a.note?'<div style="font-size:10.5px;color:var(--text-light);margin-top:2px">'+escHtml(a.note)+'</div>':'')+'</td>'
-      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(importo)+'</td>'
+      + importoCell
       +'<td style="text-align:right;font-family:Syne,sans-serif;color:var(--green)">'+(recuperato>0?eur(recuperato):'<span style="color:var(--text-light)">—</span>')+'</td>'
       +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700;color:'+(saldo>0?'var(--orange)':'var(--text-light)')+'">'+eur(saldo)+'</td>'
       +'<td><span style="font-size:11.5px;background:rgba(67,97,238,0.08);color:var(--blue);padding:2px 8px;border-radius:6px;font-weight:600">'+anticipiMeseLabel(a.mese_recupero)+'</span></td>'
       +'<td>'+statusChip+'</td>'
-      +'<td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-outline" onclick="editAnticipo(\''+a.id+'\')">✎</button><button class="btn btn-sm btn-danger" onclick="deleteAnticipo(\''+a.id+'\')">🗑</button></div></td>'
+      +'<td><div style="display:flex;gap:4px"><button class="btn btn-sm '+(needsAttention?'btn-primary':'btn-outline')+'" onclick="editAnticipo(\''+a.id+'\')" title="'+(needsAttention?'Completa':'Modifica')+'">'+(needsAttention?'✓ Completa':'✎')+'</button><button class="btn btn-sm btn-danger" onclick="deleteAnticipo(\''+a.id+'\')">🗑</button></div></td>'
       +'</tr>';
   }).join('');
 }
@@ -9500,6 +9734,9 @@ function saveAnticipo(){
       });
       // Backward compat: aggiorno anche done (derivato)
       DB.anticipi[i].done = (recuperato >= importo - 0.005);
+      // v46: pulisco i flag "da completare" ora che è stato sistemato
+      DB.anticipi[i]._needs_assignment = false;
+      DB.anticipi[i]._needs_amount = false;
     }
     toast('Anticipo aggiornato ✓');
   } else {
@@ -9528,24 +9765,35 @@ function editAnticipo(id){
   var a = DB.anticipi.find(function(x){return x.id===id;});
   if(!a){toast('Anticipo non trovato');return;}
   _editingAnticipoId = id;
-  document.getElementById('ant-modal-title').textContent = 'Modifica Anticipo';
+  // v46: titolo dinamico se in stato "da completare"
+  var needsAttention = !a.proprieta_id || (+a.importo||0)===0 || a._needs_assignment || a._needs_amount;
+  document.getElementById('ant-modal-title').textContent = needsAttention ? '✓ Completa Anticipo Importato' : 'Modifica Anticipo';
   // Popola proprietà
   var sel = document.getElementById('ant-prop-sel');
   sel.innerHTML = '<option value="">-- Seleziona --</option>' + DB.proprieta.slice().sort(function(x,y){
     return (x.nome||'').localeCompare(y.nome||'');
   }).map(function(p){return '<option value="'+p.id+'">'+escHtml(p.nome)+'</option>';}).join('');
-  sel.value = a.proprieta_id;
-  document.getElementById('ant-data').value = a.data;
-  document.getElementById('ant-importo').value = a.importo;
+  sel.value = a.proprieta_id || '';
+  document.getElementById('ant-data').value = a.data || '';
+  document.getElementById('ant-importo').value = (+a.importo||0)>0 ? a.importo : '';
   document.getElementById('ant-recuperato').value = a.recuperato!=null ? a.recuperato : (a.done?a.importo:0);
   document.getElementById('ant-categoria').value = a.categoria || '';
-  document.getElementById('ant-causale').value = a.causale;
+  document.getElementById('ant-causale').value = a.causale || '';
   document.getElementById('ant-note').value = a.note||'';
   populateAntMeseRecupero(a.data);
   document.getElementById('ant-mese-recupero').value = a.mese_recupero;
   updateAntPreview();
   updateAntSaldo();
-  document.getElementById('ant-save-btn').textContent = 'Aggiorna';
+  // v46: hint sopra il modal se è una riga importata da completare
+  var hintEl = document.getElementById('ant-owner-hint');
+  if(needsAttention && hintEl){
+    var hints = [];
+    if(a._import_prop_raw) hints.push('Nome originale nel file: "'+a._import_prop_raw+'"');
+    if(!a.proprieta_id) hints.push('⚠ Seleziona la proprietà corretta');
+    if((+a.importo||0)===0) hints.push('⚠ Inserisci l\'importo corretto');
+    if(hints.length) hintEl.innerHTML = '<span style="color:#9a3412">'+hints.join(' · ')+'</span>';
+  }
+  document.getElementById('ant-save-btn').textContent = needsAttention ? '✓ Completa e Salva' : 'Aggiorna';
   openModal('modal-anticipo');
 }
 
@@ -9753,9 +10001,15 @@ function analyzeImportAnticipi(rows, sheetName, meseRecKey){
     document.getElementById('imp-ant-result').innerHTML = '<div class="alert alert-danger">Colonne obbligatorie mancanti. Servono almeno: Proprietà/Struttura, Descrizione/Causale, Importo anticipato.</div>';
     return;
   }
-  // Analizza righe dati (dopo header)
-  var parsed = [];
-  var skipped = { empty:[], noProperty:[], noImport:[], invalidData:[], totalRow:[] };
+  // v46: tre categorie di parsed, una di skipped
+  //   parsed.valid       → pronti per import diretto
+  //   parsed.noProp      → da assegnare proprietà a mano dopo l'import
+  //   parsed.noImport    → importo €0, da completare a mano dopo l'import
+  // skipped:
+  //   empty              → righe completamente vuote (R23-R40, numeri progressivi)
+  //   totalRow           → riga TOTALI / SOMMARIO
+  var parsed = { valid:[], noProp:[], noImport:[] };
+  var skipped = { empty:[], totalRow:[] };
   for(var i=headerIdx+1; i<rows.length; i++){
     var row = rows[i] || [];
     // Skip se riga vuota
@@ -9769,163 +10023,213 @@ function analyzeImportAnticipi(rows, sheetName, meseRecKey){
     var statoRaw = colMap.stato!==undefined ? row[colMap.stato] : '';
     var noteRaw = colMap.note!==undefined ? row[colMap.note] : '';
     var categoriaRaw = colMap.categoria!==undefined ? row[colMap.categoria] : '';
-    // Skip riga TOTALI
-    if(String(propRaw||'').toUpperCase().indexOf('TOTAL')>=0){
-      skipped.totalRow.push({rowNum:i+1, raw:String(propRaw)});
+    var propRawStr = String(propRaw||'').trim();
+    var causaleRawStr = String(causaleRaw||'').trim();
+    // Skip riga TOTALI: A o B contiene "TOTAL"
+    var firstColRaw = row[0];
+    if(propRawStr.toUpperCase().indexOf('TOTAL')>=0 || String(firstColRaw||'').toUpperCase().indexOf('TOTAL')>=0){
+      skipped.totalRow.push({rowNum:i+1, raw:propRawStr || String(firstColRaw||'')});
       continue;
     }
-    // Tutto vuoto tranne numero progressivo
-    if(!propRaw && !causaleRaw && !importoRaw){
+    // Tutto vuoto: solo numero progressivo, nessun dato
+    if(!propRawStr && !causaleRawStr && (importoRaw==null||importoRaw==='')){
       skipped.empty.push({rowNum:i+1});
       continue;
     }
-    var prop = findPropByImportName(propRaw);
-    if(!prop){
-      skipped.noProperty.push({rowNum:i+1, raw:String(propRaw||''), causale:String(causaleRaw||'')});
-      continue;
-    }
+    // Match proprietà
+    var prop = findPropByImportName(propRawStr);
+    // Parse importo + recuperato
     var importo = parseImportNumber(importoRaw);
-    if(importo==null || importo<=0){
-      skipped.noImport.push({rowNum:i+1, proprieta:prop.nome, causale:String(causaleRaw||''), raw:String(importoRaw||'')});
-      continue;
-    }
     var recuperato = parseImportNumber(recRaw) || 0;
     if(recuperato < 0) recuperato = 0;
     var data = parseImportDate(dataRaw);
-    // Se stato Saldato e recuperato=0, marco recuperato=importo (caso file utente)
     var statoStr = String(statoRaw||'').toLowerCase();
-    if(statoStr.indexOf('saldat')>=0 && recuperato===0){
+    var importoMissing = (importo==null || importo<=0);
+    if(importoMissing) importo = 0;
+    // Se stato Saldato e recuperato=0 e importo>0, marco recuperato=importo
+    if(statoStr.indexOf('saldat')>=0 && recuperato===0 && importo>0){
       recuperato = importo;
     }
-    parsed.push({
+    var rec = {
       rowNum: i+1,
-      proprieta_id: prop.id,
-      proprieta_nome: prop.nome,
+      proprieta_id: prop ? prop.id : null,
+      proprieta_nome: prop ? prop.nome : '',
+      proprieta_raw: propRawStr,
       data: data,
       categoria: String(categoriaRaw||'').trim(),
-      causale: String(causaleRaw||'').trim(),
+      causale: causaleRawStr,
       importo: importo,
       recuperato: recuperato,
       note: String(noteRaw||'').trim(),
-      stato_originale: String(statoRaw||'').trim()
-    });
+      stato_originale: String(statoRaw||'').trim(),
+      _needsAssignment: !prop,
+      _needsAmount: importoMissing
+    };
+    // Categorizza
+    if(!prop) parsed.noProp.push(rec);
+    else if(importoMissing) parsed.noImport.push(rec);
+    else parsed.valid.push(rec);
   }
   renderImportPreview(parsed, skipped, meseRecKey, rows.length, headerIdx);
 }
 
 function renderImportPreview(parsed, skipped, meseRecKey, totalRows, headerIdx){
   var box = document.getElementById('imp-ant-result');
-  var totSkipped = skipped.empty.length + skipped.noProperty.length + skipped.noImport.length + skipped.totalRow.length;
-  var totProcessed = parsed.length + totSkipped;
-  var sanity = (totProcessed + headerIdx + 1) === totalRows || (parsed.length + skipped.empty.length + skipped.noProperty.length + skipped.noImport.length + skipped.totalRow.length) === (totalRows - headerIdx - 1);
+  var totImportable = parsed.valid.length + parsed.noProp.length + parsed.noImport.length;
+  var totSkipped = skipped.empty.length + skipped.totalRow.length;
   var html = '';
   // Banner riepilogo
-  html += '<div class="alert '+(parsed.length?'alert-success':'alert-warning')+'" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
-    +'<div>✓ <strong>'+parsed.length+' anticipi pronti per l\'import</strong>'+(totSkipped?' · <span style="color:var(--text-mid)">'+totSkipped+' righe scartate</span>':'')+'</div>'
-    +'<div style="font-size:11.5px;color:var(--text-light);font-variant-numeric:tabular-nums">Righe Excel: '+totalRows+' = '+(headerIdx+1)+' header + '+parsed.length+' valide + '+totSkipped+' scartate</div>'
+  html += '<div class="alert '+(totImportable?'alert-success':'alert-warning')+'" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
+    +'<div>✓ <strong>'+totImportable+' anticipi pronti per l\'import</strong>'+(totSkipped?' · <span style="color:var(--text-mid)">'+totSkipped+' righe ignorate</span>':'')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text-light);font-variant-numeric:tabular-nums">Righe Excel: '+totalRows+' = '+(headerIdx+1)+' header + '+totImportable+' importabili + '+totSkipped+' ignorate</div>'
     +'</div>';
+  // Note se ci sono righe da completare a mano
+  if(parsed.noProp.length || parsed.noImport.length){
+    html += '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;line-height:1.5">'
+      +'<strong>📝 Da completare dopo l\'import:</strong> alcune righe verranno importate ma necessitano modifiche manuali — proprietà da assegnare o importo da inserire. In tabella appariranno evidenziate (rosso / arancione). Cliccaci sopra per modificarle.'
+      +'</div>';
+  }
   // Mese recupero scelto
   html += '<div style="background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--blue)">'
     +'<strong>Mese di recupero:</strong> '+anticipiMeseLabel(meseRecKey)+' — applicato a tutti gli anticipi importati'
     +'</div>';
-  // Lista valide
-  if(parsed.length){
-    var tot = parsed.reduce(function(s,p){return s+p.importo;},0);
-    var totRec = parsed.reduce(function(s,p){return s+p.recuperato;},0);
+  // ─── Sezione 1: VALIDI ───
+  if(parsed.valid.length){
+    var tot = parsed.valid.reduce(function(s,p){return s+p.importo;},0);
+    var totRec = parsed.valid.reduce(function(s,p){return s+p.recuperato;},0);
     html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
       +'<div style="padding:10px 14px;background:#dcfce7;border-bottom:1px solid #86efac;font-weight:700;color:#166534;display:flex;justify-content:space-between;align-items:center">'
-        +'<span>✓ '+parsed.length+' anticipi da importare</span>'
+        +'<span>✓ '+parsed.valid.length+' anticipi completi (import diretto)</span>'
         +'<span style="font-family:Syne,sans-serif">Tot: '+eur(r2(tot))+' · Già rec.: '+eur(r2(totRec))+' · Saldo: '+eur(r2(tot-totRec))+'</span>'
       +'</div>'
-      +'<table style="width:100%;font-size:12px">'
-        +'<thead><tr style="background:var(--surface2)"><th style="padding:6px 10px;text-align:left">Riga</th><th style="padding:6px 10px;text-align:left">Proprietà</th><th style="padding:6px 10px;text-align:left">Categoria</th><th style="padding:6px 10px;text-align:left">Causale</th><th style="padding:6px 10px;text-align:left">Data</th><th style="padding:6px 10px;text-align:right">Importo</th><th style="padding:6px 10px;text-align:right">Recuperato</th></tr></thead>'
-        +'<tbody>'
-        + parsed.map(function(p){
-          return '<tr>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text-light)">R'+p.rowNum+'</td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)"><strong>'+escHtml(p.proprieta_nome)+'</strong></td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px"><span style="background:rgba(67,209,238,0.08);color:#0891b2;padding:1px 6px;border-radius:5px">'+escHtml(p.categoria||'—')+'</span></td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+escHtml(p.causale)+(p.note?'<div style="font-size:10px;color:var(--text-light)">'+escHtml(p.note)+'</div>':'')+'</td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(p.data?dateIt(p.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(p.importo)+'</td>'
-            +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--green)">'+(p.recuperato>0?eur(p.recuperato):'—')+'</td>'
-          +'</tr>';
-        }).join('')
-        +'</tbody></table></div>';
+      + renderParsedTable(parsed.valid, 'valid')
+      +'</div>';
   }
-  // Sezioni scartate
+  // ─── Sezione 2: PROPRIETÀ DA ASSEGNARE ───
+  if(parsed.noProp.length){
+    var tot2 = parsed.noProp.reduce(function(s,p){return s+p.importo;},0);
+    html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
+      +'<div style="padding:10px 14px;background:#fee2e2;border-bottom:1px solid #fca5a5;font-weight:700;color:#991b1b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+        +'<span>⚠ '+parsed.noProp.length+' anticipi con proprietà DA ASSEGNARE</span>'
+        +'<span style="font-family:Syne,sans-serif;font-size:13px">Tot: '+eur(r2(tot2))+'</span>'
+      +'</div>'
+      +'<div style="padding:8px 14px;background:#fff7ed;font-size:11.5px;color:#9a3412;border-bottom:1px solid #fde68a">Importate con proprietà "<em>Da assegnare</em>". Apri ognuna in modifica e scegli la proprietà giusta dal dropdown.</div>'
+      + renderParsedTable(parsed.noProp, 'noProp')
+      +'</div>';
+  }
+  // ─── Sezione 3: IMPORTO DA INSERIRE ───
+  if(parsed.noImport.length){
+    html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
+      +'<div style="padding:10px 14px;background:#fed7aa;border-bottom:1px solid #fb923c;font-weight:700;color:#9a3412;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+        +'<span>⚠ '+parsed.noImport.length+' anticipi con IMPORTO MANCANTE</span>'
+      +'</div>'
+      +'<div style="padding:8px 14px;background:#fff7ed;font-size:11.5px;color:#9a3412;border-bottom:1px solid #fed7aa">Importate con importo €0,00. Apri ognuna in modifica e inserisci l\'importo corretto.</div>'
+      + renderParsedTable(parsed.noImport, 'noImport')
+      +'</div>';
+  }
+  // ─── Sezione scarti (vuote + TOTALI) ───
   if(totSkipped > 0){
-    html += '<div class="card" style="padding:14px;margin-bottom:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fbbf24">'
-      +'<div style="font-weight:700;color:#92400e;margin-bottom:10px">⚠ '+totSkipped+' righe scartate</div>';
-    if(skipped.noProperty.length){
-      html += '<details open style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:#991b1b;padding:6px 0">⚠ '+skipped.noProperty.length+' proprietà NON in anagrafica</summary>'
-        +'<table style="width:100%;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px"><thead><tr><th style="padding:5px 10px;text-align:left">Riga</th><th style="padding:5px 10px;text-align:left">Proprietà nel file</th><th style="padding:5px 10px;text-align:left">Causale</th></tr></thead><tbody>'
-        + skipped.noProperty.map(function(s){return '<tr><td style="padding:4px 10px;font-family:monospace">R'+s.rowNum+'</td><td style="padding:4px 10px">'+escHtml(s.raw)+'</td><td style="padding:4px 10px">'+escHtml(s.causale)+'</td></tr>';}).join('')
-        +'</tbody></table>'
-        +'<div style="font-size:11px;color:var(--text-mid);margin-top:6px;font-style:italic">Aggiungi la proprietà nell\'anagrafica del Tool e reimporta il file per recuperarle.</div>'
-        +'</details>';
-    }
-    if(skipped.noImport.length){
-      html += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:#92400e;padding:6px 0">⚠ '+skipped.noImport.length+' righe senza importo valido</summary>'
-        +'<table style="width:100%;font-size:11.5px;margin-top:6px;background:#fff;border-radius:6px"><thead><tr><th style="padding:5px 10px;text-align:left">Riga</th><th style="padding:5px 10px;text-align:left">Proprietà</th><th style="padding:5px 10px;text-align:left">Causale</th></tr></thead><tbody>'
-        + skipped.noImport.map(function(s){return '<tr><td style="padding:4px 10px;font-family:monospace">R'+s.rowNum+'</td><td style="padding:4px 10px">'+escHtml(s.proprieta)+'</td><td style="padding:4px 10px">'+escHtml(s.causale)+'</td></tr>';}).join('')
-        +'</tbody></table>'
-        +'<div style="font-size:11px;color:var(--text-mid);margin-top:6px;font-style:italic">Compila l\'importo nel file Excel e reimporta.</div>'
-        +'</details>';
-    }
+    html += '<div class="card" style="padding:14px;margin-bottom:14px;background:var(--surface2);border:1px solid var(--border)">'
+      +'<div style="font-weight:700;color:var(--text-mid);margin-bottom:8px;font-size:13px">○ '+totSkipped+' righe ignorate (non importabili)</div>';
     if(skipped.empty.length){
-      html += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:6px 0">○ '+skipped.empty.length+' righe vuote (ignorate)</summary>'
+      html += '<details style="margin-bottom:6px"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:5px 0;font-size:12px">'+skipped.empty.length+' righe vuote</summary>'
         +'<div style="font-size:11px;color:var(--text-light);padding:6px 0">Righe '+skipped.empty.map(function(s){return 'R'+s.rowNum;}).join(', ')+'</div>'
         +'</details>';
     }
     if(skipped.totalRow.length){
-      html += '<details style="margin-bottom:0"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:6px 0">∑ '+skipped.totalRow.length+' righe TOTALI (ignorate)</summary>'
+      html += '<details style="margin-bottom:0"><summary style="cursor:pointer;font-weight:600;color:var(--text-mid);padding:5px 0;font-size:12px">'+skipped.totalRow.length+' riga TOTALI (sommario)</summary>'
         +'<div style="font-size:11px;color:var(--text-light);padding:6px 0">'+skipped.totalRow.map(function(s){return 'R'+s.rowNum+' ('+escHtml(s.raw)+')';}).join(', ')+'</div>'
         +'</details>';
     }
     html += '</div>';
   }
   // Bottoni
-  if(parsed.length){
+  if(totImportable){
     html += '<div style="display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border)">'
       +'<button class="btn btn-ghost" onclick="closeModal(\'modal-import-anticipi\')">Annulla</button>'
-      +'<button class="btn btn-primary" id="imp-ant-confirm">✓ Conferma import di '+parsed.length+' anticipi</button>'
+      +'<button class="btn btn-primary" id="imp-ant-confirm">✓ Conferma import di '+totImportable+' anticipi</button>'
     +'</div>';
   }
   box.innerHTML = html;
   // Bind conferma
-  if(parsed.length){
+  if(totImportable){
     document.getElementById('imp-ant-confirm').addEventListener('click', function(){
       confirmImportAnticipi(parsed, meseRecKey);
     });
   }
 }
 
+// v46: tabella riusabile per le 3 categorie
+function renderParsedTable(items, mode){
+  var html = '<table style="width:100%;font-size:12px">'
+    +'<thead><tr style="background:var(--surface2)"><th style="padding:6px 10px;text-align:left">Riga</th><th style="padding:6px 10px;text-align:left">Proprietà</th><th style="padding:6px 10px;text-align:left">Categoria</th><th style="padding:6px 10px;text-align:left">Causale</th><th style="padding:6px 10px;text-align:left">Data</th><th style="padding:6px 10px;text-align:right">Importo</th><th style="padding:6px 10px;text-align:right">Recuperato</th></tr></thead>'
+    +'<tbody>';
+  html += items.map(function(p){
+    var propCell, importoCell;
+    if(mode==='noProp'){
+      propCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border)"><span style="color:#991b1b;font-weight:700;background:#fee2e2;padding:2px 6px;border-radius:5px;font-size:11px">⚠ DA ASSEGNARE</span><div style="font-size:10.5px;color:var(--text-mid);margin-top:2px">File: <em>'+escHtml(p.proprieta_raw||'(vuoto)')+'</em></div></td>';
+    } else {
+      propCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border)"><strong>'+escHtml(p.proprieta_nome)+'</strong></td>';
+    }
+    if(mode==='noImport'){
+      importoCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right"><span style="color:#9a3412;font-weight:700;background:#fed7aa;padding:2px 6px;border-radius:5px;font-size:11px">⚠ €0,00</span></td>';
+    } else {
+      importoCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(p.importo)+'</td>';
+    }
+    return '<tr>'
+      +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text-light)">R'+p.rowNum+'</td>'
+      + propCell
+      +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(p.categoria?'<span style="background:rgba(67,209,238,0.08);color:#0891b2;padding:1px 6px;border-radius:5px">'+escHtml(p.categoria)+'</span>':'<span style="color:var(--text-light)">—</span>')+'</td>'
+      +'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">'+escHtml(p.causale||'—')+(p.note?'<div style="font-size:10px;color:var(--text-light)">'+escHtml(p.note)+'</div>':'')+'</td>'
+      +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(p.data?dateIt(p.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
+      + importoCell
+      +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--green)">'+(p.recuperato>0?eur(p.recuperato):'<span style="color:var(--text-light)">—</span>')+'</td>'
+    +'</tr>';
+  }).join('');
+  html += '</tbody></table>';
+  return html;
+}
+
 function confirmImportAnticipi(parsed, meseRecKey){
   ensureAnticipiDB();
   var today = new Date();
   var todayISO = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  var added = 0;
-  parsed.forEach(function(p){
+  var added = 0, addedNoProp = 0, addedNoImport = 0;
+  // Unisco le 3 categorie in un unico flusso
+  var all = parsed.valid.concat(parsed.noProp).concat(parsed.noImport);
+  all.forEach(function(p){
+    var done = (p.importo > 0 && p.recuperato >= p.importo - 0.005);
     DB.anticipi.push({
       id: uid(),
-      proprieta_id: p.proprieta_id,
+      proprieta_id: p.proprieta_id,  // null per "da assegnare"
       data: p.data || todayISO,
-      importo: p.importo,
+      importo: p.importo,            // 0 per "da inserire importo"
       recuperato: p.recuperato,
       categoria: p.categoria,
       causale: p.causale,
       mese_recupero: meseRecKey,
       note: p.note,
-      done: (p.recuperato >= p.importo - 0.005),
+      done: done,
       created_at: Date.now(),
-      imported: true
+      imported: true,
+      _needs_assignment: !!p._needsAssignment,
+      _needs_amount: !!p._needsAmount,
+      _import_prop_raw: p._needsAssignment ? p.proprieta_raw : null
     });
     added++;
+    if(p._needsAssignment) addedNoProp++;
+    if(p._needsAmount) addedNoImport++;
   });
   saveDB();
   closeModal('modal-import-anticipi');
-  toast('✓ '+added+' anticipi importati');
+  var msg = '✓ '+added+' anticipi importati';
+  if(addedNoProp || addedNoImport){
+    var notes = [];
+    if(addedNoProp) notes.push(addedNoProp+' senza proprietà');
+    if(addedNoImport) notes.push(addedNoImport+' senza importo');
+    msg += ' ('+notes.join(', ')+' — da completare a mano)';
+  }
+  toast(msg);
   renderAnticipi();
 }
 
