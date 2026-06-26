@@ -551,6 +551,17 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .adem-tab-icon{font-size:18px}
 }
 
+/* v48: Grid responsive per Modal Proprietà */
+/* Desktop: layout multi-colonna */
+.prop-grid{display:grid;gap:8px}
+.prop-grid-2{grid-template-columns:1fr 1fr}
+.prop-grid-4-1-1-1{grid-template-columns:2fr 1fr 1fr 1fr}
+.prop-grid-1-2-1-1-1{grid-template-columns:1fr 2fr 1fr 1fr 1fr}
+/* Mobile: stack verticale per evitare scroll orizzontale */
+@media (max-width: 700px){
+  .prop-grid{grid-template-columns:1fr !important}
+}
+
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -737,7 +748,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v47 · 26/06</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v48 · 26/06</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1677,7 +1688,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 <!-- MODAL PROPRIETA -->
 <div class="modal-overlay" id="modal-proprieta">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:640px">
     <button class="modal-close" onclick="closeModal('modal-proprieta')">&#10005;</button>
     <div class="modal-title" id="mprop2-title">Nuova Propriet&agrave;</div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -1688,13 +1699,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <!-- Dati catastali per DAC7 -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#127960; Dati Catastali <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(richiesti per DAC7 — opzionali)</span></div>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="prop-grid prop-grid-4-1-1-1" style="margin-bottom:8px">
           <div class="field" style="margin:0"><label style="font-size:11px">Comune catastale</label><input type="text" id="prop-cat-comune" placeholder="es. Arezzo"></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Foglio</label><input type="text" id="prop-cat-foglio" placeholder="123"></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Particella</label><input type="text" id="prop-cat-part" placeholder="456"></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Subalterno</label><input type="text" id="prop-cat-sub" placeholder="7"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="prop-grid prop-grid-2">
           <div class="field" style="margin:0"><label style="font-size:11px">Categoria catastale</label><input type="text" id="prop-cat-cat" placeholder="A/2, A/3, A/7..."></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:10px">(es. L123)</span></label><input type="text" id="prop-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
         </div>
@@ -1702,7 +1713,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <!-- Indirizzo strutturato per CU -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128205; Indirizzo strutturato <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(per CU — opzionale, integra il campo Indirizzo sopra)</span></div>
-        <div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1fr;gap:8px">
+        <div class="prop-grid prop-grid-1-2-1-1-1">
           <div class="field" style="margin:0"><label style="font-size:11px">Tipologia</label><select id="prop-tipo-via"><option value="">—</option><option value="VIA">VIA</option><option value="PIAZZA">PIAZZA</option><option value="VIALE">VIALE</option><option value="CORSO">CORSO</option><option value="LARGO">LARGO</option><option value="STRADA">STRADA</option><option value="VICOLO">VICOLO</option><option value="LOC">LOCALITÀ</option><option value="ALTRO">ALTRO</option></select></div>
           <div class="field" style="margin:0"><label style="font-size:11px">Nome via/piazza</label><input type="text" id="prop-via-nome" placeholder="es. Cave"></div>
           <div class="field" style="margin:0"><label style="font-size:11px">N. civico</label><input type="text" id="prop-n-civico" placeholder="1638"></div>
@@ -1714,7 +1725,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <!-- Commissione Houzly override per proprietà (v42) -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128176; Commissione Houzly <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(opzionale — se vuota usa quella del Proprietario)</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="prop-grid prop-grid-2">
           <div class="field" style="margin:0"><label style="font-size:11px">% Compenso Houzly</label><input type="number" id="prop-houzly-perc" step="0.1" min="0" max="50" placeholder="es. 30" oninput="updatePropCommPreview()"><div class="field-hint" style="font-size:10px">Vuoto = eredita dal Proprietario</div></div>
           <div class="field" style="margin:0"><label style="font-size:11px">IVA 22%</label><select id="prop-iva22-override" onchange="updatePropCommPreview()"><option value="">Eredita dal Proprietario</option><option value="1">Sì — fattura con IVA</option><option value="0">No — IVA inclusa (no scorporo)</option></select></div>
         </div>
@@ -3387,7 +3398,11 @@ function renderProprietari(){
     if(mc)mc.innerHTML='<div class="mc-empty"><div class="ic">👤</div>Nessun proprietario.<br>Tocca «+ Nuovo Proprietario» per iniziare.</div>';
     return;
   }
-  if(tb){tb.innerHTML=DB.proprietari.map(function(p){
+  if(tb){tb.innerHTML=DB.proprietari.slice().sort(function(a,b){
+    var na=(a.tipo==='persona_fisica'?(a.cognome||'')+' '+(a.nome||''):(a.ragione_sociale||'')).toLowerCase().trim();
+    var nb=(b.tipo==='persona_fisica'?(b.cognome||'')+' '+(b.nome||''):(b.ragione_sociale||'')).toLowerCase().trim();
+    return na.localeCompare(nb,'it');
+  }).map(function(p){
     var nome=p.tipo==='persona_fisica'?p.nome+' '+p.cognome:p.ragione_sociale;
     var cf=p.tipo==='persona_fisica'?(p.cf||'&#8212;'):(p.piva||'&#8212;');
     var ind=[p.via,p.cap?(p.cap+(p.comune?' '+p.comune:'')):p.comune,p.provincia?'('+p.provincia+')':''].filter(Boolean).join(', ')||'&#8212;';
@@ -3408,7 +3423,11 @@ function renderProprietari(){
       +'</div></td>'
       +'</tr>';
   }).join('');}
-  if(mc){mc.innerHTML=DB.proprietari.map(function(p){
+  if(mc){mc.innerHTML=DB.proprietari.slice().sort(function(a,b){
+    var na=(a.tipo==='persona_fisica'?(a.cognome||'')+' '+(a.nome||''):(a.ragione_sociale||'')).toLowerCase().trim();
+    var nb=(b.tipo==='persona_fisica'?(b.cognome||'')+' '+(b.nome||''):(b.ragione_sociale||'')).toLowerCase().trim();
+    return na.localeCompare(nb,'it');
+  }).map(function(p){
     var nome=p.tipo==='persona_fisica'?(p.nome+' '+p.cognome):p.ragione_sociale;
     var cf=p.tipo==='persona_fisica'?(p.cf||''):(p.piva||'');
     var indParts=[p.via,p.cap,p.comune,p.provincia?'('+p.provincia+')':''].filter(Boolean);
@@ -3729,11 +3748,26 @@ function renderProprieta(){
   // Map: cid → group name (per badge mobile)
   var childToGroup={};
   DB.propGroups.forEach(function(g){g.children.forEach(function(cid){childToGroup[cid]=g.nome;});});
+  // v48: ordino alfabeticamente
+  // - Gruppi: in ordine alfabetico per nome del gruppo
+  // - Figli dentro ogni gruppo: in ordine alfabetico
+  // - Standalone (non figli di gruppi): in fondo, in ordine alfabetico
   var orderedProps2=[];
-  DB.propGroups.forEach(function(g){
-    g.children.forEach(function(cid){var p=DB.proprieta.find(function(x){return x.id===cid;});if(p)orderedProps2.push(p);});
+  var sortedGroups=DB.propGroups.slice().sort(function(a,b){
+    return (a.nome||'').toLowerCase().localeCompare((b.nome||'').toLowerCase(),'it');
   });
-  DB.proprieta.forEach(function(p){if(!childIds2[p.id])orderedProps2.push(p);});
+  sortedGroups.forEach(function(g){
+    var children=g.children.map(function(cid){
+      return DB.proprieta.find(function(x){return x.id===cid;});
+    }).filter(Boolean).sort(function(a,b){
+      return (a.nome||'').toLowerCase().localeCompare((b.nome||'').toLowerCase(),'it');
+    });
+    children.forEach(function(p){orderedProps2.push(p);});
+  });
+  var standalone=DB.proprieta.filter(function(p){return !childIds2[p.id];}).sort(function(a,b){
+    return (a.nome||'').toLowerCase().localeCompare((b.nome||'').toLowerCase(),'it');
+  });
+  standalone.forEach(function(p){orderedProps2.push(p);});
   if(tb){tb.innerHTML=orderedProps2.map(function(p){
     var isChild2=childIds2[p.id];
     var own=DB.proprietari.find(function(x){return x.id===p.proprietario_id;});
