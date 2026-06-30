@@ -2122,6 +2122,8 @@ app.post('/api/onboarding/cron-tick', async (req, res) => {
 });
 
 app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
+app.use(require('./guida'));
+app.use(require('./guida-admin'));
 
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
