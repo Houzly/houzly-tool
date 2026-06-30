@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#170046">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Houzly Guest Intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#170046; --navy-deep:#0c0026; --blue:#4ACBEF;
+    --cream:#f5f1ea; --gold:#c9a84c;
+    --card:#fbf9f5; --line:rgba(23,0,70,.10); --line-soft:rgba(23,0,70,.06);
+    --tint:rgba(74,203,239,.12); --tint-2:rgba(23,0,70,.05);
+    --ink:#170046; --ink-soft:rgba(23,0,70,.60); --ink-faint:rgba(23,0,70,.42);
+    --disp:'Cormorant Garamond',Georgia,serif;
+    --body:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    --maxw:480px; --r:18px;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --shadow:0 1px 2px rgba(23,0,70,.04), 0 14px 34px -20px rgba(23,0,70,.22);
+    --tabh:62px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--body); color:var(--ink); background:var(--cream);
+    -webkit-font-smoothing:antialiased; line-height:1.5; font-weight:300; overscroll-behavior-y:none; overflow-x:hidden}
+  body::before{content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E")}
+
+  .app{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto;
+    min-height:100svh; padding:0 16px calc(var(--tabh) + var(--safe-b) + 22px)}
+  .view{animation:fade .34s ease}
+  @keyframes fade{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+
+  .ic-svg{width:24px;height:24px;display:block}
+
+  /* ---------- HOME: hero card ---------- */
+  .topgap{height:calc(var(--safe-t) + 14px)}
+  .hero{position:relative; border-radius:22px; overflow:hidden; min-height:300px; display:flex; flex-direction:column; justify-content:flex-end; color:#fff;
+    background:
+      radial-gradient(120% 80% at 80% 4%, rgba(74,203,239,.30), transparent 55%),
+      radial-gradient(120% 90% at 10% 100%, rgba(201,168,76,.34), transparent 52%),
+      linear-gradient(160deg,#1a0a52,var(--navy) 42%,var(--navy-deep));
+    box-shadow:var(--shadow)}
+  .hero-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0}
+  .hero-shade{position:absolute; inset:0; z-index:1; background:linear-gradient(180deg,rgba(12,0,38,.12) 0%,rgba(12,0,38,.30) 45%,rgba(12,0,38,.78) 100%)}
+  .hero-pad{position:relative; z-index:2; padding:18px}
+  .langpill{position:absolute; top:14px; left:14px; z-index:2; display:flex; gap:2px; background:rgba(12,0,38,.4); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.18); border-radius:100px; padding:3px}
+  .langpill button{font-family:var(--body); font-size:11px; font-weight:500; letter-spacing:.06em; color:rgba(255,255,255,.7); background:transparent; border:0; padding:6px 12px; border-radius:100px; cursor:pointer}
+  .langpill button.on{background:#fff; color:var(--navy)}
+  .heroq{position:absolute; top:12px; right:12px; z-index:2; display:flex; gap:8px}
+  .heroq a{width:40px;height:40px;border-radius:50%; background:rgba(255,255,255,.16); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.22); display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none}
+  .heroq a .ic-svg{width:18px;height:18px}
+  .hero .eyebrow{font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--gold); font-weight:500; margin-bottom:8px}
+  .hero h1{font-family:var(--disp); font-weight:500; font-size:clamp(40px,12vw,56px); line-height:.96; letter-spacing:-.01em}
+  .hero .loc{display:flex; align-items:center; gap:6px; font-size:13px; letter-spacing:.04em; color:rgba(255,255,255,.82); margin-top:10px; font-weight:300}
+  .hero .loc .ic-svg{width:15px;height:15px;color:var(--gold)}
+
+  .welcome{font-family:var(--disp); font-style:italic; font-size:18px; line-height:1.45; color:var(--ink-soft); text-align:center; padding:20px 6px 4px}
+
+  /* ---------- tile grid ---------- */
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px}
+  .tile{background:var(--card); border:1px solid var(--line-soft); border-radius:16px; padding:16px 8px 13px; display:flex; flex-direction:column; align-items:center; gap:10px; cursor:pointer; box-shadow:var(--shadow); transition:transform .12s ease; animation:tileIn .42s ease backwards}
+  @keyframes tileIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .tile:active{transform:scale(.96)}
+  .tile .badge{width:46px;height:46px;border-radius:13px; background:var(--tint); color:var(--navy); display:flex;align-items:center;justify-content:center}
+  .tile .lab{font-size:12px; font-weight:400; letter-spacing:.01em; color:var(--ink); text-align:center; line-height:1.2}
+
+  /* ---------- detail header ---------- */
+  .dhead{display:flex; align-items:center; gap:6px; padding:calc(var(--safe-t) + 16px) 0 18px; position:sticky; top:0; z-index:20; background:linear-gradient(180deg,var(--cream) 70%,rgba(245,241,234,0))}
+  .back{width:42px;height:42px;border-radius:50%; border:1px solid var(--line); background:var(--card); display:flex;align-items:center;justify-content:center; cursor:pointer; color:var(--ink); flex:0 0 42px}
+  .dhead h2{font-family:var(--disp); font-weight:500; font-size:30px; letter-spacing:-.01em}
+  .dhead .badge-sm{width:34px;height:34px;border-radius:10px;background:var(--tint);color:var(--navy);display:flex;align-items:center;justify-content:center;margin-left:auto}
+  .dhead .badge-sm .ic-svg{width:18px;height:18px}
+
+  .card{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); padding:20px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:12px}
+  .note{font-size:14px; color:var(--ink-soft); margin-top:12px; font-weight:300; line-height:1.6}
+
+  .facts{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px}
+  .fact{background:var(--card); border:1px solid var(--line-soft); border-radius:14px; padding:14px 8px; text-align:center}
+  .fact .k{font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:6px}
+  .fact .v{font-family:var(--disp); font-size:27px; font-weight:500; line-height:1}
+
+  .wifi .net{font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-faint)}
+  .wifi .ssid{font-family:var(--disp); font-size:29px; font-weight:500; margin:2px 0 14px; word-break:break-word}
+  .copy{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--navy); color:#fff; border:0; width:100%; cursor:pointer; min-height:60px; padding:14px 18px; border-radius:14px; font-family:var(--body); text-align:left}
+  .copy .pw{font-size:20px; letter-spacing:.03em; word-break:break-all}
+  .copy .act{display:flex;align-items:center;gap:7px; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue); white-space:nowrap}
+  .copy .act .ic-svg{width:15px;height:15px}
+  .copy.done .act{color:var(--gold)}
+
+  .times{display:flex; gap:10px}
+  .timecard{flex:1; background:var(--card); border:1px solid var(--line-soft); border-radius:14px; padding:15px 10px; text-align:center}
+  .timecard .lab{font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-faint)}
+  .timecard .t{font-family:var(--disp); font-size:29px; font-weight:500; margin-top:4px}
+  .timecard .t .pre{font-size:12px; font-family:var(--body); color:var(--ink-soft); display:block; letter-spacing:.05em}
+
+  .rows{display:flex; flex-direction:column}
+  .row{display:flex; gap:13px; padding:14px 0; border-bottom:1px solid var(--line-soft); align-items:flex-start}
+  .row:last-child{border-bottom:0}
+  .row .ic{font-size:18px; flex:0 0 22px; text-align:center; color:var(--gold)}
+  .row .tx{font-size:15px; font-weight:300}
+
+  .acc{border:1px solid var(--line-soft); border-radius:14px; overflow:hidden; background:var(--card)}
+  .acc + .acc{margin-top:10px}
+  .acc-h{display:flex; align-items:center; gap:12px; width:100%; border:0; background:transparent; cursor:pointer; padding:15px 16px; min-height:56px; font-family:var(--body); color:var(--ink); text-align:left}
+  .acc-h .badge-sm{width:34px;height:34px;border-radius:10px;background:var(--tint);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+  .acc-h .badge-sm .ic-svg{width:18px;height:18px}
+  .acc-h .nm{flex:1; font-size:15px}
+  .acc-h .chev{transition:.25s; color:var(--ink-faint)}
+  .acc.open .acc-h .chev{transform:rotate(180deg)}
+  .acc-b{max-height:0; overflow:hidden; transition:max-height .3s ease}
+  .acc-b .inner{padding:0 16px 16px 62px; font-size:14.5px; color:var(--ink-soft); font-weight:300; line-height:1.6}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:100px; padding:9px 14px; font-size:13px; background:var(--card)}
+  .dot{width:11px; height:11px; border-radius:50%; border:1px solid rgba(23,0,70,.15); flex:0 0 11px}
+  .ptag{display:inline-flex; align-items:center; gap:7px; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px dashed var(--gold); border-radius:100px; padding:5px 12px; margin-bottom:14px}
+
+  .rec{display:flex; gap:14px; padding:15px 0; border-bottom:1px solid var(--line-soft)}
+  .rec:last-child{border-bottom:0}
+  .rec .num{font-family:var(--disp); font-size:23px; color:var(--gold); font-weight:500; flex:0 0 24px}
+  .rec .nm{font-family:var(--disp); font-size:20px; font-weight:500; line-height:1.1}
+  .rec .meta{font-size:11px; letter-spacing:.03em; color:var(--ink-faint); text-transform:uppercase; margin:3px 0 5px}
+  .rec .desc{font-size:14px; color:var(--ink-soft); font-weight:300}
+  .rec a.mapln{font-size:12px;color:var(--blue);text-decoration:none;letter-spacing:.03em;display:inline-flex;gap:5px;align-items:center;margin-top:6px}
+  .rec a.mapln .ic-svg{width:13px;height:13px}
+
+  .contact{display:flex; align-items:center; gap:14px; padding:13px 0; border-bottom:1px solid var(--line-soft)}
+  .contact:last-child{border-bottom:0}
+  .contact .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:20px;font-weight:500;flex:0 0 44px}
+  .contact .who{flex:1}
+  .contact .who .n{font-size:15px;font-weight:500}
+  .contact .who .r{font-size:12px;color:var(--ink-faint);letter-spacing:.04em}
+  .contact .btns{display:flex; gap:8px}
+  .icbtn{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid var(--line)}
+  .icbtn .ic-svg{width:18px;height:18px}
+  .icbtn.call{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .icbtn.wa{background:#fff;color:#25D366;border-color:rgba(37,211,102,.4)}
+  .emerg{display:flex; gap:10px; margin-top:16px}
+  .emerg a{flex:1;text-align:center;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 8px;color:var(--ink);min-height:66px;display:flex;flex-direction:column;justify-content:center}
+  .emerg a .big{font-family:var(--disp);font-size:25px;font-weight:600;line-height:1}
+  .emerg a .sm{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px}
+
+  /* map / chat */
+  .mapbox{height:200px;border-radius:16px;border:1px solid var(--line-soft);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;background:#e9e3d6}
+  .mapbox iframe{width:100%;height:100%;border:0;display:block;filter:saturate(.92)}
+  .bigbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:54px;background:var(--navy);color:#fff;border:0;border-radius:14px;text-decoration:none;font-family:var(--body);font-size:15px;font-weight:500;letter-spacing:.02em;cursor:pointer}
+  .bigbtn.alt{background:#25D366}
+  .bigbtn .ic-svg{width:18px;height:18px}
+  .chatwrap{text-align:center;padding:30px 14px 10px}
+  .chatwrap .gicon{width:70px;height:70px;border-radius:20px;background:var(--tint);color:var(--navy);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .chatwrap .gicon .ic-svg{width:34px;height:34px}
+  .chatwrap h3{font-family:var(--disp);font-size:28px;font-weight:500}
+  .chatwrap p{font-size:14.5px;color:var(--ink-soft);font-weight:300;line-height:1.6;margin:10px auto 22px;max-width:300px}
+
+  /* ---------- bottom tab bar ---------- */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;
+    padding:8px 16px calc(6px + var(--safe-b));
+    background:rgba(251,249,245,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line-soft)}
+  .tabbar-in{max-width:var(--maxw);margin:0 auto;display:flex}
+  .tab{flex:1;background:transparent;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;color:var(--ink-faint)}
+  .tab .pill{width:46px;height:30px;border-radius:100px;display:flex;align-items:center;justify-content:center;transition:.2s}
+  .tab .pill .ic-svg{width:21px;height:21px}
+  .tab .lb{font-size:11px;letter-spacing:.03em;font-weight:400}
+  .tab.on{color:var(--navy)}
+  .tab.on .pill{background:var(--navy);color:#fff}
+  .tab.on .lb{font-weight:500}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--tabh) + var(--safe-b) + 18px);transform:translate(-50%,16px);
+    background:var(--navy);color:#fff;padding:12px 22px;border-radius:100px;font-size:13px;letter-spacing:.03em;opacity:0;pointer-events:none;transition:.3s;z-index:60;box-shadow:var(--shadow)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  footer{text-align:center;padding:30px 0 6px;color:var(--ink-faint)}
+  footer .mk{letter-spacing:.3em;text-transform:uppercase;font-size:11px;color:var(--ink-soft)}
+  footer .mk b{color:var(--blue);font-weight:600}
+</style>
+</head>
+<body>
+
+<main class="app" id="app"></main>
+
+<div class="tabbar">
+  <div class="tabbar-in" id="tabbar"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== ICONE (SVG a linea, ereditano currentColor) ===== */
+const ICONS={
+  wifi:'<path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 16.1a6 6 0 0 1 7 0"/><path d="M12 19.5h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/>',
+  login:'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  parking:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>',
+  rules:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+  recycle:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  compass:'<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  message:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>',
+  map:'<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  pin:'<path d="M20 10c0 4.4-8 12-8 12s-8-7.6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  back:'<path d="m15 18-6-6 6-6"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  spark:'<path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.2"/>',
+  waves:'<path d="M2 6c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/><path d="M2 12c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/><path d="M2 18c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/>',
+  snow:'<path d="M12 2v20"/><path d="M2 12h20"/><path d="m4.9 4.9 14.2 14.2"/><path d="m19.1 4.9-14.2 14.2"/><path d="M12 6 9.5 4M12 6l2.5-2M12 18l-2.5 2M12 18l2.5 2M6 12l-2 2.5M6 12l-2-2.5M18 12l2 2.5M18 12l2-2.5"/>',
+  utensils:'<path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M5 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/>'
+};
+function ic(n){return `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;}
+
+/* ===== DATA — forma di buildManual(slug). Prod: fetch(`/api/guida/${slug}`) ===== */
+let MANUAL={
+  name:"Villa Caterina",
+  location:{it:"Montevarchi · Toscana",en:"Montevarchi · Tuscany"},
+  hero_image:"https://images.unsplash.com/photo-1727536871259-be78d79f2f7b?w=1200&q=80",
+  welcome:{eyebrow:{it:"Benvenuti",en:"Welcome"},
+    note:{it:"Benvenuti a Villa Caterina, tra le colline del Valdarno. Qui trovate tutto ciò che vi serve.",en:"Welcome to Villa Caterina, among the hills of the Valdarno. Here's everything you need."},
+    sign:{it:"Daniele & Romeo",en:"Daniele & Romeo"}},
+  facts:{guests:6,bedrooms:3,bathrooms:2},
+  wifi:{network:"VillaCaterina_Guest",password:"Toscana2026!",
+    note:{it:"Rete disponibile in tutta la casa e in giardino.",en:"Available throughout the house and garden."}},
+  checkin:{time_from:"15:00",
+    instructions:{it:"Check-in autonomo. La cassetta con le chiavi è accanto alla porta principale; il codice vi arriva via messaggio il giorno dell'arrivo.",en:"Self check-in. The key lockbox is next to the main door; the code is sent by message on arrival day."}},
+  checkout:{time_by:"10:00",
+    steps:[{it:"Svuota i cestini e fai la differenziata",en:"Empty the bins and sort the waste"},
+      {it:"Lascia i teli piscina nel cesto in lavanderia",en:"Leave pool towels in the laundry basket"},
+      {it:"Chiudi bene porte e finestre",en:"Close all doors and windows"},
+      {it:"Spegni luci e climatizzatori",en:"Switch off lights and AC"},
+      {it:"Riponi le chiavi nella cassetta",en:"Return the keys to the lockbox"}]},
+  amenities:[
+    {ic:"waves",nm:{it:"Piscina",en:"Pool"},info:{it:"Aperta 08:00–21:00. Doccia prima di entrare, niente vetro a bordo vasca, bambini sorvegliati.",en:"Open 08:00–21:00. Shower first, no glass poolside, children supervised."}},
+    {ic:"snow",nm:{it:"Climatizzatore",en:"Air conditioning"},info:{it:"Telecomando in ogni camera. Tenete porte e finestre chiuse mentre è acceso.",en:"Remote in each room. Keep doors/windows closed while on."}},
+    {ic:"utensils",nm:{it:"Lavastoviglie",en:"Dishwasher"},info:{it:"Pastiglie nel mobile sotto il lavello. Programma ECO consigliato.",en:"Tabs under the sink. ECO programme recommended."}},
+    {ic:"coffee",nm:{it:"Macchina del caffè",en:"Coffee machine"},info:{it:"Capsule compatibili nel cassetto della cucina.",en:"Compatible capsules in the kitchen drawer."}}],
+  parking:{it:"Parcheggio privato all'interno della proprietà, accanto al cancello d'ingresso.",en:"Private parking within the property, next to the entrance gate."},
+  house_rules:[
+    {ic:"🚭",it:"Vietato fumare all'interno della casa",en:"No smoking inside the house"},
+    {ic:"🎉",it:"Niente feste o eventi",en:"No parties or events"},
+    {ic:"🔇",it:"Silenzio dalle 22:00 alle 08:00",en:"Quiet hours 22:00–08:00"},
+    {ic:"👥",it:"Solo gli ospiti registrati possono soggiornare",en:"Only registered guests may stay"}],
+  waste:{expose:{it:"Esporre entro le 06:00 del giorno di raccolta.",en:"Put waste out by 06:00 on collection day."},
+    streams:[{nm:{it:"Organico",en:"Food"},color:"#6b4423",day:{it:"—",en:"—"}},
+      {nm:{it:"Carta",en:"Paper"},color:"#2f6fb0",day:{it:"—",en:"—"}},
+      {nm:{it:"Plastica",en:"Plastic"},color:"#e0c200",day:{it:"—",en:"—"}},
+      {nm:{it:"Vetro",en:"Glass"},color:"#3a8a4a",day:{it:"—",en:"—"}},
+      {nm:{it:"Indifferenziato",en:"General"},color:"#8a8a8a",day:{it:"—",en:"—"}}],
+    bin_location:{it:"Mastelli: —",en:"Bins: —"}},
+  recommendations:[
+    {nm:"Trattoria del Valdarno",meta:{it:"Cucina toscana · 5 min",en:"Tuscan cuisine · 5 min"},desc:{it:"Esempio — sostituire con consigli reali.",en:"Example — replace with real picks."},q:"Trattoria Montevarchi"},
+    {nm:"Cantina in Chianti",meta:{it:"Degustazione · 20 min",en:"Wine tasting · 20 min"},desc:{it:"Esempio — su prenotazione.",en:"Example — by reservation."},q:"Cantina Chianti"},
+    {nm:"Borgo storico",meta:{it:"Da visitare · 10 min",en:"Worth a visit · 10 min"},desc:{it:"Esempio — centro medievale.",en:"Example — medieval centre."},q:"Borgo Valdarno"}],
+  contacts:[{name:"Daniele",role:{it:"Host",en:"Host"},phone:"+393386805606"},
+    {name:"Romeo",role:{it:"Host",en:"Host"},phone:"+393312127801"}],
+  address:{line:{it:"Montevarchi (AR), Toscana",en:"Montevarchi (AR), Tuscany"},q:"Villa Caterina Montevarchi"},
+  emergency:{europe:"112",hospital:{nm:{it:"Ospedale del Valdarno",en:"Valdarno Hospital"},note:{it:"Montevarchi",en:"Montevarchi"}}}
+};
+
+const UI={
+  it:{guests:"Ospiti",bedrooms:"Camere",bathrooms:"Bagni",net:"Nome rete",tap:"Tocca per copiare",copied:"Copiata",
+    from:"dalle",by:"entro le",arrive:"Check-in",depart:"Check-out",before:"Prima di partire",
+    placeholder:"Calendario in definizione",emergency:"Emergenze",hospital:"Ospedale",
+    openmap:"Apri in Google Maps",nearby:"Nei dintorni",address:"Indirizzo",
+    chatTitle:"Assistente Houzly",chatSoon:"L'assistente intelligente che risponde a tutte le domande sulla casa arriverà presto. Intanto siamo noi, a un messaggio di distanza.",
+    chatWa:"Scrivici su WhatsApp",wifiCopied:"Password Wi-Fi copiata",
+    tabs:{guida:"Guida",mappa:"Mappa",chat:"Chat"},
+    cat:{wifi:"Wi-Fi",checkin:"Arrivo",checkout:"Partenza",casa:"La casa",parcheggio:"Parcheggio",regole:"Regole",rifiuti:"Differenziata",zona:"Cosa fare",contatti:"Contatti"}},
+  en:{guests:"Guests",bedrooms:"Bedrooms",bathrooms:"Baths",net:"Network",tap:"Tap to copy",copied:"Copied",
+    from:"from",by:"by",arrive:"Check-in",depart:"Check-out",before:"Before you leave",
+    placeholder:"Schedule to be confirmed",emergency:"Emergency",hospital:"Hospital",
+    openmap:"Open in Google Maps",nearby:"Nearby",address:"Address",
+    chatTitle:"Houzly Assistant",chatSoon:"The smart assistant that answers every question about the home is coming soon. Until then, it's us — just a message away.",
+    chatWa:"Message us on WhatsApp",wifiCopied:"Wi-Fi password copied",
+    tabs:{guida:"Guide",mappa:"Map",chat:"Chat"},
+    cat:{wifi:"Wi-Fi",checkin:"Arrival",checkout:"Departure",casa:"The home",parcheggio:"Parking",regole:"Rules",rifiuti:"Recycling",zona:"Nearby",contatti:"Contacts"}}
+};
+
+const TILES=[
+  {id:"wifi",icon:"wifi"},{id:"checkin",icon:"login"},{id:"checkout",icon:"logout"},
+  {id:"casa",icon:"home"},{id:"parcheggio",icon:"parking"},{id:"regole",icon:"rules"},
+  {id:"rifiuti",icon:"recycle"},{id:"zona",icon:"compass"},{id:"contatti",icon:"phone"}
+];
+
+let lang="it";
+let tab="guida";
+let cat=null;
+const L=(o)=> o==null?"":(typeof o==="object"&&(o.it!==undefined||o.en!==undefined)?(o[lang]??o.it):o);
+const T=()=>UI[lang];
+const mapsLink=(q)=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+const wa=(p)=>"https://wa.me/"+p.replace("+","");
+
+function render(){
+  document.documentElement.lang=lang;
+  const app=document.getElementById("app");
+  let html="";
+  if(tab==="guida"){ html = cat===null ? viewHome() : viewCat(cat); }
+  else if(tab==="mappa"){ html = viewMap(); }
+  else if(tab==="chat"){ html = viewChat(); }
+  app.innerHTML=`<div class="view">${html}</div>`;
+  app.scrollTop=0; window.scrollTo(0,0);
+  renderTabs();
+  wire();
+}
+
+function renderTabs(){
+  const t=T().tabs;
+  const items=[["guida","info"],["mappa","map"],["chat","message"]];
+  document.getElementById("tabbar").innerHTML=items.map(([id,icn])=>
+    `<button class="tab ${tab===id?'on':''}" data-tab="${id}"><span class="pill">${ic(icn)}</span><span class="lb">${t[id]}</span></button>`).join("");
+}
+
+/* ---------- HOME ---------- */
+function viewHome(){
+  const m=MANUAL;
+  const img=m.hero_image?`<img class="hero-img" src="${m.hero_image}" alt="" onerror="this.style.display='none'">`:"";
+  return `
+  <div class="topgap"></div>
+  <div class="hero">
+    ${img}
+    <div class="hero-shade"></div>
+    <div class="langpill">
+      <button data-l="it" class="${lang==='it'?'on':''}">IT</button>
+      <button data-l="en" class="${lang==='en'?'on':''}">EN</button>
+    </div>
+    <div class="heroq">
+      <a href="tel:${m.contacts[0].phone}">${ic('phone')}</a>
+      <a href="${wa(m.contacts[0].phone)}" target="_blank" rel="noopener">${ic('message')}</a>
+    </div>
+    <div class="hero-pad">
+      <div class="eyebrow">${L(m.welcome.eyebrow)}</div>
+      <h1>${m.name}</h1>
+      <div class="loc">${ic('pin')}${L(m.location)}</div>
+    </div>
+  </div>
+  <div class="welcome">${L(m.welcome.note)}</div>
+  <div class="grid">
+    ${TILES.map((t,i)=>`<button class="tile" data-cat="${t.id}" style="animation-delay:${40+i*45}ms"><span class="badge">${ic(t.icon)}</span><span class="lab">${T().cat[t.id]}</span></button>`).join("")}
+  </div>
+  <div class="facts">
+    <div class="fact"><div class="k">${T().guests}</div><div class="v">${m.facts.guests}</div></div>
+    <div class="fact"><div class="k">${T().bedrooms}</div><div class="v">${m.facts.bedrooms}</div></div>
+    <div class="fact"><div class="k">${T().bathrooms}</div><div class="v">${m.facts.bathrooms}</div></div>
+  </div>
+  <footer><div class="mk">HOUZLY<b>·</b>GUEST&nbsp;INTRO</div></footer>`;
+}
+
+/* ---------- CATEGORY DETAIL ---------- */
+function dhead(id,icn){return `<div class="dhead"><button class="back" id="backBtn">${ic('back')}</button><h2>${T().cat[id]}</h2><span class="badge-sm">${ic(icn)}</span></div>`;}
+
+function viewCat(id){
+  const m=MANUAL, t=T();
+  const tile=TILES.find(x=>x.id===id);
+  let body="";
+  if(id==="wifi") body=`<div class="card wifi"><div class="net">${t.net}</div><div class="ssid">${m.wifi.network}</div>
+    <button class="copy" id="wifiCopy" data-pw="${m.wifi.password}"><span class="pw">${m.wifi.password}</span><span class="act" id="wifiAct">${ic('copy')}${t.tap}</span></button>
+    <div class="note">${L(m.wifi.note)}</div></div>`;
+  else if(id==="checkin") body=`<div class="card"><div class="times">
+    <div class="timecard"><div class="lab">${t.arrive}</div><div class="t"><span class="pre">${t.from}</span>${m.checkin.time_from}</div></div>
+    <div class="timecard"><div class="lab">${t.depart}</div><div class="t"><span class="pre">${t.by}</span>${m.checkout.time_by}</div></div></div>
+    <div class="note">${L(m.checkin.instructions)}</div></div>`;
+  else if(id==="checkout") body=`<div class="card"><div class="note" style="margin-top:0;margin-bottom:12px">${t.before} — ${t.depart} ${t.by} ${m.checkout.time_by}</div>
+    <div class="rows">${m.checkout.steps.map(s=>`<div class="row"><span class="ic">○</span><span class="tx">${L(s)}</span></div>`).join("")}</div></div>`;
+  else if(id==="casa") body=m.amenities.map(a=>`<div class="acc"><button class="acc-h"><span class="badge-sm">${ic(a.ic)}</span><span class="nm">${L(a.nm)}</span><span class="chev">${ic('chev')}</span></button><div class="acc-b"><div class="inner">${L(a.info)}</div></div></div>`).join("");
+  else if(id==="parcheggio") body=`<div class="card"><div class="note" style="margin-top:0">${L(m.parking)}</div></div>`;
+  else if(id==="regole") body=`<div class="card"><div class="rows">${m.house_rules.map(r=>`<div class="row"><span class="ic">${r.ic}</span><span class="tx">${L(r)}</span></div>`).join("")}</div></div>`;
+  else if(id==="rifiuti") body=`<div class="card"><span class="ptag">${ic('recycle')}${t.placeholder}</span>
+    <div class="chips">${m.waste.streams.map(s=>`<span class="chip"><span class="dot" style="background:${s.color}"></span>${L(s.nm)} · <b style="font-weight:500">${L(s.day)}</b></span>`).join("")}</div>
+    <div class="note">${L(m.waste.expose)}</div><div class="note">${L(m.waste.bin_location)}</div></div>`;
+  else if(id==="zona") body=`<div class="card">${m.recommendations.map((r,i)=>`<div class="rec"><div class="num">${String(i+1).padStart(2,"0")}</div><div><div class="nm">${r.nm}</div><div class="meta">${L(r.meta)}</div><div class="desc">${L(r.desc)}</div><a class="mapln" href="${mapsLink(r.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div></div>`).join("")}</div>`;
+  else if(id==="contatti") body=`<div class="card">${m.contacts.map(c=>`<div class="contact"><div class="av">${c.name[0]}</div><div class="who"><div class="n">${c.name}</div><div class="r">${L(c.role)}</div></div>
+    <div class="btns"><a class="icbtn call" href="tel:${c.phone}">${ic('phone')}</a><a class="icbtn wa" href="${wa(c.phone)}" target="_blank" rel="noopener">${ic('message')}</a></div></div>`).join("")}
+    <div class="emerg"><a href="tel:${m.emergency.europe}"><span class="big">${m.emergency.europe}</span><span class="sm">${t.emergency}</span></a>
+    <a href="${mapsLink(L(m.emergency.hospital.nm))}" target="_blank" rel="noopener"><span class="big" style="font-size:15px;font-family:var(--body);font-weight:500">${L(m.emergency.hospital.nm)}</span><span class="sm">${t.hospital} · ${L(m.emergency.hospital.note)}</span></a></div></div>`;
+
+  return dhead(id,tile.icon)+body;
+}
+
+/* ---------- MAP ---------- */
+function viewMap(){
+  const m=MANUAL, t=T();
+  return `<div class="dhead" style="justify-content:flex-start"><h2>${t.tabs.mappa}</h2><span class="badge-sm" style="margin-left:auto">${ic('map')}</span></div>
+  <div class="mapbox"><iframe title="map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(m.address.q)}&z=14&output=embed"></iframe></div>
+  <div class="card"><div class="net" style="font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-faint)">${t.address}</div>
+    <div style="font-family:var(--disp);font-size:24px;font-weight:500;margin:4px 0 16px">${L(m.address.line)}</div>
+    <a class="bigbtn" href="${mapsLink(m.address.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div>
+  <div class="dhead" style="padding-top:26px"><h2 style="font-size:24px">${t.nearby}</h2></div>
+  <div class="card">${m.recommendations.map((r,i)=>`<div class="rec"><div class="num">${String(i+1).padStart(2,"0")}</div><div><div class="nm">${r.nm}</div><div class="meta">${L(r.meta)}</div><a class="mapln" href="${mapsLink(r.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div></div>`).join("")}</div>`;
+}
+
+/* ---------- CHAT (placeholder concierge v2) ---------- */
+function viewChat(){
+  const m=MANUAL, t=T();
+  return `<div class="dhead" style="justify-content:flex-start"><h2>${t.tabs.chat}</h2><span class="badge-sm" style="margin-left:auto">${ic('spark')}</span></div>
+  <div class="chatwrap">
+    <div class="gicon">${ic('spark')}</div>
+    <h3>${t.chatTitle}</h3>
+    <p>${t.chatSoon}</p>
+    <a class="bigbtn alt" href="${wa(m.contacts[0].phone)}" target="_blank" rel="noopener">${ic('message')}${t.chatWa}</a>
+  </div>`;
+}
+
+/* ---------- interactions ---------- */
+function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");clearTimeout(el._h);el._h=setTimeout(()=>el.classList.remove("show"),1900);}
+function copyText(x){navigator.clipboard&&navigator.clipboard.writeText(x).catch(()=>{});}
+
+function wire(){
+  document.querySelectorAll("[data-cat]").forEach(b=>b.addEventListener("click",()=>{cat=b.dataset.cat;render();}));
+  const back=document.getElementById("backBtn");
+  if(back)back.addEventListener("click",()=>{cat=null;render();});
+  document.querySelectorAll("[data-l]").forEach(b=>b.addEventListener("click",()=>{lang=b.dataset.l;render();}));
+
+  const wc=document.getElementById("wifiCopy");
+  if(wc)wc.addEventListener("click",()=>{copyText(wc.dataset.pw);wc.classList.add("done");
+    document.getElementById("wifiAct").innerHTML=ic('copy')+T().copied+" ✓";
+    setTimeout(()=>{wc.classList.remove("done");document.getElementById("wifiAct").innerHTML=ic('copy')+T().tap;},1800);});
+
+  document.querySelectorAll(".acc-h").forEach(h=>h.addEventListener("click",()=>{
+    const acc=h.parentElement,body=acc.querySelector(".acc-b");
+    const open=acc.classList.toggle("open");body.style.maxHeight=open?body.scrollHeight+"px":0;}));
+}
+
+document.getElementById("tabbar").addEventListener("click",e=>{
+  const b=e.target.closest(".tab");if(!b)return;
+  tab=b.dataset.tab; if(tab==="guida")cat=null; render();
+});
+
+/* ===== AVVIO: slug dal path -> /api/guida/{slug}. Fallback ai dati di esempio. =====
+   Se l'API gira su un host diverso da houzly.it, imposta API_BASE (es. "https://houzly-tool.onrender.com").
+   Il backend invia gli header CORS, quindi funziona cross-origin. */
+const API_BASE = "";
+function slugFromPath(){
+  const m = location.pathname.match(/\/guida\/([^\/?#]+)/);
+  return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+}
+async function init(){
+  const slug = slugFromPath();
+  if(slug){
+    try{
+      const r = await fetch(`${API_BASE}/api/guida/${encodeURIComponent(slug)}`, {headers:{Accept:"application/json"}});
+      if(r.ok){ MANUAL = await r.json(); }
+    }catch(e){ /* offline / preview: resta il sample */ }
+  }
+  render();
+}
+init();
+</script>
+</body>
+</html>
