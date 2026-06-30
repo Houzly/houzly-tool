@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Houzly Guest Intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#170046; --navy-deep:#0c0026; --blue:#4ACBEF;
+    --cream:#f5f1ea; --gold:#c9a84c;
+    --card:#fbf9f5; --line:rgba(23,0,70,.10); --line-soft:rgba(23,0,70,.06);
+    --ink:#170046; --ink-soft:rgba(23,0,70,.60); --ink-faint:rgba(23,0,70,.42);
+    --disp:'Cormorant Garamond',Georgia,serif;
+    --body:'Jost',-apple-system,sans-serif;
+    --maxw:600px;
+    --r:18px;
+    --shadow:0 1px 2px rgba(23,0,70,.04), 0 12px 30px -18px rgba(23,0,70,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--body); color:var(--ink); background:var(--cream);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+    font-weight:300;
+  }
+  /* faint paper grain */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
+  }
+  .wrap{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 20px 64px}
+
+  /* ---------- top bar ---------- */
+  .bar{
+    position:sticky; top:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px;
+    background:rgba(245,241,234,.82); backdrop-filter:saturate(1.4) blur(14px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand{font-family:var(--body); font-weight:500; letter-spacing:.32em; font-size:12px; text-transform:uppercase; color:var(--ink)}
+  .brand b{color:var(--blue); font-weight:600}
+  .lang{display:flex; gap:2px; border:1px solid var(--line); border-radius:100px; padding:3px; background:var(--card)}
+  .lang button{
+    font-family:var(--body); font-size:11px; font-weight:500; letter-spacing:.08em;
+    border:0; background:transparent; color:var(--ink-soft); padding:5px 12px; border-radius:100px; cursor:pointer; transition:.2s;
+  }
+  .lang button.on{background:var(--navy); color:#fff}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative; margin:0 -20px 0; min-height:78vh; display:flex; flex-direction:column; justify-content:flex-end;
+    padding:28px 28px 40px;
+    color:#fff; overflow:hidden;
+    background:
+      radial-gradient(120% 80% at 75% 8%, rgba(74,203,239,.22), transparent 55%),
+      radial-gradient(120% 90% at 15% 100%, rgba(201,168,76,.30), transparent 50%),
+      linear-gradient(160deg,#1a0a52 0%, var(--navy) 38%, var(--navy-deep) 100%);
+  }
+  /* drop a real photo later: .hero{background-image:url(...gallery[0]...)} with this overlay kept on top */
+  .hero::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(12,0,38,.05) 0%, rgba(12,0,38,.55) 100%); z-index:0}
+  .hero > *{position:relative; z-index:1}
+  .eyebrow{font-size:12px; letter-spacing:.42em; text-transform:uppercase; color:var(--gold); font-weight:500; margin-bottom:18px}
+  .hero h1{font-family:var(--disp); font-weight:500; font-size:clamp(46px,13vw,76px); line-height:.96; letter-spacing:-.01em}
+  .hero .loc{font-size:14px; letter-spacing:.06em; color:rgba(255,255,255,.78); margin-top:14px; font-weight:300}
+  .hero .loc::before{content:"— "; color:var(--gold)}
+  .scrollcue{margin-top:30px; font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:rgba(255,255,255,.6); display:flex; align-items:center; gap:10px}
+  .scrollcue::after{content:""; height:1px; width:42px; background:rgba(255,255,255,.4)}
+
+  /* ---------- section nav (pills) ---------- */
+  .nav{
+    position:sticky; top:51px; z-index:30; margin:0 -20px; padding:12px 20px;
+    display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;
+    background:rgba(245,241,234,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--line-soft);
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{
+    flex:0 0 auto; font-size:12px; letter-spacing:.04em; text-decoration:none; color:var(--ink-soft);
+    padding:7px 14px; border:1px solid var(--line); border-radius:100px; transition:.2s; white-space:nowrap; background:var(--card);
+  }
+  .nav a.active{background:var(--navy); color:#fff; border-color:var(--navy)}
+
+  /* ---------- sections ---------- */
+  section{padding:46px 0 8px; scroll-margin-top:96px}
+  .sec-head{display:flex; align-items:baseline; gap:12px; margin-bottom:22px}
+  .sec-num{font-family:var(--body); font-size:11px; letter-spacing:.2em; color:var(--gold); font-weight:600; padding-top:8px}
+  .sec-title{font-family:var(--disp); font-weight:500; font-size:34px; line-height:1; letter-spacing:-.01em}
+
+  .card{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); padding:22px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:14px}
+  .lead{font-size:16.5px; color:var(--ink-soft); font-weight:300; line-height:1.62}
+
+  /* welcome / host note */
+  .host-note{font-family:var(--disp); font-style:italic; font-size:22px; line-height:1.42; color:var(--ink); font-weight:400}
+  .host-sign{margin-top:16px; font-family:var(--body); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint)}
+
+  /* quick facts row */
+  .facts{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0 0}
+  .fact{background:var(--card); border:1px solid var(--line-soft); border-radius:14px; padding:14px 12px; text-align:center}
+  .fact .k{font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:6px}
+  .fact .v{font-family:var(--disp); font-size:26px; font-weight:500; line-height:1}
+  .fact .v small{font-size:13px; font-family:var(--body); color:var(--ink-soft)}
+
+  /* wifi */
+  .wifi{position:relative; overflow:hidden}
+  .wifi .net{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint)}
+  .wifi .ssid{font-family:var(--disp); font-size:30px; font-weight:500; margin:2px 0 16px}
+  .copy{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    background:var(--navy); color:#fff; border:0; width:100%; cursor:pointer;
+    padding:16px 18px; border-radius:14px; font-family:var(--body);
+  }
+  .copy .pw{font-size:19px; letter-spacing:.04em; font-weight:400}
+  .copy .act{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--blue); display:flex; align-items:center; gap:7px}
+  .copy.done .act{color:var(--gold)}
+  .note{font-size:13.5px; color:var(--ink-soft); margin-top:13px; font-weight:300}
+
+  /* generic list rows */
+  .rows{display:flex; flex-direction:column}
+  .row{display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--line-soft); align-items:flex-start}
+  .row:last-child{border-bottom:0}
+  .row .ic{font-size:19px; line-height:1.4; flex:0 0 24px; text-align:center}
+  .row .tx{font-size:15px; color:var(--ink); font-weight:300}
+  .row .tx b{font-weight:500}
+
+  /* check-in/out times */
+  .times{display:flex; gap:12px; margin-bottom:6px}
+  .timecard{flex:1; background:var(--card); border:1px solid var(--line-soft); border-radius:14px; padding:16px; text-align:center}
+  .timecard .lab{font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint)}
+  .timecard .t{font-family:var(--disp); font-size:30px; font-weight:500; margin-top:5px}
+  .timecard .t .pre{font-size:13px; font-family:var(--body); color:var(--ink-soft); display:block; letter-spacing:.06em}
+
+  /* accordion */
+  .acc{border:1px solid var(--line-soft); border-radius:14px; overflow:hidden; background:var(--card)}
+  .acc + .acc{margin-top:10px}
+  .acc-h{display:flex; align-items:center; gap:12px; width:100%; border:0; background:transparent; cursor:pointer; padding:16px 18px; font-family:var(--body); color:var(--ink); text-align:left}
+  .acc-h .ic{font-size:18px}
+  .acc-h .nm{flex:1; font-size:15px; font-weight:400}
+  .acc-h .chev{transition:.25s; color:var(--ink-faint)}
+  .acc.open .acc-h .chev{transform:rotate(180deg)}
+  .acc-b{max-height:0; overflow:hidden; transition:max-height .3s ease}
+  .acc-b .inner{padding:0 18px 18px; font-size:14.5px; color:var(--ink-soft); font-weight:300; line-height:1.6}
+
+  /* chips (differenziata streams) */
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:100px; padding:8px 14px; font-size:13px; background:var(--card)}
+  .dot{width:11px; height:11px; border-radius:50%; border:1px solid rgba(23,0,70,.15)}
+  .placeholder-tag{display:inline-block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); border:1px dashed var(--gold); border-radius:100px; padding:4px 10px; margin-bottom:14px}
+
+  /* recommendations */
+  .rec{display:flex; gap:14px; padding:16px 0; border-bottom:1px solid var(--line-soft)}
+  .rec:last-child{border-bottom:0}
+  .rec .num{font-family:var(--disp); font-size:24px; color:var(--gold); font-weight:500; flex:0 0 28px}
+  .rec .nm{font-family:var(--disp); font-size:21px; font-weight:500; line-height:1.1}
+  .rec .meta{font-size:12px; letter-spacing:.04em; color:var(--ink-faint); text-transform:uppercase; margin:3px 0 6px}
+  .rec .desc{font-size:14px; color:var(--ink-soft); font-weight:300}
+
+  /* contacts */
+  .contact{display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--line-soft)}
+  .contact:last-child{border-bottom:0}
+  .contact .av{width:42px; height:42px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-size:20px; font-weight:500; flex:0 0 42px}
+  .contact .who{flex:1}
+  .contact .who .n{font-size:15px; font-weight:500}
+  .contact .who .r{font-size:12px; color:var(--ink-faint); letter-spacing:.04em}
+  .contact .btns{display:flex; gap:8px}
+  .icbtn{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; border:1px solid var(--line)}
+  .icbtn.call{background:var(--navy); color:#fff; border-color:var(--navy)}
+  .icbtn.wa{background:#fff; color:#25D366; border-color:rgba(37,211,102,.4)}
+  .emerg{display:flex; gap:10px; margin-top:16px}
+  .emerg a{flex:1; text-align:center; text-decoration:none; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 8px; color:var(--ink)}
+  .emerg a .big{font-family:var(--disp); font-size:26px; font-weight:600; display:block; line-height:1}
+  .emerg a .sm{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); margin-top:5px; display:block}
+
+  /* footer */
+  footer{text-align:center; padding:48px 0 8px; color:var(--ink-faint)}
+  footer .mk{font-family:var(--body); letter-spacing:.34em; text-transform:uppercase; font-size:12px; color:var(--ink-soft)}
+  footer .mk b{color:var(--blue); font-weight:600}
+  footer .sub{font-size:11px; margin-top:8px; letter-spacing:.04em}
+
+  /* reveal */
+  .reveal{opacity:0; transform:translateY(16px); transition:opacity .7s ease, transform .7s ease}
+  .reveal.in{opacity:1; transform:none}
+
+  @media(min-width:620px){ .hero{border-radius:0 0 26px 26px} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand">HOUZLY<b>·</b>GUEST</span>
+  <div class="lang" id="lang">
+    <button data-l="it" class="on">IT</button>
+    <button data-l="en">EN</button>
+  </div>
+</div>
+
+<header class="hero" id="top">
+  <div class="eyebrow" id="hero-eyebrow"></div>
+  <h1 id="hero-name"></h1>
+  <div class="loc" id="hero-loc"></div>
+  <div class="scrollcue" id="hero-cue"></div>
+</header>
+
+<nav class="nav" id="nav"></nav>
+
+<main class="wrap" id="main"></main>
+
+<footer class="reveal">
+  <div class="mk">HOUZLY<b>·</b>GUEST&nbsp;INTRO</div>
+  <div class="sub">houzly.it · info@houzly.it</div>
+</footer>
+
+<script>
+/* ============================================================
+   DATA — forma identica all'output di buildManual(slug).
+   In produzione: const MANUAL = await fetch(`/api/guida/${slug}`).then(r=>r.json())
+   I campi testuali sono bilingui {it,en}. I valori qui sono di ESEMPIO (Villa Caterina).
+   ============================================================ */
+const MANUAL = {
+  name: "Villa Caterina",
+  location: {it:"Montevarchi · Toscana", en:"Montevarchi · Tuscany"},
+  branding: {}, // ereditato dal brand
+  hero_image: null, // gallery[0] in produzione
+
+  welcome: {
+    eyebrow: {it:"Benvenuti", en:"Welcome"},
+    note: {
+      it:"Siamo felici di accogliervi a Villa Caterina. Abbiamo preparato tutto con cura perché possiate sentirvi a casa, tra le colline del Valdarno. Questa guida ha tutto ciò che vi serve — e se qualcosa non c'è, siamo a un messaggio di distanza.",
+      en:"We're delighted to welcome you to Villa Caterina. Everything has been prepared with care so you can feel at home among the hills of the Valdarno. This guide has all you need — and if something's missing, we're just a message away."
+    },
+    sign: {it:"Daniele & Romeo — Houzly", en:"Daniele & Romeo — Houzly"}
+  },
+
+  facts: {
+    guests: 6, bedrooms: 3, bathrooms: 2
+  },
+
+  wifi: { network:"VillaCaterina_Guest", password:"Toscana2026!",
+    note:{it:"Rete disponibile in tutta la casa e in giardino.", en:"Network available throughout the house and garden."} },
+
+  checkin: { time_from:"15:00", time_to:"20:00", self_checkin:true,
+    instructions: {
+      it:"Check-in autonomo. La cassetta di sicurezza con le chiavi si trova accanto alla porta principale; il codice vi arriva via messaggio il giorno dell'arrivo.",
+      en:"Self check-in. The key lockbox is next to the main door; the code is sent to you by message on the day of arrival."
+    } },
+  checkout: { time_by:"10:00",
+    steps: [
+      {key:"trash", it:"Svuota i cestini e fai la differenziata", en:"Empty the bins and sort the waste"},
+      {key:"pool_towels", it:"Lascia i teli piscina usati nel cesto in lavanderia", en:"Leave used pool towels in the laundry basket"},
+      {key:"windows", it:"Chiudi bene porte e finestre", en:"Close all doors and windows"},
+      {key:"power", it:"Spegni luci e climatizzatori", en:"Switch off lights and air conditioning"},
+      {key:"keys", it:"Riponi le chiavi nella cassetta di sicurezza", en:"Return the keys to the lockbox"}
+    ] },
+
+  amenities: [
+    {ic:"🏊", nm:{it:"Piscina",en:"Pool"}, info:{it:"Aperta 08:00–21:00. Doccia prima di entrare, niente vetro a bordo vasca, bambini sempre sorvegliati.", en:"Open 08:00–21:00. Shower before entering, no glass poolside, children always supervised."}},
+    {ic:"🚗", nm:{it:"Parcheggio",en:"Parking"}, info:{it:"Parcheggio privato all'interno della proprietà.", en:"Private parking within the property."}},
+    {ic:"❄️", nm:{it:"Climatizzatore",en:"Air conditioning"}, info:{it:"Telecomando in ogni camera. Tenete porte e finestre chiuse mentre è acceso.", en:"Remote in each bedroom. Keep doors and windows closed while running."}},
+    {ic:"🍽️", nm:{it:"Lavastoviglie",en:"Dishwasher"}, info:{it:"Pastiglie nel mobile sotto il lavello. Programma ECO consigliato.", en:"Tabs in the cabinet under the sink. ECO programme recommended."}},
+    {ic:"☕", nm:{it:"Macchina del caffè",en:"Coffee machine"}, info:{it:"Capsule compatibili nel cassetto della cucina.", en:"Compatible capsules in the kitchen drawer."}}
+  ],
+
+  house_rules: [
+    {ic:"🚭", it:"Vietato fumare all'interno della casa", en:"No smoking inside the house"},
+    {ic:"🎉", it:"Niente feste o eventi", en:"No parties or events"},
+    {ic:"🔇", it:"Silenzio dalle 22:00 alle 08:00", en:"Quiet hours from 22:00 to 08:00"},
+    {ic:"👥", it:"Solo gli ospiti registrati possono soggiornare", en:"Only registered guests may stay"}
+  ],
+
+  // Differenziata: PLACEHOLDER (calendario da definire). Struttura pronta.
+  waste: {
+    operator:"Sei Toscana",
+    expose:{it:"Esporre entro le 06:00 del giorno di raccolta.", en:"Put waste out by 06:00 on collection day."},
+    streams:[
+      {nm:{it:"Organico",en:"Food waste"}, color:"#6b4423", day:{it:"—",en:"—"}},
+      {nm:{it:"Carta e cartone",en:"Paper & card"}, color:"#2f6fb0", day:{it:"—",en:"—"}},
+      {nm:{it:"Plastica e lattine",en:"Plastic & cans"}, color:"#e0c200", day:{it:"—",en:"—"}},
+      {nm:{it:"Vetro",en:"Glass"}, color:"#3a8a4a", day:{it:"—",en:"—"}},
+      {nm:{it:"Indifferenziato",en:"General waste"}, color:"#8a8a8a", day:{it:"—",en:"—"}}
+    ],
+    bin_location:{it:"I mastelli si trovano: —", en:"The bins are located: —"}
+  },
+
+  recommendations: [
+    {nm:"Trattoria del Valdarno", meta:{it:"Cucina toscana · 5 min in auto",en:"Tuscan cuisine · 5 min drive"}, desc:{it:"Esempio — sostituire con consigli reali della zona.",en:"Example — replace with real local picks."}},
+    {nm:"Cantina in Chianti", meta:{it:"Degustazione vini · 20 min",en:"Wine tasting · 20 min"}, desc:{it:"Esempio — degustazione su prenotazione.",en:"Example — tasting by reservation."}},
+    {nm:"Borgo storico", meta:{it:"Da visitare · 10 min",en:"Worth a visit · 10 min"}, desc:{it:"Esempio — passeggiata nel centro medievale.",en:"Example — a stroll through the medieval centre."}}
+  ],
+
+  contacts: [
+    {name:"Daniele", role:{it:"Host",en:"Host"}, phone:"+393386805606"},
+    {name:"Romeo", role:{it:"Host",en:"Host"}, phone:"+393312127801"}
+  ],
+  emergency: {
+    europe:"112",
+    hospital:{nm:{it:"Ospedale del Valdarno",en:"Valdarno Hospital"}, note:{it:"Montevarchi",en:"Montevarchi"}},
+    pharmacy:{nm:{it:"Farmacia più vicina",en:"Nearest pharmacy"}, note:{it:"—",en:"—"}}
+  }
+};
+
+/* UI labels */
+const UI = {
+  cue:{it:"Scorri per iniziare",en:"Scroll to begin"},
+  nav:{wifi:{it:"Wi-Fi",en:"Wi-Fi"},checkin:{it:"Check-in",en:"Check-in"},casa:{it:"La casa",en:"The home"},regole:{it:"Regole",en:"Rules"},rifiuti:{it:"Differenziata",en:"Recycling"},checkout:{it:"Check-out",en:"Check-out"},zona:{it:"In zona",en:"Nearby"},contatti:{it:"Contatti",en:"Contacts"}},
+  sec:{
+    welcome:{it:"Benvenuti",en:"Welcome"}, wifi:{it:"Wi-Fi",en:"Wi-Fi"},
+    checkin:{it:"Arrivo",en:"Arrival"}, casa:{it:"La casa",en:"The home"},
+    regole:{it:"Regole della casa",en:"House rules"}, rifiuti:{it:"Raccolta differenziata",en:"Waste & recycling"},
+    checkout:{it:"Partenza",en:"Departure"}, zona:{it:"Cosa fare in zona",en:"What to do nearby"},
+    contatti:{it:"Contatti & emergenze",en:"Contacts & emergencies"}
+  },
+  guests:{it:"Ospiti",en:"Guests"}, bedrooms:{it:"Camere",en:"Bedrooms"}, bathrooms:{it:"Bagni",en:"Bathrooms"},
+  netname:{it:"Nome rete",en:"Network name"}, tap:{it:"Tocca per copiare la password",en:"Tap to copy the password"}, copied:{it:"Copiata ✓",en:"Copied ✓"},
+  from:{it:"dalle",en:"from"}, to:{it:"alle",en:"to"}, by:{it:"entro le",en:"by"},
+  arrive:{it:"Check-in",en:"Check-in"}, depart:{it:"Check-out",en:"Check-out"},
+  before_leave:{it:"Prima di partire",en:"Before you leave"},
+  placeholder:{it:"Calendario in definizione",en:"Schedule to be confirmed"},
+  emergency:{it:"Emergenze",en:"Emergency"}, hospital:{it:"Ospedale",en:"Hospital"}, pharmacy:{it:"Farmacia",en:"Pharmacy"}
+};
+
+let lang = "it";
+const L = (o)=> o==null ? "" : (typeof o==="object" && (o.it!==undefined||o.en!==undefined) ? (o[lang]??o.it) : o);
+
+function render(){
+  document.documentElement.lang = lang;
+  const m = MANUAL;
+
+  // hero
+  document.getElementById("hero-eyebrow").textContent = L(m.welcome.eyebrow);
+  document.getElementById("hero-name").textContent = m.name;
+  document.getElementById("hero-loc").textContent = L(m.location);
+  document.getElementById("hero-cue").textContent = L(UI.cue);
+  if(m.hero_image){ document.getElementById("top").style.backgroundImage =
+    `linear-gradient(180deg,rgba(12,0,38,.1),rgba(12,0,38,.6)),url(${m.hero_image})`;
+    document.getElementById("top").style.backgroundSize="cover";
+    document.getElementById("top").style.backgroundPosition="center"; }
+
+  // nav
+  const navItems = [["wifi","wifi"],["checkin","checkin"],["casa","casa"],["regole","regole"],["rifiuti","rifiuti"],["checkout","checkout"],["zona","zona"],["contatti","contatti"]];
+  document.getElementById("nav").innerHTML = navItems.map(([id,k])=>`<a href="#${id}">${L(UI.nav[k])}</a>`).join("");
+
+  // sections
+  const facts = `
+    <div class="facts">
+      <div class="fact"><div class="k">${L(UI.guests)}</div><div class="v">${m.facts.guests}</div></div>
+      <div class="fact"><div class="k">${L(UI.bedrooms)}</div><div class="v">${m.facts.bedrooms}</div></div>
+      <div class="fact"><div class="k">${L(UI.bathrooms)}</div><div class="v">${m.facts.bathrooms}</div></div>
+    </div>`;
+
+  const sWelcome = section("welcome","00",`
+    <div class="card">
+      <p class="host-note">${L(m.welcome.note)}</p>
+      <div class="host-sign">${L(m.welcome.sign)}</div>
+    </div>${facts}`);
+
+  const sWifi = section("wifi","01",`
+    <div class="card wifi">
+      <div class="net">${L(UI.netname)}</div>
+      <div class="ssid">${m.wifi.network}</div>
+      <button class="copy" id="wifiCopy" data-pw="${m.wifi.password}">
+        <span class="pw">${m.wifi.password}</span>
+        <span class="act" id="wifiAct">${L(UI.tap)}</span>
+      </button>
+      <div class="note">${L(m.wifi.note)}</div>
+    </div>`);
+
+  const sCheckin = section("checkin","02",`
+    <div class="card">
+      <div class="times">
+        <div class="timecard"><div class="lab">${L(UI.arrive)}</div><div class="t"><span class="pre">${L(UI.from)}</span>${m.checkin.time_from}</div></div>
+        <div class="timecard"><div class="lab">${L(UI.depart)}</div><div class="t"><span class="pre">${L(UI.by)}</span>${m.checkout.time_by}</div></div>
+      </div>
+      <div class="note">${L(m.checkin.instructions)}</div>
+    </div>`);
+
+  const sCasa = section("casa","03",
+    m.amenities.map(a=>`
+      <div class="acc">
+        <button class="acc-h"><span class="ic">${a.ic}</span><span class="nm">${L(a.nm)}</span><span class="chev">⌄</span></button>
+        <div class="acc-b"><div class="inner">${L(a.info)}</div></div>
+      </div>`).join(""));
+
+  const sRegole = section("regole","04",`
+    <div class="card"><div class="rows">
+      ${m.house_rules.map(r=>`<div class="row"><span class="ic">${r.ic}</span><span class="tx">${L(r)}</span></div>`).join("")}
+    </div></div>`);
+
+  const sRifiuti = section("rifiuti","05",`
+    <div class="card">
+      <span class="placeholder-tag">${L(UI.placeholder)}</span>
+      <div class="chips">
+        ${m.waste.streams.map(s=>`<span class="chip"><span class="dot" style="background:${s.color}"></span>${L(s.nm)} · <b style="font-weight:500">${L(s.day)}</b></span>`).join("")}
+      </div>
+      <div class="note">${L(m.waste.expose)}</div>
+      <div class="note">${L(m.waste.bin_location)}</div>
+    </div>`);
+
+  const sCheckout = section("checkout","06",`
+    <div class="card">
+      <div class="note" style="margin-top:0;margin-bottom:12px">${L(UI.before_leave)} — ${L(UI.depart)} ${L(UI.by)} ${m.checkout.time_by}</div>
+      <div class="rows">
+        ${m.checkout.steps.map(s=>`<div class="row"><span class="ic">○</span><span class="tx">${L(s)}</span></div>`).join("")}
+      </div>
+    </div>`);
+
+  const sZona = section("zona","07",`
+    <div class="card">
+      ${m.recommendations.map((r,i)=>`
+        <div class="rec">
+          <div class="num">${String(i+1).padStart(2,"0")}</div>
+          <div><div class="nm">${r.nm}</div><div class="meta">${L(r.meta)}</div><div class="desc">${L(r.desc)}</div></div>
+        </div>`).join("")}
+    </div>`);
+
+  const e = m.emergency;
+  const sContatti = section("contatti","08",`
+    <div class="card">
+      ${m.contacts.map(c=>`
+        <div class="contact">
+          <div class="av">${c.name[0]}</div>
+          <div class="who"><div class="n">${c.name}</div><div class="r">${L(c.role)}</div></div>
+          <div class="btns">
+            <a class="icbtn call" href="tel:${c.phone}" aria-label="Call">✆</a>
+            <a class="icbtn wa" href="https://wa.me/${c.phone.replace('+','')}" target="_blank" rel="noopener" aria-label="WhatsApp">⟢</a>
+          </div>
+        </div>`).join("")}
+      <div class="emerg">
+        <a href="tel:${e.europe}"><span class="big">${e.europe}</span><span class="sm">${L(UI.emergency)}</span></a>
+        <a><span class="big" style="font-size:17px;font-family:var(--body);font-weight:500">${L(e.hospital.nm)}</span><span class="sm">${L(UI.hospital)} · ${L(e.hospital.note)}</span></a>
+      </div>
+    </div>`);
+
+  document.getElementById("main").innerHTML =
+    sWelcome+sWifi+sCheckin+sCasa+sRegole+sRifiuti+sCheckout+sZona+sContatti;
+
+  wire();
+}
+
+function section(id,num,inner){
+  return `<section id="${id}" class="reveal">
+    <div class="sec-head"><span class="sec-num">${num}</span><h2 class="sec-title">${L(UI.sec[id])}</h2></div>
+    ${inner}
+  </section>`;
+}
+
+function wire(){
+  // wifi copy
+  const btn = document.getElementById("wifiCopy");
+  if(btn){ btn.addEventListener("click",()=>{
+    const pw = btn.dataset.pw;
+    navigator.clipboard?.writeText(pw).catch(()=>{});
+    btn.classList.add("done");
+    document.getElementById("wifiAct").textContent = L(UI.copied);
+    setTimeout(()=>{ btn.classList.remove("done"); document.getElementById("wifiAct").textContent = L(UI.tap); },1800);
+  }); }
+  // accordions
+  document.querySelectorAll(".acc-h").forEach(h=>h.addEventListener("click",()=>{
+    const acc=h.parentElement, body=acc.querySelector(".acc-b");
+    const open=acc.classList.toggle("open");
+    body.style.maxHeight = open ? body.scrollHeight+"px" : 0;
+  }));
+  // reveal
+  const io=new IntersectionObserver((es)=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}}),{threshold:.12});
+  document.querySelectorAll(".reveal").forEach((el,i)=>{el.style.transitionDelay=(i%3*60)+"ms";io.observe(el);});
+  // scrollspy
+  const links=[...document.querySelectorAll(".nav a")];
+  const spy=new IntersectionObserver((es)=>es.forEach(en=>{
+    if(en.isIntersecting){ links.forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#"+en.target.id));
+      const a=links.find(x=>x.getAttribute("href")==="#"+en.target.id); a&&a.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}); }
+  }),{rootMargin:"-45% 0px -50% 0px"});
+  document.querySelectorAll("section").forEach(s=>spy.observe(s));
+}
+
+document.getElementById("lang").addEventListener("click",(e)=>{
+  const b=e.target.closest("button"); if(!b) return;
+  lang=b.dataset.l;
+  document.querySelectorAll("#lang button").forEach(x=>x.classList.toggle("on",x===b));
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
