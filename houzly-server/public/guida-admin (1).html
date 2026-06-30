@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houzly Guest Intro — Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#170046;--blue:#4ACBEF;--cream:#f5f1ea;--gold:#c9a84c;--card:#fff;
+    --line:rgba(23,0,70,.12);--line-soft:rgba(23,0,70,.07);--ink:#170046;--soft:rgba(23,0,70,.6);--faint:rgba(23,0,70,.4);
+    --disp:'Cormorant Garamond',serif;--body:'Jost',sans-serif;--ok:#1f9d55;--bg:#eee8dd}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);background:var(--bg);color:var(--ink);font-weight:300;font-size:14px}
+  .bar{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:18px;padding:12px 20px}
+  .bar .logo{font-weight:500;letter-spacing:.28em;font-size:12px;text-transform:uppercase}
+  .bar .logo b{color:var(--blue)}
+  .tabs{display:flex;gap:4px;margin-left:8px}
+  .tabs button{font-family:var(--body);font-size:13px;color:rgba(255,255,255,.7);background:transparent;border:0;padding:8px 14px;border-radius:8px;cursor:pointer}
+  .tabs button.on{background:rgba(255,255,255,.14);color:#fff}
+  .bar .right{margin-left:auto;font-size:12px;color:rgba(255,255,255,.6)}
+
+  .wrap{max-width:920px;margin:0 auto;padding:22px 18px 120px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  select,input,textarea{font-family:var(--body);font-size:14px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%}
+  textarea{resize:vertical;min-height:64px;line-height:1.5}
+  .toolbar select{max-width:300px}
+  .btn{font-family:var(--body);font-weight:500;font-size:14px;border:0;border-radius:10px;padding:11px 18px;cursor:pointer;background:var(--navy);color:#fff;white-space:nowrap}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  .btn.sm{padding:8px 12px;font-size:13px}
+  .btn.danger{background:#fff;color:#b23;border:1px solid rgba(178,34,34,.3)}
+
+  .sec{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:6px 18px 16px;margin-bottom:14px}
+  .sec > h3{font-family:var(--disp);font-weight:500;font-size:22px;margin:14px 0 4px;color:var(--navy)}
+  .fld{margin-top:13px}
+  .fld > label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:5px}
+  .bi{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .bi .tag{font-size:9px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:3px}
+  .inline{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .chk{display:flex;align-items:center;gap:9px}
+  .chk input{width:18px;height:18px}
+
+  .rows{margin-top:6px}
+  .rowitem{border:1px solid var(--line-soft);border-radius:11px;padding:12px 13px;margin-bottom:10px;background:#fcfbf8;position:relative}
+  .rowitem .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;color:#b23;cursor:pointer;font-size:15px;line-height:1}
+  .rowitem .rf{margin-top:9px}
+  .rowitem .rf:first-child{margin-top:0}
+  .addrow{font-size:13px}
+
+  .savebar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 18px}
+  .savebar .in{max-width:920px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .savebar .msg{font-size:13px;color:var(--soft);margin-left:auto}
+  .savebar .msg.ok{color:var(--ok)} .savebar .msg.err{color:#b23}
+
+  /* gate */
+  .gate{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:50;color:#fff}
+  .gate .box{background:#fff;color:var(--ink);border-radius:16px;padding:28px;width:300px;text-align:center}
+  .gate h2{font-family:var(--disp);font-weight:500;font-size:26px;margin-bottom:14px}
+  .gate input{text-align:center;letter-spacing:.3em;margin-bottom:12px}
+  .gate .err{color:#b23;font-size:12px;height:16px;margin-bottom:6px}
+  .hide{display:none!important}
+  @media(max-width:560px){.bi{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="box">
+    <h2>Guest Intro</h2>
+    <div style="font-size:12px;color:var(--soft);margin-bottom:14px">Inserisci il PIN per accedere all'editor.</div>
+    <input id="pinIn" type="password" inputmode="numeric" placeholder="••••">
+    <div class="err" id="pinErr"></div>
+    <button class="btn" id="pinBtn" style="width:100%">Entra</button>
+  </div>
+</div>
+
+<div class="bar hide" id="app">
+  <span class="logo">HOUZLY<b>·</b>GUEST</span>
+  <div class="tabs">
+    <button data-tab="properties" class="on">Proprietà</button>
+    <button data-tab="zones">Zone</button>
+    <button data-tab="brand">Brand</button>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <button class="btn ghost sm" id="seedBtn">⟳ Inizializza dati</button>
+    <span class="right" id="apiInfo"></span>
+  </div>
+</div>
+
+<div class="wrap hide" id="main"></div>
+
+<div class="savebar hide" id="savebar">
+  <div class="in">
+    <button class="btn" id="saveBtn">Salva</button>
+    <button class="btn ghost sm" id="previewBtn">Anteprima guida</button>
+    <button class="btn danger sm hide" id="delBtn">Elimina</button>
+    <span class="msg" id="msg"></span>
+  </div>
+</div>
+
+<script>
+const API_BASE = ""; // se l'admin gira su altro host, mettilo qui
+let PIN = "";
+let tab = "properties";
+let state = null;       // documento in editing
+let zonesOpts = [];     // per la select zona nelle proprietà
+
+/* ---------- API ---------- */
+async function api(method, path, body){
+  const r = await fetch(`${API_BASE}/api/guida-admin${path}`, {
+    method, headers:{ "Content-Type":"application/json", "x-guida-pin":PIN },
+    body: body?JSON.stringify(body):undefined
+  });
+  if(r.status===401){ throw {code:401}; }
+  if(!r.ok){ throw {code:r.status}; }
+  return r.status===204?null:r.json();
+}
+
+/* ---------- path helpers ---------- */
+function getPath(o,p){return p.split(".").reduce((a,k)=>a==null?undefined:a[k],o);}
+function setPath(o,p,v){const ks=p.split(".");let a=o;for(let i=0;i<ks.length-1;i++){const k=ks[i],nk=ks[i+1];if(a[k]==null)a[k]=/^\d+$/.test(nk)?[]:{};a=a[k];}a[ks[ks.length-1]]=v;}
+function blankFromItem(item){
+  if(item.length===1 && item[0].path==="" ) return {it:"",en:""};
+  const o={};item.forEach(f=>{ if(f.path==="")return; o[f.path]=(f.t==="bi"||f.t==="bitext")?{it:"",en:""}:(f.t==="num"?null:(f.t==="check"?false:"")); });return o;
+}
+
+/* ---------- schema renderer ---------- */
+function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+function fInput(f,val){
+  if(f.t==="bi"||f.t==="bitext"){
+    const base=f.path===""?"":f.path+".";
+    const tag=f.t==="bitext"?"textarea":"input";
+    const it=val&&val.it||"", en=val&&val.en||"";
+    return `<div class="fld"><label>${f.label}</label><div class="bi">
+      <div><div class="tag">IT</div>${tag==="textarea"?`<textarea data-path="${base}it">${esc(it)}</textarea>`:`<input data-path="${base}it" value="${esc(it)}">`}</div>
+      <div><div class="tag">EN</div>${tag==="textarea"?`<textarea data-path="${base}en">${esc(en)}</textarea>`:`<input data-path="${base}en" value="${esc(en)}">`}</div>
+    </div></div>`;
+  }
+  if(f.t==="check") return `<div class="fld"><div class="chk"><input type="checkbox" data-path="${f.path}" ${val?"checked":""}><label style="margin:0">${f.label}</label></div></div>`;
+  if(f.t==="select"){const opts=(f.path==="zone"?zonesOpts:(f.options||[]));
+    return `<div class="fld"><label>${f.label}</label><select data-path="${f.path}">${opts.map(o=>`<option value="${esc(o.v)}" ${o.v===val?"selected":""}>${esc(o.l)}</option>`).join("")}</select></div>`;}
+  const type=f.t==="num"?'inputmode="decimal"':(f.t==="url"?'inputmode="url"':"");
+  return `<div class="fld"><label>${f.label}</label><input ${type} data-path="${f.path}" value="${esc(val==null?"":val)}"></div>`;
+}
+function fRows(f,arr){
+  arr=arr||[];
+  return `<div class="fld"><label>${f.label}</label><div class="rows" data-rows="${f.path}">
+    ${arr.map((it,i)=>`<div class="rowitem"><button class="rm" data-rm="${f.path}:${i}" type="button">×</button>
+      ${f.item.map(sf=>fInput(sf, sf.path===""?it:getPath(it,sf.path)).replace(/data-path="/g,`data-path="${f.path}.${i}.`)).join("")}
+    </div>`).join("")}
+  </div><button class="btn ghost sm addrow" data-add="${f.path}" type="button">+ ${f.add||"Aggiungi"}</button></div>`;
+}
+function renderSchema(schema,st){
+  return schema.map(s=>{
+    if(s.t==="section") return `<h3>${s.label}</h3>`;
+    if(s.t==="rows") return fRows(s, getPath(st,s.path));
+    return fInput(s, getPath(st,s.path));
+  }).join("");
+}
+
+/* ---------- SCHEMAS ---------- */
+const BI=(label,path)=>({t:"bi",label,path});
+const BT=(label,path)=>({t:"bitext",label,path});
+const TX=(label,path)=>({t:"text",label,path});
+
+const PROP_SCHEMA=[
+  {t:"section",label:"Generali"},
+  TX("Nome","name"), TX("Slug (URL)","slug"),
+  {t:"select",label:"Zona",path:"zone"}, TX("Tipo (villa/apartment…)","subtype"),
+  {t:"check",label:"Attiva",path:"active"}, {t:"url",label:"Foto hero (URL)",path:"hero_image"},
+  BI("Posizione (sottotitolo hero)","location"),
+  {t:"section",label:"Capienza"},
+  {t:"num",label:"Ospiti",path:"facts.guests"},{t:"num",label:"Camere",path:"facts.bedrooms"},{t:"num",label:"Bagni",path:"facts.bathrooms"},
+  {t:"section",label:"Benvenuto"}, BT("Nota di benvenuto","welcome_note"),
+  {t:"section",label:"Wi-Fi"}, TX("Rete","wifi.network"), TX("Password","wifi.password"), BI("Nota Wi-Fi","wifi.note"),
+  {t:"section",label:"Arrivo"}, TX("Check-in dalle","checkin.time_from"), BT("Istruzioni di accesso","checkin.instructions"),
+  {t:"rows",label:"Passi check-out extra",path:"checkout.steps_extra",add:"passo",item:[BI("Testo","")]},
+  {t:"section",label:"La casa (servizi)"},
+  {t:"rows",label:"Servizi / elettrodomestici",path:"amenities",add:"servizio",item:[TX("Icona (waves/snow/utensils/coffee/home/info)","ic"),BI("Nome","nm"),BT("Istruzioni","info")]},
+  {t:"section",label:"Parcheggio"}, BT("Parcheggio","parking"),
+  {t:"section",label:"Regole extra"},
+  {t:"rows",label:"Regole della casa (in aggiunta a quelle di brand)",path:"house_rules_extra",add:"regola",item:[TX("Emoji","ic"),BI("Testo regola","")]},
+  {t:"section",label:"Differenziata (override casa)"},
+  {t:"rows",label:"Flussi (giorni)",path:"waste_override.streams",add:"flusso",item:[BI("Tipo","nm"),TX("Colore (#hex)","color"),BI("Giorno","day")]},
+  BI("Posizione mastelli","waste_override.bin_location"),
+  {t:"section",label:"Consigli extra (oltre a quelli della zona)"},
+  {t:"rows",label:"Consigli",path:"recommendations_extra",add:"consiglio",item:[TX("Nome","nm"),BI("Dettaglio","meta"),BT("Descrizione","desc"),TX("Query mappa","q")]},
+  {t:"section",label:"Contatti extra"},
+  {t:"rows",label:"Contatti (oltre a Daniele/Romeo del brand)",path:"contacts_extra",add:"contatto",item:[TX("Nome","name"),BI("Ruolo","role"),TX("Telefono (+39…)","phone")]},
+  {t:"section",label:"Indirizzo"}, BI("Riga indirizzo","address.line"), TX("Query Google Maps","address.q")
+];
+
+const ZONE_SCHEMA=[
+  {t:"section",label:"Generali"},
+  TX("Etichetta","label"), TX("Comune","comune"), TX("Provincia","provincia"), TX("Regione","region"),
+  BI("Posizione","location"),
+  {t:"num",label:"Tassa soggiorno €/notte",path:"tourist_tax.per_night"},{t:"num",label:"Notti max",path:"tourist_tax.max_nights"},
+  {t:"section",label:"Differenziata (zona)"},
+  TX("Gestore","waste.operator"), BI("Regola esposizione","waste.expose"),
+  {t:"rows",label:"Flussi",path:"waste.streams",add:"flusso",item:[BI("Tipo","nm"),TX("Colore (#hex)","color"),BI("Giorno","day")]},
+  BI("Posizione mastelli","waste.bin_location"), {t:"url",label:"Link info",path:"waste.info_url"},
+  {t:"section",label:"Emergenze locali"},
+  BI("Ospedale","emergency_local.hospital.nm"), BI("Nota ospedale","emergency_local.hospital.note"),
+  {t:"section",label:"Consigli della zona"},
+  {t:"rows",label:"Consigli",path:"recommendations",add:"consiglio",item:[TX("Nome","nm"),BI("Dettaglio","meta"),BT("Descrizione","desc"),TX("Query mappa","q")]}
+];
+
+const BRAND_SCHEMA=[
+  {t:"section",label:"Contatti host"},
+  {t:"rows",label:"Contatti",path:"host.contacts",add:"contatto",item:[TX("Nome","name"),BI("Ruolo","role"),TX("Telefono","phone")]},
+  {t:"section",label:"Orari di default"},
+  TX("Check-in dalle","checkin_default.time_from"), TX("Check-in alle","checkin_default.time_to"), TX("Check-out entro le","checkout_default.time_by"),
+  {t:"section",label:"Emergenze nazionali"},
+  TX("Europa","emergency.europe"), TX("Medica","emergency.medical"), TX("Polizia","emergency.police"), TX("Pompieri","emergency.fire"),
+  {t:"section",label:"Benvenuto (default)"},
+  BI("Eyebrow","welcome_eyebrow"), BT("Nota di benvenuto default","welcome_note_default"), BI("Firma","welcome_sign_default"),
+  {t:"section",label:"Regole di default"},
+  {t:"rows",label:"Regole",path:"house_rules_default",add:"regola",item:[TX("Key","key"),TX("Emoji","ic"),BI("Testo","")]},
+  {t:"section",label:"Passi check-out di default"},
+  {t:"rows",label:"Passi",path:"checkout_steps_default",add:"passo",item:[TX("Key","key"),BI("Testo","")]}
+];
+
+/* ---------- BI senza sotto-path (testo diretto) ---------- */
+// Per righe come {it,en} a livello root dell'oggetto (passi, regole), uso path "" -> gestito sotto.
+
+/* ---------- controllers ---------- */
+const main=document.getElementById("main");
+const savebar=document.getElementById("savebar");
+const delBtn=document.getElementById("delBtn");
+
+function schemaFor(t){return t==="properties"?PROP_SCHEMA:(t==="zones"?ZONE_SCHEMA:BRAND_SCHEMA);}
+
+async function loadTab(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+  state=null; main.innerHTML=""; setMsg("");
+  if(tab==="brand"){
+    state=await api("GET","/brand"); renderEditor("Brand", null); delBtn.classList.add("hide"); return;
+  }
+  const list = tab==="properties" ? await api("GET","/properties") : await api("GET","/zones");
+  if(tab==="properties"){ zonesOpts=(await api("GET","/zones")).map(z=>({v:z._id,l:z.label||z._id})); }
+  const idKey = tab==="properties" ? "slug" : "_id";
+  const opts = list.map(d=>`<option value="${esc(d[idKey])}">${esc(d.name||d.label||d[idKey])}</option>`).join("");
+  main.innerHTML=`<div class="toolbar">
+    <select id="picker"><option value="">— scegli —</option>${opts}</select>
+    <button class="btn ghost sm" id="newBtn">+ Nuovo</button></div>
+    <div id="formHost"></div>`;
+  document.getElementById("picker").addEventListener("change",async e=>{
+    const v=e.target.value; if(!v){state=null;document.getElementById("formHost").innerHTML="";savebar.classList.add("hide");return;}
+    state = tab==="properties" ? await api("GET","/properties/"+v) : await api("GET","/zones/"+v);
+    renderEditor(); delBtn.classList.toggle("hide", tab!=="properties");
+  });
+  document.getElementById("newBtn").addEventListener("click",()=>{
+    state = tab==="properties"
+      ? {slug:"",name:"",subtype:"apartment",active:true,zone:zonesOpts[0]?.v||"",facts:{},wifi:{note:{it:"",en:""}},checkin:{},checkout:{steps_extra:[]},amenities:[],house_rules_extra:[],recommendations_extra:[],contacts_extra:[],address:{}}
+      : {_id:"",label:"",waste:{streams:[]},emergency_local:{hospital:{nm:{},note:{}}},recommendations:[]};
+    renderEditor(); delBtn.classList.add("hide");
+  });
+}
+
+function renderEditor(){
+  const host=document.getElementById("formHost")||main;
+  host.innerHTML=`<div class="sec">${renderSchema(schemaFor(tab),state)}</div>`;
+  savebar.classList.remove("hide");
+  bind(host);
+}
+
+/* righe con item [BI("Testo","")] -> path "" significa l'oggetto stesso {it,en}.
+   Normalizzo: se sub.path==="" uso direttamente l'elemento come {it,en}. */
+function bind(host){
+  host.addEventListener("input",onEdit);
+  host.addEventListener("change",onEdit);
+  host.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>{
+    const p=b.dataset.add; const sch=findRows(schemaFor(tab),p);
+    let arr=getPath(state,p); if(!Array.isArray(arr)){arr=[];setPath(state,p,arr);}
+    arr.push(blankFromItem(sch.item)); renderEditor();
+  }));
+  host.querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",()=>{
+    const [p,i]=b.dataset.rm.split(":"); const arr=getPath(state,p); arr.splice(+i,1); renderEditor();
+  }));
+}
+function findRows(schema,path){
+  for(const s of schema){ if(s.t==="rows"&&s.path===path) return s; }
+  return {item:[]};
+}
+function onEdit(e){
+  const el=e.target; const p=el.getAttribute("data-path"); if(!p)return;
+  let v = el.type==="checkbox" ? el.checked : el.value;
+  // campi numerici (facts/tax/max)
+  if(/(facts\.|per_night|max_nights)/.test(p) && el.type!=="checkbox"){ v = v===""?null:Number(v); }
+  // path che termina con .it/.en su item "" (es. checkout.steps_extra.0.it) -> ok, setPath gestisce
+  // item con sub.path "" produce data-path tipo "checkout.steps_extra.0.it" già corretto
+  setPath(state,p,v);
+}
+
+/* ---------- save ---------- */
+function setMsg(t,cls){const m=document.getElementById("msg");m.textContent=t;m.className="msg"+(cls?" "+cls:"");}
+document.getElementById("saveBtn").addEventListener("click",async()=>{
+  if(!state)return;
+  try{
+    setMsg("Salvataggio…");
+    if(tab==="brand") await api("PUT","/brand",state);
+    else if(tab==="properties"){ if(!state.slug){setMsg("Slug obbligatorio","err");return;} await api("PUT","/properties/"+state.slug,state); }
+    else { if(!state._id){setMsg("ID zona obbligatorio","err");return;} await api("PUT","/zones/"+state._id,state); }
+    setMsg("Salvato ✓","ok");
+    if(tab!=="brand") loadTab();
+  }catch(err){ setMsg(err.code===401?"PIN non valido":"Errore salvataggio","err"); }
+});
+delBtn.addEventListener("click",async()=>{
+  if(tab!=="properties"||!state?.slug)return;
+  if(!confirm("Eliminare "+state.slug+"?"))return;
+  try{ await api("DELETE","/properties/"+state.slug); setMsg("Eliminato","ok"); state=null; savebar.classList.add("hide"); loadTab(); }
+  catch(e){ setMsg("Errore","err"); }
+});
+document.getElementById("previewBtn").addEventListener("click",()=>{
+  const slug = tab==="properties" && state?.slug;
+  window.open(slug?("/guida/"+slug):"/guida/","_blank");
+});
+
+/* ---------- tabs + gate ---------- */
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;savebar.classList.add("hide");loadTab();}));
+
+document.getElementById("seedBtn").addEventListener("click",async()=>{
+  if(!confirm("Inizializzare i dati dei 3 piloti (brand, zone, proprietà)?\nLe case già presenti e modificate NON verranno sovrascritte."))return;
+  try{
+    const r=await api("POST","/seed");
+    alert("Fatto ✓\nZone: "+r.zones+"\nCase create: "+r.properties_written+"\nCase saltate (già presenti): "+r.properties_skipped);
+    loadTab();
+  }catch(err){ alert(err.code===401?"PIN non valido":"Errore durante l'inizializzazione"); }
+});
+
+async function enter(){
+  PIN=document.getElementById("pinIn").value.trim();
+  try{
+    await api("GET","/properties"); // test PIN
+    document.getElementById("gate").classList.add("hide");
+    document.getElementById("app").classList.remove("hide");
+    document.getElementById("main").classList.remove("hide");
+    document.getElementById("apiInfo").textContent = API_BASE||location.host;
+    loadTab();
+  }catch(err){ document.getElementById("pinErr").textContent = err.code===401?"PIN errato":"Connessione fallita"; }
+}
+document.getElementById("pinBtn").addEventListener("click",enter);
+document.getElementById("pinIn").addEventListener("keydown",e=>{if(e.key==="Enter")enter();});
+</script>
+</body>
+</html>
