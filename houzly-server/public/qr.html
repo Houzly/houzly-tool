@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houzly Guest Intro — Generatore QR</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--navy:#170046;--blue:#4ACBEF;--cream:#f5f1ea;--gold:#c9a84c;--card:#fbf9f5;
+    --line:rgba(23,0,70,.12);--ink:#170046;--ink-soft:rgba(23,0,70,.6);
+    --disp:'Cormorant Garamond',serif;--body:'Jost',sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);background:#ece6db;color:var(--ink);font-weight:300;padding:28px 16px 60px}
+  .shell{max-width:880px;margin:0 auto}
+  h1{font-family:var(--disp);font-weight:500;font-size:34px;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:14px;margin:4px 0 22px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+  label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:6px}
+  input{font-family:var(--body);font-size:15px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;width:100%}
+  .baseRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .baseRow > div{flex:1;min-width:240px}
+  .rows{margin-top:6px}
+  .prow{display:flex;gap:10px;margin-bottom:9px;align-items:center}
+  .prow .nm{flex:1.4}.prow .sl{flex:1}
+  .prow button{flex:0 0 auto}
+  .btn{font-family:var(--body);font-weight:500;font-size:14px;letter-spacing:.02em;border:0;border-radius:11px;padding:12px 18px;cursor:pointer;background:var(--navy);color:#fff}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  .btn.sm{padding:9px 12px;font-size:13px}
+  .btn.x{background:#fff;color:#b23;border:1px solid rgba(178,34,34,.3);width:40px;height:40px;padding:0;border-radius:50%}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .hint{font-size:12.5px;color:var(--ink-soft);margin-top:10px;line-height:1.5}
+
+  /* ---------- CARDS ---------- */
+  .cards{margin-top:26px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+  .card{position:relative;background:var(--cream);border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    box-shadow:0 14px 34px -20px rgba(23,0,70,.3);aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;
+    text-align:center;padding:30px 26px}
+  .card .frame{position:absolute;inset:12px;border:1px solid var(--gold);border-radius:12px;pointer-events:none;opacity:.55}
+  .card .wm{font-family:var(--body);font-weight:500;letter-spacing:.3em;font-size:11px;text-transform:uppercase;color:var(--navy)}
+  .card .wm b{color:var(--blue);font-weight:600}
+  .card .eyebrow{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-top:14px}
+  .card .pname{font-family:var(--disp);font-weight:500;font-size:30px;line-height:1.04;margin-top:6px;color:var(--navy)}
+  .card .qbox{background:#fff;border-radius:14px;padding:14px;margin:auto 0;box-shadow:0 6px 18px -10px rgba(23,0,70,.3)}
+  .card .qbox canvas,.card .qbox img{display:block;width:188px!important;height:188px!important}
+  .card .instr{font-size:13px;color:var(--navy);font-weight:400;line-height:1.45}
+  .card .instr .en{color:var(--ink-soft);font-style:italic}
+  .card .url{font-size:10.5px;letter-spacing:.02em;color:var(--ink-soft);margin-top:10px;word-break:break-all}
+  .card .dl{position:absolute;top:14px;right:14px}
+  .card .dl button{font-size:11px;letter-spacing:.06em;background:rgba(23,0,70,.06);border:1px solid var(--line);color:var(--navy);border-radius:100px;padding:6px 12px;cursor:pointer}
+
+  @media print{
+    @page{size:A6;margin:0}
+    body{background:#fff;padding:0}
+    .shell > :not(.cards){display:none!important}
+    .cards{display:block;margin:0}
+    .card{aspect-ratio:auto;width:100vw;height:100vh;border:0;border-radius:0;box-shadow:none;break-after:page;justify-content:center;gap:6px}
+    .card .dl{display:none}
+    .card .qbox{margin:18px 0}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>Generatore QR</h1>
+  <div class="sub">Una card brandizzata per casa, pronta da stampare o salvare in PDF. Il QR apre <b>houzly.it/guida/{slug}</b>.</div>
+
+  <div class="panel">
+    <div class="baseRow">
+      <div><label>URL base</label><input id="base" value="https://houzly.it/guida/"></div>
+      <button class="btn ghost sm" id="loadApi" type="button">Carica dall'API</button>
+    </div>
+    <div class="hint">Oppure aggiungi le case a mano qui sotto (nome + slug). "Carica dall'API" prova a leggere gli slug dal backend se è raggiungibile.</div>
+  </div>
+
+  <div class="panel">
+    <label>Case</label>
+    <div class="rows" id="rows"></div>
+    <div class="actions">
+      <button class="btn ghost sm" id="add" type="button">+ Aggiungi casa</button>
+      <button class="btn" id="gen" type="button">Genera card</button>
+      <button class="btn ghost" id="print" type="button">Stampa / Salva PDF</button>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+</div>
+
+<script>
+const DEFAULTS=[
+  {name:"Villa Caterina",slug:"villa-caterina"},
+  {name:"Sabri's Modern Home",slug:"sabris-modern-home"},
+  {name:"Costa Blue Holiday Home",slug:"costa-blue-holiday-home"}
+];
+const API_BASE=""; // se l'API è su un altro host, mettilo qui
+
+const rowsEl=document.getElementById("rows");
+function rowHTML(p={name:"",slug:""}){
+  return `<div class="prow">
+    <input class="nm" placeholder="Nome casa" value="${(p.name||'').replace(/"/g,'&quot;')}">
+    <input class="sl" placeholder="slug" value="${(p.slug||'').replace(/"/g,'&quot;')}">
+    <button class="btn x" type="button" title="Rimuovi">×</button></div>`;
+}
+function addRow(p){const d=document.createElement("div");d.innerHTML=rowHTML(p);const node=d.firstElementChild;
+  node.querySelector(".btn.x").addEventListener("click",()=>node.remove());rowsEl.appendChild(node);}
+DEFAULTS.forEach(addRow);
+document.getElementById("add").addEventListener("click",()=>addRow());
+
+function slugify(s){return s.toLowerCase().trim().replace(/['’]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
+function collect(){
+  return [...rowsEl.querySelectorAll(".prow")].map(r=>{
+    const name=r.querySelector(".nm").value.trim();
+    let slug=r.querySelector(".sl").value.trim();
+    if(name&&!slug){slug=slugify(name);r.querySelector(".sl").value=slug;}
+    return {name,slug};
+  }).filter(p=>p.name&&p.slug);
+}
+function joinUrl(base,slug){return base.replace(/\/+$/,"")+"/"+slug;}
+
+const cardsEl=document.getElementById("cards");
+function genCards(){
+  const base=document.getElementById("base").value.trim()||"https://houzly.it/guida/";
+  const list=collect();
+  cardsEl.innerHTML="";
+  list.forEach(p=>{
+    const url=joinUrl(base,p.slug);
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML=`
+      <div class="frame"></div>
+      <div class="dl"><button type="button">PNG</button></div>
+      <div class="wm">HOUZLY<b>·</b>GUEST</div>
+      <div class="eyebrow">Guida della casa · House guide</div>
+      <div class="pname">${p.name}</div>
+      <div class="qbox"><div class="q"></div></div>
+      <div class="instr">Inquadra con la fotocamera del telefono<br><span class="en">Scan with your phone camera</span></div>
+      <div class="url">${url}</div>`;
+    cardsEl.appendChild(card);
+    const q=card.querySelector(".q");
+    new QRCode(q,{text:url,width:188,height:188,colorDark:"#170046",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});
+    card.querySelector(".dl button").addEventListener("click",()=>{
+      const cv=q.querySelector("canvas"); if(!cv)return;
+      const a=document.createElement("a");a.href=cv.toDataURL("image/png");a.download="qr-"+p.slug+".png";a.click();
+    });
+  });
+  if(!list.length)cardsEl.innerHTML='<div class="hint">Aggiungi almeno una casa con nome e slug.</div>';
+}
+document.getElementById("gen").addEventListener("click",genCards);
+document.getElementById("print").addEventListener("click",()=>{genCards();setTimeout(()=>window.print(),250);});
+
+document.getElementById("loadApi").addEventListener("click",async()=>{
+  // tenta di validare gli slug correnti contro l'API; se un manuale risponde, ne prende il name
+  const list=collect();
+  if(!list.length){alert("Aggiungi prima qualche slug.");return;}
+  for(const p of list){
+    try{
+      const r=await fetch(`${API_BASE}/api/guida/${encodeURIComponent(p.slug)}`,{headers:{Accept:"application/json"}});
+      if(r.ok){const d=await r.json(); if(d&&d.name){
+        const row=[...rowsEl.querySelectorAll(".prow")].find(x=>x.querySelector(".sl").value.trim()===p.slug);
+        if(row)row.querySelector(".nm").value=d.name;
+      }}
+    }catch(e){}
+  }
+  genCards();
+});
+
+genCards();
+</script>
+</body>
+</html>
