@@ -182,6 +182,7 @@ const PROP_SCHEMA=[
   {t:"section",label:"Differenziata (override casa)"},
   {t:"rows",label:"Flussi (giorni)",path:"waste_override.streams",add:"flusso",item:[BI("Tipo","nm"),TX("Colore (#hex)","color"),BI("Giorno","day")]},
   BI("Posizione mastelli","waste_override.bin_location"),
+  BT("Nota differenziata per gli ospiti","waste_override.note"),
   {t:"section",label:"Consigli extra (oltre a quelli della zona)"},
   {t:"rows",label:"Consigli",path:"recommendations_extra",add:"consiglio",item:[TX("Nome","nm"),BI("Dettaglio","meta"),BT("Descrizione","desc"),TX("Query mappa","q")]},
   {t:"section",label:"Contatti extra"},
@@ -198,10 +199,14 @@ const ZONE_SCHEMA=[
   TX("Gestore","waste.operator"), BI("Regola esposizione","waste.expose"),
   {t:"rows",label:"Flussi",path:"waste.streams",add:"flusso",item:[BI("Tipo","nm"),TX("Colore (#hex)","color"),BI("Giorno","day")]},
   BI("Posizione mastelli","waste.bin_location"), {t:"url",label:"Link info",path:"waste.info_url"},
+  BT("Nota differenziata per gli ospiti","waste.note"),
   {t:"section",label:"Emergenze locali"},
   BI("Ospedale","emergency_local.hospital.nm"), BI("Nota ospedale","emergency_local.hospital.note"),
   {t:"section",label:"Consigli della zona"},
-  {t:"rows",label:"Consigli",path:"recommendations",add:"consiglio",item:[TX("Nome","nm"),BI("Dettaglio","meta"),BT("Descrizione","desc"),TX("Query mappa","q")]}
+  {t:"rows",label:"Ristoranti",path:"dining.restaurants",add:"ristorante",item:[TX("Nome","nm"),BT("Descrizione","note"),TX("Query mappa","q")]},
+  {t:"rows",label:"Pizzerie",path:"dining.pizzerias",add:"pizzeria",item:[TX("Nome","nm"),BT("Descrizione","note"),TX("Query mappa","q")]},
+  {t:"rows",label:"Cose da vedere",path:"attractions",add:"luogo",item:[TX("Nome","nm"),BT("Descrizione","note"),TX("Query mappa","q")]},
+  {t:"rows",label:"Altri consigli (generici)",path:"recommendations",add:"consiglio",item:[TX("Nome","nm"),BI("Dettaglio","meta"),BT("Descrizione","desc"),TX("Query mappa","q")]}
 ];
 
 const BRAND_SCHEMA=[
@@ -319,10 +324,11 @@ document.getElementById("previewBtn").addEventListener("click",()=>{
 document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;savebar.classList.add("hide");loadTab();}));
 
 document.getElementById("seedBtn").addEventListener("click",async()=>{
-  if(!confirm("Inizializzare i dati dei 3 piloti (brand, zone, proprietà)?\nLe case già presenti e modificate NON verranno sovrascritte."))return;
+  if(!confirm("Inizializzare brand, zone e proprietà?"))return;
+  const force=confirm("Vuoi anche AGGIORNARE le case già presenti con i contenuti di default?\n\nOK = consigliato ora, per caricare capienza, nota di benvenuto e amenities su tutte (sovrascrive eventuali modifiche manuali già fatte alle case)\nAnnulla = aggiungi solo le case nuove, non toccare le esistenti");
   try{
-    const r=await api("POST","/seed");
-    alert("Fatto ✓\nZone: "+r.zones+"\nCase create: "+r.properties_written+"\nCase saltate (già presenti): "+r.properties_skipped);
+    const r=await api("POST","/seed"+(force?"?force=1":""));
+    alert("Fatto ✓\nZone: "+r.zones+"\nCase scritte: "+r.properties_written+"\nCase saltate: "+r.properties_skipped);
     loadTab();
   }catch(err){ alert(err.code===401?"PIN non valido":"Errore durante l'inizializzazione"); }
 });
