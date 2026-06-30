@@ -130,6 +130,8 @@
   .rec .desc{font-size:14px; color:var(--ink-soft); font-weight:300}
   .rec a.mapln{font-size:12px;color:var(--blue);text-decoration:none;letter-spacing:.03em;display:inline-flex;gap:5px;align-items:center;margin-top:6px}
   .rec a.mapln .ic-svg{width:13px;height:13px}
+  .rec-h{font-family:var(--disp);font-size:15px;font-weight:600;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;margin:18px 0 2px}
+  .rec-h:first-child{margin-top:0}
 
   .contact{display:flex; align-items:center; gap:14px; padding:13px 0; border-bottom:1px solid var(--line-soft)}
   .contact:last-child{border-bottom:0}
@@ -214,7 +216,22 @@ const ICONS={
   waves:'<path d="M2 6c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/><path d="M2 12c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/><path d="M2 18c.9.7 1.6 1 2.7 1 2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2c1 0 1.6.3 2.4 1"/>',
   snow:'<path d="M12 2v20"/><path d="M2 12h20"/><path d="m4.9 4.9 14.2 14.2"/><path d="m19.1 4.9-14.2 14.2"/><path d="M12 6 9.5 4M12 6l2.5-2M12 18l-2.5 2M12 18l2.5 2M6 12l-2 2.5M6 12l-2-2.5M18 12l2 2.5M18 12l2-2.5"/>',
   utensils:'<path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M5 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
-  coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/>'
+  coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/>',
+  oven:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M7 6.5h.01"/><rect x="6" y="12" width="12" height="6" rx="1"/>',
+  fridge:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M6 10h12"/><path d="M9 5v2"/><path d="M9 13v3"/>',
+  freezer:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M6 10h12"/><path d="M9 5v2"/><path d="M12 13v4"/><path d="m10.5 14.5 3 1"/><path d="m13.5 14.5-3 1"/>',
+  kettle:'<path d="M5 10h12l-1 8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="m17 11 2-2-1-3"/><path d="M9 7a3 3 0 0 1 6 0v3"/>',
+  toaster:'<rect x="3" y="9" width="18" height="9" rx="2"/><path d="M8 9V7a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M9 12.5v2M12 12.5v2"/>',
+  microwave:'<rect x="2" y="5" width="20" height="14" rx="2"/><rect x="5" y="8" width="10" height="8" rx="1"/><path d="M18 9v.01M18 12v.01"/>',
+  dishwasher:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 8h16"/><path d="M7 5.5h.01M10 5.5h.01"/><path d="M9 12c1 1.5 5 1.5 6 0"/>',
+  washer:'<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="14" r="4.5"/><circle cx="12" cy="14" r="1.5"/><path d="M7 5.5h.01M10 5.5h.01"/>',
+  tv:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  heating:'<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 6v12M12 6v12M16 6v12"/>',
+  garden:'<path d="M12 22v-7"/><path d="M12 15a5 5 0 0 0 5-5c0-3-2-5-5-8-3 3-5 5-5 8a5 5 0 0 0 5 5z"/>',
+  bbq:'<circle cx="12" cy="9" r="6"/><path d="m9 15-2 6M15 15l2 6M12 16v5"/><path d="M9 8h.01M12 7h.01M15 8h.01"/>',
+  fireplace:'<rect x="3" y="3" width="18" height="18" rx="1"/><rect x="7" y="10" width="10" height="11"/><path d="M12 13c1 1 1 2 0 3-1-1-1-2 0-3z"/>',
+  hairdryer:'<path d="M14 4a6 6 0 0 1 0 8H8l-1 3-3-1 1-3a6 6 0 0 1 9-7z"/><path d="m14 12 4 7"/>',
+  iron:'<path d="M3 16c0-3 3-6 8-6h8a2 2 0 0 1 2 2v4z"/><path d="M3 16h18"/><path d="M16 10V7a2 2 0 0 0-2-2H9"/>'
 };
 function ic(n){return `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`;}
 
@@ -255,10 +272,12 @@ let MANUAL={
       {nm:{it:"Vetro",en:"Glass"},color:"#3a8a4a",day:{it:"—",en:"—"}},
       {nm:{it:"Indifferenziato",en:"General"},color:"#8a8a8a",day:{it:"—",en:"—"}}],
     bin_location:{it:"Mastelli: —",en:"Bins: —"}},
-  recommendations:[
-    {nm:"Trattoria del Valdarno",meta:{it:"Cucina toscana · 5 min",en:"Tuscan cuisine · 5 min"},desc:{it:"Esempio — sostituire con consigli reali.",en:"Example — replace with real picks."},q:"Trattoria Montevarchi"},
-    {nm:"Cantina in Chianti",meta:{it:"Degustazione · 20 min",en:"Wine tasting · 20 min"},desc:{it:"Esempio — su prenotazione.",en:"Example — by reservation."},q:"Cantina Chianti"},
-    {nm:"Borgo storico",meta:{it:"Da visitare · 10 min",en:"Worth a visit · 10 min"},desc:{it:"Esempio — centro medievale.",en:"Example — medieval centre."},q:"Borgo Valdarno"}],
+  recommendations:[],
+  dining:{restaurants:[
+    {nm:"Daniele Riccardo Ristorante",note:{it:"Trattoria amata dai locali, cucina toscana.",en:"Local favourite, Tuscan home cooking."},q:"Daniele Riccardo Ristorante Montevarchi"},
+    {nm:"Ristorante Castellucci",note:{it:"Classico del centro: bistecca e paste.",en:"Town classic: steak and pasta."},q:"Ristorante Castellucci Montevarchi"}],
+  pizzerias:[]},
+  attractions:[],
   contacts:[{name:"Daniele",role:{it:"Host",en:"Host"},phone:"+393386805606"},
     {name:"Romeo",role:{it:"Host",en:"Host"},phone:"+393312127801"}],
   address:{line:{it:"Montevarchi (AR), Toscana",en:"Montevarchi (AR), Tuscany"},q:"Villa Caterina Montevarchi"},
@@ -270,6 +289,7 @@ const UI={
     from:"dalle",by:"entro le",arrive:"Check-in",depart:"Check-out",before:"Prima di partire",
     placeholder:"Calendario in definizione",emergency:"Emergenze",hospital:"Ospedale",
     openmap:"Apri in Google Maps",nearby:"Nei dintorni",address:"Indirizzo",
+    restaurants:"Ristoranti",pizzerias:"Pizzerie",attractions:"Cosa vedere",soon:"Consigli in arrivo a breve.",
     chatTitle:"Assistente Houzly",chatSoon:"L'assistente intelligente che risponde a tutte le domande sulla casa arriverà presto. Intanto siamo noi, a un messaggio di distanza.",
     chatWa:"Scrivici su WhatsApp",wifiCopied:"Password Wi-Fi copiata",
     tabs:{guida:"Guida",mappa:"Mappa",chat:"Chat"},
@@ -278,6 +298,7 @@ const UI={
     from:"from",by:"by",arrive:"Check-in",depart:"Check-out",before:"Before you leave",
     placeholder:"Schedule to be confirmed",emergency:"Emergency",hospital:"Hospital",
     openmap:"Open in Google Maps",nearby:"Nearby",address:"Address",
+    restaurants:"Restaurants",pizzerias:"Pizzerias",attractions:"What to see",soon:"Local picks coming soon.",
     chatTitle:"Houzly Assistant",chatSoon:"The smart assistant that answers every question about the home is coming soon. Until then, it's us — just a message away.",
     chatWa:"Message us on WhatsApp",wifiCopied:"Wi-Fi password copied",
     tabs:{guida:"Guide",mappa:"Map",chat:"Chat"},
@@ -296,6 +317,10 @@ let cat=null;
 const L=(o)=> o==null?"":(typeof o==="object"&&(o.it!==undefined||o.en!==undefined)?(o[lang]??o.it):o);
 const T=()=>UI[lang];
 const mapsLink=(q)=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+function secRows(title,arr,t){
+  if(!arr||!arr.length) return "";
+  return (title?`<div class="rec-h">${title}</div>`:"")+arr.map(r=>`<div class="rec"><div><div class="nm">${r.nm}</div>${L(r.note||r.desc)?`<div class="desc">${L(r.note||r.desc)}</div>`:(L(r.meta)?`<div class="meta">${L(r.meta)}</div>`:"")}<a class="mapln" href="${mapsLink(r.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div></div>`).join("");
+}
 const wa=(p)=>"https://wa.me/"+p.replace("+","");
 
 function render(){
@@ -364,7 +389,7 @@ function viewCat(id){
     <button class="copy" id="wifiCopy" data-pw="${m.wifi.password}"><span class="pw">${m.wifi.password}</span><span class="act" id="wifiAct">${ic('copy')}${t.tap}</span></button>
     <div class="note">${L(m.wifi.note)}</div></div>`;
   else if(id==="checkin") body=`<div class="card"><div class="times">
-    <div class="timecard"><div class="lab">${t.arrive}</div><div class="t"><span class="pre">${t.from}</span>${m.checkin.time_from}</div></div>
+    <div class="timecard"><div class="lab">${t.arrive}</div><div class="t" style="font-size:23px;letter-spacing:-.01em">${m.checkin.time_from}–${m.checkin.time_to}</div></div>
     <div class="timecard"><div class="lab">${t.depart}</div><div class="t"><span class="pre">${t.by}</span>${m.checkout.time_by}</div></div></div>
     <div class="note">${L(m.checkin.instructions)}</div></div>`;
   else if(id==="checkout") body=`<div class="card"><div class="note" style="margin-top:0;margin-bottom:12px">${t.before} — ${t.depart} ${t.by} ${m.checkout.time_by}</div>
@@ -374,8 +399,13 @@ function viewCat(id){
   else if(id==="regole") body=`<div class="card"><div class="rows">${m.house_rules.map(r=>`<div class="row"><span class="ic">${r.ic}</span><span class="tx">${L(r)}</span></div>`).join("")}</div></div>`;
   else if(id==="rifiuti") body=`<div class="card"><span class="ptag">${ic('recycle')}${t.placeholder}</span>
     <div class="chips">${m.waste.streams.map(s=>`<span class="chip"><span class="dot" style="background:${s.color}"></span>${L(s.nm)} · <b style="font-weight:500">${L(s.day)}</b></span>`).join("")}</div>
-    <div class="note">${L(m.waste.expose)}</div><div class="note">${L(m.waste.bin_location)}</div></div>`;
-  else if(id==="zona") body=`<div class="card">${m.recommendations.map((r,i)=>`<div class="rec"><div class="num">${String(i+1).padStart(2,"0")}</div><div><div class="nm">${r.nm}</div><div class="meta">${L(r.meta)}</div><div class="desc">${L(r.desc)}</div><a class="mapln" href="${mapsLink(r.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div></div>`).join("")}</div>`;
+    <div class="note">${L(m.waste.expose)}</div><div class="note">${L(m.waste.bin_location)}</div>${L(m.waste.note)?`<div class="note">${L(m.waste.note)}</div>`:''}</div>`;
+  else if(id==="zona"){
+    const din=m.dining||{restaurants:[],pizzerias:[]};
+    let inner=secRows(t.restaurants,din.restaurants,t)+secRows(t.pizzerias,din.pizzerias,t)+secRows(t.attractions,m.attractions,t);
+    if(!inner) inner=secRows("",m.recommendations,t);
+    body=`<div class="card">${inner||`<div class="note" style="margin-top:0">${t.soon}</div>`}</div>`;
+  }
   else if(id==="contatti") body=`<div class="card">${m.contacts.map(c=>`<div class="contact"><div class="av">${c.name[0]}</div><div class="who"><div class="n">${c.name}</div><div class="r">${L(c.role)}</div></div>
     <div class="btns"><a class="icbtn call" href="tel:${c.phone}">${ic('phone')}</a><a class="icbtn wa" href="${wa(c.phone)}" target="_blank" rel="noopener">${ic('message')}</a></div></div>`).join("")}
     <div class="emerg"><a href="tel:${m.emergency.europe}"><span class="big">${m.emergency.europe}</span><span class="sm">${t.emergency}</span></a>
@@ -393,7 +423,7 @@ function viewMap(){
     <div style="font-family:var(--disp);font-size:24px;font-weight:500;margin:4px 0 16px">${L(m.address.line)}</div>
     <a class="bigbtn" href="${mapsLink(m.address.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div>
   <div class="dhead" style="padding-top:26px"><h2 style="font-size:24px">${t.nearby}</h2></div>
-  <div class="card">${m.recommendations.map((r,i)=>`<div class="rec"><div class="num">${String(i+1).padStart(2,"0")}</div><div><div class="nm">${r.nm}</div><div class="meta">${L(r.meta)}</div><a class="mapln" href="${mapsLink(r.q)}" target="_blank" rel="noopener">${ic('pin')}${t.openmap}</a></div></div>`).join("")}</div>`;
+  <div class="card">${(secRows(t.restaurants,(m.dining||{}).restaurants,t)+secRows(t.pizzerias,(m.dining||{}).pizzerias,t))||secRows("",m.recommendations,t)}</div>`;
 }
 
 /* ---------- CHAT (placeholder concierge v2) ---------- */
