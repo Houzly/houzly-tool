@@ -293,6 +293,7 @@ app.use("/api/booking", (req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
+app.get('/guida/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'guida.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -2124,7 +2125,6 @@ app.post('/api/onboarding/cron-tick', async (req, res) => {
 app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
 app.use(require('./guida'));
 app.use(require('./guida-admin'));
-app.get('/guida/:slug', (req, res) => res.sendFile(require('path').join(__dirname, 'public', 'guida.html')));
 
 app.listen(PORT, async () => {
   console.log(`Houzly server running on port ${PORT}`);
