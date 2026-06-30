@@ -53,6 +53,23 @@ const REC_PLACEHOLDER = [
   { nm: 'Esperienza (esempio)', meta: { it: 'Da vivere · — min', en: 'Experience · — min' }, desc: { it: 'Da sostituire.', en: 'Replace.' }, q: '' }
 ];
 
+// factory: zona con differenziata/servizi placeholder (da completare poi)
+function mkZone(id, label, comune, prov, region, operator) {
+  const sardo = region === 'Sardegna';
+  return {
+    _id: id, label, comune, provincia: prov, region,
+    location: { it: `${label} · ${sardo ? 'Sardegna' : 'Toscana'}`, en: `${label} · ${sardo ? 'Sardinia' : 'Tuscany'}` },
+    tourist_tax: { per_night: null, max_nights: null, currency: 'EUR' },
+    waste: {
+      operator: operator || 'TODO', granularity: sardo ? 'comune-unico' : 'per-zona',
+      expose: { it: 'Esporre entro le 06:00 del giorno di raccolta.', en: 'Put waste out by 06:00 on collection day.' },
+      streams: STREAMS_PLACEHOLDER, bin_location: { it: 'Mastelli: —', en: 'Bins: —' }, info_url: ''
+    },
+    emergency_local: { hospital: { nm: { it: '—', en: '—' }, note: { it: '—', en: '—' } } },
+    recommendations: REC_PLACEHOLDER
+  };
+}
+
 // ---------- ZONE ----------
 const ZONES = [
   {
@@ -105,7 +122,19 @@ const ZONES = [
     },
     emergency_local: { hospital: { nm: { it: 'Ospedale (rif. Olbia)', en: 'Hospital (Olbia area)' }, note: { it: '—', en: '—' } } },
     recommendations: REC_PLACEHOLDER
-  }
+  },
+
+  // ---- zone aggiunte (differenziata e servizi locali = placeholder, da completare nell'editor) ----
+  mkZone('reggello',               'Reggello',                   'Reggello',                   'FI', 'Toscana', 'Alia Servizi Ambientali'),
+  mkZone('figline_incisa',         'Figline e Incisa Valdarno',  'Figline e Incisa Valdarno',  'FI', 'Toscana', 'Alia Servizi Ambientali'),
+  mkZone('terranuova_bracciolini', 'Terranuova Bracciolini',     'Terranuova Bracciolini',     'AR', 'Toscana', 'Sei Toscana'),
+  mkZone('san_giovanni_valdarno',  'San Giovanni Valdarno',      'San Giovanni Valdarno',      'AR', 'Toscana', 'Sei Toscana'),
+  mkZone('firenze',                'Firenze',                    'Firenze',                    'FI', 'Toscana', 'Alia Servizi Ambientali'),
+  mkZone('castel_san_gimignano',   'Castel San Gimignano',       'Castel San Gimignano',       'SI', 'Toscana', 'Sei Toscana'),
+  mkZone('siena',                  'Siena centro',               'Siena',                      'SI', 'Toscana', 'Sei Toscana'),
+  mkZone('cala_di_seta_calasetta', 'Cala di Seta · Calasetta',   'Calasetta',                  'SU', 'Sardegna', ''),
+  mkZone('bucine',                 'Bucine',                     'Bucine',                     'AR', 'Toscana', 'Sei Toscana'),
+  mkZone('monte_san_savino',       'Monte San Savino',           'Monte San Savino',           'AR', 'Toscana', 'Sei Toscana')
 ];
 
 // ---------- PROPRIETÀ ----------
