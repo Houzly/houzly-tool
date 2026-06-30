@@ -40,7 +40,8 @@ function mergeWaste(zone, p) {
   return {
     expose:       w.expose       ?? zw.expose       ?? null,
     streams:      w.streams      ?? zw.streams      ?? [],
-    bin_location: w.bin_location ?? zw.bin_location ?? null
+    bin_location: w.bin_location ?? zw.bin_location ?? null,
+    note:         w.note         ?? zw.note         ?? null
   };
 }
 
@@ -72,7 +73,8 @@ async function buildManual(db, slug) {
     wifi: property.wifi || { network: '', password: '', note: { it: '', en: '' } },
 
     checkin: {
-      time_from:    ci.time_from || (brand.checkin_default && brand.checkin_default.time_from) || '15:00',
+      time_from:    ci.time_from || (brand.checkin_default && brand.checkin_default.time_from) || '16:00',
+      time_to:      ci.time_to   || (brand.checkin_default && brand.checkin_default.time_to)   || '21:00',
       instructions: ci.instructions || { it: '', en: '' }
     },
     checkout: {
@@ -88,6 +90,12 @@ async function buildManual(db, slug) {
     waste: mergeWaste(zone, property),
 
     recommendations: [ ...((zone && zone.recommendations) || []), ...(property.recommendations_extra || []) ],
+
+    dining: {
+      restaurants: (property.dining_override && property.dining_override.restaurants) || (zone && zone.dining && zone.dining.restaurants) || [],
+      pizzerias:   (property.dining_override && property.dining_override.pizzerias)   || (zone && zone.dining && zone.dining.pizzerias)   || []
+    },
+    attractions: [ ...((zone && zone.attractions) || []), ...(property.attractions_extra || []) ],
 
     contacts: [ ...((brand.host && brand.host.contacts) || []), ...(property.contacts_extra || []) ],
 
