@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v54 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v55 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1803,7 +1803,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </div>
       <div class="field" style="margin-top:4px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:var(--radius)">
-          <input type="checkbox" id="p-incasso-diretto" onchange="calcScorporo()" style="width:18px;height:18px;flex-shrink:0">
+          <input type="checkbox" id="p-incasso-diretto" onchange="onCanaleChange()" style="width:18px;height:18px;flex-shrink:0">
           <span><span style="font-weight:600">&#128181; Incassato direttamente dal proprietario</span><br><span style="font-size:11px;color:var(--text-light)">L'ospite ha pagato il proprietario (es. suo Booking). La ritenuta 21% la versa la piattaforma a lui. Houzly deve <strong>ricevere</strong> compenso + pulizie anticipate.</span></span>
         </label>
       </div>
@@ -4638,7 +4638,10 @@ function updateMeseOverrideWarning(){
 function onCanaleChange(){
   var canale=document.getElementById('p-canale').value;
   var commField=document.getElementById('p-comm-abs');
-  if(canale==='Diretta'){
+  // v55: se "Incassato dal proprietario" è attivo, la commissione OTA va inserita
+  // anche su Diretta (prenotazione presa dal Booking del proprietario)
+  var incDiretto=document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked;
+  if(canale==='Diretta' && !incDiretto){
     commField.value=0;
     commField.readOnly=true;
     commField.style.color='var(--text-light)';
