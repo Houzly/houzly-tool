@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v55 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v56 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2624,7 +2624,10 @@ function doCalc(b){
   // Booking: aggiungo SEMPRE la commissione bancaria booking_fee_perc della
   //   proprietà (NON inclusa da Smoobu — applicata centralmente qui)
   var comm_ota=0;
-  if(b.canale!=='Diretta'){
+  // v56: la commissione OTA si calcola per tutti i canali tranne Diretta,
+  // MA se è una Diretta con incasso diretto dal proprietario (prenotazione
+  // passata da Booking sul suo profilo), la commissione esiste e va conteggiata.
+  if(b.canale!=='Diretta' || b.incasso_diretto){
     if(b.comm_ota_abs!=null && +b.comm_ota_abs>0){
       comm_ota=r2(+b.comm_ota_abs);
     } else {
