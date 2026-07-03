@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v57 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v58 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -5568,6 +5568,32 @@ function previewReportProp(){
        +'<div style="margin-top:6px;font-size:11px;color:#a16207;font-style:italic">Importo che il proprietario deve corrispondere a Houzly</div>'
        +'</div>'
       :'')
+    // ── v58: SALDO FINALE (combina netto + anticipi + incasso diretto) ──
+    +((bksDiretto.length || anticipiRecuperi.length)
+      ?(function(){
+         var saldoFinale=r2(nettoImposta - anticipiTot - saldoHouzlyTot);
+         var positivo=saldoFinale>=0;
+         var rows=''
+           +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Netto da bonificare (prenotazioni principali)</span><span style="font-weight:600">'+eur(nettoImposta)+'</span></div>';
+         if(anticipiRecuperi.length){
+           rows+='<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Recuperi anticipi spese</span><span style="color:#f87096;font-weight:600">- '+eur(anticipiTot)+'</span></div>';
+         }
+         if(bksDiretto.length){
+           rows+='<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Saldo a favore Houzly (incassi diretti)</span><span style="color:#f87096;font-weight:600">- '+eur(saldoHouzlyTot)+'</span></div>';
+         }
+         return '<div style="margin-top:16px;background:linear-gradient(135deg,#0d1b3e,#12294f);border:2px solid #22d1ee;border-radius:var(--radius-lg);padding:20px 24px;color:#fff">'
+           +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#22d1ee;margin-bottom:12px;letter-spacing:0.08em">&#128176; SALDO FINALE</div>'
+           +rows
+           +'<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px;margin-top:8px;border-top:2px solid rgba(34,209,238,0.4)">'
+             +'<span style="font-weight:700;font-size:15px">'+(positivo?'BONIFICO FINALE al proprietario':'Il proprietario deve versare a Houzly')+'</span>'
+             +'<span style="font-weight:800;font-size:22px;color:'+(positivo?'#22d1ee':'#ff9eb2')+'">'+eur(Math.abs(saldoFinale))+'</span>'
+           +'</div>'
+           +(positivo
+             ?'<div style="margin-top:8px;font-size:11.5px;color:rgba(255,255,255,0.6);font-style:italic">Importo netto da bonificare al proprietario dopo tutte le compensazioni</div>'
+             :'<div style="margin-top:8px;font-size:11.5px;color:#ff9eb2;font-style:italic">Le trattenute superano il netto: il proprietario deve corrispondere questa cifra a Houzly</div>')
+           +'</div>';
+       })()
+      :'')
     // ── Riepilogo BLACK ──
     +(bksBlack.length
       ?'<div style="margin-top:16px;background:#fff5f6;border:1.5px solid #f7b8c2;border-radius:var(--radius-lg);padding:18px 22px">'
@@ -5903,6 +5929,20 @@ function printReportContinue(selectedAntIds, markRecuperati){
      +srow('Saldo a favore di Houzly',eur(saldoHouzlyTot2),'grand')
      +'</div></div>'
     :'';
+  // v58: SALDO FINALE nel PDF (combina netto − anticipi − incassi diretti)
+  var sumFinal='';
+  if(bksDir.length || anticipiRecuperi2.length){
+    var saldoFinale2=r2(nettoImposta2 - anticipiTot2 - saldoHouzlyTot2);
+    var positivo2=saldoFinale2>=0;
+    var rowsF=srow('Netto da bonificare (principali)',eur(nettoImposta2));
+    if(anticipiRecuperi2.length) rowsF+=srow('Recuperi anticipi spese','- '+eur(anticipiTot2),'neg');
+    if(bksDir.length) rowsF+=srow('Saldo a favore Houzly (incassi diretti)','- '+eur(saldoHouzlyTot2),'neg');
+    sumFinal='<div class="sum-wrap"><div class="sum-box" style="background:#0d1b3e;border:2px solid #22d1ee">'
+      +'<div class="sum-title" style="background:#12294f;color:#22d1ee">&#128176; SALDO FINALE</div>'
+      +rowsF
+      +srow(positivo2?'BONIFICO FINALE AL PROPRIETARIO':'IL PROPRIETARIO DEVE VERSARE A HOUZLY',eur(Math.abs(saldoFinale2)),'grand')
+      +'</div></div>';
+  }
   // ── CSS A4 verticale leggibile (come PDF allegato) ──────────────
   var html='<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
@@ -5950,7 +5990,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
     // ── Tabella ──
     +tableNorm+tableBlk+tableDir
     // ── Riepilogo ──
-    +sumNorm+sumBlk+sumDir;
+    +sumNorm+sumBlk+sumDir+sumFinal;
   openPrintModal(title, html);
   // v47: marca gli anticipi inclusi come "Recuperati" se richiesto dall'utente
   if(markRecuperati && anticipiRecuperi2.length){
