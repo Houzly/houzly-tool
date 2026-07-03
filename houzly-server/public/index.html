@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v56 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v57 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2800,6 +2800,7 @@ document.addEventListener('click',function(e){
   else if(action==='view-pren')viewPren(id);
   else if(action==='edit-pren')editPren(id);
   else if(action==='toggle-black')toggleBlack(id);
+  else if(action==='verify-check'){if(_postImportFilter)markCheckVerified(id,_postImportFilter.type);}
   else if(action==='goto-report')gotoReport(id);
   else if(action==='del-gruppo'){if(confirm('Eliminare il gruppo?')){DB.propGroups=DB.propGroups.filter(function(g){return g.id!==id;});saveDB();renderGruppi();}}
   else if(action==='edit-gruppo')editGruppo(id);
@@ -3157,15 +3158,15 @@ function renderPostImportCheck(){
   var allBks = getDashBks(); // rispetta filtri Dashboard (mese/anno/proprietà)
   // 1. Airbnb senza pulizia
   var airbnbNoPul = allBks.filter(function(b){
-    return b.canale==='Airbnb' && !b.pulizia;
+    return b.canale==='Airbnb' && !b.pulizia && !isCheckVerified(b,'airbnb_no_pul');
   });
   // 2. Diretta senza importo totale
   var direttaNoTot = allBks.filter(function(b){
-    return b.canale==='Diretta' && (!b.tot || +b.tot<=0);
+    return b.canale==='Diretta' && (!b.tot || +b.tot<=0) && !isCheckVerified(b,'diretta_no_tot');
   });
   // 3. Prenotazioni a cavallo senza mese confermato (lunga >=10 notti a cavallo)
   var cavalloDaConf = allBks.filter(function(b){
-    return typeof needsMeseConferma==='function' && needsMeseConferma(b);
+    return typeof needsMeseConferma==='function' && needsMeseConferma(b) && !isCheckVerified(b,'cavallo_no_mese');
   });
   // 4. Anticipi da completare (proprietà o importo mancante)
   ensureAnticipiDB();
@@ -3180,7 +3181,7 @@ function renderPostImportCheck(){
   var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
   var bookingNoTax = allBks.filter(function(b){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2
-      && (b.checkin||'') >= bkCutoff;
+      && (b.checkin||'') >= bkCutoff && !isCheckVerified(b,'booking_no_tax');
   });
   var totIssues = airbnbNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length;
   if(totIssues === 0){
@@ -3240,6 +3241,8 @@ var _postImportNavigating = false;
 
 // v53: predicato che identifica se una prenotazione matcha un certo tipo di check
 function matchesPostImportCheck(b, type){
+  // v57: se l'anomalia è già stata verificata manualmente, non la segnalo più
+  if(isCheckVerified(b, type)) return false;
   if(type==='airbnb_no_pul') return b.canale==='Airbnb' && !b.pulizia;
   if(type==='diretta_no_tot') return b.canale==='Diretta' && (!b.tot || +b.tot<=0);
   if(type==='booking_no_tax'){
@@ -3248,6 +3251,37 @@ function matchesPostImportCheck(b, type){
   }
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
   return false;
+}
+
+// v57: gestione anomalie verificate manualmente ("è giusto così, non segnalare più")
+function isCheckVerified(b, type){
+  return Array.isArray(b.verified_checks) && b.verified_checks.indexOf(type)>=0;
+}
+function markCheckVerified(bookingId, type){
+  var b=DB.prenotazioni.find(function(x){return x.id===bookingId;});
+  if(!b) return;
+  if(!Array.isArray(b.verified_checks)) b.verified_checks=[];
+  if(b.verified_checks.indexOf(type)<0) b.verified_checks.push(type);
+  saveDB();
+  renderPrenotazioni();
+  toast('✓ Anomalia verificata — non verrà più segnalata');
+}
+function unmarkCheckVerified(bookingId, type){
+  var b=DB.prenotazioni.find(function(x){return x.id===bookingId;});
+  if(!b || !Array.isArray(b.verified_checks)) return;
+  b.verified_checks=b.verified_checks.filter(function(t){return t!==type;});
+  saveDB();
+  // Riapro il dettaglio aggiornato se aperto
+  if(document.getElementById('modal-view-pren')&&document.getElementById('modal-view-pren').classList.contains('open')){
+    viewPren(bookingId);
+  }
+  renderPrenotazioni();
+  toast('Anomalia riattivata — tornerà nei controlli');
+}
+// Etichette leggibili per i tipi di check
+function checkTypeLabel(type){
+  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare'};
+  return m[type]||type;
 }
 
 var _postImportLabels = {
@@ -4323,6 +4357,9 @@ function renderPrenotazioni(){
       +(b.canale==='Airbnb'&&!b.pulizia
         ?'<span title="Pulizie mancanti — Smoobu non le include per Airbnb. Inserisci con Modifica." style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:rgba(245,166,35,0.15);border-radius:50%;font-size:11px;cursor:default;flex-shrink:0" >&#9888;</span>'
         :'')
+      +(_postImportFilter
+        ?'<button class="btn btn-sm" data-action="verify-check" data-id="'+b.id+'" title="Verifica OK — non segnalare più questa anomalia" style="background:var(--green,#16a34a);color:#fff;border:none;font-weight:700">&#10003; OK</button>'
+        :'')
       +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" style="color:var(--blue);border-color:var(--blue)">&#128269;</button>'
       +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'" title="Documento">&#128196;</button>'
       +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'" title="Modifica">&#9999;&#65039;</button>'
@@ -4365,6 +4402,9 @@ function renderPrenotazioni(){
           +'<div class="mc-card-row"><span class="lbl">Tot. Pren.</span><span class="val">'+eur(b.calc.tot)+'</span></div>'
           +'<div class="mc-card-row"><span class="lbl">Tipo</span><span class="val"><span class="badge '+(own&&own.tipo==='azienda'?'badge-blue':'badge-cyan')+'" style="font-size:10px">'+(own&&own.tipo==='azienda'?'Azienda':'Pers. Fisica')+'</span></span></div>'
           +'<div class="mc-card-actions">'
+            +(_postImportFilter
+              ?'<button class="btn btn-sm" data-action="verify-check" data-id="'+b.id+'" style="background:var(--green,#16a34a);color:#fff;border:none;font-weight:700">✓ Verifica OK</button>'
+              :'')
             +'<button class="btn btn-sm btn-ghost" data-action="view-pren" data-id="'+b.id+'" title="Visualizza">🔍 Vedi</button>'
             +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'">📄 Doc</button>'
             +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'">✎</button>'
@@ -4473,6 +4513,20 @@ function viewPren(id){
   }
 
   document.getElementById('vp-title').textContent='Prenotazione — '+(b.ospite_nome||'');
+  // v57: anomalie verificate manualmente (con possibilità di riattivarle)
+  if(Array.isArray(b.verified_checks) && b.verified_checks.length){
+    html+=section('Anomalie verificate');
+    html+='<div style="font-size:11px;color:var(--text-light);margin-bottom:8px">Segnalazioni marcate come "OK, è giusto così" — non compaiono più nei controlli post-import. Clicca la × per riattivarle.</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    b.verified_checks.forEach(function(t){
+      html+='<span style="display:inline-flex;align-items:center;gap:6px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:4px 10px;border-radius:8px;font-size:11.5px;font-weight:600">'
+        +'&#10003; '+escHtml(checkTypeLabel(t))
+        +'<span onclick="unmarkCheckVerified(\''+b.id+'\',\''+t+'\')" style="cursor:pointer;color:#991b1b;font-weight:700;font-size:14px;line-height:1">&times;</span>'
+        +'</span>';
+    });
+    html+='</div>';
+  }
+
   document.getElementById('vp-body').innerHTML=html;
   openModal('modal-view-pren');
 }
