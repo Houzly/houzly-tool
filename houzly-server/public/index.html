@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v51 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v52 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1800,6 +1800,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
         <div class="field"><label>IVA 22% su Houzly</label><select id="p-iva22" onchange="calcScorporo()"><option value="0">No (esente)</option><option value="1">S&igrave; (+ 22%)</option></select></div>
       </div>
+      <div class="field" style="margin-top:4px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:var(--radius)">
+          <input type="checkbox" id="p-incasso-diretto" onchange="calcScorporo()" style="width:18px;height:18px;flex-shrink:0">
+          <span><span style="font-weight:600">&#128181; Incassato direttamente dal proprietario</span><br><span style="font-size:11px;color:var(--text-light)">L'ospite ha pagato il proprietario (es. suo Booking). La ritenuta 21% la versa la piattaforma a lui. Houzly deve <strong>ricevere</strong> compenso + pulizie anticipate.</span></span>
+        </label>
+      </div>
       <div class="scorporo-box" id="sc-box"><h4>&#8595; Scorporo Live</h4><div id="sc-rows"><div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci totale prenotazione</div></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:18px"><button class="btn btn-ghost" onclick="goStep(1)">&larr; Indietro</button><button class="btn btn-primary" onclick="goStep(3)">Avanti &rarr;</button></div>
     </div>
@@ -2640,11 +2646,19 @@ function doCalc(b){
   // IVA su Houzly: NON applicata se la prenotazione è Aggiuntiva (b.black),
   // perché Houzly non emette fattura su quelle.
   var iva22=(!b.black && b.iva22)?r2(houzly*0.22):0;
+  // v52: Incasso diretto dal proprietario.
+  // L'ospite ha pagato la proprietaria (es. su suo Booking): la ritenuta 21%
+  // la versa la piattaforma a lei, non Houzly. Il denaro è già suo.
+  // Houzly deve RICEVERE da lei: compenso + IVA + rimborso pulizie anticipate.
+  var incassoDiretto=!!b.incasso_diretto;
   var canone=r2(netto-houzly-iva22);
   // Se pulizie_owner: le pulizie vengono restituite al proprietario sopra il canone
   var rimborso_pulizie=pulizieOwner?pulizia:0;
   var canone_totale=r2(canone+rimborso_pulizie);
-  return{tot:tot,comm_ota:comm_ota,tassa:tassa,pulizia:pulizia,netto:netto,houzly:houzly,iva22:iva22,canone:canone,rimborso_pulizie:rimborso_pulizie,canone_totale:canone_totale,pulizie_owner:pulizieOwner};
+  // v52: saldo a favore Houzly quando incasso diretto
+  // = compenso + IVA + pulizie anticipate da Houzly (pulizie OFF = trattenute da Houzly)
+  var saldo_houzly=incassoDiretto?r2(houzly+iva22+(pulizieOwner?0:pulizia)):0;
+  return{tot:tot,comm_ota:comm_ota,tassa:tassa,pulizia:pulizia,netto:netto,houzly:houzly,iva22:iva22,canone:canone,rimborso_pulizie:rimborso_pulizie,canone_totale:canone_totale,pulizie_owner:pulizieOwner,incasso_diretto:incassoDiretto,saldo_houzly:saldo_houzly};
 }
 function r2(n){return Math.round((+(n||0))*100)/100;}
 function eur(n){var v=(+(n||0)).toFixed(2);var p=v.split('.');return '\u20ac\u00a0'+p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}
@@ -3209,7 +3223,9 @@ function renderDash(){
   var allBks=getDashBks();
   var totOTA=allBks.reduce(function(s,b){return s+b.calc.tot;},0);
   var totHouzly=allBks.reduce(function(s,b){return s+b.calc.houzly;},0);
-  var totCanone=allBks.reduce(function(s,b){return s+b.calc.canone;},0);
+  // v52: il canone delle prenotazioni incassate dal proprietario NON entra nel
+  // "Canone Proprietari" (non c'è nulla da rendere — il proprietario ha già i soldi)
+  var totCanone=allBks.reduce(function(s,b){return s+(b.calc.incasso_diretto?0:b.calc.canone);},0);
   var totOspiti=allBks.reduce(function(s,b){return s+(+b.n_ospiti||0);},0);
   var totPulizie=allBks.reduce(function(s,b){return s+b.calc.pulizia;},0);
   var totNotti=allBks.reduce(function(s,b){return s+(+b.notti||0);},0);
@@ -4052,6 +4068,8 @@ function editPren(id){
   document.getElementById('p-pulizia').value=b.pulizia||0;
   document.getElementById('p-houzly-perc').value=b.houzly_perc||20;
   document.getElementById('p-iva22').value=b.iva22?'1':'0';
+  var elInc=document.getElementById('p-incasso-diretto');
+  if(elInc)elInc.checked=!!b.incasso_diretto;
   // Mese competenza report
   var elOvr=document.getElementById('p-mese-override');
   if(elOvr)elOvr.value=b.meseReportOverride||'';
@@ -4167,7 +4185,7 @@ function renderPrenotazioni(){
       +'<td style="text-align:center"><div data-action="toggle-black" data-id="'+b.id+'" title="'+blackTitle+'" style="cursor:pointer;font-size:16px;line-height:1">'
       +(b.black?'<span style="color:var(--text-mid)">&#9679;</span>':'<span style="color:var(--border)">&#9675;</span>')+'</div></td>'
       +'<td><span class="badge '+cls+'">'+chIcon(b.canale,14)+esc(b.canale)+'</span></td>'
-      +'<td class="bold">'+esc(b.ospite_nome)+meseBadgesHtmlGlobal(b)+'</td>'
+      +'<td class="bold">'+esc(b.ospite_nome)+(b.incasso_diretto?' <span title="Incassato dal proprietario" style="font-size:11px">&#128181;</span>':'')+meseBadgesHtmlGlobal(b)+'</td>'
       +'<td style="text-align:center">'+b.n_ospiti+'</td>'
       +'<td>'+esc(nomeProp(b.proprieta_id))+'</td>'
       +'<td>'+dateIt(b.checkin)+'</td>'
@@ -4254,6 +4272,7 @@ function viewPren(id){
   html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">';
   html+='<span class="badge '+cls+'">'+chIcon(b.canale,14)+b.canale+'</span>';
   if(b.black)html+='<span class="badge badge-black" style="background:rgba(120,120,140,0.15);color:#555;border:1px solid #ccc">&#9679; Aggiuntiva</span>';
+  if(b.incasso_diretto)html+='<span class="badge" style="background:rgba(245,166,35,0.15);color:#92400e;border:1px solid #f5c97b">&#128181; Incasso proprietario</span>';
   html+='<span style="font-size:12px;color:var(--text-light);margin-left:auto">ID: '+(b.ota_num||'—')+'</span>';
   html+='</div>';
 
@@ -4344,6 +4363,7 @@ function openNewModal(){
   document.getElementById('p-comm-abs').value=0;
   document.getElementById('p-houzly-perc').value=20;
   document.getElementById('p-iva22').value='0';
+  var elIncR=document.getElementById('p-incasso-diretto');if(elIncR)elIncR.checked=false;
   // Reset mese competenza
   var elOvr2=document.getElementById('p-mese-override');if(elOvr2)elOvr2.value='';
   var elConf2=document.getElementById('p-mese-confermato');if(elConf2)elConf2.checked=false;
@@ -4509,7 +4529,7 @@ function onCanaleChange(){
 }
 function calcScorporo(){
   var canale=document.getElementById('p-canale').value;
-  var b={tot:+document.getElementById('p-tot').value||0,canale:canale,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',proprieta_id:document.getElementById('p-prop-sel').value};
+  var b={tot:+document.getElementById('p-tot').value||0,canale:canale,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),proprieta_id:document.getElementById('p-prop-sel').value};
   if(!b.tot){document.getElementById('sc-rows').innerHTML='<div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div>';return;}
   var c=doCalc(b);
   // Su Booking.com mostro la decomposizione: commissione pura + 1,5% bancaria
@@ -4533,7 +4553,16 @@ function calcScorporo(){
     +'<div class="sc-row"><span>Tot. Netto</span><span class="amt">'+eur(c.netto)+'</span></div>'
     +'<div class="sc-row"><span>Compenso Houzly ('+b.houzly_perc+'%)</span><span class="amt">- '+eur(c.houzly)+'</span></div>'
     +(b.iva22?'<div class="sc-row"><span>IVA 22% Houzly</span><span class="amt">- '+eur(c.iva22)+'</span></div>':'')
-    +'<div class="sc-total"><span class="label">Canone di Locazione Puro</span><span class="amt">'+eur(c.canone)+'</span></div>';
+    +'<div class="sc-total"><span class="label">Canone di Locazione Puro</span><span class="amt">'+eur(c.canone)+'</span></div>'
+    +(c.incasso_diretto
+      ?'<div style="margin-top:10px;padding:10px 12px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.35);border-radius:8px">'
+        +'<div style="font-size:10px;color:#f5a623;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-weight:700">&#128181; Incasso diretto proprietario</div>'
+        +'<div class="sc-row" style="color:rgba(255,255,255,0.6)"><span>Ritenuta 21%</span><span class="amt">gestita da piattaforma</span></div>'
+        +'<div class="sc-row"><span>Compenso Houzly'+(c.iva22?' + IVA':'')+'</span><span class="amt">'+eur(c.houzly+c.iva22)+'</span></div>'
+        +(c.pulizia>0?'<div class="sc-row"><span>Rimborso pulizie anticipate</span><span class="amt">'+eur(c.pulizia)+'</span></div>':'')
+        +'<div class="sc-total" style="border-top:1px solid rgba(245,166,35,0.3);margin-top:6px;padding-top:8px"><span class="label" style="color:#f5a623">Saldo a favore di Houzly</span><span class="amt" style="color:#f5a623">'+eur(c.saldo_houzly)+'</span></div>'
+      +'</div>'
+      :'');
 }
 function goStep(n){
   [1,2,3].forEach(function(i){
@@ -4572,7 +4601,7 @@ function savePren(){
   var newCommAbs=(canale==='Diretta')?0:(+document.getElementById('p-comm-abs').value||0);
   // comm_ota_perc tenuto per retrocompatibilità (visualizzazioni che usano %)
   var newCommPerc=newTot>0?r2(newCommAbs/newTot*100):0;
-  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
+  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -5157,9 +5186,14 @@ function previewReportProp(){
   if(!bks.length&&!bksBlack.length){area.innerHTML='<div class="card"><div style="text-align:center;padding:40px;color:var(--text-light)"><div style="font-size:40px">&#128269;</div><p>Nessuna prenotazione nel periodo</p></div></div>';return;}
   bks.sort(function(a,b){return a.checkin<b.checkin?-1:a.checkin>b.checkin?1:0;});
   bksBlack.sort(function(a,b){return a.checkin<b.checkin?-1:a.checkin>b.checkin?1:0;});
-  var sommaNetti=r2(bks.reduce(function(s,b){return s+(b.calc.canone_totale||b.calc.canone);},0));
+  // v52: separo le prenotazioni con incasso diretto (proprietario ha già i soldi)
+  var bksDiretto=bks.filter(function(b){return b.calc&&b.calc.incasso_diretto;});
+  var bksNormali=bks.filter(function(b){return !(b.calc&&b.calc.incasso_diretto);});
+  var sommaNetti=r2(bksNormali.reduce(function(s,b){return s+(b.calc.canone_totale||b.calc.canone);},0));
   var cedolare=r2(sommaNetti*0.21);
   var nettoImposta=r2(sommaNetti-cedolare);
+  // v52: totale saldo a favore Houzly dalle prenotazioni incasso diretto
+  var saldoHouzlyTot=r2(bksDiretto.reduce(function(s,b){return s+(b.calc.saldo_houzly||0);},0));
   // v44: Anticipi spese da recuperare nel mese corrente
   // Solo se il filtro è singolo mese+anno (non "Tutti i mesi")
   var anticipiRecuperi = [];
@@ -5240,9 +5274,9 @@ function previewReportProp(){
     bannerHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.4);border-radius:var(--radius);font-size:12px;color:#a06400">&#9888; <strong>'+pendingOnPeriod.length+'</strong> prenotazion'+(pendingOnPeriod.length===1?'e lunga toccherebbe':'i lunghe toccherebbero')+' questo periodo ma cade fuori (check-in altrove). Verificale dalla sezione Prenotazioni se vanno spostate qui.</div>';
   }
   var sectionsHTML='';
-  if(bks.length){
+  if(bksNormali.length){
     sectionsHTML+='<div class="rpt-section">'
-      +'<table class="rpt-table"><thead>'+tableHeader+'</thead><tbody>'+buildRows(bks)+'</tbody></table></div>';
+      +'<table class="rpt-table"><thead>'+tableHeader+'</thead><tbody>'+buildRows(bksNormali)+'</tbody></table></div>';
   }
   // BLACK section
   var blackHTML='';
@@ -5330,6 +5364,25 @@ function previewReportProp(){
              +'</div>'
             :'')
          :'<div class="rpt-sum-row"><span>Totale guadagno proprietario</span><span class="rpt-sum-total">'+eur(sommaNetti)+'</span></div>')
+       +'</div>'
+      :'')
+    // ── v52: Riepilogo INCASSO DIRETTO ──
+    +(bksDiretto.length
+      ?'<div style="margin-top:16px;background:#fffaf0;border:1.5px solid #f5c97b;border-radius:var(--radius-lg);padding:18px 22px">'
+       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;letter-spacing:0.06em">&#128181; PRENOTAZIONI INCASSATE DAL PROPRIETARIO</div>'
+       +'<div style="font-size:11px;color:#a16207;margin-bottom:12px;line-height:1.5">Queste prenotazioni sono state incassate direttamente dal proprietario. La ritenuta 21% è gestita dalla piattaforma. Houzly deve <strong>ricevere</strong> il compenso maturato e il rimborso delle spese anticipate.</div>'
+       +bksDiretto.map(function(b){
+          var propB=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
+          var metaB=dateIt(b.checkin)+(isGroup&&propB?' · '+propB.nome:'');
+          return '<div style="padding:8px 0;border-bottom:1px solid #f5e6c8">'
+            +'<div style="display:flex;justify-content:space-between;color:#3d2f10"><span style="font-weight:600">'+escHtml(b.ospite_nome||'Ospite')+'</span><span style="font-size:11px;color:#a16207">'+metaB+'</span></div>'
+            +'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#5a4a20"><span>Lordo incassato dal proprietario</span><span>'+eur(b.calc.tot)+'</span></div>'
+            +'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#5a4a20"><span>Compenso Houzly'+(b.calc.iva22?' (IVA incl.)':'')+'</span><span style="color:#b45309;font-weight:600">'+eur(b.calc.houzly+b.calc.iva22)+'</span></div>'
+            +(b.calc.pulizia>0?'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#5a4a20"><span>Rimborso pulizie anticipate</span><span style="color:#b45309;font-weight:600">'+eur(b.calc.pulizia)+'</span></div>':'')
+            +'</div>';
+       }).join('')
+       +'<div style="display:flex;justify-content:space-between;padding:10px 0 2px;margin-top:6px"><span style="font-weight:700;color:#92400e">Saldo a favore di Houzly</span><span style="font-weight:800;font-size:17px;color:#b45309">'+eur(saldoHouzlyTot)+'</span></div>'
+       +'<div style="margin-top:6px;font-size:11px;color:#a16207;font-style:italic">Importo che il proprietario deve corrispondere a Houzly</div>'
        +'</div>'
       :'')
     // ── Riepilogo BLACK ──
@@ -5531,13 +5584,16 @@ function printReportContinue(selectedAntIds, markRecuperati){
   var title='Report Mensile — '+(grp?grp.nome:(prop?prop.nome:''))+' — '+mese+' '+anno;
   // Build a clean self-contained print HTML instead of cloning screen HTML
   var bks=getReportBksFull();
-  var bksNorm=bks.filter(function(b){return !b.black;});
+  var bksNorm=bks.filter(function(b){return !b.black && !(b.calc&&b.calc.incasso_diretto);});
   var bksBlk=bks.filter(function(b){return !!b.black;});
+  // v52: prenotazioni con incasso diretto dal proprietario
+  var bksDir=bks.filter(function(b){return !b.black && b.calc&&b.calc.incasso_diretto;});
   // Checkbox: se OFF, escludi le Aggiuntive dal PDF
   var includeExtra=document.getElementById('rpt-include-extra');
   if(includeExtra && !includeExtra.checked) bksBlk=[];
   bksNorm.sort(function(a,b){return a.checkin<b.checkin?-1:1;});
   bksBlk.sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+  bksDir.sort(function(a,b){return a.checkin<b.checkin?-1:1;});
   var isGrpProp2=(propId&&propId.indexOf('grp:')==0);
   var isGroup2=(!propId&&!!groupId)||isGrpProp2;
   var grpId2=isGrpProp2?propId.slice(4):groupId;
@@ -5545,6 +5601,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
   var sommaNetti2=bksNorm.reduce(function(s,b){return s+r2(b.calc.canone_totale||b.calc.canone);},0);
   var cedolare2=r2(sommaNetti2*0.21);
   var nettoImposta2=r2(sommaNetti2-cedolare2);
+  var saldoHouzlyTot2=r2(bksDir.reduce(function(s,b){return s+(b.calc.saldo_houzly||0);},0));
   // v47: Anticipi selezionati esplicitamente dall'utente (non più filtro automatico)
   var anticipiRecuperi2 = [];
   var anticipiTot2 = 0;
@@ -5638,6 +5695,31 @@ function printReportContinue(selectedAntIds, markRecuperati){
      +srow('Totale spettante (solo informativo)',eur(totBlk),'total')
      +'</div></div>'
     :'';
+  // v52: sezione PDF prenotazioni incassate dal proprietario
+  var theadDir='<thead><tr>'+propCol+'<th>Entrata</th><th>Uscita</th><th>Cliente</th><th>Canale</th><th class="r">Lordo</th><th class="r">Comm.OTA</th><th class="r">Pulizia</th><th class="r">Houzly</th><th class="r">Saldo a Houzly</th></tr></thead>';
+  var tableDir=bksDir.length?'<div class="dir-header">&#128181; Prenotazioni Incassate dal Proprietario</div><table>'+theadDir+'<tbody>'+bksDir.map(function(b){
+    var propB=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
+    var propCell2=isGroup2?'<td>'+escHtml(propB?propB.nome:'—')+'</td>':'';
+    return '<tr>'+propCell2
+      +'<td>'+dateIt(b.checkin)+'</td><td>'+dateIt(b.checkout)+'</td>'
+      +'<td>'+escHtml(b.ospite_nome||'—')+'</td>'
+      +'<td><span class="ota-dir">'+escHtml(b.canale||'—')+'</span></td>'
+      +'<td class="r">'+eur(b.calc.tot)+'</td>'
+      +'<td class="r">'+eur(b.calc.comm_ota)+'</td>'
+      +'<td class="r">'+eur(b.calc.pulizia)+'</td>'
+      +'<td class="r">'+eur(b.calc.houzly+b.calc.iva22)+'</td>'
+      +'<td class="r bold">'+eur(b.calc.saldo_houzly)+'</td>'
+    +'</tr>';
+  }).join('')+'</tbody></table>':'';
+  var sumDir=bksDir.length
+    ?'<div class="dir-header">&#128181; Prenotazioni Incassate dal Proprietario</div><div class="sum-wrap"><div class="sum-box" style="background:#78560f">'
+     +'<div class="sum-title" style="background:#9a6f14">RIEPILOGO — INCASSATE DAL PROPRIETARIO</div>'
+     +srow('Totale Lordo (incassato dal proprietario)',eur(bksDir.reduce(function(s,b){return s+b.calc.tot;},0)))
+     +srow('Compenso Houzly'+(bksDir.some(function(b){return b.iva22;})?' (IVA incl.)':''),eur(bksDir.reduce(function(s,b){return s+b.calc.houzly+b.calc.iva22;},0)))
+     +(bksDir.some(function(b){return b.calc.pulizia>0;})?srow('Rimborso pulizie anticipate',eur(bksDir.reduce(function(s,b){return s+b.calc.pulizia;},0))):'')
+     +srow('Saldo a favore di Houzly',eur(saldoHouzlyTot2),'grand')
+     +'</div></div>'
+    :'';
   // ── CSS A4 verticale leggibile (come PDF allegato) ──────────────
   var html='<style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
@@ -5675,6 +5757,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
     +'.sum-row.coprop{font-size:10px;color:rgba(255,255,255,0.5)}'
     // Sezione BLACK
     +'.blk-header{background:#f3f4f8;border:1px solid #ccd;color:#444;font-weight:700;font-size:10px;padding:7px 12px;border-radius:4px;margin:18px 0 8px;text-transform:uppercase}'
+    +'.dir-header{background:#fffaf0;border:1px solid #f5c97b;color:#92400e;font-weight:700;font-size:10px;padding:7px 12px;border-radius:4px;margin:18px 0 8px;text-transform:uppercase}'
     +'</style>'
     // ── Header ──
     +'<div class="rpt-header">'
@@ -5682,9 +5765,9 @@ function printReportContinue(selectedAntIds, markRecuperati){
     +'<div class="sub">'+(own?nomeOwner(own.id):(grp2?grp2.nome:''))+' &middot; '+mese+' '+anno+' &middot; '+new Date().toLocaleDateString('it-IT')+'</div>'
     +'</div>'
     // ── Tabella ──
-    +tableNorm+tableBlk
+    +tableNorm+tableBlk+tableDir
     // ── Riepilogo ──
-    +sumNorm+sumBlk;
+    +sumNorm+sumBlk+sumDir;
   openPrintModal(title, html);
   // v47: marca gli anticipi inclusi come "Recuperati" se richiesto dall'utente
   if(markRecuperati && anticipiRecuperi2.length){
