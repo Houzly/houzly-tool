@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v53 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v54 · 03/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2502,6 +2502,7 @@ function dbDefaults(){
   if(!DB.kanban_cols)DB.kanban_cols=[];
   if(DB.spese_pulizie===undefined)DB.spese_pulizie=0;
   if(DB.spese_pulizie_glservizi===undefined)DB.spese_pulizie_glservizi=0;
+  if(DB.booking_tax_cutoff===undefined)DB.booking_tax_cutoff='2026-06-01';
   if(DB.spese_biancheria===undefined)DB.spese_biancheria=0;
 }
 
@@ -3172,8 +3173,11 @@ function renderPostImportCheck(){
   });
   // 5. Prenotazioni con tassa 0 su Booking (potenziale mancanza)
   //    (solo Booking perché per Airbnb la tassa è spesso davvero 0 nei dettagli)
+  //    v54: ignora quelle con check-in PRIMA della data di taglio (passato "chiuso")
+  var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
   var bookingNoTax = allBks.filter(function(b){
-    return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2;
+    return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2
+      && (b.checkin||'') >= bkCutoff;
   });
   var totIssues = airbnbNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length;
   if(totIssues === 0){
@@ -3209,7 +3213,12 @@ function renderPostImportCheck(){
     html += chip(direttaNoTot.length, 'Prenotazioni Diretta <strong>senza importo totale</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'diretta_no_tot\')');
   }
   if(bookingNoTax.length){
-    html += chip(bookingNoTax.length, 'Prenotazioni Booking <strong>senza tassa soggiorno</strong> (verificare)', 'Vai a Prenotazioni', 'goToPostImportCheck(\'booking_no_tax\')');
+    var cutoffLabel = bkCutoff.split('-').reverse().join('/');
+    html += '<div style="background:#fff;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12.5px">'
+      +'<span style="background:#fef3c7;color:#92400e;font-weight:700;padding:2px 8px;border-radius:6px;min-width:26px;text-align:center">'+bookingNoTax.length+'</span>'
+      +'<span style="flex:1">Prenotazioni Booking <strong>senza tassa soggiorno</strong> (verificare)<br><span style="font-size:10.5px;color:var(--text-light)">dal <span onclick="editBookingCutoff()" style="color:var(--blue);cursor:pointer;text-decoration:underline;font-weight:600">'+cutoffLabel+'</span> in poi · il pregresso è escluso</span></span>'
+      +'<button class="btn btn-sm btn-outline" onclick="goToPostImportCheck(\'booking_no_tax\')" style="font-size:11px;padding:3px 10px">Vai a Prenotazioni</button>'
+    +'</div>';
   }
   if(cavalloDaConf.length){
     html += chip(cavalloDaConf.length, 'Soggiorni <strong>a cavallo</strong> senza mese confermato', 'Vai a Prenotazioni', 'goToPostImportCheck(\'cavallo_no_mese\')');
@@ -3230,7 +3239,10 @@ var _postImportNavigating = false;
 function matchesPostImportCheck(b, type){
   if(type==='airbnb_no_pul') return b.canale==='Airbnb' && !b.pulizia;
   if(type==='diretta_no_tot') return b.canale==='Diretta' && (!b.tot || +b.tot<=0);
-  if(type==='booking_no_tax') return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2;
+  if(type==='booking_no_tax'){
+    var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
+    return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2 && (b.checkin||'') >= bkCutoff;
+  }
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
   return false;
 }
@@ -3282,6 +3294,22 @@ function goToPostImportCheck(type){
 function clearPostImportFilter(){
   _postImportFilter = null;
   renderPrenotazioni();
+}
+
+// v54: modifica la data di taglio per il check Booking-senza-tassa
+function editBookingCutoff(){
+  var cur = DB.booking_tax_cutoff || '2026-06-01';
+  var input = prompt('Data di taglio per il check "Booking senza tassa".\n\nLe prenotazioni Booking con check-in PRIMA di questa data vengono ignorate (il pregresso è considerato chiuso).\n\nInserisci la data in formato AAAA-MM-GG (es. 2026-07-01 per il report di luglio):', cur);
+  if(input===null) return; // annullato
+  input = input.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(input)){
+    toast('Formato non valido. Usa AAAA-MM-GG (es. 2026-07-01)');
+    return;
+  }
+  DB.booking_tax_cutoff = input;
+  saveDB();
+  toast('Data di taglio aggiornata: '+input.split('-').reverse().join('/'));
+  renderDash();
 }
 
 function renderDash(){
