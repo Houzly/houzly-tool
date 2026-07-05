@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v58 · 03/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v60 · 04/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1678,7 +1678,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div id="ptab-fiscale" style="display:none">
       <div class="alert alert-info">Le impostazioni fiscali dipendono dal contratto firmato con il proprietario.</div>
       <div class="toggle-row"><div><div class="toggle-label">IVA 22% sul Compenso Houzly</div><div class="toggle-sub">Attiva se previsto dal contratto</div></div><label class="toggle"><input type="checkbox" id="fisc-iva22"><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div><div class="toggle-label">Ritenuta d'Acconto 21%</div><div class="toggle-sub">Houzly trattiene il 21% sul canone come sostituto d'imposta (LdB 2024 — a titolo di acconto)</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row" id="fisc-cedolare-row"><div><div class="toggle-label">Ritenuta d'Acconto 21%</div><div class="toggle-sub">Houzly trattiene il 21% sul canone come sostituto d'imposta (LdB 2024 — a titolo di acconto)</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
+      <div id="fisc-azienda-note" style="display:none;background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--blue);margin-top:4px">&#127970; Proprietario azienda: nessuna ritenuta d'acconto viene applicata (l'azienda gestisce le imposte in proprio con fatturazione).</div>
       <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
@@ -2666,6 +2667,15 @@ function doCalc(b){
   return{tot:tot,comm_ota:comm_ota,tassa:tassa,pulizia:pulizia,netto:netto,houzly:houzly,iva22:iva22,canone:canone,rimborso_pulizie:rimborso_pulizie,canone_totale:canone_totale,pulizie_owner:pulizieOwner,incasso_diretto:incassoDiretto,saldo_houzly:saldo_houzly};
 }
 function r2(n){return Math.round((+(n||0))*100)/100;}
+
+// v59: la ritenuta d'acconto 21% si applica SOLO a proprietari persona fisica.
+// Alle aziende non si trattiene mai nulla (gestiscono le imposte in proprio),
+// a prescindere dal toggle fisc_cedolare.
+function fiscRitenutaAttiva(own){
+  if(!own) return false;
+  if(own.tipo==='azienda') return false;
+  return own.fisc_cedolare!==false;
+}
 function eur(n){var v=(+(n||0)).toFixed(2);var p=v.split('.');return '\u20ac\u00a0'+p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}
 function dateIt(s){if(!s)return'';var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
@@ -3714,6 +3724,13 @@ function setTipo(t){
   document.getElementById('tipo-az-btn').classList.toggle('active',t==='azienda');
   document.getElementById('form-pf').style.display=t==='persona_fisica'?'grid':'none';
   document.getElementById('form-az').style.display=t==='azienda'?'grid':'none';
+  // v59: per le aziende la ritenuta 21% non si applica mai → nascondo il toggle e mostro la nota
+  var cedRow=document.getElementById('fisc-cedolare-row');
+  var azNote=document.getElementById('fisc-azienda-note');
+  if(cedRow&&azNote){
+    if(t==='azienda'){cedRow.style.display='none';azNote.style.display='block';}
+    else {cedRow.style.display='';azNote.style.display='none';}
+  }
 }
 function showPropTab(t){
   ['base','fiscale','coprop'].forEach(function(x){
@@ -4576,7 +4593,7 @@ function onPropSel(){
     var srcChip='';
     if(cfg.source==='property')srcChip=' <span style="background:rgba(67,97,238,0.1);color:var(--blue);padding:1px 6px;border-radius:6px;font-size:10px;font-weight:600;margin-left:4px">specifica proprietà</span>';
     else if(cfg.source==='mixed')srcChip=' <span style="background:rgba(67,97,238,0.1);color:var(--blue);padding:1px 6px;border-radius:6px;font-size:10px;font-weight:600;margin-left:4px">override parziale</span>';
-    info.innerHTML='&#8505; Proprietario: <strong>'+nomeOwner(own.id)+'</strong> &middot; Houzly '+cfg.houzly_perc+'%'+srcChip+' &middot; IVA Houzly: '+(cfg.iva22?'S\u00ec':'No')+' &middot; Cedolare: '+(own.fisc_cedolare?'S\u00ec':'No');
+    info.innerHTML='&#8505; Proprietario: <strong>'+nomeOwner(own.id)+'</strong> &middot; Houzly '+cfg.houzly_perc+'%'+srcChip+' &middot; IVA Houzly: '+(cfg.iva22?'S\u00ec':'No')+' &middot; Ritenuta 21%: '+(fiscRitenutaAttiva(own)?'S\u00ec':(own.tipo==='azienda'?'No (azienda)':'No'));
   } else {info.style.display='none';}
   calcScorporo();
 }
@@ -5373,7 +5390,9 @@ function previewReportProp(){
   var bksDiretto=bks.filter(function(b){return b.calc&&b.calc.incasso_diretto;});
   var bksNormali=bks.filter(function(b){return !(b.calc&&b.calc.incasso_diretto);});
   var sommaNetti=r2(bksNormali.reduce(function(s,b){return s+(b.calc.canone_totale||b.calc.canone);},0));
-  var cedolare=r2(sommaNetti*0.21);
+  // v60: la ritenuta si applica solo se il proprietario è persona fisica con toggle attivo.
+  var _ritAttiva=(fiscRitenutaAttiva(own)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return fiscRitenutaAttiva(_fo);}())));
+  var cedolare=_ritAttiva?r2(sommaNetti*0.21):0;
   var nettoImposta=r2(sommaNetti-cedolare);
   // v52: totale saldo a favore Houzly dalle prenotazioni incasso diretto
   var saldoHouzlyTot=r2(bksDiretto.reduce(function(s,b){return s+(b.calc.saldo_houzly||0);},0));
@@ -5480,7 +5499,7 @@ function previewReportProp(){
       +'</div>';
   }
   var copropsHTML='';
-  if(own&&own.coprops&&own.coprops.length&&own.fisc_cedolare){
+  if(own&&own.coprops&&own.coprops.length&&fiscRitenutaAttiva(own)){
     copropsHTML='<div class="rpt-coprop"><h5>Ritenuta d\'Acconto per Co-Proprietari</h5>'
       +own.coprops.map(function(cp){return'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span>'+cp.nome+' ('+(cp.perc*100).toFixed(0)+'%)</span><strong style="color:var(--cyan)">'+eur(r2(nettoImposta*cp.perc))+'</strong></div>';}).join('')+'</div>';
   }
@@ -5507,7 +5526,7 @@ function previewReportProp(){
          ?'<div class="rpt-sum-row"><span>Rimborso pulizie al proprietario</span><span style="color:var(--green);font-weight:600">+ '+eur(r2(bks.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0)))+'</span></div>'
          :'')
        +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale guadagno proprietario</span><span style="font-weight:700">'+eur(sommaNetti)+'</span></div>'
-       +(((own&&own.fisc_cedolare)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return _fo&&_fo.fisc_cedolare;}())))
+       +((fiscRitenutaAttiva(own)||(isGroup&&(function(){var _fp=grp?(DB.proprieta.find(function(p){return grp.children&&grp.children.indexOf(p.id)>=0;})):null;var _fo=_fp?DB.proprietari.find(function(x){return x.id===_fp.proprietario_id;}):null;return fiscRitenutaAttiva(_fo);}())))
          ?'<div class="rpt-sum-row" style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px"><span>Ritenuta d\'Acconto 21%</span><span style="color:var(--red);font-weight:700">- '+eur(cedolare)+'</span></div>'
           +'<div class="rpt-sum-row"><span>Netto da bonificare al proprietario dopo imposta</span><span class="'+(anticipiRecuperi.length?'':'rpt-sum-total')+'" style="'+(anticipiRecuperi.length?'font-weight:600':'')+'">'+eur(nettoImposta)+'</span></div>'
           // v44: sezione recuperi anticipi
@@ -5546,7 +5565,30 @@ function previewReportProp(){
              }).join('')
              +'</div>'
             :'')
-         :'<div class="rpt-sum-row"><span>Totale guadagno proprietario</span><span class="rpt-sum-total">'+eur(sommaNetti)+'</span></div>')
+         :((anticipiRecuperi.length)
+           // Ramo azienda/no-ritenuta CON anticipi: mostro recuperi + netto bonificato
+           ?'<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15)">'
+             +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">&#128184; Recuperi Anticipi Spese (anteprima)</div>'
+             +'<div style="font-size:10.5px;color:rgba(245,158,11,0.9);margin-bottom:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:6px 10px;line-height:1.5">⓵ Questa è solo un\'anteprima informativa. Quando esporti il PDF, deciderai esplicitamente quali anticipi includere.</div>'
+             +anticipiRecuperi.map(function(a){
+               var propAnt=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+               var meta = a.data?dateIt(a.data):'';
+               if(isGroup && propAnt) meta += (meta?' · ':'') + propAnt.nome;
+               var saldoRes = r2((+a.importo||0) - (+a.recuperato||0));
+               var isPartial = (+a.recuperato||0) > 0;
+               var saldoLabel = isPartial
+                 ? '<div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px">Anticipato '+eur(+a.importo||0)+' · Recuperato in precedenza '+eur(+a.recuperato||0)+'</div>'
+                 : '';
+               return '<div class="rpt-sum-row" style="padding:5px 0">'
+                 +'<span><span style="color:rgba(255,255,255,0.7)">'+escHtml(a.causale||'—')+'</span>'+(a.categoria?' <span style="font-size:9.5px;background:rgba(67,209,238,0.15);color:#67e8f9;padding:1px 5px;border-radius:4px;font-weight:600">'+escHtml(a.categoria)+'</span>':'')+'<div style="font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:2px">'+meta+(a.note?' · '+escHtml(a.note):'')+'</div>'+saldoLabel+'</span>'
+                 +'<span style="color:#f87096;font-weight:600">- '+eur(saldoRes)+'</span>'
+                 +'</div>';
+             }).join('')
+             +'<div class="rpt-sum-row" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:8px"><span style="font-weight:700">Totale recuperi anticipi</span><span style="color:#f87096;font-weight:700">- '+eur(anticipiTot)+'</span></div>'
+             +'<div class="rpt-sum-row" style="margin-top:10px;padding-top:10px;border-top:2px solid rgba(67,209,238,0.4)"><span style="font-weight:700;font-size:14px">Netto bonificato al proprietario</span><span class="rpt-sum-total">'+eur(r2(sommaNetti-anticipiTot))+'</span></div>'
+            +'</div>'
+           // Ramo azienda/no-ritenuta SENZA anticipi: totale secco
+           :'<div class="rpt-sum-row"><span>Totale da bonificare al proprietario</span><span class="rpt-sum-total">'+eur(sommaNetti)+'</span></div>'))
        +'</div>'
       :'')
     // ── v52: Riepilogo INCASSO DIRETTO ──
@@ -5808,7 +5850,9 @@ function printReportContinue(selectedAntIds, markRecuperati){
   var grpId2=isGrpProp2?propId.slice(4):groupId;
   var grp2=isGroup2?(DB.propGroups||[]).find(function(g){return g.id===grpId2;}):null;
   var sommaNetti2=bksNorm.reduce(function(s,b){return s+r2(b.calc.canone_totale||b.calc.canone);},0);
-  var cedolare2=r2(sommaNetti2*0.21);
+  // v60: ritenuta solo per persona fisica con toggle attivo
+  var _ritAttiva2=(fiscRitenutaAttiva(own)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return fiscRitenutaAttiva(_fo2);})()));
+  var cedolare2=_ritAttiva2?r2(sommaNetti2*0.21):0;
   var nettoImposta2=r2(sommaNetti2-cedolare2);
   var saldoHouzlyTot2=r2(bksDir.reduce(function(s,b){return s+(b.calc.saldo_houzly||0);},0));
   // v47: Anticipi selezionati esplicitamente dall'utente (non più filtro automatico)
@@ -5871,7 +5915,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
      +(bksNorm.some(function(b){return b.iva22;})?srow('IVA 22% su Houzly','- '+eur(bksNorm.reduce(function(s,b){return s+(b.iva22?b.calc.iva22:0);},0)),'neg'):'')
      +(bksNorm.some(function(b){return b.calc.pulizie_owner&&b.calc.rimborso_pulizie>0;})?srow('Rimborso pulizie al proprietario','+ '+eur(bksNorm.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0)),'pos'):'')
      +srow('Totale guadagno proprietario',eur(sommaNetti2),'total')
-     +(((own&&own.fisc_cedolare)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return _fo2&&_fo2.fisc_cedolare;})()))
+     +((fiscRitenutaAttiva(own)||(isGroup2&&(function(){var _fp2=grp2?(DB.proprieta.find(function(p){return grp2.children&&grp2.children.indexOf(p.id)>=0;})):null;var _fo2=_fp2?DB.proprietari.find(function(x){return x.id===_fp2.proprietario_id;}):null;return fiscRitenutaAttiva(_fo2);})()))
        ?srow('Ritenuta d\'Acconto 21%','- '+eur(cedolare2),'neg')
         +srow('Netto dopo imposta',eur(nettoImposta2), anticipiRecuperi2.length?'total':'grand')
         +(anticipiRecuperi2.length
@@ -5891,7 +5935,18 @@ function printReportContinue(selectedAntIds, markRecuperati){
              return srow(cp.nome+' ('+(cp.perc*100).toFixed(0)+'%) — ritenuta di competenza','- '+eur(qC),'coprop');
            }).join('')
           :'')
-       :'')
+       // v60: ramo azienda/no-ritenuta — mostro anticipi e netto bonificato senza ritenuta
+       :(anticipiRecuperi2.length
+          ?'<div class="sum-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #555"><span class="lbl" style="font-weight:700;color:#666;text-transform:uppercase;font-size:10px;letter-spacing:0.06em">&#128184; Recuperi Anticipi Spese</span><span class="val"></span></div>'
+           +anticipiRecuperi2.map(function(a){
+             var propA=DB.proprieta.find(function(p){return p.id===a.proprieta_id;});
+             var labelMeta = (a.data?dateIt(a.data):'') + (isGroup2 && propA ? ' · '+propA.nome : '');
+             var saldoRes = r2((+a.importo||0) - (+a.recuperato||0));
+             return srow((a.causale||'—')+(a.categoria?' ['+escHtml(a.categoria)+']':'')+' <span style="font-size:9px;color:#888">'+labelMeta+'</span>','- '+eur(saldoRes),'neg');
+           }).join('')
+           +srow('Totale recuperi anticipi','- '+eur(anticipiTot2),'neg')
+           +srow('Netto bonificato al proprietario',eur(nettoBonifico2),'grand')
+          :''))
      +'</div></div>'
     :'';
   var sumBlk=bksBlk.length
@@ -6034,11 +6089,11 @@ function exportReportExcel(){
     data.push([]);
   });
   var sommaNetti=r2(bks.reduce(function(s,b){return s+b.calc.canone;},0));
-  var cedolare=r2(sommaNetti*0.21);
+  var cedolare=fiscRitenutaAttiva(own)?r2(sommaNetti*0.21):0;
   var nettoImposta=r2(sommaNetti-cedolare);
   data.push([]);data.push(['','','','','','SOMMA NETTI PROPRIETARIO','RITENUTA 21%','TOTALE AL NETTO D\'IMPOSTA']);
   data.push(['','','','','',sommaNetti,cedolare,nettoImposta]);
-  if(own.coprops&&own.coprops.length&&own.fisc_cedolare){
+  if(own.coprops&&own.coprops.length&&fiscRitenutaAttiva(own)){
     data.push([]);data.push(['','','','','','RITENUTA D\'ACCONTO PROPRIETARI','QUOTA PROPRIETARIO','TOTALE']);
     own.coprops.forEach(function(cp){data.push(['','','','','',cp.nome,cp.perc,r2(nettoImposta*cp.perc)]);});
   }
@@ -11261,7 +11316,7 @@ function renderAdemp770(){
   var totMandantiCount=new Set();
   var totRitenuta=0,totBase=0;
   mandanti.forEach(function(m){
-    if(m.fisc_cedolare===false)return; // solo cedolare
+    if(!fiscRitenutaAttiva(m))return; // solo persone fisiche con ritenuta attiva (aziende escluse)
     var d=ademCalcMandanteYearly(m.id, anno);
     if(!d)return;
     var propIds=d.properties.map(function(p){return p.id;});
@@ -11729,7 +11784,7 @@ function adempExport770CSV(){
   var rows=[['Modello 770 — Anno '+anno+' — Houzly Snc'],[],['Mese','Scadenza F24','Base Imponibile','Ritenuta 21%','Cod. Tributo']];
   var monthly=Array(12).fill(0).map(function(){return{base:0,ritenuta:0};});
   ademGetActiveMandanti(anno).forEach(function(m){
-    if(m.fisc_cedolare===false)return;
+    if(!fiscRitenutaAttiva(m))return;
     var d=ademCalcMandanteYearly(m.id, anno);if(!d)return;
     var propIds=d.properties.map(function(p){return p.id;});
     DB.prenotazioni.forEach(function(b){
