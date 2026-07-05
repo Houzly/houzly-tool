@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v63 · 04/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v64 · 04/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3640,6 +3640,13 @@ function renderDashReports(){
     +'<div class="dr-cell-pultratt" data-mlbl="Totale Pulizie Trattenute" style="text-align:right;font-size:13px;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(grandPulTratt)+'</div>'
     +'<div></div>'
     +'<div></div>'
+    +'</div>';
+
+  // v64: nota esplicativa sulle colonne che possono confondere
+  rowsHtml+='<div style="padding:12px 20px;background:var(--surface);border-top:1px solid var(--border);font-size:11px;color:var(--text-light);line-height:1.6">'
+    +'<strong style="color:var(--text-mid)">Note sul calcolo:</strong> '
+    +'<span style="color:var(--text-mid)">Pulizie Trattenute</span> = solo le pulizie che restano a Houzly (escluse quelle girate ai proprietari, che confluiscono nel loro compenso). Nella card "Pulizie Incassate" trovi invece <em>tutte</em> le pulizie incassate dagli ospiti — la differenza è la quota girata ai proprietari. '
+    +'<span style="color:var(--text-mid)">Compenso Houzly</span> è al netto delle tasse di soggiorno, che sono una partita di giro versata al Comune e non un guadagno.'
     +'</div>';
 
   area.innerHTML=rowsHtml;
