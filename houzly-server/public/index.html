@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v60 · 04/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v62 · 04/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3174,6 +3174,10 @@ function renderPostImportCheck(){
   var direttaNoTot = allBks.filter(function(b){
     return b.canale==='Diretta' && (!b.tot || +b.tot<=0) && !isCheckVerified(b,'diretta_no_tot');
   });
+  // v62. Diretta senza pulizia (non entra in automatico, come Airbnb)
+  var direttaNoPul = allBks.filter(function(b){
+    return b.canale==='Diretta' && !b.pulizia && !isCheckVerified(b,'diretta_no_pul');
+  });
   // 3. Prenotazioni a cavallo senza mese confermato (lunga >=10 notti a cavallo)
   var cavalloDaConf = allBks.filter(function(b){
     return typeof needsMeseConferma==='function' && needsMeseConferma(b) && !isCheckVerified(b,'cavallo_no_mese');
@@ -3193,7 +3197,7 @@ function renderPostImportCheck(){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2
       && (b.checkin||'') >= bkCutoff && !isCheckVerified(b,'booking_no_tax');
   });
-  var totIssues = airbnbNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length;
+  var totIssues = airbnbNoPul.length + direttaNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length;
   if(totIssues === 0){
     // Card verde — tutto ok
     container.innerHTML = '<div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac;border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:12px">'
@@ -3222,6 +3226,9 @@ function renderPostImportCheck(){
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:8px">';
   if(airbnbNoPul.length){
     html += chip(airbnbNoPul.length, 'Prenotazioni Airbnb <strong>senza pulizia</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'airbnb_no_pul\')');
+  }
+  if(direttaNoPul.length){
+    html += chip(direttaNoPul.length, 'Prenotazioni Diretta <strong>senza pulizia</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'diretta_no_pul\')');
   }
   if(direttaNoTot.length){
     html += chip(direttaNoTot.length, 'Prenotazioni Diretta <strong>senza importo totale</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'diretta_no_tot\')');
@@ -3254,6 +3261,7 @@ function matchesPostImportCheck(b, type){
   // v57: se l'anomalia è già stata verificata manualmente, non la segnalo più
   if(isCheckVerified(b, type)) return false;
   if(type==='airbnb_no_pul') return b.canale==='Airbnb' && !b.pulizia;
+  if(type==='diretta_no_pul') return b.canale==='Diretta' && !b.pulizia;
   if(type==='diretta_no_tot') return b.canale==='Diretta' && (!b.tot || +b.tot<=0);
   if(type==='booking_no_tax'){
     var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
@@ -3290,12 +3298,13 @@ function unmarkCheckVerified(bookingId, type){
 }
 // Etichette leggibili per i tipi di check
 function checkTypeLabel(type){
-  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare'};
+  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_pul:'Pulizia mancante (Diretta)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare'};
   return m[type]||type;
 }
 
 var _postImportLabels = {
   airbnb_no_pul: 'Airbnb senza pulizia',
+  diretta_no_pul: 'Diretta senza pulizia',
   diretta_no_tot: 'Diretta senza importo totale',
   booking_no_tax: 'Booking senza tassa di soggiorno',
   cavallo_no_mese: 'Soggiorni a cavallo senza mese confermato'
@@ -3543,34 +3552,42 @@ function renderDashReports(){
   });
 
   // Calcola anche i totali del periodo per il footer
-  var grandLordo=0, grandNetto=0, grandPren=0;
+  var grandLordo=0, grandNetto=0, grandPren=0, grandHouzly=0, grandPulTratt=0;
   items.forEach(function(it){
     it.bks.forEach(function(b){
       if(!b.calc||!b.calc.tot)b.calc=doCalc(b);
       grandLordo+=b.calc.tot||0;
       grandNetto+=(b.calc.canone_totale||b.calc.canone||0);
+      grandHouzly+=(b.calc.houzly||0)+(b.calc.iva22||0);
+      grandPulTratt+=(b.calc.pulizie_owner?0:(b.calc.pulizia||0));
       grandPren++;
     });
   });
 
   // Header riga (visibile solo se ci sono items)
-  var rowsHtml='<div class="dr-row dr-head" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:9px 20px;background:var(--surface2);border-bottom:1.5px solid var(--border);font-size:9.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;align-items:center">'
+  var rowsHtml='<div class="dr-row dr-head" style="display:grid;grid-template-columns:36px minmax(200px,2fr) 0.8fr 1fr 1fr 1fr 1fr 120px 180px;gap:10px;padding:9px 20px;background:var(--surface2);border-bottom:1.5px solid var(--border);font-size:9.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;align-items:center">'
     +'<div></div>'
     +'<div>Proprietà</div>'
     +'<div style="text-align:center">Prenotazioni</div>'
     +'<div style="text-align:right">Lordo</div>'
     +'<div style="text-align:right">Netto Proprietario</div>'
+    +'<div style="text-align:right">Compenso Houzly</div>'
+    +'<div style="text-align:right">Pulizie Trattenute</div>'
     +'<div style="text-align:center">Stato</div>'
     +'<div style="text-align:right">Azioni</div>'
     +'</div>';
 
   rowsHtml+=items.map(function(it){
     var inviato=isReportInviato(it.type,it.id,y,m);
-    var lordo=0, netto=0, nOver=0, nWarn=0;
+    var lordo=0, netto=0, nOver=0, nWarn=0, houzlyTot=0, pulizieTratt=0;
     it.bks.forEach(function(b){
       if(!b.calc||!b.calc.tot)b.calc=doCalc(b);
       lordo+=b.calc.tot||0;
       netto+=(b.calc.canone_totale||b.calc.canone||0);
+      // v61: compenso Houzly con IVA inclusa (iva22 è già 0 se non applicabile)
+      houzlyTot+=(b.calc.houzly||0)+(b.calc.iva22||0);
+      // v61: pulizie trattenute da Houzly — escludo quelle girate al proprietario (pulizie_owner)
+      pulizieTratt+=(b.calc.pulizie_owner?0:(b.calc.pulizia||0));
       if(b.meseReportOverride)nOver++;
       if(needsMeseConferma(b))nWarn++;
     });
@@ -3592,25 +3609,29 @@ function renderDashReports(){
       : '<button class="btn btn-sm btn-ghost" data-action="dr-toggle-inviato" data-type="'+it.type+'" data-id="'+it.id+'" style="font-size:11px" title="Segna come inviato">✓ Inviato</button>'
         +' <button class="btn btn-sm btn-primary" data-action="goto-report" data-id="'+dataIdAttr+'" style="font-size:11px">Report →</button>';
 
-    return '<div class="dr-row'+(inviato?' is-inviato':'')+'" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s">'
+    return '<div class="dr-row'+(inviato?' is-inviato':'')+'" style="display:grid;grid-template-columns:36px minmax(200px,2fr) 0.8fr 1fr 1fr 1fr 1fr 120px 180px;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s">'
       +'<div class="dr-cell-icon" style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
       +'<div class="dr-cell-name" style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.nome)+badgesExtra+'</div>'
       +'<div style="font-size:11px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sottotitolo||'')+'</div></div>'
       +'<div class="dr-cell-pren" data-mlbl="Prenotazioni" style="text-align:center;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+it.bks.length+'</div>'
       +'<div class="dr-cell-lordo" data-mlbl="Lordo" style="text-align:right;font-size:13px;font-weight:600;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(lordo)+'</div>'
       +'<div class="dr-cell-netto" data-mlbl="Netto Proprietario" style="text-align:right;font-size:13px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(netto)+'</div>'
+      +'<div class="dr-cell-houzly" data-mlbl="Compenso Houzly" style="text-align:right;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+eur(houzlyTot)+'</div>'
+      +'<div class="dr-cell-pultratt" data-mlbl="Pulizie Trattenute" style="text-align:right;font-size:13px;font-weight:600;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(pulizieTratt)+'</div>'
       +'<div class="dr-cell-stato" style="text-align:center">'+statoHtml+'</div>'
       +'<div class="dr-cell-azioni" style="text-align:right;display:flex;gap:4px;justify-content:flex-end">'+azioniHtml+'</div>'
       +'</div>';
   }).join('');
 
   // Riga totali
-  rowsHtml+='<div class="dr-row dr-totali" style="display:grid;grid-template-columns:36px minmax(220px,2.2fr) 1fr 1.1fr 1.1fr 130px 200px;gap:10px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
+  rowsHtml+='<div class="dr-row dr-totali" style="display:grid;grid-template-columns:36px minmax(200px,2fr) 0.8fr 1fr 1fr 1fr 1fr 120px 180px;gap:10px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
     +'<div></div>'
     +'<div class="dr-cell-name" style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Syne,sans-serif">Totali del mese</div>'
     +'<div class="dr-cell-pren" data-mlbl="Totale prenotazioni" style="text-align:center;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+grandPren+'</div>'
     +'<div class="dr-cell-lordo" data-mlbl="Totale lordo" style="text-align:right;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">'+eur(grandLordo)+'</div>'
     +'<div class="dr-cell-netto" data-mlbl="Totale netto" style="text-align:right;font-size:13px;color:var(--cyan);font-variant-numeric:tabular-nums">'+eur(grandNetto)+'</div>'
+    +'<div class="dr-cell-houzly" data-mlbl="Totale Compenso Houzly" style="text-align:right;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+eur(grandHouzly)+'</div>'
+    +'<div class="dr-cell-pultratt" data-mlbl="Totale Pulizie Trattenute" style="text-align:right;font-size:13px;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(grandPulTratt)+'</div>'
     +'<div></div>'
     +'<div></div>'
     +'</div>';
