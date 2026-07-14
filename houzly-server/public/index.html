@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v64 · 04/07</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v65 · 04/07</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -809,6 +809,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="stat-grid" id="stat-grid-2" style="margin-top:0"></div>
   <!-- CHECK POST-IMPORT (v51) -->
   <div id="post-import-check-container" style="margin-bottom:14px"></div>
+  <!-- IMPOSTA DI SOGGIORNO (v65) -->
+  <div id="imposta-soggiorno-container" style="margin-bottom:14px"></div>
   <!-- BOTTOM PANEL: REPORT DEL MESE -->
   <div class="card" style="padding:0;overflow:hidden">
     <div style="padding:14px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -1743,6 +1745,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="toggle-row">
         <div><div class="toggle-label">Pulizie al Proprietario</div><div class="toggle-sub">Le spese pulizia vengono rimborsate al proprietario (aggiunte al canone e incluse nella base cedolare)</div></div>
         <label class="toggle"><input type="checkbox" id="prop-pulizie-owner"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Imposta di Soggiorno trattenuta da Houzly</div><div class="toggle-sub">Houzly incassa l'imposta dagli ospiti e la versa al Comune. Disattiva se la gestisce il proprietario o la piattaforma (es. Airbnb convenzionato).</div></div>
+        <label class="toggle"><input type="checkbox" id="prop-tassa-trattenuta"><span class="toggle-slider"></span></label>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:22px">
@@ -3368,6 +3374,126 @@ function editBookingCutoff(){
   renderDash();
 }
 
+// v65: Card Imposta di Soggiorno — mostra l'imposta incassata da Houzly (che dovrà
+// essere versata ai Comuni) per le sole proprietà con flag tassa_trattenuta.
+// Filtro indipendente: Mese singolo / Trimestre Q1-Q4 / Anno intero.
+var _isogPeriodo = 'mese';  // 'mese' | 'q1' | 'q2' | 'q3' | 'q4' | 'anno'
+
+function isogSetPeriodo(p){
+  _isogPeriodo = p;
+  renderImpostaSoggiorno();
+}
+// Ritorna [meseInizio, meseFine] (1-12) in base al periodo selezionato
+function isogRangeMesi(meseDash){
+  if(_isogPeriodo==='q1') return [1,3];
+  if(_isogPeriodo==='q2') return [4,6];
+  if(_isogPeriodo==='q3') return [7,9];
+  if(_isogPeriodo==='q4') return [10,12];
+  if(_isogPeriodo==='anno') return [1,12];
+  // mese: usa il mese selezionato in Dashboard (0 = tutti)
+  return meseDash ? [meseDash, meseDash] : [1,12];
+}
+function isogLabelPeriodo(meseDash, anno){
+  var mesiNomi=['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  if(_isogPeriodo==='q1') return 'Q1 (Gen-Mar) '+anno;
+  if(_isogPeriodo==='q2') return 'Q2 (Apr-Giu) '+anno;
+  if(_isogPeriodo==='q3') return 'Q3 (Lug-Set) '+anno;
+  if(_isogPeriodo==='q4') return 'Q4 (Ott-Dic) '+anno;
+  if(_isogPeriodo==='anno') return 'Anno '+anno;
+  return meseDash ? (mesiNomi[meseDash]+' '+anno) : ('Anno '+anno);
+}
+
+function renderImpostaSoggiorno(){
+  var container=document.getElementById('imposta-soggiorno-container');
+  if(!container) return;
+  // Periodo: anno dal filtro Dashboard, mesi dal selettore interno
+  var meseVal=document.getElementById('dash-mese-filter')?document.getElementById('dash-mese-filter').value:'';
+  var annoVal=document.getElementById('dash-anno-filter')?+document.getElementById('dash-anno-filter').value:0;
+  var mesiIt={'Gennaio':1,'Febbraio':2,'Marzo':3,'Aprile':4,'Maggio':5,'Giugno':6,'Luglio':7,'Agosto':8,'Settembre':9,'Ottobre':10,'Novembre':11,'Dicembre':12};
+  var meseDash=mesiIt[meseVal]||0;
+  var anno=annoVal||new Date().getFullYear();
+  var range=isogRangeMesi(meseDash);
+
+  // Proprietà con imposta trattenuta da Houzly
+  var propsTratt=(DB.proprieta||[]).filter(function(p){return !!p.tassa_trattenuta;});
+  var propIdsTratt=propsTratt.map(function(p){return p.id;});
+
+  // Raccolgo le prenotazioni nel periodo per quelle proprietà
+  var perProp={};
+  var totale=0;
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(b.black) return;
+    if(propIdsTratt.indexOf(b.proprieta_id)<0) return;
+    var m=0;
+    for(var mm=range[0]; mm<=range[1]; mm++){
+      if(bkInPeriod(b, mm, anno)){ m=mm; break; }
+    }
+    if(!m) return;
+    if(!b.calc||!b.calc.tot) b.calc=doCalc(b);
+    var tassa=+(b.calc.tassa||0);
+    if(tassa<=0) return;
+    if(!perProp[b.proprieta_id]) perProp[b.proprieta_id]={tot:0,n:0};
+    perProp[b.proprieta_id].tot+=tassa;
+    perProp[b.proprieta_id].n++;
+    totale+=tassa;
+  });
+
+  // Selettore periodo
+  var btns=[['mese','Mese'],['q1','Q1'],['q2','Q2'],['q3','Q3'],['q4','Q4'],['anno','Anno']];
+  var btnsHtml=btns.map(function(b){
+    var active=_isogPeriodo===b[0];
+    return '<button onclick="isogSetPeriodo(\''+b[0]+'\')" style="background:'+(active?'var(--blue)':'var(--surface2)')+';color:'+(active?'#fff':'var(--text-mid)')+';border:1px solid '+(active?'var(--blue)':'var(--border)')+';border-radius:6px;padding:4px 12px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">'+b[1]+'</button>';
+  }).join('');
+
+  if(propsTratt.length===0){
+    container.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">&#127963;</span>'
+      +'<span style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno</span></div>'
+      +'<div style="font-size:12px;color:var(--text-light);line-height:1.5">Nessuna proprietà ha il flag <strong>"Imposta di Soggiorno trattenuta da Houzly"</strong> attivo. Attivalo nel modal Proprietà (tab Fiscale) per le strutture in cui incassi tu l\'imposta e la versi al Comune.</div>'
+      +'</div>';
+    return;
+  }
+
+  // Righe per proprietà (ordinate per importo decrescente)
+  var righe=Object.keys(perProp).map(function(pid){
+    var p=DB.proprieta.find(function(x){return x.id===pid;});
+    return {id:pid, nome:p?p.nome:'—', comune:(p&&p.comune)?p.comune:'', tot:perProp[pid].tot, n:perProp[pid].n};
+  }).sort(function(a,b){return b.tot-a.tot;});
+
+  var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<span style="font-size:18px">&#127963;</span>'
+      +'<div style="flex:1;min-width:180px">'
+        +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno trattenuta</div>'
+        +'<div style="font-size:11px;color:var(--text-light)">'+escHtml(isogLabelPeriodo(meseDash,anno))+' &middot; da versare ai Comuni</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+btnsHtml+'</div>'
+    +'</div>';
+
+  if(righe.length===0){
+    html+='<div style="padding:18px 20px;font-size:12px;color:var(--text-light)">Nessuna imposta di soggiorno incassata nel periodo selezionato.</div>';
+  } else {
+    html+='<div style="padding:4px 0">';
+    righe.forEach(function(r){
+      html+='<div style="display:flex;align-items:center;gap:12px;padding:9px 20px;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.nome)+'</div>'
+          +'<div style="font-size:10.5px;color:var(--text-light)">'+(r.comune?escHtml(r.comune)+' &middot; ':'')+r.n+' prenotazion'+(r.n===1?'e':'i')+'</div>'
+        +'</div>'
+        +'<div style="font-size:13.5px;font-weight:700;color:var(--text-mid);font-variant-numeric:tabular-nums">'+eur(r.tot)+'</div>'
+      +'</div>';
+    });
+    html+='</div>';
+    html+='<div style="display:flex;align-items:center;gap:12px;padding:13px 20px;background:rgba(245,166,35,0.06);border-top:2px solid rgba(245,166,35,0.3)">'
+      +'<div style="flex:1"><div style="font-size:11.5px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;font-family:Syne,sans-serif">Totale da versare</div>'
+      +'<div style="font-size:10.5px;color:#a16207">Imposta incassata dagli ospiti — partita di giro</div></div>'
+      +'<div style="font-size:19px;font-weight:800;color:#b45309;font-variant-numeric:tabular-nums">'+eur(totale)+'</div>'
+    +'</div>';
+  }
+  html+='</div>';
+  container.innerHTML=html;
+}
+
 function renderDash(){
   populateDashFilter();
   var allBks=getDashBks();
@@ -3423,6 +3549,8 @@ function renderDash(){
     statCard('👤','Proprietari Attivi',DB.proprietari.length,DB.proprietari.filter(function(p){return p.tipo==='persona_fisica';}).length+' PF · '+DB.proprietari.filter(function(p){return p.tipo==='azienda';}).length+' Aziende','var(--blue)');
   // v51: Check post-import
   renderPostImportCheck();
+  // v65: Imposta di soggiorno
+  renderImpostaSoggiorno();
   // Inizializza filtri Report del Mese se non già fatto
   initDashReportFilters();
   renderDashReports();
@@ -4107,6 +4235,10 @@ function openModalProprieta(){
     var el=document.getElementById(id);if(el)el.value='';
   });
   updatePropCommPreview();
+  // Reset toggle (v65: incluso il nuovo flag imposta di soggiorno)
+  var elPO=document.getElementById('prop-pulizie-owner');if(elPO)elPO.checked=false;
+  var elTT2=document.getElementById('prop-tassa-trattenuta');if(elTT2)elTT2.checked=false;
+  var elBF=document.getElementById('prop-booking-fee');if(elBF)elBF.value=1.5;
   openModal('modal-proprieta');
 }
 function saveProprieta(){
@@ -4125,6 +4257,7 @@ function saveProprieta(){
     cin:document.getElementById('prop-cin').value.trim().toUpperCase(),
     booking_fee_perc:parseFloat(document.getElementById('prop-booking-fee').value)||1.5,
     pulizie_owner:document.getElementById('prop-pulizie-owner').checked,
+    tassa_trattenuta:!!(document.getElementById('prop-tassa-trattenuta')&&document.getElementById('prop-tassa-trattenuta').checked),
     // Dati catastali per DAC7/CU
     cat_comune:(document.getElementById('prop-cat-comune')||{value:''}).value.trim(),
     cat_foglio:(document.getElementById('prop-cat-foglio')||{value:''}).value.trim(),
@@ -4160,6 +4293,7 @@ function editProp(id){
     document.getElementById('prop-cin').value=p.cin||'';
     document.getElementById('prop-booking-fee').value=p.booking_fee_perc!=null?p.booking_fee_perc:1.5;
     document.getElementById('prop-pulizie-owner').checked=!!p.pulizie_owner;
+    var elTT=document.getElementById('prop-tassa-trattenuta');if(elTT)elTT.checked=!!p.tassa_trattenuta;
     document.getElementById('prop-owner-sel').value=p.proprietario_id||'';
     // Carico dati catastali
     var setIfExist=function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
