@@ -11291,7 +11291,13 @@ function ctrBuildHtml(c,owner){
   +'#ctr-doc .ctr-firme{display:flex;justify-content:space-between;gap:40px;margin-top:34px;page-break-inside:avoid}'
   +'#ctr-doc .ctr-firme div{flex:1;text-align:center}'
   +'#ctr-doc .ctr-line{border-top:1px solid #1a1a1a;margin-top:44px;padding-top:4px;font-size:11.5px}'
-  +'@media print{.ctr-noprint{display:none!important}#ctr-doc{max-width:100%}@page{margin:18mm}}'
+  +'#ctr-doc .ctr-appendice{page-break-before:always;break-before:page}'
+  +'#ctr-doc .ctr-gloss{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}'
+  +'#ctr-doc .ctr-gloss th{background:#170046;color:#fff;text-align:left;padding:7px 12px;font-size:12.5px}'
+  +'#ctr-doc .ctr-gloss td{border:1px solid #cfcfcf;padding:7px 12px;vertical-align:top;text-align:justify}'
+  +'#ctr-doc .ctr-gloss td:first-child{font-weight:700;color:#170046;white-space:nowrap}'
+  +'#ctr-doc .ctr-gloss tr:nth-child(even) td{background:#f5f4f8}'
+  +'@media print{.ctr-noprint{display:none!important}#ctr-doc{max-width:100%}@page{margin:18mm}}' 
   +'</style>'
   // ── COPERTINA (identica al Word master) ──
   +'<div class="ctr-cover">'
@@ -11444,7 +11450,22 @@ function ctrBuildHtml(c,owner){
   +coprops.map(function(cp){return '<div class="ctr-firme"><div><strong>Il Mandante \u2014 '+E((cp.nome||'')+' '+(cp.cognome||''))+'</strong> (comproprietario/a)<div class="ctr-line">&nbsp;</div></div><div></div></div>';}).join('')
   +'<p style="margin-top:26px"><strong>Ai sensi e per gli effetti degli artt. 1341 e 1342 c.c.</strong>, il Mandante dichiara di aver letto, compreso e di approvare specificamente le seguenti clausole: <strong>Art. 3</strong> (Esclusiva); <strong>Art. 4.2-4.3</strong> (Recesso e gestione prenotazioni post-recesso); <strong>Art. 10.3-10.5</strong> (Limitazioni all\u2019utilizzo personale in alta stagione e divieto di annullamento prenotazioni); <strong>Art. 11-bis.4</strong> (Commissione maggiorata per i servizi accessori di gestione del verde e della piscina); <strong>Art. 14</strong> (Propriet\u00e0 intellettuale del materiale fotografico); <strong>Art. 18</strong> (Clausole risolutive espresse); <strong>Art. 19.3</strong> (Foro competente esclusivo).</p>'
   +'<div class="ctr-firme"><div><strong>Il Mandante'+(multiMand?' \u2014 '+E(owner.tipo==='persona_fisica'?(owner.nome+' '+owner.cognome):owner.ragione_sociale):'')+'</strong> (per specifica approvazione delle clausole sopra elencate)<div class="ctr-line">&nbsp;</div></div></div>'
-  +coprops.map(function(cp){return '<div class="ctr-firme"><div><strong>Il Mandante \u2014 '+E((cp.nome||'')+' '+(cp.cognome||''))+'</strong> (per specifica approvazione delle clausole sopra elencate)<div class="ctr-line">&nbsp;</div></div></div>';}).join('');
+  +coprops.map(function(cp){return '<div class="ctr-firme"><div><strong>Il Mandante \u2014 '+E((cp.nome||'')+' '+(cp.cognome||''))+'</strong> (per specifica approvazione delle clausole sopra elencate)<div class="ctr-line">&nbsp;</div></div></div>';}).join('')
+
+  // ── APPENDICE — Glossario e note tecniche (come nel Master) ──
+  +'<div class="ctr-appendice">'
+  +'<h1>APPENDICE \u2014 Glossario e note tecniche</h1>'
+  +'<p class="ctr-redatto">Sezione di servizio non contrattuale, a supporto della compilazione e della validazione del modello.</p>'
+  +'<table class="ctr-gloss"><thead><tr><th style="width:30%">Termine</th><th>Definizione</th></tr></thead><tbody>'
+  +'<tr><td>Canone di locazione puro</td><td>base imponibile della ritenuta del 21% = canone lordo ospite \u2212 commissioni OTA \u2212 commissione Houzly. \u00c8 il valore riportato in Certificazione Unica (interpretazione AIGAB).</td></tr>'
+  +'<tr><td>Cedolare secca</td><td>imposta sostitutiva IRPEF, opzionabile dal proprietario in sede di dichiarazione dei redditi; aliquota 21% sul primo immobile destinato a locazione breve, 26% dal secondo (verificare normativa vigente alla firma). La ritenuta del 21% operata dall\u2019intermediario \u00e8 a titolo d\u2019acconto e viene scomputata dall\u2019imposta dovuta secondo il regime prescelto (cedolare o ordinario).</td></tr>'
+  +'<tr><td>F24 \u2014 codice tributo 1919</td><td>ritenuta operata all\u2019atto del pagamento al beneficiario di canoni/corrispettivi relativi a contratti di locazione breve.</td></tr>'
+  +'<tr><td>CU \u2014 Certificazione Unica</td><td>documento fiscale annuale che il sostituto d\u2019imposta rilascia al sostituito e trasmette all\u2019Agenzia delle Entrate entro il 16 marzo.</td></tr>'
+  +'<tr><td>Modello 770</td><td>dichiarazione annuale del sostituto d\u2019imposta, entro il 31 ottobre.</td></tr>'
+  +'<tr><td>DAC7</td><td>comunicazione dei gestori di piattaforma ex D.Lgs. 32/2023, entro il 31 gennaio.</td></tr>'
+  +'<tr><td>CIN</td><td>Codice Identificativo Nazionale, obbligatorio per gli immobili in locazione breve.</td></tr>'
+  +'</tbody></table>'
+  +'</div>';
 }
 
 </script>
