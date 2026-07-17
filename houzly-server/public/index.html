@@ -1022,49 +1022,66 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 </div>
 
 <!-- MODAL CONTRATTO -->
+<style>
+#modal-contratto .modal{max-width:840px}
+#modal-contratto input,#modal-contratto select,#modal-contratto textarea{width:100%;min-width:0;box-sizing:border-box;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none}
+#modal-contratto input:focus,#modal-contratto select:focus,#modal-contratto textarea:focus{border-color:var(--blue);background:#fff}
+#modal-contratto label{font-size:11px;font-weight:600;color:var(--text-mid);display:block;margin-bottom:4px}
+.ctrf{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.ctrf .full{grid-column:1/-1}
+.ctr-g3{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.ctr-g4{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.ctr-g6{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(min-width:680px){.ctr-g4{grid-template-columns:repeat(4,minmax(0,1fr))}.ctr-g6{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(max-width:560px){.ctrf{grid-template-columns:minmax(0,1fr)}.ctr-g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ctr-sez{font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin:18px 0 10px;border-top:1px solid var(--border);padding-top:14px}
+.ctr-box{border:1px dashed var(--border);border-radius:var(--radius);padding:12px;margin-top:10px;background:var(--surface)}
+.ctr-warnbox{background:#fef3c7;border:1px solid #fbbf24;border-radius:var(--radius);padding:12px}
+</style>
 <div class="modal-overlay" id="modal-contratto">
-  <div class="modal" style="max-width:760px">
+  <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-contratto')">&#10005;</button>
     <div class="modal-title" id="ctr-modal-title">Nuovo Contratto di Mandato</div>
 
-    <div class="form-grid">
-      <div class="field form-full">
+    <div class="ctrf">
+      <div class="full">
         <label>Mandante (Proprietario) *</label>
         <select id="ctr-owner" onchange="ctrOwnerChanged()"><option value="">-- Seleziona --</option></select>
-        <div class="field-hint">L'anagrafica si legge da Proprietari; i campi mancanti si completano qui sotto.</div>
+        <div class="field-hint" style="margin-top:4px">Scegli un proprietario esistente oppure creane uno nuovo: le anagrafiche si aggiornano in automatico.</div>
       </div>
-      <div class="field form-full" id="ctr-owner-gaps" style="display:none"></div>
-      <div class="field form-full">
+      <div class="full" id="ctr-newowner" style="display:none"></div>
+      <div class="full" id="ctr-owner-gaps" style="display:none"></div>
+      <div class="full" id="ctr-props-section">
         <label>Immobili inclusi nel mandato *</label>
         <div id="ctr-props-list" style="display:flex;flex-direction:column;gap:6px;font-size:13px"></div>
       </div>
-      <div class="field form-full" id="ctr-props-detail"></div>
+      <div class="full" id="ctr-props-detail"></div>
     </div>
 
-    <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin:16px 0 8px;border-top:1px solid var(--border);padding-top:14px">Condizioni economiche e clausole variabili</div>
-    <div class="form-grid">
-      <div class="field"><label>% Compenso Houzly *</label><input type="number" id="ctr-perc" step="0.5" min="0" max="50"></div>
-      <div class="field"><label>Regime IVA compenso</label>
+    <div class="ctr-sez">Condizioni economiche e clausole variabili</div>
+    <div class="ctr-g3">
+      <div><label>% Compenso Houzly *</label><input type="number" id="ctr-perc" step="0.5" min="0" max="50"></div>
+      <div><label>Regime IVA compenso</label>
         <select id="ctr-iva">
           <option value="inclusa">IVA inclusa nella %</option>
           <option value="esclusa">% + IVA 22%</option>
         </select>
       </div>
-      <div class="field"><label>Ritenuta 21% (sostituto)</label>
+      <div><label>Ritenuta 21% (sostituto)</label>
         <select id="ctr-ritenuta">
-          <option value="1">Sì — Art. 8 Master (PF)</option>
-          <option value="0">No — Azienda con fatturazione propria</option>
+          <option value="1">Sì — Persona fisica</option>
+          <option value="0">No — Azienda (fattura)</option>
         </select>
       </div>
-      <div class="field"><label>Durata (anni)</label><input type="number" id="ctr-durata" value="1" min="1" max="10"></div>
-      <div class="field"><label>Preavviso recesso (mesi)</label><input type="number" id="ctr-preavviso" value="6" min="1" max="12"></div>
-      <div class="field"><label>Soglia spesa autonoma (&euro;)</label><input type="number" id="ctr-soglia" value="50" step="10" min="0"></div>
-      <div class="field"><label>Luogo firma</label><input type="text" id="ctr-luogo" value="Terranuova Bracciolini"></div>
-      <div class="field"><label>Data firma</label><input type="date" id="ctr-data"></div>
-      <div class="field form-full"><label>Pattuizioni particolari <span style="font-weight:400;color:var(--text-light);font-size:11px">(opzionale — diventa Art. 20)</span></label><textarea id="ctr-extra" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;resize:vertical" placeholder="Es. condizioni speciali, deroghe, servizi aggiuntivi concordati..."></textarea></div>
+      <div><label>Durata (anni)</label><input type="number" id="ctr-durata" value="1" min="1" max="10"></div>
+      <div><label>Preavviso recesso (mesi)</label><input type="number" id="ctr-preavviso" value="6" min="1" max="12"></div>
+      <div><label>Soglia spesa autonoma (&euro;)</label><input type="number" id="ctr-soglia" value="50" step="10" min="0"></div>
+      <div style="grid-column:span 2"><label>Luogo firma</label><input type="text" id="ctr-luogo" value="Terranuova Bracciolini"></div>
+      <div><label>Data firma</label><input type="date" id="ctr-data"></div>
     </div>
+    <div style="margin-top:12px"><label>Pattuizioni particolari <span style="font-weight:400;color:var(--text-light)">(opzionale — diventa Art. 20)</span></label><textarea id="ctr-extra" rows="3" style="resize:vertical" placeholder="Es. condizioni speciali, deroghe, servizi aggiuntivi concordati..."></textarea></div>
 
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="closeModal('modal-contratto')">Annulla</button>
       <button class="btn btn-outline" onclick="ctrSave(true)">&#128065; Salva e Anteprima</button>
       <button class="btn btn-primary" id="ctr-save-btn" onclick="ctrSave(false)">Salva Contratto</button>
@@ -10704,9 +10721,14 @@ function ctrNew(){
   ctrEditingId=null;
   document.getElementById('ctr-modal-title').textContent='Nuovo Contratto di Mandato';
   var sel=document.getElementById('ctr-owner');
-  sel.innerHTML='<option value="">-- Seleziona --</option>'+DB.proprietari.slice().sort(function(a,b){
-    return nomeOwner(a.id).localeCompare(nomeOwner(b.id));
-  }).map(function(o){return '<option value="'+o.id+'">'+escHtml(nomeOwner(o.id))+(o.tipo==='azienda'?' \ud83c\udfe2':'')+'</option>';}).join('');
+  sel.innerHTML='<option value="">-- Seleziona --</option>'
+    +'<option value="__new__">\u2795 Nuovo proprietario (crea da zero)</option>'
+    +DB.proprietari.slice().sort(function(a,b){
+      return nomeOwner(a.id).localeCompare(nomeOwner(b.id));
+    }).map(function(o){return '<option value="'+o.id+'">'+escHtml(nomeOwner(o.id))+(o.tipo==='azienda'?' \ud83c\udfe2':'')+'</option>';}).join('');
+  document.getElementById('ctr-newowner').style.display='none';
+  document.getElementById('ctr-newowner').innerHTML='';
+  document.getElementById('ctr-props-section').style.display='block';
   document.getElementById('ctr-props-list').innerHTML='<span style="color:var(--text-light)">Seleziona prima il mandante</span>';
   document.getElementById('ctr-props-detail').innerHTML='';
   document.getElementById('ctr-owner-gaps').style.display='none';
@@ -10746,6 +10768,66 @@ function ctrOwnerChanged(preChecked){
   var oid=document.getElementById('ctr-owner').value;
   var listEl=document.getElementById('ctr-props-list');
   var gapsEl=document.getElementById('ctr-owner-gaps');
+  var newEl=document.getElementById('ctr-newowner');
+  var propsSection=document.getElementById('ctr-props-section');
+
+  // ── NUOVO PROPRIETARIO DA ZERO ──
+  if(oid==='__new__'){
+    gapsEl.style.display='none';gapsEl.innerHTML='';
+    document.getElementById('ctr-props-detail').innerHTML='';
+    propsSection.style.display='none';
+    newEl.style.display='block';
+    document.getElementById('ctr-perc').value=30;
+    document.getElementById('ctr-iva').value='inclusa';
+    document.getElementById('ctr-ritenuta').value='1';
+    newEl.innerHTML='<div class="ctr-box" style="border-color:var(--blue);background:rgba(67,97,238,0.04)">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">\u2795 Nuovo Mandante \u2014 verr\u00e0 creato in Proprietari + Propriet\u00e0</div>'
+      +'<div style="margin-bottom:10px"><label>Tipo</label><select id="ctrn-tipo" onchange="ctrNewOwnerTipo()">'
+        +'<option value="persona_fisica">Persona fisica</option><option value="azienda">Azienda</option></select></div>'
+      +'<div id="ctrn-pf">'
+        +'<div class="ctr-g4">'
+        +'<div><label>Nome *</label><input type="text" id="ctrn-nome"></div>'
+        +'<div><label>Cognome *</label><input type="text" id="ctrn-cognome"></div>'
+        +'<div style="grid-column:span 2"><label>Codice Fiscale *</label><input type="text" id="ctrn-cf" style="text-transform:uppercase"></div>'
+        +'<div><label>Comune nascita</label><input type="text" id="ctrn-comune-nascita"></div>'
+        +'<div><label>Prov. nascita</label><input type="text" id="ctrn-prov-nascita" maxlength="2" style="text-transform:uppercase"></div>'
+        +'<div style="grid-column:span 2"><label>Data nascita</label><input type="date" id="ctrn-data-nascita"></div>'
+        +'</div>'
+      +'</div>'
+      +'<div id="ctrn-az" style="display:none">'
+        +'<div class="ctr-g4">'
+        +'<div style="grid-column:span 2"><label>Ragione Sociale *</label><input type="text" id="ctrn-rs"></div>'
+        +'<div><label>P.IVA *</label><input type="text" id="ctrn-piva"></div>'
+        +'<div><label>Cod. Fiscale</label><input type="text" id="ctrn-cfaz"></div>'
+        +'<div style="grid-column:span 2"><label>Legale rappresentante</label><input type="text" id="ctrn-legale"></div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="ctr-g4" style="margin-top:10px">'
+        +'<div style="grid-column:span 2"><label>Indirizzo residenza/sede *</label><input type="text" id="ctrn-via"></div>'
+        +'<div><label>CAP</label><input type="text" id="ctrn-cap" maxlength="5"></div>'
+        +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px"><div><label>Comune *</label><input type="text" id="ctrn-comune"></div><div><label>Prov.</label><input type="text" id="ctrn-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--blue);margin:14px 0 10px;border-top:1px solid var(--border);padding-top:12px">\ud83c\udfe0 Prima propriet\u00e0 del mandante</div>'
+      +'<div class="ctr-g4">'
+        +'<div style="grid-column:span 2"><label>Nome struttura *</label><input type="text" id="ctrn-p-nome" placeholder="es. Villa Le Rose"></div>'
+        +'<div style="grid-column:span 2"><label>Indirizzo immobile *</label><input type="text" id="ctrn-p-ind"></div>'
+        +'<div style="grid-column:span 2"><label>CIN</label><input type="text" id="ctrn-p-cin" style="text-transform:uppercase"></div>'
+      +'</div>'
+      +'<div class="ctr-g6" style="margin-top:10px">'
+        +'<div><label>Foglio</label><input type="text" id="ctrn-p-fg"></div>'
+        +'<div><label>Particella</label><input type="text" id="ctrn-p-pt"></div>'
+        +'<div><label>Sub</label><input type="text" id="ctrn-p-sb"></div>'
+        +'<div><label>Categoria</label><input type="text" id="ctrn-p-ct" placeholder="A/2"></div>'
+        +'<div><label>Piano</label><input type="text" id="ctrn-p-pn"></div>'
+        +'<div><label>Interno</label><input type="text" id="ctrn-p-in"></div>'
+      +'</div>'
+    +'</div>';
+    return;
+  }
+
+  // ── PROPRIETARIO ESISTENTE ──
+  newEl.style.display='none';newEl.innerHTML='';
+  propsSection.style.display='block';
   if(!oid){listEl.innerHTML='<span style="color:var(--text-light)">Seleziona prima il mandante</span>';gapsEl.style.display='none';document.getElementById('ctr-props-detail').innerHTML='';return;}
   var owner=DB.proprietari.find(function(o){return o.id===oid;});
   if(!owner)return;
@@ -10759,28 +10841,27 @@ function ctrOwnerChanged(preChecked){
   var gaps='';
   if(owner.tipo==='persona_fisica'){
     if(!owner.data_nascita||!owner.comune_nascita){
-      gaps+='<div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-top:6px">'
-        +'<div><label style="font-size:11px">Comune di nascita</label><input type="text" id="ctrg-comune-nascita" value="'+escHtml(owner.comune_nascita||'')+'"></div>'
-        +'<div><label style="font-size:11px">Data di nascita</label><input type="date" id="ctrg-data-nascita" value="'+escHtml(owner.data_nascita||'')+'"></div>'
-        +'<div><label style="font-size:11px">Prov.</label><input type="text" id="ctrg-prov-nascita" maxlength="2" value="'+escHtml(owner.prov_nascita||'')+'" style="text-transform:uppercase"></div>'
+      gaps+='<div class="ctr-g3" style="margin-top:8px">'
+        +'<div><label>Comune di nascita</label><input type="text" id="ctrg-comune-nascita" value="'+escHtml(owner.comune_nascita||'')+'"></div>'
+        +'<div><label>Data di nascita</label><input type="date" id="ctrg-data-nascita" value="'+escHtml(owner.data_nascita||'')+'"></div>'
+        +'<div><label>Prov. nascita</label><input type="text" id="ctrg-prov-nascita" maxlength="2" value="'+escHtml(owner.prov_nascita||'')+'" style="text-transform:uppercase"></div>'
         +'</div>';
     }
-    if(!owner.cf) gaps+='<div style="margin-top:6px"><label style="font-size:11px">Codice Fiscale</label><input type="text" id="ctrg-cf" style="text-transform:uppercase"></div>';
+    if(!owner.cf) gaps+='<div style="margin-top:8px"><label>Codice Fiscale</label><input type="text" id="ctrg-cf" style="text-transform:uppercase"></div>';
   } else {
-    gaps+='<div style="margin-top:6px"><label style="font-size:11px">Legale rappresentante pro tempore</label><input type="text" id="ctrg-legale" value="'+escHtml(owner.legale_rapp||'')+'" placeholder="Nome e cognome"></div>';
+    gaps+='<div style="margin-top:8px"><label>Legale rappresentante pro tempore</label><input type="text" id="ctrg-legale" value="'+escHtml(owner.legale_rapp||'')+'" placeholder="Nome e cognome"></div>';
   }
   if(!owner.via||!owner.comune){
-    gaps+='<div style="display:grid;grid-template-columns:2fr 70px 1fr 60px;gap:8px;margin-top:6px">'
-      +'<div><label style="font-size:11px">Indirizzo residenza/sede</label><input type="text" id="ctrg-via" value="'+escHtml(owner.via||'')+'"></div>'
-      +'<div><label style="font-size:11px">CAP</label><input type="text" id="ctrg-cap" value="'+escHtml(owner.cap||'')+'"></div>'
-      +'<div><label style="font-size:11px">Comune</label><input type="text" id="ctrg-comune" value="'+escHtml(owner.comune||'')+'"></div>'
-      +'<div><label style="font-size:11px">Prov.</label><input type="text" id="ctrg-prov" maxlength="2" value="'+escHtml(owner.provincia||'')+'"></div>'
+    gaps+='<div class="ctr-g4" style="margin-top:8px">'
+      +'<div style="grid-column:span 2"><label>Indirizzo residenza/sede</label><input type="text" id="ctrg-via" value="'+escHtml(owner.via||'')+'"></div>'
+      +'<div><label>CAP</label><input type="text" id="ctrg-cap" value="'+escHtml(owner.cap||'')+'"></div>'
+      +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px"><div><label>Comune</label><input type="text" id="ctrg-comune" value="'+escHtml(owner.comune||'')+'"></div><div><label>Prov.</label><input type="text" id="ctrg-prov" maxlength="2" value="'+escHtml(owner.provincia||'')+'"></div></div>'
       +'</div>';
   }
   if(gaps){
     gapsEl.style.display='block';
-    gapsEl.innerHTML='<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:var(--radius);padding:10px 12px">'
-      +'<div style="font-size:11.5px;font-weight:600;color:#92400e;margin-bottom:2px">\u26a0 Dati anagrafici da completare (verranno salvati anche in Proprietari)</div>'+gaps+'</div>';
+    gapsEl.innerHTML='<div class="ctr-warnbox">'
+      +'<div style="font-size:11.5px;font-weight:700;color:#92400e">\u26a0 Dati anagrafici da completare (verranno salvati anche in Proprietari)</div>'+gaps+'</div>';
   } else { gapsEl.style.display='none';gapsEl.innerHTML=''; }
 
   // Lista proprietà del mandante
@@ -10789,12 +10870,19 @@ function ctrOwnerChanged(preChecked){
   var checked=preChecked||props.map(function(p){return p.id;});
   listEl.innerHTML=props.map(function(p){
     var isC=checked.indexOf(p.id)>=0;
-    return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
-      +'<input type="checkbox" class="ctr-prop-cb" value="'+p.id+'"'+(isC?' checked':'')+' onchange="ctrRenderPropDetail()" style="width:16px;height:16px">'
+    return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400">'
+      +'<input type="checkbox" class="ctr-prop-cb" value="'+p.id+'"'+(isC?' checked':'')+' onchange="ctrRenderPropDetail()" style="width:16px;height:16px;flex-shrink:0">'
       +'<span><strong>'+escHtml(p.nome)+'</strong>'+(p.indirizzo?' <span style="color:var(--text-light)">\u2014 '+escHtml(p.indirizzo)+'</span>':'')+'</span>'
       +'</label>';
   }).join('');
   ctrRenderPropDetail();
+}
+
+function ctrNewOwnerTipo(){
+  var t=document.getElementById('ctrn-tipo').value;
+  document.getElementById('ctrn-pf').style.display=t==='persona_fisica'?'block':'none';
+  document.getElementById('ctrn-az').style.display=t==='azienda'?'block':'none';
+  document.getElementById('ctr-ritenuta').value=t==='persona_fisica'?'1':'0';
 }
 
 // Pannello dettaglio per immobile selezionato: catasto/CIN/piano/interno (write-back)
@@ -10805,20 +10893,20 @@ function ctrRenderPropDetail(){
   det.innerHTML=ids.map(function(pid){
     var p=DB.proprieta.find(function(x){return x.id===pid;});
     if(!p)return '';
-    var miss=(!p.cat_foglio||!p.cat_part)?' <span style="color:#b45309;font-weight:600">\u26a0 catasto incompleto</span>':'';
-    return '<div style="border:1px dashed var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:8px">'
-      +'<div style="font-size:12px;font-weight:600;margin-bottom:6px">\ud83c\udfe0 '+escHtml(p.nome)+miss+'</div>'
-      +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">'
-        +'<div><label style="font-size:11px">Indirizzo immobile</label><input type="text" id="ctrp-ind-'+pid+'" value="'+escHtml(p.indirizzo||'')+'"></div>'
-        +'<div><label style="font-size:11px">CIN</label><input type="text" id="ctrp-cin-'+pid+'" value="'+escHtml(p.cin||'')+'" style="text-transform:uppercase"></div>'
+    var miss=(!p.cat_foglio||!p.cat_part)?' <span style="color:#b45309;font-weight:700">\u26a0 catasto incompleto</span>':'';
+    return '<div class="ctr-box">'
+      +'<div style="font-size:12px;font-weight:700;margin-bottom:8px">\ud83c\udfe0 '+escHtml(p.nome)+miss+'</div>'
+      +'<div class="ctr-g4">'
+        +'<div style="grid-column:span 2"><label>Indirizzo immobile</label><input type="text" id="ctrp-ind-'+pid+'" value="'+escHtml(p.indirizzo||'')+'"></div>'
+        +'<div style="grid-column:span 2"><label>CIN</label><input type="text" id="ctrp-cin-'+pid+'" value="'+escHtml(p.cin||'')+'" style="text-transform:uppercase"></div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px">'
-        +'<div><label style="font-size:11px">Foglio</label><input type="text" id="ctrp-fg-'+pid+'" value="'+escHtml(p.cat_foglio||'')+'"></div>'
-        +'<div><label style="font-size:11px">Particella</label><input type="text" id="ctrp-pt-'+pid+'" value="'+escHtml(p.cat_part||'')+'"></div>'
-        +'<div><label style="font-size:11px">Sub</label><input type="text" id="ctrp-sb-'+pid+'" value="'+escHtml(p.cat_sub||'')+'"></div>'
-        +'<div><label style="font-size:11px">Categoria</label><input type="text" id="ctrp-ct-'+pid+'" value="'+escHtml(p.cat_cat||'')+'" placeholder="A/2"></div>'
-        +'<div><label style="font-size:11px">Piano</label><input type="text" id="ctrp-pn-'+pid+'" value="'+escHtml(p.piano||'')+'"></div>'
-        +'<div><label style="font-size:11px">Interno</label><input type="text" id="ctrp-in-'+pid+'" value="'+escHtml(p.interno||'')+'"></div>'
+      +'<div class="ctr-g6" style="margin-top:10px">'
+        +'<div><label>Foglio</label><input type="text" id="ctrp-fg-'+pid+'" value="'+escHtml(p.cat_foglio||'')+'"></div>'
+        +'<div><label>Particella</label><input type="text" id="ctrp-pt-'+pid+'" value="'+escHtml(p.cat_part||'')+'"></div>'
+        +'<div><label>Sub</label><input type="text" id="ctrp-sb-'+pid+'" value="'+escHtml(p.cat_sub||'')+'"></div>'
+        +'<div><label>Categoria</label><input type="text" id="ctrp-ct-'+pid+'" value="'+escHtml(p.cat_cat||'')+'" placeholder="A/2"></div>'
+        +'<div><label>Piano</label><input type="text" id="ctrp-pn-'+pid+'" value="'+escHtml(p.piano||'')+'"></div>'
+        +'<div><label>Interno</label><input type="text" id="ctrp-in-'+pid+'" value="'+escHtml(p.interno||'')+'"></div>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -10829,49 +10917,99 @@ function ctrSave(andPreview){
   ctrEnsure();
   var oid=document.getElementById('ctr-owner').value;
   if(!oid){toast('Seleziona il mandante');return;}
-  var owner=DB.proprietari.find(function(o){return o.id===oid;});
-  var propIds=Array.prototype.slice.call(document.querySelectorAll('.ctr-prop-cb:checked')).map(function(cb){return cb.value;});
-  if(!propIds.length){toast('Seleziona almeno un immobile');return;}
+  var g=function(id){var el=document.getElementById(id);return el?el.value.trim():null;};
   var perc=+document.getElementById('ctr-perc').value;
   if(!perc||perc<=0){toast('Inserisci la % compenso');return;}
 
-  var g=function(id){var el=document.getElementById(id);return el?el.value.trim():null;};
+  var owner, propIds;
 
-  // WRITE-BACK → Proprietario
-  if(g('ctrg-comune-nascita')!==null)owner.comune_nascita=g('ctrg-comune-nascita');
-  if(g('ctrg-data-nascita')!==null)owner.data_nascita=g('ctrg-data-nascita');
-  if(g('ctrg-prov-nascita')!==null)owner.prov_nascita=(g('ctrg-prov-nascita')||'').toUpperCase();
-  if(g('ctrg-cf')!==null&&g('ctrg-cf'))owner.cf=g('ctrg-cf').toUpperCase();
-  if(g('ctrg-legale')!==null)owner.legale_rapp=g('ctrg-legale');
-  if(g('ctrg-via')!==null)owner.via=g('ctrg-via');
-  if(g('ctrg-cap')!==null)owner.cap=g('ctrg-cap');
-  if(g('ctrg-comune')!==null)owner.comune=g('ctrg-comune');
-  if(g('ctrg-prov')!==null)owner.provincia=(g('ctrg-prov')||'').toUpperCase();
+  if(oid==='__new__'){
+    // ── CREAZIONE NUOVO PROPRIETARIO + PRIMA PROPRIETÀ ──
+    var tipo=g('ctrn-tipo')||'persona_fisica';
+    if(tipo==='persona_fisica'){
+      if(!g('ctrn-nome')||!g('ctrn-cognome')){toast('Compila Nome e Cognome del nuovo mandante');return;}
+      if(!g('ctrn-cf')){toast('Inserisci il Codice Fiscale del nuovo mandante');return;}
+    } else {
+      if(!g('ctrn-rs')||!g('ctrn-piva')){toast('Compila Ragione Sociale e P.IVA');return;}
+    }
+    if(!g('ctrn-p-nome')||!g('ctrn-p-ind')){toast('Compila nome e indirizzo della propriet\u00e0');return;}
 
-  // WRITE-BACK → Proprietà (catasto, CIN, piano, interno)
-  propIds.forEach(function(pid){
-    var p=DB.proprieta.find(function(x){return x.id===pid;});
-    if(!p)return;
-    var v=function(pref){return g('ctrp-'+pref+'-'+pid);};
-    if(v('ind')!==null)p.indirizzo=v('ind');
-    if(v('cin')!==null)p.cin=(v('cin')||'').toUpperCase();
-    if(v('fg')!==null)p.cat_foglio=v('fg');
-    if(v('pt')!==null)p.cat_part=v('pt');
-    if(v('sb')!==null)p.cat_sub=v('sb');
-    if(v('ct')!==null)p.cat_cat=v('ct');
-    if(v('pn')!==null)p.piano=v('pn');
-    if(v('in')!==null)p.interno=v('in');
-  });
+    owner={
+      id:uid(), tipo:tipo,
+      via:g('ctrn-via')||'', cap:g('ctrn-cap')||'', comune:g('ctrn-comune')||'',
+      provincia:(g('ctrn-prov')||'').toUpperCase(),
+      email:'', cin:'', iban:'',
+      fisc_iva22:document.getElementById('ctr-iva').value==='esclusa',
+      fisc_cedolare:document.getElementById('ctr-ritenuta').value==='1',
+      houzly_perc:perc, coprops:[]
+    };
+    if(tipo==='persona_fisica'){
+      owner.nome=g('ctrn-nome');owner.cognome=g('ctrn-cognome');
+      owner.cf=(g('ctrn-cf')||'').toUpperCase();
+      owner.data_nascita=g('ctrn-data-nascita')||'';
+      owner.comune_nascita=g('ctrn-comune-nascita')||'';
+      owner.prov_nascita=(g('ctrn-prov-nascita')||'').toUpperCase();
+      owner.sesso='';owner.codice_comune='';
+    } else {
+      owner.ragione_sociale=g('ctrn-rs');owner.piva=g('ctrn-piva');
+      owner.cf_az=g('ctrn-cfaz')||'';owner.legale_rapp=g('ctrn-legale')||'';
+      owner.sdi='';owner.email_comm='';
+    }
+    DB.proprietari.push(owner);
 
-  // Aggiorno anche il profilo fiscale del proprietario per coerenza col contratto
-  owner.houzly_perc=perc;
-  owner.fisc_iva22=document.getElementById('ctr-iva').value==='esclusa';
-  if(owner.tipo==='persona_fisica')owner.fisc_cedolare=document.getElementById('ctr-ritenuta').value==='1';
+    var newProp={
+      id:uid(), nome:g('ctrn-p-nome'), indirizzo:g('ctrn-p-ind'),
+      proprietario_id:owner.id,
+      cin:(g('ctrn-p-cin')||'').toUpperCase(),
+      cat_foglio:g('ctrn-p-fg')||'', cat_part:g('ctrn-p-pt')||'', cat_sub:g('ctrn-p-sb')||'',
+      cat_cat:g('ctrn-p-ct')||'', piano:g('ctrn-p-pn')||'', interno:g('ctrn-p-in')||''
+    };
+    DB.proprieta.push(newProp);
+    propIds=[newProp.id];
+    if(typeof renderProprietari==='function')try{renderProprietari();}catch(e){}
+  } else {
+    // ── PROPRIETARIO ESISTENTE ──
+    owner=DB.proprietari.find(function(o){return o.id===oid;});
+    if(!owner){toast('Mandante non trovato');return;}
+    propIds=Array.prototype.slice.call(document.querySelectorAll('.ctr-prop-cb:checked')).map(function(cb){return cb.value;});
+    if(!propIds.length){toast('Seleziona almeno un immobile');return;}
+
+    // WRITE-BACK → Proprietario
+    if(g('ctrg-comune-nascita')!==null)owner.comune_nascita=g('ctrg-comune-nascita');
+    if(g('ctrg-data-nascita')!==null)owner.data_nascita=g('ctrg-data-nascita');
+    if(g('ctrg-prov-nascita')!==null)owner.prov_nascita=(g('ctrg-prov-nascita')||'').toUpperCase();
+    if(g('ctrg-cf')!==null&&g('ctrg-cf'))owner.cf=g('ctrg-cf').toUpperCase();
+    if(g('ctrg-legale')!==null)owner.legale_rapp=g('ctrg-legale');
+    if(g('ctrg-via')!==null)owner.via=g('ctrg-via');
+    if(g('ctrg-cap')!==null)owner.cap=g('ctrg-cap');
+    if(g('ctrg-comune')!==null)owner.comune=g('ctrg-comune');
+    if(g('ctrg-prov')!==null)owner.provincia=(g('ctrg-prov')||'').toUpperCase();
+
+    // WRITE-BACK → Proprietà (catasto, CIN, piano, interno)
+    propIds.forEach(function(pid){
+      var p=DB.proprieta.find(function(x){return x.id===pid;});
+      if(!p)return;
+      var v=function(pref){return g('ctrp-'+pref+'-'+pid);};
+      if(v('ind')!==null)p.indirizzo=v('ind');
+      if(v('cin')!==null)p.cin=(v('cin')||'').toUpperCase();
+      if(v('fg')!==null)p.cat_foglio=v('fg');
+      if(v('pt')!==null)p.cat_part=v('pt');
+      if(v('sb')!==null)p.cat_sub=v('sb');
+      if(v('ct')!==null)p.cat_cat=v('ct');
+      if(v('pn')!==null)p.piano=v('pn');
+      if(v('in')!==null)p.interno=v('in');
+    });
+
+    // Aggiorno anche il profilo fiscale del proprietario per coerenza col contratto
+    owner.houzly_perc=perc;
+    owner.fisc_iva22=document.getElementById('ctr-iva').value==='esclusa';
+    if(owner.tipo==='persona_fisica')owner.fisc_cedolare=document.getElementById('ctr-ritenuta').value==='1';
+  }
 
   var now=new Date().toISOString();
   var obj={
     id:ctrEditingId||uid(),
-    owner_id:oid,
+    owner_id:owner.id,
     prop_ids:propIds,
     perc:perc,
     iva:document.getElementById('ctr-iva').value,
@@ -10892,7 +11030,6 @@ function ctrSave(andPreview){
     if(idx>=0){
       obj.created=DB.contratti[idx].created;
       obj.stato=DB.contratti[idx].stato;
-      // Se cambiano le condizioni, il testo personalizzato non è più affidabile
       obj.testo_override=null;
       DB.contratti[idx]=obj;
     } else DB.contratti.push(obj);
@@ -10900,7 +11037,7 @@ function ctrSave(andPreview){
   saveDB();
   closeModal('modal-contratto');
   renderContratti();
-  toast('Contratto salvato \u2713 (anagrafiche aggiornate)');
+  toast(oid==='__new__'?'Mandante creato e contratto salvato \u2713':'Contratto salvato \u2713 (anagrafiche aggiornate)');
   if(andPreview)ctrPreviewById(obj.id);
 }
 
