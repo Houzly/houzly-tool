@@ -1242,7 +1242,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div style="font-size:22px">&#9888;</div>
         <div style="flex:1">
           <div style="font-weight:700;color:#991b1b;margin-bottom:4px">Alert Mandanti — Criticità Fiscali</div>
-          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Mandanti con situazioni che richiedono attenzione: limite LdB 2026 (max 2 immobili in cedolare), aliquota 26% dal 2° immobile, dati anagrafici/catastali incompleti per DAC7, IBAN mancante.</div>
+          <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Mandanti con situazioni che richiedono attenzione: limite LdB 2026 (max 2 immobili in cedolare), aliquota 26% dal 2° immobile, dati anagrafici/catastali incompleti per DAC7, contratto di mandato mancante.</div>
         </div>
       </div>
     </div>
@@ -1637,7 +1637,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="text" id="pf-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
         <div class="field"><label>Email</label><input type="email" id="pf-email"></div>
         <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="pf-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
-        <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="pf-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
+        <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per il bonifico del netto mensile</span></label><input type="text" id="pf-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
       <div id="form-az" class="form-grid" style="display:none">
         <div class="field form-full"><label>Ragione Sociale *</label><input type="text" id="az-rs"></div>
@@ -1651,7 +1651,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Email Azienda</label><input type="email" id="az-email"></div>
         <div class="field"><label>Email Commercialista (per XML)</label><input type="email" id="az-email-comm"></div>
         <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="az-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
-        <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="az-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
+        <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per il bonifico del netto mensile</span></label><input type="text" id="az-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
     </div>
     <div id="ptab-fiscale" style="display:none">
@@ -1662,7 +1662,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
-      <div class="alert alert-info" style="margin-bottom:12px"><strong>Dichiarazioni separate</strong> — Se l'immobile è cointestato, ogni intestatario riceve una propria CU/DAC7 per la sua quota. Compila i dati anagrafici di ciascun co-proprietario (CF obbligatorio, IBAN richiesto per DAC7). La somma delle quote % deve essere 100% (incluso il proprietario principale, conteggiato implicitamente).</div>
+      <div class="alert alert-info" style="margin-bottom:12px"><strong>Dichiarazioni separate</strong> — Se l'immobile è cointestato, ogni intestatario riceve una propria CU/DAC7 per la sua quota. Compila i dati anagrafici di ciascun co-proprietario (CF obbligatorio). La somma delle quote % deve essere 100% (incluso il proprietario principale, conteggiato implicitamente).</div>
       <div id="coprop-list"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="addCoProp()">+ Aggiungi Co-Proprietario</button>
       <div id="coprop-total" style="margin-top:10px;font-size:12px;color:var(--text-light)"></div>
@@ -3725,7 +3725,7 @@ function renderCoprops(){
         +'<div class="field" style="margin:0"><label style="font-size:11px">Prov.</label><input type="text" value="'+escAttr(cp.provincia||'')+'" oninput="copropsTemp['+i+'].provincia=this.value.toUpperCase()" maxlength="2" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
         +'<div class="field" style="margin:0"><label style="font-size:11px">Codice Comune cat.</label><input type="text" value="'+escAttr(cp.codice_comune||'')+'" oninput="copropsTemp['+i+'].codice_comune=this.value.toUpperCase()" maxlength="4" placeholder="L123" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%;text-transform:uppercase"></div>'
         +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">Email</label><input type="email" value="'+escAttr(cp.email||'')+'" oninput="copropsTemp['+i+'].email=this.value" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;width:100%"></div>'
-        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">IBAN <span style="color:var(--text-light);font-weight:400">(per DAC7)</span></label><input type="text" value="'+escAttr(cp.iban||'')+'" oninput="copropsTemp['+i+'].iban=this.value.toUpperCase().replace(/\\s+/g,\'\')" placeholder="IT00..." style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:monospace;font-size:12.5px;width:100%;text-transform:uppercase;letter-spacing:0.5px"></div>'
+        +'<div class="field" style="margin:0;grid-column:span 2"><label style="font-size:11px">IBAN <span style="color:var(--text-light);font-weight:400">(per bonifici quota)</span></label><input type="text" value="'+escAttr(cp.iban||'')+'" oninput="copropsTemp['+i+'].iban=this.value.toUpperCase().replace(/\\s+/g,\'\')" placeholder="IT00..." style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:monospace;font-size:12.5px;width:100%;text-transform:uppercase;letter-spacing:0.5px"></div>'
       +'</div>';
     }
     html+='</div>';
@@ -9854,7 +9854,7 @@ function renderAdempOverview(){
         +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Tassa Soggiorno</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(totTassaSogg)+'</div></div>'
       +'</div>'
       +'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-light);line-height:1.5">'
-        +'<strong>Metodo base imponibile cedolare:</strong> '+methodLabel+'. Il flag è modificabile a livello configurazione globale (richiesta tecnica).'
+        +'<strong>Base imponibile (ritenuta 21% e Corrispettivo DAC7):</strong> canone di locazione puro — logica AIGAB, standard aziendale Houzly come da Art. 8.3 del contratto di mandato. Competenza trimestrale per data di check-out.'
       +'</div>'
     +'</div>';
 }
@@ -9873,7 +9873,6 @@ function renderAdempDAC7(){
     var t=d.totals;
     // Issues per DAC7
     var issues=[];
-    if(!owner.iban) issues.push('IBAN mancante');
     if(d.properties.some(function(p){return !p.cin;})) issues.push('CIN mancante in qualche prop.');
     if(d.properties.some(function(p){return !p.cat_foglio||!p.cat_part;})) issues.push('Dati catastali incompleti');
     if(owner.tipo==='persona_fisica' && !owner.cf) issues.push('CF mancante');
@@ -9914,7 +9913,6 @@ function adempViewDAC7(ownerId){
   var t=d.totals;
   // Issues
   var issues=[];
-  if(!owner.iban) issues.push('IBAN mancante');
   if(d.properties.some(function(p){return !p.cin;})) issues.push('CIN mancante in qualche proprietà');
   if(d.properties.some(function(p){return !p.cat_foglio||!p.cat_part||!p.cat_sub;})) issues.push('Dati catastali (foglio/particella/subalterno) incompleti');
   // Anagrafica
@@ -9922,7 +9920,7 @@ function adempViewDAC7(ownerId){
   var cf=owner.tipo==='persona_fisica'?(owner.cf||'—'):(owner.cf_az||owner.piva||'—');
   var indirizzo=(owner.via||'')+(owner.cap?' '+owner.cap:'')+(owner.comune?' '+owner.comune:'')+(owner.provincia?' ('+owner.provincia+')':'');
   if(!indirizzo.trim())indirizzo='—';
-  var iban=owner.iban?owner.iban.replace(/(.{4})/g,'$1 ').trim():'<span style="color:var(--red)">MANCANTE</span>';
+  var iban=owner.iban?owner.iban.replace(/(.{4})/g,'$1 ').trim():'';
   // HTML preview
   var html='<div class="doc">'
     +'<div class="doc-header">'
@@ -9935,7 +9933,7 @@ function adempViewDAC7(ownerId){
       +'<p><strong>'+escHtml(nomeMandante)+'</strong><br>'
       +(owner.tipo==='persona_fisica'?'CF: ':(owner.piva?'P.IVA: ':'CF: '))+escHtml(cf)+'<br>'
       +escHtml(indirizzo)+'<br>'
-      +'IBAN: '+iban+'</p></div>'
+      +(iban?'IBAN: '+iban:'')+'</p></div>'
     +'</div>';
   // Immobili — uso propertyGroups (deduplicati per CIN/indirizzo)
   var groups=d.propertyGroups||[];
@@ -10227,10 +10225,6 @@ function ademComputeAlerts(anno){
       if(severity!=='high')severity='medium';
     }
     // Dati DAC7 mancanti
-    if(!owner.iban){
-      issues.push({lvl:'medium',text:'<strong>IBAN mancante</strong> — richiesto per DAC7 (accredito netto). Da raccogliere dal mandante.'});
-      if(severity==='low')severity='medium';
-    }
     if(owner.tipo==='persona_fisica' && !owner.cf){
       issues.push({lvl:'high',text:'<strong>Codice Fiscale mancante</strong> — bloccante per CU e DAC7.'});
       severity='high';
