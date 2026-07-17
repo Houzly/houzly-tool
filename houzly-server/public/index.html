@@ -9964,16 +9964,18 @@ function adempViewDAC7(ownerId){
   // Trimestri
   html+='<div class="sep-label">Dettaglio Economico Trimestrale (art. 10 co.8 D.Lgs. 32/2023)</div>';
   html+='<table class="adem-quarter-table"><thead><tr>'
-    +'<th>Trimestre</th><th>N. Pren.</th><th class="num">Lordo</th><th class="num">Comm. OTA</th><th class="num">Comm. Houzly</th><th class="num">Corrisp. DAC7</th>'
+    +'<th>Trimestre</th><th>N. Pren.</th><th class="num">Lordo</th><th class="num">Comm. OTA</th><th class="num">Comm. Houzly</th><th class="num">Altre tratt.*</th><th class="num">Corrisp. DAC7</th>'
     +'</tr></thead><tbody>';
   d.quarters.forEach(function(q){
     var lbl=['T1 (gen–mar)','T2 (apr–giu)','T3 (lug–set)','T4 (ott–dic)'][q.q-1];
     var corrisp_q=r2(q.canone_puro);
+    var altre_q=r2(q.lordo-q.commOTA-q.commHouzly-corrisp_q);
     html+='<tr><td><strong>'+lbl+'</strong></td>'
       +'<td>'+q.nPren+'</td>'
       +'<td class="num">'+eur(q.lordo)+'</td>'
       +'<td class="num">'+eur(q.commOTA)+'</td>'
       +'<td class="num">'+eur(q.commHouzly)+'</td>'
+      +'<td class="num">'+eur(altre_q)+'</td>'
       +'<td class="num"><strong>'+eur(corrisp_q)+'</strong></td>'
     +'</tr>';
   });
@@ -9982,9 +9984,11 @@ function adempViewDAC7(ownerId){
     +'<td class="num">'+eur(t.lordo)+'</td>'
     +'<td class="num">'+eur(t.commOTA)+'</td>'
     +'<td class="num">'+eur(t.commHouzly)+'</td>'
+    +'<td class="num">'+eur(r2(t.lordo-t.commOTA-t.commHouzly-t.corrispettivo_dac7))+'</td>'
     +'<td class="num"><strong>'+eur(t.corrispettivo_dac7)+'</strong></td>'
   +'</tr>';
   html+='</tbody></table>';
+  html+='<div style="font-size:10.5px;color:var(--text-light);margin-top:6px">* Altre trattenute = pulizie trattenute + tassa di soggiorno trattenuta + IVA 22% su compenso Houzly (ove applicata). Competenza trimestrale per data di <strong>check-out</strong> (convenzione AdE: accredito al venditore) \u2014 pu\u00f2 differire dal Report Mensile, che usa il check-in.</div>';
   html+='<div class="doc-note" style="margin-top:14px">📌 <strong>Definizione corrispettivo DAC7</strong> (art. 2 lett. l D.Lgs. 32/2023): "compensazione al netto di spese, commissioni o imposte trattenute dal gestore di piattaforma". L\'importo comunicato è il <strong>canone di locazione puro (logica AIGAB)</strong>: Lordo − Comm. OTA − Comm. Houzly − pulizie trattenute (reintegrate se rese al mandante) — coincide con la base imponibile della ritenuta riportata in CU.</div>';
   html+='<div class="doc-footer">Houzly Snc · P.IVA 02499920516 · Documento generato il '+new Date().toLocaleDateString('it-IT')+' — Ad uso del commercialista per trasmissione XML Entratel</div>';
   html+='</div>';
@@ -11186,12 +11190,12 @@ function dac7QuartersFor(propIds, anno, ritenutaAttiva){
     if(!b.calc)return;
     var t=ademTrimestreDi(b);if(t<1||t>4)return;
     var c=b.calc;
-    var hz=+c.houzly||0, pul=+c.pulizia||0;
+    var hz=(+c.houzly||0)+(+c.iva22||0), pul=+c.pulizia||0;
     // Consideration = canone puro AIGAB (lordo − OTA − Houzly − pulizia trattenuta;
     // pulizia reintegrata se resa al mandante tramite canone_totale)
     var canone_puro=(c.pulizie_owner&&c.canone_totale!=null)?+c.canone_totale:+c.canone||0;
     if(canone_puro<0)canone_puro=0;
-    // Fees trattenute dal gestore = commissione Houzly + pulizia (solo se trattenuta)
+    // Fees trattenute dal gestore = commissione Houzly (con IVA ove applicata) + pulizia (solo se trattenuta)
     var fees=hz+(c.pulizie_owner?0:pul);
     var Q=qs[t-1];
     Q.cons+=canone_puro;Q.numb++;Q.fees+=fees;
