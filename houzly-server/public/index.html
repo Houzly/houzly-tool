@@ -740,18 +740,17 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('prenotazioni')"><span class="nav-icon">&#128203;</span> Prenotazioni</div>
     <div class="nav-item" onclick="showPage('report_prop')"><span class="nav-icon">&#128202;</span> Report Proprietari</div>
     <div class="nav-item" onclick="showPage('documenti')"><span class="nav-icon">&#128196;</span> Documenti Fiscali</div>
+    <div class="nav-item" onclick="showPage('contratti')"><span class="nav-icon">&#128220;</span> Contratti</div>
     <div class="nav-item" onclick="showPage('adempimenti')"><span class="nav-icon">&#127974;</span> Adempimenti Fiscali</div>
     <div class="nav-item" onclick="showPage('anticipi')"><span class="nav-icon">&#128184;</span> Anticipi Spese</div>
     <div class="nav-item" onclick="showPage('ricevute')"><span class="nav-icon">&#128523;</span> Ricevute</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Operations</div>
-    <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Tasks</div>
     <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Cleaning Manager</div>
     <div class="nav-item" onclick="showPage('onboarding')"><span class="nav-icon">&#128203;</span> Onboarding</div>
   </div>
   <div class="nav-group"><div class="nav-group-label">Strumenti</div>
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
-    <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
   <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v65 · 04/07</span></div>
 </nav>
@@ -997,6 +996,80 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
   </div>
   <div id="doc-section" style="display:none;margin-top:16px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PAGE: CONTRATTI MANDATO (Sprint C1)
+════════════════════════════════════════════════════════════════════ -->
+<div id="page-contratti" class="page">
+  <div class="section-header">
+    <div class="section-title">&#128220; Contratti di Mandato</div>
+    <button class="btn btn-primary" onclick="ctrNew()">+ Nuovo Contratto</button>
+  </div>
+  <div class="card" style="margin-bottom:14px;padding:12px 16px;font-size:12px;color:var(--text-mid);line-height:1.5">
+    Generatore basato sul <strong>Contratto Master v1.5</strong> (mandato con rappresentanza + mandato all'incasso).
+    I dati inseriti qui <strong>completano le anagrafiche</strong> di Proprietari e Proprietà, e alimentano DAC7 / CU / 770.
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mandante</th><th>Immobili</th><th>Compenso</th><th>Regime</th><th>Data firma</th><th>Stato</th><th>Azioni</th></tr></thead>
+        <tbody id="tbody-contratti"></tbody>
+      </table>
+    </div>
+    <div id="ctr-empty" style="display:none;padding:30px;text-align:center;color:var(--text-light);font-size:13px">Nessun contratto. Crea il primo con "+ Nuovo Contratto".</div>
+  </div>
+</div>
+
+<!-- MODAL CONTRATTO -->
+<div class="modal-overlay" id="modal-contratto">
+  <div class="modal" style="max-width:760px">
+    <button class="modal-close" onclick="closeModal('modal-contratto')">&#10005;</button>
+    <div class="modal-title" id="ctr-modal-title">Nuovo Contratto di Mandato</div>
+
+    <div class="form-grid">
+      <div class="field form-full">
+        <label>Mandante (Proprietario) *</label>
+        <select id="ctr-owner" onchange="ctrOwnerChanged()"><option value="">-- Seleziona --</option></select>
+        <div class="field-hint">L'anagrafica si legge da Proprietari; i campi mancanti si completano qui sotto.</div>
+      </div>
+      <div class="field form-full" id="ctr-owner-gaps" style="display:none"></div>
+      <div class="field form-full">
+        <label>Immobili inclusi nel mandato *</label>
+        <div id="ctr-props-list" style="display:flex;flex-direction:column;gap:6px;font-size:13px"></div>
+      </div>
+      <div class="field form-full" id="ctr-props-detail"></div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin:16px 0 8px;border-top:1px solid var(--border);padding-top:14px">Condizioni economiche e clausole variabili</div>
+    <div class="form-grid">
+      <div class="field"><label>% Compenso Houzly *</label><input type="number" id="ctr-perc" step="0.5" min="0" max="50"></div>
+      <div class="field"><label>Regime IVA compenso</label>
+        <select id="ctr-iva">
+          <option value="inclusa">IVA inclusa nella %</option>
+          <option value="esclusa">% + IVA 22%</option>
+        </select>
+      </div>
+      <div class="field"><label>Ritenuta 21% (sostituto)</label>
+        <select id="ctr-ritenuta">
+          <option value="1">Sì — Art. 8 Master (PF)</option>
+          <option value="0">No — Azienda con fatturazione propria</option>
+        </select>
+      </div>
+      <div class="field"><label>Durata (anni)</label><input type="number" id="ctr-durata" value="1" min="1" max="10"></div>
+      <div class="field"><label>Preavviso recesso (mesi)</label><input type="number" id="ctr-preavviso" value="6" min="1" max="12"></div>
+      <div class="field"><label>Soglia spesa autonoma (&euro;)</label><input type="number" id="ctr-soglia" value="50" step="10" min="0"></div>
+      <div class="field"><label>Luogo firma</label><input type="text" id="ctr-luogo" value="Terranuova Bracciolini"></div>
+      <div class="field"><label>Data firma</label><input type="date" id="ctr-data"></div>
+      <div class="field form-full"><label>Pattuizioni particolari <span style="font-weight:400;color:var(--text-light);font-size:11px">(opzionale — diventa Art. 20)</span></label><textarea id="ctr-extra" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;resize:vertical" placeholder="Es. condizioni speciali, deroghe, servizi aggiuntivi concordati..."></textarea></div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-contratto')">Annulla</button>
+      <button class="btn btn-outline" onclick="ctrSave(true)">&#128065; Salva e Anteprima</button>
+      <button class="btn btn-primary" id="ctr-save-btn" onclick="ctrSave(false)">Salva Contratto</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════
@@ -1321,122 +1394,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </div>
       <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreFromBackup(this)">
       <div id="restore-result" style="margin-top:12px"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════════
-     PAGE: IMPORT TASKS
-════════════════════════════════════════════════════════════════════ -->
-<div id="page-import-tasks" class="page">
-  <div class="section-header">
-    <div class="section-title">📥 Import Tasks</div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
-
-    <!-- Excel -->
-    <div class="card" style="display:flex;flex-direction:column;gap:12px">
-      <div class="card-title">📊 Da Excel / CSV</div>
-      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
-        Carica un file <strong>.xlsx</strong> o <strong>.csv</strong> con colonne:<br>
-        <code style="font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:4px">Task, Categoria, Assegnato a, Urgenza, Stato, Scadenza, Note</code>
-      </div>
-      <div class="drop-zone" id="dz-excel" onclick="document.getElementById('import-task-excel').click()" style="padding:24px">
-        <div class="dz-icon">📊</div>
-        <p><strong>Clicca o trascina</strong> il file Excel/CSV</p>
-      </div>
-      <input type="file" id="import-task-excel" accept=".xlsx,.csv" style="display:none" onchange="importTasksExcel(this)">
-      <div id="import-task-excel-result"></div>
-    </div>
-
-    <!-- PDF / Note testuali -->
-    <div class="card" style="display:flex;flex-direction:column;gap:12px">
-      <div class="card-title">📄 Da testo / Note</div>
-      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
-        Incolla una lista di task in testo libero — uno per riga. Li riconosco automaticamente.
-      </div>
-      <textarea id="import-task-text" rows="8" placeholder="Finire cucina&#10;Firmare contratto Luigi&#10;Fare fattura Safa&#10;..."
-        style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12.5px;color:var(--text);resize:vertical;outline:none;font-family:'Plus Jakarta Sans',sans-serif"></textarea>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="field">
-          <label>Assegnato a (default)</label>
-          <select id="import-text-assegnato">
-            <option value="Romeo">Romeo</option>
-            <option value="Daniele">Daniele</option>
-            <option value="Entrambi">Entrambi</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Urgenza (default)</label>
-          <select id="import-text-urgenza">
-            <option value="Media">🟡 Media</option>
-            <option value="Urgente">🔴 Urgente</option>
-            <option value="Alta">🟠 Alta</option>
-            <option value="Bassa">🟢 Bassa</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="importTasksText()">📥 Importa task</button>
-      <div id="import-task-text-result"></div>
-    </div>
-
-    <!-- Manuale rapido -->
-    <div class="card" style="display:flex;flex-direction:column;gap:12px">
-      <div class="card-title">⚡ Aggiunta rapida multipla</div>
-      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
-        Aggiungi più task uno sotto l'altro velocemente senza aprire il modal.
-      </div>
-      <div id="quick-task-rows" style="display:grid;gap:8px"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addQuickTaskRow()">+ Aggiungi riga</button>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="field">
-          <label>Assegnato (default)</label>
-          <select id="quick-assegnato">
-            <option value="Romeo">Romeo</option>
-            <option value="Daniele">Daniele</option>
-            <option value="Entrambi">Entrambi</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Urgenza (default)</label>
-          <select id="quick-urgenza">
-            <option value="Media">🟡 Media</option>
-            <option value="Urgente">🔴 Urgente</option>
-            <option value="Alta">🟠 Alta</option>
-            <option value="Bassa">🟢 Bassa</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="saveQuickTasks()">💾 Salva tutti</button>
-      <div id="quick-task-result"></div>
-    </div>
-
-  </div>
-
-  <!-- Preview tabella import -->
-  <div id="import-tasks-preview" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--blue)">Anteprima Import — <span id="import-preview-count">0</span> task</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="document.getElementById('import-tasks-preview').style.display='none'">Annulla</button>
-        <button class="btn btn-primary" onclick="confirmImportTasks()">✅ Importa tutti</button>
-      </div>
-    </div>
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead>
-          <tr style="background:var(--text);color:#fff">
-            <th style="padding:8px 12px;text-align:left">Task</th>
-            <th style="padding:8px 12px;text-align:left;width:120px">Categoria</th>
-            <th style="padding:8px 12px;text-align:center;width:90px">Assegnato</th>
-            <th style="padding:8px 12px;text-align:center;width:90px">Urgenza</th>
-            <th style="padding:8px 12px;text-align:center;width:80px">Scadenza</th>
-            <th style="padding:8px 12px;text-align:center;width:30px"></th>
-          </tr>
-        </thead>
-        <tbody id="import-preview-tbody"></tbody>
-      </table>
     </div>
   </div>
 </div>
@@ -2013,84 +1970,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 </div>
 
 
-<!-- ════════════════════════════════════════════════════════════════════
-     PAGE: OPERATIONS
-════════════════════════════════════════════════════════════════════ -->
-<div id="page-operations" class="page">
-  <!-- HEADER -->
-  <div class="section-header">
-    <div class="section-title">&#9989; Operational Tasks</div>
-    <div style="display:flex;gap:8px" id="ops-header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="showOpsView('templates')">&#128203; Checklist</button>
-      <button class="btn btn-primary" id="ops-btn-nuovo" onclick="openNewTask(null)">&#43; Nuovo Task</button>
-    </div>
-  </div>
-
-  <!-- MAIN TABS -->
-  <div class="tabs" id="ops-main-tabs">
-    <div class="tab active" data-ops-tab="generici" onclick="switchOpsTab('generici')">&#128203; Task Generici</div>
-    <div class="tab" data-ops-tab="proprieta" onclick="switchOpsTab('proprieta')">&#127968; Proprietà</div>
-  </div>
-
-  <!-- TAB: TASK GENERICI -->
-  <div id="ops-tab-generici" style="display:block">
-
-    <!-- Kanban toolbar -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">📋 Board</div>
-      <div style="flex:1"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addKanbanCol()">+ Colonna</button>
-    </div>
-
-    <!-- Tab switcher mobile only (una colonna alla volta) -->
-    <div id="kanban-mobile-tabs" class="mobile-only" style="display:none;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:6px;gap:6px;flex-wrap:nowrap"></div>
-
-    <!-- Kanban board -->
-    <div id="kanban-board" style="display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start;min-height:400px"></div>
-
-  </div>
-
-  <!-- TAB: PROPRIETÀ -->
-  <div id="ops-tab-proprieta" style="display:none">
-
-    <!-- sub-view: property list -->
-    <div id="ops-view-props" style="display:block">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-        <input id="ops-search" type="text" placeholder="&#128269; Cerca proprietà..." oninput="renderOpsProps()"
-          style="flex:1;min-width:160px;max-width:300px;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;background:var(--surface);color:var(--text);outline:none">
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" id="ops-prop-grid"></div>
-    </div>
-
-    <!-- sub-view: task list for a property -->
-    <div id="ops-view-tasks" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-        <button class="btn btn-ghost btn-sm" onclick="backToProps()">&#8592; Proprietà</button>
-        <div id="ops-prop-title" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)"></div>
-        <div style="flex:1"></div>
-        <button class="btn btn-ghost btn-sm" onclick="applyOpsTemplate()">&#128203; Applica Checklist</button>
-        <button class="btn btn-primary btn-sm" onclick="openNewTask(_opsCurProp)">&#43; Task</button>
-      </div>
-      <div id="ops-cat-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
-      <div id="ops-task-list"></div>
-    </div>
-
-  </div>
-
-  <!-- sub-view: templates (accessible from both tabs) -->
-  <div id="ops-view-templates" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-      <button class="btn btn-ghost btn-sm" onclick="closeTemplatesView()">&#8592; Indietro</button>
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">Checklist Ricorrenti</div>
-      <div style="flex:1"></div>
-      <button class="btn btn-primary" onclick="openNewTemplate()">&#43; Nuova Checklist</button>
-    </div>
-    <div id="ops-template-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
-  </div>
-
-</div>
-
-
 <!-- ══════════════════════════════════════════════════════════════════
      PULIZIE – Cleaning Manager
 ══════════════════════════════════════════════════════════════════ -->
@@ -2223,125 +2102,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <button class="btn btn-ghost" onclick="clCloseModal()">Annulla</button>
         <button class="btn btn-primary" onclick="clSaveTask()">Salva</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: new/edit task -->
-<div id="modal-ops-task" class="modal-overlay">
-  <div class="modal" style="max-width:560px;position:relative">
-    <button class="modal-close" onclick="closeModal('modal-ops-task')">&#10005;</button>
-    <div class="modal-title" id="ops-task-modal-title">Nuovo Task</div>
-    <input type="hidden" id="ops-task-id">
-    <div class="field" style="margin-bottom:14px">
-      <label>Task *</label>
-      <input id="ops-task-titolo" placeholder="Descrivi il task...">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="field">
-        <label>Categoria</label>
-        <select id="ops-task-cat">
-          <option value="Operativo">⚙️ Operativo</option>
-          <option value="Commerciale">💼 Commerciale</option>
-          <option value="Amministrazione">📑 Amministrazione</option>
-          <option value="Setup">🔧 Setup</option>
-          <option value="Da definire">❓ Da definire</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Assegnato a</label>
-        <select id="ops-task-assegnato">
-          <option value="Romeo">Romeo</option>
-          <option value="Daniele">Daniele</option>
-          <option value="Entrambi">Entrambi</option>
-        </select>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="field">
-        <label>Urgenza</label>
-        <select id="ops-task-urgenza">
-          <option value="Urgente">🔴 Urgente</option>
-          <option value="Alta">🟠 Alta</option>
-          <option value="Media">🟡 Media</option>
-          <option value="Bassa">🟢 Bassa</option>
-          <option value="Parcheggiato">⏸ Parcheggiato</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Stato</label>
-        <select id="ops-task-stato">
-          <option value="Da fare">Da fare</option>
-          <option value="In corso">In corso</option>
-          <option value="In attesa">In attesa</option>
-          <option value="Completato">Completato</option>
-        </select>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="field">
-        <label>Scadenza</label>
-        <input type="date" id="ops-task-scadenza">
-      </div>
-      <div class="field">
-        <label>Proprietà (opzionale)</label>
-        <select id="ops-task-prop-sel">
-          <option value="">— Nessuna (task generale) —</option>
-        </select>
-      </div>
-    </div>
-    <div class="field" style="margin-bottom:12px">
-      <label>Prossima azione</label>
-      <input id="ops-task-prossima" placeholder="Cosa fare subito dopo...">
-    </div>
-    <div class="field" style="margin-bottom:20px">
-      <label>Note</label>
-      <textarea id="ops-task-note" rows="2" placeholder="Dettagli aggiuntivi..." style="resize:vertical"></textarea>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-ghost" onclick="closeModal('modal-ops-task')">Annulla</button>
-      <button class="btn btn-primary" onclick="saveOpsTask()">💾 Salva Task</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: new/edit template -->
-<div id="modal-ops-tpl" class="modal-overlay">
-  <div class="modal" style="max-width:560px;position:relative">
-    <button class="modal-close" onclick="closeModal('modal-ops-tpl')">&#10005;</button>
-    <div class="modal-title">Checklist Ricorrente</div>
-    <input type="hidden" id="ops-tpl-id">
-    <div class="field" style="margin-bottom:18px">
-      <label>Nome Checklist *</label>
-      <input id="ops-tpl-nome" placeholder="Es. Cambio ospite, Apertura stagione...">
-    </div>
-    <div style="margin-bottom:8px;font-size:11.5px;font-weight:600;color:var(--text-mid)">ITEMS</div>
-    <div id="ops-tpl-items" style="display:grid;gap:8px;margin-bottom:12px;max-height:320px;overflow-y:auto"></div>
-    <button class="btn btn-ghost btn-sm" onclick="addTplItem()">&#43; Aggiungi item</button>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
-      <button class="btn btn-ghost" onclick="closeModal('modal-ops-tpl')">Annulla</button>
-      <button class="btn btn-primary" onclick="saveOpsTemplate()">💾 Salva Checklist</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: apply template -->
-<div id="modal-ops-apply" class="modal-overlay">
-  <div class="modal" style="max-width:420px;position:relative">
-    <button class="modal-close" onclick="closeModal('modal-ops-apply')">&#10005;</button>
-    <div class="modal-title">Applica Checklist</div>
-    <div class="field" style="margin-bottom:14px">
-      <label>Checklist</label>
-      <select id="ops-apply-tpl"></select>
-    </div>
-    <div class="field" style="margin-bottom:14px">
-      <label>Scadenza per tutti i task (opzionale)</label>
-      <input type="date" id="ops-apply-scadenza">
-    </div>
-    <div id="ops-apply-preview" style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-light);margin-bottom:18px;display:grid;gap:4px;max-height:180px;overflow-y:auto"></div>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-ghost" onclick="closeModal('modal-ops-apply')">Annulla</button>
-      <button class="btn btn-primary" onclick="confirmApplyTemplate()">✅ Aggiungi Task</button>
     </div>
   </div>
 </div>
@@ -2719,7 +2479,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
+  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',ricevute:'Ricevute',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -2790,10 +2550,9 @@ function renderPage(p){
   if(p==='prenotazioni'){renderPrenotazioni();wireTableActions('tbody-prenotazioni');}
   if(p==='report_prop')setupReportFiltri();
   if(p==='documenti')renderDocumenti();
+  if(p==='contratti')renderContratti();
   if(p==='adempimenti')renderAdempimenti();
   if(p==='anticipi')renderAnticipi();
-  if(p==='operations'){switchOpsTab('generici');}
-  if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){if(typeof clDB==='function'){clDB();renderCleaning();}}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
@@ -7333,674 +7092,6 @@ function anteprimaRicevuta() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// OPERATIONS MODULE
-// ═══════════════════════════════════════════════════════════════════
-
-var _opsCurProp     = null;
-var _opsStatus      = 'open';  // prop tasks status
-var _opsGenStatus   = 'open';  // generic tasks status
-var _opsCurCat      = '';
-var _opsGenCat      = '';
-var _opsCurTab      = 'generici';  // 'generici' | 'proprieta'
-var _opsPrevTab     = 'generici';  // for back from templates
-var _opsCurTplItems = [];
-
-var OPS_CATS = {
-  'generale':       {label:'Generale',       icon:'📋', color:'#6b7280'},
-  'pulizie':        {label:'Pulizie',        icon:'🧹', color:'#0099cc'},
-  'manutenzione':   {label:'Manutenzione',   icon:'🔧', color:'#f59e0b'},
-  'check-in':       {label:'Check-in',       icon:'🛬', color:'#10b981'},
-  'check-out':      {label:'Check-out',      icon:'🛫', color:'#8b5cf6'},
-  'forniture':      {label:'Forniture',      icon:'📦', color:'#ec4899'},
-  'burocrazia':     {label:'Burocrazia',     icon:'📑', color:'#64748b'},
-  'Operativo':      {label:'Operativo',      icon:'⚙️', color:'#0099cc'},
-  'Commerciale':    {label:'Commerciale',    icon:'💼', color:'#10b981'},
-  'Amministrazione':{label:'Amministrazione',icon:'📑', color:'#64748b'},
-  'Setup':          {label:'Setup',          icon:'🔧', color:'#f59e0b'},
-  'Da definire':    {label:'Da definire',    icon:'❓', color:'#9ca3af'},
-};
-
-var URGENZA_CFG = {
-  'Urgente':     {dot:'🔴', bg:'#fee2e2', color:'#b91c1c', label:'Urgente'},
-  'Alta':        {dot:'🟠', bg:'#ffedd5', color:'#c2410c', label:'Alta'},
-  'Media':       {dot:'🟡', bg:'#fef9c3', color:'#92400e', label:'Media'},
-  'Bassa':       {dot:'🟢', bg:'#dcfce7', color:'#15803d', label:'Bassa'},
-  'Parcheggiato':{dot:'⏸', bg:'#f1f5f9', color:'#64748b', label:'Parcheggiato'},
-};
-
-var STATO_CFG = {
-  'Da fare':   {bg:'#dbeafe', color:'#1d4ed8', label:'Da fare'},
-  'In corso':  {bg:'#fef9c3', color:'#92400e', label:'In corso'},
-  'In attesa': {bg:'#ffedd5', color:'#c2410c', label:'In attesa'},
-  'Completato':{bg:'#dcfce7', color:'#15803d', label:'Completato'},
-};
-
-var PRIO_CFG = {
-  'alta':    {label:'Alta',    dot:'🔴', bg:'#fee2e2', color:'#b91c1c'},
-  'media':   {label:'Media',   dot:'🟡', bg:'#fef9c3', color:'#92400e'},
-  'bassa':   {label:'Bassa',   dot:'🟢', bg:'#dcfce7', color:'#15803d'},
-  'normale': {label:'Normale', dot:'⚪', bg:'transparent', color:'var(--text-light)'},
-};
-
-// ── Tabs & Views ─────────────────────────────────────────────────────
-function switchOpsTab(tab) {
-  _opsCurTab = tab;
-  // update tab pills
-  document.querySelectorAll('[data-ops-tab]').forEach(function(el){
-    el.classList.toggle('active', el.getAttribute('data-ops-tab')===tab);
-  });
-  // hide templates
-  document.getElementById('ops-view-templates').style.display = 'none';
-  document.getElementById('ops-main-tabs').style.display = 'flex';
-  document.getElementById('ops-header-actions').style.display = 'flex';
-  if(tab==='generici'){
-    document.getElementById('ops-tab-generici').style.display = 'block';
-    document.getElementById('ops-tab-proprieta').style.display = 'none';
-    document.getElementById('ops-btn-nuovo').onclick = function(){ addKanbanCol(); };
-    initKanban();
-  } else {
-    document.getElementById('ops-tab-generici').style.display = 'none';
-    document.getElementById('ops-tab-proprieta').style.display = 'block';
-    document.getElementById('ops-view-props').style.display  = 'block';
-    document.getElementById('ops-view-tasks').style.display  = 'none';
-    document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(null); };
-    _opsCurProp = null;
-    renderOpsProps();
-  }
-}
-
-
-
-function closeTemplatesView() {
-  document.getElementById('ops-view-templates').style.display = 'none';
-  document.getElementById('ops-main-tabs').style.display = 'flex';
-  document.getElementById('ops-header-actions').style.display = 'flex';
-  switchOpsTab(_opsPrevTab);
-}
-
-function showOpsView(view) {
-  if(view==='templates'){
-    _opsPrevTab = _opsCurTab;
-    document.getElementById('ops-tab-generici').style.display = 'none';
-    document.getElementById('ops-tab-proprieta').style.display = 'none';
-    document.getElementById('ops-main-tabs').style.display = 'none';
-    document.getElementById('ops-header-actions').style.display = 'none';
-    document.getElementById('ops-view-templates').style.display = 'block';
-    renderOpsTemplates();
-  }
-}
-
-// ── Generic tasks ─────────────────────────────────────────────────────
-function renderGenKPI() {
-  var all = DB.ops_tasks.filter(function(t){ return !t.prop_id; });
-  var today = new Date().toISOString().slice(0,10);
-  var open = all.filter(function(t){ return t.stato !== 'Completato'; });
-  var done = all.filter(function(t){ return t.stato === 'Completato'; });
-  var urg  = open.filter(function(t){ return t.urgenza === 'Urgente'; });
-  var oggi = open.filter(function(t){ return t.scadenza === today; });
-  var e = function(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; };
-  e('kpi-tot', all.length);
-  e('kpi-urg', urg.length);
-  e('kpi-done', done.length);
-  e('kpi-oggi', oggi.length);
-}
-
-function renderGenTasks() {
-  renderGenKPI();
-  var q        = (document.getElementById('ops-gen-search')||{}).value||'';
-  var assegn   = (document.getElementById('ops-gen-assegnato')||{}).value||'';
-  var catSel   = (document.getElementById('ops-gen-cat-sel')||{}).value||'';
-  var urgSel   = (document.getElementById('ops-gen-urgenza-sel')||{}).value||'';
-  q = q.toLowerCase();
-
-  var tasks = DB.ops_tasks.filter(function(t){
-    if(t.prop_id) return false;
-    if(_opsGenStatus==='open' && t.stato==='Completato') return false;
-    if(_opsGenStatus==='done' && t.stato!=='Completato') return false;
-    if(assegn && t.assegnato !== assegn) return false;
-    if(catSel && t.cat !== catSel) return false;
-    if(urgSel && t.urgenza !== urgSel) return false;
-    if(q && t.titolo.toLowerCase().indexOf(q)<0) return false;
-    return true;
-  });
-
-  // Sort: Urgente first, then Alta, then by scadenza, then completati in fondo
-  var urgOrd = {Urgente:0, Alta:1, Media:2, Bassa:3, Parcheggiato:4};
-  tasks.sort(function(a,b){
-    var aD = a.stato==='Completato', bD = b.stato==='Completato';
-    if(aD !== bD) return aD ? 1 : -1;
-    var ud = (urgOrd[a.urgenza]||5) - (urgOrd[b.urgenza]||5);
-    if(ud) return ud;
-    if(a.scadenza && b.scadenza) return a.scadenza < b.scadenza ? -1 : 1;
-    if(a.scadenza) return -1;
-    if(b.scadenza) return 1;
-    return 0;
-  });
-
-  var tbody = document.getElementById('ops-gen-tbody');
-  var empty = document.getElementById('ops-gen-empty');
-  if(!tbody) return;
-
-  if(!tasks.length){
-    tbody.innerHTML = '';
-    if(empty) empty.style.display = 'block';
-    return;
-  }
-  if(empty) empty.style.display = 'none';
-
-  var today = new Date().toISOString().slice(0,10);
-  tbody.innerHTML = tasks.map(function(t){
-    var done    = t.stato === 'Completato';
-    var urg     = URGENZA_CFG[t.urgenza] || {dot:'⚪', bg:'#f1f5f9', color:'#64748b', label:t.urgenza||''};
-    var stato   = STATO_CFG[t.stato]     || {bg:'#f1f5f9', color:'#64748b', label:t.stato||''};
-    var cat     = OPS_CATS[t.cat]        || {icon:'📋', label:t.cat||'', color:'#6b7280'};
-    var overdue = !done && t.scadenza && t.scadenza < today;
-    var dueStr  = '';
-    if(t.scadenza){
-      var d = new Date(t.scadenza+'T00:00:00');
-      dueStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
-    }
-    var rowBg = overdue ? 'background:#fff5f5' : (done ? 'background:var(--surface2);opacity:0.7' : '');
-    var assegnatoColor = t.assegnato==='Romeo' ? '#4361ee' : t.assegnato==='Daniele' ? '#10b981' : '#f59e0b';
-
-    return '<tr style="border-bottom:1px solid var(--border);'+rowBg+'">'
-      // Checkbox
-      +'<td style="padding:10px 12px;text-align:center">'
-      +'<div data-toggle-task="'+t.id+'" style="width:18px;height:18px;border-radius:50%;border:2px solid '
-      +(done?'var(--blue)':'var(--border)')+';background:'+(done?'var(--blue)':'transparent')
-      +';cursor:pointer;display:flex;align-items:center;justify-content:center;margin:auto;transition:all .15s">'
-      +(done?'<svg width="10" height="7" viewBox="0 0 11 8"><polyline points="1,4 4,7 10,1" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'')
-      +'</div></td>'
-      // Task title
-      +'<td style="padding:10px 12px">'
-      +'<div style="font-weight:'+(done?'400':'600')+';color:var(--text);text-decoration:'+(done?'line-through':'none')+';font-size:13px">'+esc(t.titolo)+'</div>'
-      +(t.prossima ? '<div style="font-size:11px;color:var(--text-light);margin-top:2px">→ '+esc(t.prossima)+'</div>' : '')
-      +(t.note ? '<div style="font-size:11px;color:var(--text-light);margin-top:2px;font-style:italic">'+esc(t.note)+'</div>' : '')
-      +'</td>'
-      // Categoria
-      +'<td style="padding:10px 12px"><span style="font-size:11px;color:'+cat.color+'">'+cat.icon+' '+cat.label+'</span></td>'
-      // Assegnato
-      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:'+assegnatoColor+'">'+esc(t.assegnato||'—')+'</span></td>'
-      // Urgenza
-      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+urg.bg+';color:'+urg.color+'">'+urg.dot+' '+urg.label+'</span></td>'
-      // Stato
-      +'<td style="padding:10px 12px;text-align:center"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+stato.bg+';color:'+stato.color+'">'+stato.label+'</span></td>'
-      // Scadenza
-      +'<td style="padding:10px 12px;text-align:center;font-size:11.5px;color:'+(overdue?'#dc2626':'var(--text-light)')+'">'+( dueStr ? (overdue?'⚠ ':'')+dueStr : '—')+'</td>'
-      // Azioni
-      +'<td style="padding:10px 12px;text-align:center">'
-      +'<button data-edit-task="'+t.id+'" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px" title="Modifica">✏️</button>'
-      +'<button data-del-task="'+t.id+'"  style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;color:#dc2626" title="Elimina">🗑</button>'
-      +'</td>'
-      +'</tr>';
-  }).join('');
-}
-
-
-// ── Shared task row builder ───────────────────────────────────────────
-function buildTaskRow(t) {
-  var today  = new Date().toISOString().slice(0,10);
-  var cat    = OPS_CATS[t.cat] || {icon:'📋',label:t.cat||'Generale',color:'#6b7280'};
-  var prio   = PRIO_CFG[t.prio] || PRIO_CFG['normale'];
-  var overdue= !t.done && t.scadenza && t.scadenza < today;
-  var dueStr = '';
-  if(t.scadenza){
-    var d = new Date(t.scadenza+'T00:00:00');
-    dueStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
-  }
-  var checkStyle = 'flex-shrink:0;width:20px;height:20px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s;border:2px solid '
-    +(t.done?'var(--blue)':'var(--border)')+';background:'+(t.done?'var(--blue)':'transparent');
-  return '<div style="background:var(--surface);border:1.5px solid '+(overdue?'#fca5a5':'var(--border)')
-    +';border-radius:var(--radius);padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;opacity:'+(t.done?0.6:1)+'">'
-    +'<div data-toggle-task="'+t.id+'" style="'+checkStyle+'">'
-    +(t.done?'<svg width="11" height="8" viewBox="0 0 11 8"><polyline points="1,4 4,7 10,1" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>':'')
-    +'</div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
-    +'<span style="font-size:13px;font-weight:'+(t.done?'400':'600')+';color:var(--text);text-decoration:'+(t.done?'line-through':'none')+'">'+esc(t.titolo)+'</span>'
-    +(t.prio!=='normale'?'<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:'+prio.bg+';color:'+prio.color+'">'+prio.dot+' '+prio.label+'</span>':'')
-    +'</div>'
-    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-    +'<span style="font-size:11px;color:'+cat.color+'">'+cat.icon+' '+cat.label+'</span>'
-    +(dueStr?'<span style="font-size:11px;color:'+(overdue?'#dc2626':'var(--text-light)')+'">📅 '+dueStr+(overdue?' ⚠ scaduto':'')+'</span>':'')
-    +'</div>'
-    +(t.note?'<div style="font-size:11px;color:var(--text-light);margin-top:3px;font-style:italic">'+esc(t.note)+'</div>':'')
-    +'</div>'
-    +'<div style="display:flex;gap:4px;flex-shrink:0">'
-    +'<button data-edit-task="'+t.id+'" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px">✏️</button>'
-    +'<button data-del-task="'+t.id+'" class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px;color:#dc2626">🗑</button>'
-    +'</div>'
-    +'</div>';
-}
-
-
-// ── Props list ───────────────────────────────────────────────────────
-function renderOpsProps() {
-  var grid = document.getElementById('ops-prop-grid');
-  if(!grid) return;
-  var q = ((document.getElementById('ops-search')||{}).value||'').toLowerCase();
-
-  // Sort: groups first, then alphabetical
-  var childIds = {};
-  (DB.propGroups||[]).forEach(function(g){ g.children.forEach(function(c){ childIds[c]=g.nome; }); });
-
-  var props = DB.proprieta.filter(function(p){
-    return !q || p.nome.toLowerCase().indexOf(q)>=0;
-  });
-
-  if(!props.length){
-    grid.innerHTML = '<div style="color:var(--text-light);font-size:13px;padding:20px;grid-column:1/-1">Nessuna proprietà trovata.</div>';
-    return;
-  }
-
-  var today = new Date().toISOString().slice(0,10);
-
-  grid.innerHTML = props.map(function(p){
-    var tasks   = DB.ops_tasks.filter(function(t){ return t.prop_id===p.id; });
-    var open    = tasks.filter(function(t){ return t.stato!=='Completato'&&!t.done; });
-    var done    = tasks.filter(function(t){ return t.stato==='Completato'||t.done; });
-    var overdue = open.filter(function(t){ return t.scadenza&&t.scadenza<today; });
-    var urgent  = open.filter(function(t){ return t.urgenza==='Urgente'; });
-    var gruppo  = childIds[p.id] ? '<span style="font-size:10px;color:var(--text-light);font-weight:500">'+childIds[p.id]+'</span>' : '';
-
-    // Progress bar
-    var pct = tasks.length ? Math.round(done.length/tasks.length*100) : 0;
-    var barColor = pct===100?'#10b981':overdue.length?'#dc2626':urgent.length?'#f59e0b':'var(--blue)';
-
-    // Task preview (up to 4)
-    var preview = tasks.slice(0,4).map(function(t){
-      var isDone = t.stato==='Completato'||t.done;
-      var isOver = !isDone && t.scadenza && t.scadenza<today;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid '+(isDone?'#10b981':'var(--border)')+';background:'+(isDone?'#10b981':'transparent')+';display:flex;align-items:center;justify-content:center">'
-        +(isDone?'<svg width="9" height="7" viewBox="0 0 11 8"><polyline points="1,4 4,7 10,1" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>':'')+'</div>'
-        +'<span style="font-size:11.5px;color:'+(isDone?'var(--text-light)':isOver?'#dc2626':'var(--text)')+';text-decoration:'+(isDone?'line-through':'none')+';flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(t.titolo)+'</span>'
-        +(t.urgenza==='Urgente'&&!isDone?'<span style="font-size:9px;color:#dc2626;font-weight:700">URG</span>':'')
-        +'</div>';
-    }).join('');
-    var moreCount = tasks.length > 4 ? tasks.length-4 : 0;
-
-    return '<div data-prop-card="'+p.id+'" style="background:var(--surface);border:1.5px solid '+(overdue.length?'#fca5a5':urgent.length?'#fed7aa':'var(--border)')+';border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:box-shadow .15s">'
-      // Header
-      +'<div style="padding:14px 16px;border-bottom:1px solid var(--border)">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-      +'<div style="font-weight:700;font-size:13px;color:var(--text)">🏠 '+esc(p.nome)+'</div>'
-      +(open.length?'<span style="background:'+(overdue.length?'#dc2626':urgent.length?'#f59e0b':'var(--blue)')+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px">'+open.length+' aperti</span>'
-        :'<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px">✓ OK</span>')
-      +'</div>'
-      +gruppo
-      // Progress bar
-      +(tasks.length?'<div style="margin-top:8px;background:var(--border);border-radius:4px;height:4px"><div style="width:'+pct+'%;background:'+barColor+';height:4px;border-radius:4px;transition:width .3s"></div></div>'
-        +'<div style="font-size:10px;color:var(--text-light);margin-top:3px">'+done.length+'/'+tasks.length+' completati</div>':'<div style="font-size:11px;color:var(--text-light);margin-top:4px">Nessun task ancora</div>')
-      +'</div>'
-      // Task preview
-      +(tasks.length?'<div style="padding:8px 16px">'
-        +preview
-        +(moreCount?'<div style="font-size:11px;color:var(--blue);padding-top:6px">+ altri '+moreCount+'...</div>':'')
-        +'</div>':'')
-      // Footer button
-      +'<div style="padding:10px 16px;background:var(--surface2);display:flex;justify-content:space-between;align-items:center">'
-      +'<span style="font-size:11px;color:var(--text-light)">Clicca per gestire</span>'
-      +'<span style="font-size:11px;color:var(--blue);font-weight:600">→</span>'
-      +'</div>'
-      +'</div>';
-  }).join('');
-
-  grid.querySelectorAll('[data-prop-card]').forEach(function(el){
-    el.addEventListener('click', function(){ openOpsProps(this.getAttribute('data-prop-card')); });
-    el.addEventListener('mouseover', function(){ this.style.boxShadow='var(--shadow-lg)'; });
-    el.addEventListener('mouseout',  function(){ this.style.boxShadow='none'; });
-  });
-}
-
-function openOpsProps(propId) {
-  _opsCurProp = propId;
-  _opsCurCat  = '';
-  var p = DB.proprieta.find(function(x){ return x.id===propId; });
-  document.getElementById('ops-prop-title').textContent = p ? '🏠 '+p.nome : '';
-  document.getElementById('ops-view-props').style.display  = 'none';
-  document.getElementById('ops-view-tasks').style.display  = 'block';
-  document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(propId); };
-  renderOpsTasks();
-}
-
-function backToProps() {
-  document.getElementById('ops-view-props').style.display = 'block';
-  document.getElementById('ops-view-tasks').style.display = 'none';
-  document.getElementById('ops-btn-nuovo').onclick = function(){ openNewTask(null); };
-  _opsCurProp = null;
-  renderOpsProps();
-}
-
-
-// ── Tasks list for a property ─────────────────────────────────────────
-function renderOpsTasks() {
-  if(!_opsCurProp) return;
-  var tasks = DB.ops_tasks.filter(function(t){ return t.prop_id===_opsCurProp; });
-  var catPills = document.getElementById('ops-cat-pills');
-  var usedCats = [];
-  tasks.forEach(function(t){ if(usedCats.indexOf(t.cat)<0) usedCats.push(t.cat); });
-  catPills.innerHTML = [''].concat(usedCats).map(function(c){
-    var active = _opsCurCat===c;
-    var label  = c ? (OPS_CATS[c]?OPS_CATS[c].icon+' '+OPS_CATS[c].label:c) : 'Tutti';
-    return '<span data-cat="'+c+'" style="padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid '
-      +(active?'var(--blue)':'var(--border)')+';background:'+(active?'var(--blue)':'var(--surface)')
-      +';color:'+(active?'#fff':'var(--text-mid)')+'">'+label+'</span>';
-  }).join('');
-  catPills.querySelectorAll('[data-cat]').forEach(function(el){
-    el.addEventListener('click',function(){ _opsCurCat=this.getAttribute('data-cat'); renderOpsTasks(); });
-  });
-  var filtered = tasks.filter(function(t){
-    if(_opsCurCat && t.cat!==_opsCurCat) return false;
-    if(_opsStatus==='open' && t.done)    return false;
-    if(_opsStatus==='done' && !t.done)   return false;
-    return true;
-  });
-  filtered.sort(function(a,b){
-    if(a.done!==b.done) return a.done?1:-1;
-    var po={alta:0,media:1,normale:2,bassa:3};
-    var pd=(po[a.prio]||2)-(po[b.prio]||2); if(pd) return pd;
-    if(a.scadenza&&b.scadenza) return a.scadenza<b.scadenza?-1:1;
-    if(a.scadenza) return -1; if(b.scadenza) return 1;
-    return 0;
-  });
-  var list = document.getElementById('ops-task-list');
-  if(!filtered.length){
-    list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-light);font-size:13px">'
-      +(_opsStatus==='open'?'✅ Nessun task aperto per questa proprietà!':'Nessun task trovato.')+'</div>';
-    return;
-  }
-  list.innerHTML = filtered.map(function(t){ return buildTaskRow(t); }).join('');
-}
-
-// ── Task CRUD ────────────────────────────────────────────────────────
-function openNewTask(propId) {
-  document.getElementById('ops-task-id').value       = '';
-  document.getElementById('ops-task-modal-title').textContent = 'Nuovo Task';
-  document.getElementById('ops-task-titolo').value   = '';
-  document.getElementById('ops-task-cat').value      = 'Operativo';
-  document.getElementById('ops-task-assegnato').value= 'Romeo';
-  document.getElementById('ops-task-urgenza').value  = 'Media';
-  document.getElementById('ops-task-stato').value    = 'Da fare';
-  document.getElementById('ops-task-scadenza').value = '';
-  document.getElementById('ops-task-prossima').value = '';
-  document.getElementById('ops-task-note').value     = '';
-  var sel = document.getElementById('ops-task-prop-sel');
-  sel.innerHTML = '<option value="">— Nessuna (task generale) —</option>'
-    + DB.proprieta.map(function(p){
-        return '<option value="'+p.id+'"'+(p.id===propId?' selected':'')+'>'+esc(p.nome)+'</option>';
-      }).join('');
-  if(propId) sel.value = propId;
-  openModal('modal-ops-task');
-}
-
-function editOpsTask(id) {
-  var t = DB.ops_tasks.find(function(x){ return x.id===id; });
-  if(!t) return;
-  document.getElementById('ops-task-id').value       = t.id;
-  document.getElementById('ops-task-modal-title').textContent = 'Modifica Task';
-  document.getElementById('ops-task-titolo').value   = t.titolo;
-  document.getElementById('ops-task-cat').value      = t.cat||'Operativo';
-  document.getElementById('ops-task-assegnato').value= t.assegnato||'Romeo';
-  document.getElementById('ops-task-urgenza').value  = t.urgenza||'Media';
-  document.getElementById('ops-task-stato').value    = t.stato||'Da fare';
-  document.getElementById('ops-task-scadenza').value = t.scadenza||'';
-  document.getElementById('ops-task-prossima').value = t.prossima||'';
-  document.getElementById('ops-task-note').value     = t.note||'';
-  var sel = document.getElementById('ops-task-prop-sel');
-  sel.innerHTML = '<option value="">— Nessuna (task generale) —</option>'
-    + DB.proprieta.map(function(p){
-        return '<option value="'+p.id+'"'+(p.id===t.prop_id?' selected':'')+'>'+esc(p.nome)+'</option>';
-      }).join('');
-  if(t.prop_id) sel.value = t.prop_id;
-  openModal('modal-ops-task');
-}
-
-function saveOpsTask() {
-  var titolo = document.getElementById('ops-task-titolo').value.trim();
-  if(!titolo){ toast('Inserisci un titolo'); return; }
-  var propId   = document.getElementById('ops-task-prop-sel').value || null;
-  var assegn   = document.getElementById('ops-task-assegnato').value;
-  var urgenza  = document.getElementById('ops-task-urgenza').value;
-  var stato    = document.getElementById('ops-task-stato').value;
-  var cat      = document.getElementById('ops-task-cat').value;
-  var scadenza = document.getElementById('ops-task-scadenza').value || null;
-  var prossima = document.getElementById('ops-task-prossima').value.trim() || null;
-  var note     = document.getElementById('ops-task-note').value.trim() || null;
-  var id       = document.getElementById('ops-task-id').value;
-  var now      = new Date().toISOString();
-
-  if(id) {
-    var t = DB.ops_tasks.find(function(x){ return x.id===id; });
-    if(t){
-      t.prop_id  = propId; t.titolo = titolo; t.cat = cat;
-      t.assegnato= assegn; t.urgenza= urgenza; t.stato = stato;
-      t.scadenza = scadenza; t.prossima = prossima; t.note = note;
-      t.done     = (stato === 'Completato');
-      t.done_at  = t.done ? (t.done_at || now) : null;
-    }
-  } else {
-    DB.ops_tasks.push({
-      id: uid(), prop_id: propId, titolo: titolo, cat: cat,
-      assegnato: assegn, urgenza: urgenza, stato: stato,
-      scadenza: scadenza, prossima: prossima, note: note,
-      done: (stato==='Completato'), done_at: null, created_at: now
-    });
-  }
-  // Assign kanban col if pending
-  if(window._kanbanPendingCol && !id) {
-    var lastT = DB.ops_tasks[DB.ops_tasks.length-1];
-    if(lastT) lastT.kanban_col = window._kanbanPendingCol;
-    window._kanbanPendingCol = null;
-  }
-  saveDB(); closeModal('modal-ops-task');
-  toast('Task salvato ✓');
-  if(_opsCurTab==='generici'){ renderKanban(); }
-  else if(propId && _opsCurProp) renderOpsTasks();
-  else renderOpsProps();
-}
-
-
-function toggleOpsTask(id) {
-  var t = DB.ops_tasks.find(function(x){ return x.id===id; });
-  if(!t) return;
-  t.done  = !t.done;
-  t.stato = t.done ? 'Completato' : 'Da fare';
-  t.done_at = t.done ? new Date().toISOString() : null;
-  saveDB();
-  if(_opsCurTab==='generici') { renderKanban(); }
-  else { renderOpsTasks(); renderOpsProps(); }
-}
-
-function deleteOpsTask(id) {
-  if(!confirm('Eliminare questo task?')) return;
-  DB.ops_tasks = DB.ops_tasks.filter(function(x){ return x.id!==id; });
-  saveDB();
-  if(_opsCurTab==='generici'){ renderGenTasks(); }
-  else { renderOpsTasks(); renderOpsProps(); }
-}
-
-// ── Templates ────────────────────────────────────────────────────────
-function renderOpsTemplates() {
-  var list = document.getElementById('ops-template-list');
-  if(!list) return;
-  if(!DB.ops_templates.length){
-    list.innerHTML = '<div style="color:var(--text-light);font-size:13px;padding:20px;grid-column:1/-1">Nessuna checklist. Crea il primo template per velocizzare l\'inserimento dei task ricorrenti.</div>';
-    return;
-  }
-  list.innerHTML = DB.ops_templates.map(function(tpl){
-    return '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-      +'<div style="font-weight:700;font-size:13px">📋 '+esc(tpl.nome)+'</div>'
-      +'<div style="display:flex;gap:4px">'
-      +'<button onclick="editOpsTemplate(\''+tpl.id+'\')" class="btn btn-ghost btn-sm" style="font-size:11px">✏️</button>'
-      +'<button onclick="deleteOpsTemplate(\''+tpl.id+'\')" class="btn btn-ghost btn-sm" style="font-size:11px;color:#dc2626">🗑</button>'
-      +'</div></div>'
-      +'<div style="display:grid;gap:4px">'
-      +(tpl.items||[]).map(function(it){
-        var c = OPS_CATS[it.cat]||{icon:'📋',label:it.cat||'Generale'};
-        return '<div style="font-size:11.5px;color:var(--text-mid);display:flex;align-items:center;gap:6px">'
-          +'<span style="color:'+( (PRIO_CFG[it.prio]||{}).color||'var(--text-light)')+'">'+((PRIO_CFG[it.prio]||{}).dot||'⚪')+'</span>'
-          +c.icon+' '+esc(it.titolo)+'</div>';
-      }).join('')
-      +'</div>'
-      +'<div style="font-size:11px;color:var(--text-light);margin-top:8px">'+tpl.items.length+' task</div>'
-      +'</div>';
-  }).join('');
-}
-
-function openNewTemplate() {
-  document.getElementById('ops-tpl-id').value   = '';
-  document.getElementById('ops-tpl-nome').value = '';
-  _opsCurTplItems = [];
-  renderTplItems();
-  openModal('modal-ops-tpl');
-}
-
-function editOpsTemplate(id) {
-  var tpl = DB.ops_templates.find(function(x){ return x.id===id; });
-  if(!tpl) return;
-  document.getElementById('ops-tpl-id').value   = tpl.id;
-  document.getElementById('ops-tpl-nome').value = tpl.nome;
-  _opsCurTplItems = (tpl.items||[]).map(function(i){ return Object.assign({},i); });
-  renderTplItems();
-  openModal('modal-ops-tpl');
-}
-
-function addTplItem() {
-  _opsCurTplItems.push({titolo:'',cat:'generale',prio:'normale',note:''});
-  renderTplItems();
-}
-
-function renderTplItems() {
-  var cont = document.getElementById('ops-tpl-items');
-  if(!cont) return;
-  var inputStyle='background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:\'Plus Jakarta Sans\',sans-serif;font-size:12.5px;color:var(--text);outline:none;width:100%';
-  var selStyle='background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 8px;font-size:11.5px;color:var(--text);outline:none;width:100%';
-  cont.innerHTML = _opsCurTplItems.map(function(it,i){
-    return '<div style="display:grid;grid-template-columns:1fr 130px 110px 34px;gap:8px;align-items:center;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px">'
-      +'<input value="'+esc(it.titolo)+'" placeholder="Titolo item..." style="'+inputStyle+'" oninput="_opsCurTplItems['+i+'].titolo=this.value">'
-      +'<select style="'+selStyle+'" onchange="_opsCurTplItems['+i+'].cat=this.value">'
-      +Object.keys(OPS_CATS).map(function(k){ return '<option value="'+k+'"'+(it.cat===k?' selected':'')+'>'+OPS_CATS[k].icon+' '+OPS_CATS[k].label+'</option>'; }).join('')
-      +'</select>'
-      +'<select style="'+selStyle+'" onchange="_opsCurTplItems['+i+'].prio=this.value">'
-      +Object.keys(PRIO_CFG).map(function(k){ return '<option value="'+k+'"'+(it.prio===k?' selected':'')+'>'+PRIO_CFG[k].dot+' '+PRIO_CFG[k].label+'</option>'; }).join('')
-      +'</select>'
-      +'<button onclick="_opsCurTplItems.splice('+i+',1);renderTplItems()" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;line-height:1;padding:4px">🗑</button>'
-      +'</div>';
-  }).join('');
-}
-
-function saveOpsTemplate() {
-  var nome = document.getElementById('ops-tpl-nome').value.trim();
-  if(!nome){ toast('Inserisci un nome per la checklist'); return; }
-  var items = _opsCurTplItems.filter(function(i){ return i.titolo.trim(); });
-  if(!items.length){ toast('Aggiungi almeno un item'); return; }
-  var id = document.getElementById('ops-tpl-id').value;
-  if(id){
-    var tpl = DB.ops_templates.find(function(x){ return x.id===id; });
-    if(tpl){ tpl.nome=nome; tpl.items=items; }
-  } else {
-    DB.ops_templates.push({id:uid(), nome:nome, items:items});
-  }
-  saveDB(); closeModal('modal-ops-tpl'); renderOpsTemplates(); toast('Checklist salvata ✓');
-}
-
-function deleteOpsTemplate(id) {
-  if(!confirm('Eliminare questa checklist?')) return;
-  DB.ops_templates = DB.ops_templates.filter(function(x){ return x.id!==id; });
-  saveDB(); renderOpsTemplates();
-}
-
-// ── Apply template ────────────────────────────────────────────────────
-function applyOpsTemplate() {
-  if(!DB.ops_templates.length){ toast('Crea prima una checklist'); return; }
-  var sel = document.getElementById('ops-apply-tpl');
-  sel.innerHTML = DB.ops_templates.map(function(t){
-    return '<option value="'+t.id+'">'+esc(t.nome)+' ('+t.items.length+' task)</option>';
-  }).join('');
-  document.getElementById('ops-apply-scadenza').value = '';
-  updateApplyPreview();
-  openModal('modal-ops-apply');
-}
-
-function updateApplyPreview() {
-  var id  = document.getElementById('ops-apply-tpl').value;
-  var tpl = DB.ops_templates.find(function(x){ return x.id===id; });
-  var div = document.getElementById('ops-apply-preview');
-  if(!tpl){ div.innerHTML=''; return; }
-  div.innerHTML = tpl.items.map(function(it){
-    var c = OPS_CATS[it.cat]||{icon:'📋'};
-    return '<div>'+c.icon+' '+esc(it.titolo)+'</div>';
-  }).join('');
-}
-
-function confirmApplyTemplate() {
-  var id  = document.getElementById('ops-apply-tpl').value;
-  var tpl = DB.ops_templates.find(function(x){ return x.id===id; });
-  if(!tpl||!_opsCurProp) return;
-  var scad = document.getElementById('ops-apply-scadenza').value||null;
-  var now  = new Date().toISOString();
-  tpl.items.forEach(function(it){
-    DB.ops_tasks.push({
-      id: uid(), prop_id: _opsCurProp,
-      titolo: it.titolo, cat: it.cat||'generale', prio: it.prio||'normale',
-      scadenza: scad, note: it.note||null,
-      done: false, done_at: null, created_at: now
-    });
-  });
-  saveDB(); closeModal('modal-ops-apply');
-  toast(tpl.items.length+' task aggiunti ✓');
-  renderOpsTasks(); renderOpsProps();
-}
-
-// ── Wire status pills ─────────────────────────────────────────────────
-document.addEventListener('click', function(e){
-  // prop-tasks status
-  var el = e.target.closest('[data-ops-status]');
-  if(el){
-    _opsStatus = el.getAttribute('data-ops-status');
-    document.querySelectorAll('[data-ops-status]').forEach(function(p){
-      var active = p.getAttribute('data-ops-status')===_opsStatus;
-      p.style.border     = '1.5px solid '+(active?'var(--blue)':'var(--border)');
-      p.style.background = active?'var(--blue)':'var(--surface)';
-      p.style.color      = active?'#fff':'var(--text-mid)';
-    });
-    if(document.getElementById('ops-view-tasks').style.display!=='none') renderOpsTasks();
-    else renderOpsProps();
-    return;
-  }
-  // generic tasks status
-  var gel = e.target.closest('[data-gen-status]');
-  if(gel){
-    _opsGenStatus = gel.getAttribute('data-gen-status');
-    document.querySelectorAll('[data-gen-status]').forEach(function(p){
-      var active = p.getAttribute('data-gen-status')===_opsGenStatus;
-      p.style.border     = '1.5px solid '+(active?'var(--blue)':'var(--border)');
-      p.style.background = active?'var(--blue)':'var(--surface)';
-      p.style.color      = active?'#fff':'var(--text-mid)';
-    });
-    renderGenTasks();
-  }
-});
-
-// Wire task row actions via delegation
-document.addEventListener('click', function(e){
-  var toggle = e.target.closest('[data-toggle-task]');
-  if(toggle){ toggleOpsTask(toggle.getAttribute('data-toggle-task')); return; }
-  var edit = e.target.closest('[data-edit-task]');
-  if(edit){ editOpsTask(edit.getAttribute('data-edit-task')); return; }
-  var del = e.target.closest('[data-del-task]');
-  if(del){ deleteOpsTask(del.getAttribute('data-del-task')); return; }
-});
-
-// Wire apply template select change
-document.addEventListener('change', function(e){
-  if(e.target.id==='ops-apply-tpl') updateApplyPreview();
-});
-
-
-// ═══════════════════════════════════════════════════════════════════
 // DESTINATARIO MODAL — intercetta genRicevuta/genFatturaOspite/genFatturaAzienda
 // ═══════════════════════════════════════════════════════════════════
 
@@ -8236,439 +7327,6 @@ function formatDestHTML(dest) {
     +docLine
     +escHtml(dest.ind||'—')+(dest.cap?' '+dest.cap:'')+(dest.citta?' '+dest.citta:'')+(dest.prov?' ('+dest.prov+')':'')
     +(dest.nazione ? '<br>'+escHtml(dest.nazione) : '');
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// IMPORT TASKS MODULE
-// ═══════════════════════════════════════════════════════════════════
-
-var _importTasksBuffer = []; // task da confermare
-
-function initImportTasksPage() {
-  // Init quick task rows with 3 empty rows
-  var cont = document.getElementById('quick-task-rows');
-  if(cont && !cont.children.length) {
-    addQuickTaskRow(); addQuickTaskRow(); addQuickTaskRow();
-  }
-}
-
-// ── Drop zone drag & drop ─────────────────────────────────────────
-(function(){
-  ['dz-excel'].forEach(function(id){
-    document.addEventListener('DOMContentLoaded', function(){
-      var el = document.getElementById(id);
-      if(!el) return;
-      el.addEventListener('dragover', function(e){ e.preventDefault(); el.style.borderColor='var(--blue)'; });
-      el.addEventListener('dragleave', function(){ el.style.borderColor=''; });
-      el.addEventListener('drop', function(e){
-        e.preventDefault(); el.style.borderColor='';
-        var file = e.dataTransfer.files[0];
-        if(file) importTasksExcelFile(file);
-      });
-    });
-  });
-})();
-
-// ── Excel / CSV import ────────────────────────────────────────────
-function importTasksExcel(input) {
-  var file = input.files[0];
-  if(!file) return;
-  importTasksExcelFile(file);
-  input.value = '';
-}
-
-function importTasksExcelFile(file) {
-  var res = document.getElementById('import-task-excel-result');
-  res.innerHTML = '<div style="color:var(--text-light);font-size:12px">Lettura in corso...</div>';
-
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = new Uint8Array(e.target.result);
-      var wb = XLSX.read(data, {type:'array', cellDates:true});
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-
-      if(!rows.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun dato trovato</div>'; return; }
-
-      // Column mapping - flexible
-      var colMap = {
-        titolo:    ['task','titolo','nome','descrizione','title','description'],
-        cat:       ['categoria','category','cat','tipo','type'],
-        assegnato: ['assegnato','assegnato a','owner','assigned','assigned to'],
-        urgenza:   ['urgenza','urgency','priorità','priority','urgente'],
-        stato:     ['stato','status','state'],
-        scadenza:  ['scadenza','due','due date','deadline','data scadenza'],
-        note:      ['note','notes','descrizione','description','commento'],
-        prossima:  ['prossima azione','next action','next','prossima'],
-      };
-
-      function findCol(row, keys) {
-        var rowKeys = Object.keys(row).map(function(k){ return k.toLowerCase().trim(); });
-        for(var i=0; i<keys.length; i++){
-          var idx = rowKeys.indexOf(keys[i]);
-          if(idx>=0) return Object.values(row)[idx];
-        }
-        return '';
-      }
-
-      var tasks = rows.map(function(row){
-        var titolo = String(findCol(row, colMap.titolo)||'').trim();
-        if(!titolo) return null;
-        var scad = findCol(row, colMap.scadenza);
-        var scadStr = '';
-        if(scad){
-          if(scad instanceof Date) scadStr = scad.toISOString().slice(0,10);
-          else if(typeof scad==='string' && scad.match(/\d{4}-\d{2}-\d{2}/)) scadStr = scad.slice(0,10);
-          else if(typeof scad==='number') {
-            var d = new Date(Math.round((scad - 25569)*86400*1000));
-            scadStr = d.toISOString().slice(0,10);
-          }
-        }
-        var urgRaw = String(findCol(row, colMap.urgenza)||'').trim();
-        var urgenza = mapUrgenza(urgRaw) || 'Media';
-        var statoRaw = String(findCol(row, colMap.stato)||'').trim();
-        var stato = mapStato(statoRaw) || 'Da fare';
-        var assRaw = String(findCol(row, colMap.assegnato)||'').trim();
-        var assegnato = mapAssegnato(assRaw) || 'Romeo';
-        var catRaw = String(findCol(row, colMap.cat)||'').trim();
-        var cat = mapCategoria(catRaw) || 'Operativo';
-        return {
-          id: uid(), prop_id: null, titolo: titolo, cat: cat,
-          assegnato: assegnato, urgenza: urgenza, stato: stato,
-          scadenza: scadStr || null,
-          prossima: String(findCol(row, colMap.prossima)||'').trim() || null,
-          note: String(findCol(row, colMap.note)||'').trim() || null,
-          done: (stato==='Completato'), done_at: null, created_at: new Date().toISOString()
-        };
-      }).filter(Boolean);
-
-      if(!tasks.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun task riconosciuto. Verifica le colonne.</div>'; return; }
-      res.innerHTML='<div style="color:var(--blue);font-size:12px;font-weight:600">✓ '+tasks.length+' task riconosciuti</div>';
-      showImportPreview(tasks);
-    } catch(err) {
-      res.innerHTML='<div style="color:#dc2626;font-size:12px">Errore: '+err.message+'</div>';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-// ── Mapping helpers ───────────────────────────────────────────────
-function mapUrgenza(v) {
-  v = (v||'').toLowerCase();
-  if(v.indexOf('urgent')>=0||v==='urgente') return 'Urgente';
-  if(v.indexOf('alta')>=0||v.indexOf('high')>=0) return 'Alta';
-  if(v.indexOf('media')>=0||v.indexOf('med')>=0||v.indexOf('normal')>=0) return 'Media';
-  if(v.indexOf('bassa')>=0||v.indexOf('low')>=0) return 'Bassa';
-  if(v.indexOf('parch')>=0||v.indexOf('park')>=0) return 'Parcheggiato';
-  return '';
-}
-function mapStato(v) {
-  v = (v||'').toLowerCase();
-  if(v.indexOf('complet')>=0||v.indexOf('done')>=0||v.indexOf('chiuso')>=0) return 'Completato';
-  if(v.indexOf('corso')>=0||v.indexOf('progress')>=0||v.indexOf('wip')>=0) return 'In corso';
-  if(v.indexOf('attesa')>=0||v.indexOf('wait')>=0||v.indexOf('hold')>=0) return 'In attesa';
-  return 'Da fare';
-}
-function mapAssegnato(v) {
-  v = (v||'').toLowerCase();
-  if(v.indexOf('romeo')>=0) return 'Romeo';
-  if(v.indexOf('daniele')>=0) return 'Daniele';
-  if(v.indexOf('entrambi')>=0||v.indexOf('both')>=0||v.indexOf('tutti')>=0) return 'Entrambi';
-  return '';
-}
-function mapCategoria(v) {
-  v = (v||'').toLowerCase();
-  if(v.indexOf('commerc')>=0) return 'Commerciale';
-  if(v.indexOf('ammin')>=0||v.indexOf('admin')>=0) return 'Amministrazione';
-  if(v.indexOf('setup')>=0||v.indexOf('install')>=0) return 'Setup';
-  if(v.indexOf('defin')>=0) return 'Da definire';
-  return 'Operativo';
-}
-
-// ── Text import ───────────────────────────────────────────────────
-function importTasksText() {
-  var text = (document.getElementById('import-task-text')||{}).value||'';
-  var assegnato = (document.getElementById('import-text-assegnato')||{}).value||'Romeo';
-  var urgenza   = (document.getElementById('import-text-urgenza')||{}).value||'Media';
-  var res = document.getElementById('import-task-text-result');
-
-  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-  if(!lines.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun testo inserito</div>'; return; }
-
-  var tasks = lines.map(function(line){
-    return {
-      id: uid(), prop_id: null, titolo: line, cat: 'Operativo',
-      assegnato: assegnato, urgenza: urgenza, stato: 'Da fare',
-      scadenza: null, prossima: null, note: null,
-      done: false, done_at: null, created_at: new Date().toISOString()
-    };
-  });
-  res.innerHTML='<div style="color:var(--blue);font-size:12px;font-weight:600">✓ '+tasks.length+' task riconosciuti</div>';
-  showImportPreview(tasks);
-}
-
-// ── Quick task rows ───────────────────────────────────────────────
-function addQuickTaskRow() {
-  var cont = document.getElementById('quick-task-rows');
-  if(!cont) return;
-  var div = document.createElement('div');
-  div.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center';
-  var inp = document.createElement('input');
-  inp.placeholder = 'Descrivi il task...';
-  inp.style.cssText = 'background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12.5px;color:var(--text);outline:none;width:100%';
-  var btn = document.createElement('button');
-  btn.innerHTML = '🗑';
-  btn.style.cssText = 'background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;line-height:1;padding:4px';
-  btn.onclick = function(){ div.remove(); };
-  div.appendChild(inp);
-  div.appendChild(btn);
-  cont.appendChild(div);
-}
-
-function saveQuickTasks() {
-  var cont = document.getElementById('quick-task-rows');
-  var assegnato = (document.getElementById('quick-assegnato')||{}).value||'Romeo';
-  var urgenza   = (document.getElementById('quick-urgenza')||{}).value||'Media';
-  var res = document.getElementById('quick-task-result');
-
-  var tasks = [];
-  cont.querySelectorAll('input').forEach(function(inp){
-    var v = inp.value.trim();
-    if(v) tasks.push({
-      id: uid(), prop_id: null, titolo: v, cat: 'Operativo',
-      assegnato: assegnato, urgenza: urgenza, stato: 'Da fare',
-      scadenza: null, prossima: null, note: null,
-      done: false, done_at: null, created_at: new Date().toISOString()
-    });
-  });
-  if(!tasks.length){ res.innerHTML='<div style="color:#dc2626;font-size:12px">Nessun task inserito</div>'; return; }
-
-  tasks.forEach(function(t){ DB.ops_tasks.push(t); });
-  saveDB();
-  cont.innerHTML = '';
-  addQuickTaskRow(); addQuickTaskRow(); addQuickTaskRow();
-  res.innerHTML='<div style="color:#10b981;font-size:12px;font-weight:600">✓ '+tasks.length+' task aggiunti!</div>';
-  setTimeout(function(){ res.innerHTML=''; }, 3000);
-}
-
-// ── Preview & confirm ─────────────────────────────────────────────
-function showImportPreview(tasks) {
-  _importTasksBuffer = tasks;
-  var prev = document.getElementById('import-tasks-preview');
-  var tbody = document.getElementById('import-preview-tbody');
-  var count = document.getElementById('import-preview-count');
-  if(!prev||!tbody) return;
-
-  count.textContent = tasks.length;
-  tbody.innerHTML = tasks.map(function(t, i){
-    var urg = URGENZA_CFG[t.urgenza]||{dot:'⚪',label:t.urgenza};
-    return '<tr style="border-bottom:1px solid var(--border)">'
-      +'<td style="padding:8px 12px;font-size:12.5px">'+esc(t.titolo)+'</td>'
-      +'<td style="padding:8px 12px;font-size:12px;color:var(--text-mid)">'+esc(t.cat)+'</td>'
-      +'<td style="padding:8px 12px;text-align:center;font-size:12px;font-weight:600;color:#4361ee">'+esc(t.assegnato)+'</td>'
-      +'<td style="padding:8px 12px;text-align:center;font-size:11px">'+urg.dot+' '+urg.label+'</td>'
-      +'<td style="padding:8px 12px;text-align:center;font-size:11px;color:var(--text-light)">'+(t.scadenza||'—')+'</td>'
-      +'<td style="padding:8px 12px;text-align:center"><button onclick="_importTasksBuffer.splice('+i+',1);showImportPreview(_importTasksBuffer)" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px">🗑</button></td>'
-      +'</tr>';
-  }).join('');
-  prev.style.display = 'block';
-  prev.scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function confirmImportTasks() {
-  if(!_importTasksBuffer.length) return;
-  _importTasksBuffer.forEach(function(t){ DB.ops_tasks.push(t); });
-  saveDB();
-  var n = _importTasksBuffer.length;
-  _importTasksBuffer = [];
-  document.getElementById('import-tasks-preview').style.display = 'none';
-  if(document.getElementById('import-task-text')) document.getElementById('import-task-text').value = '';
-  toast('✓ '+n+' task importati con successo!');
-}
-
-
-
-// ═══════════════════════════════════════════════════════════════════
-// KANBAN MODULE
-// ═══════════════════════════════════════════════════════════════════
-
-var DEFAULT_COLS = [
-  {id:'col_generici',    nome:'Task Generici Houzly', color:'#dc2626'},
-  {id:'col_proprieta',   nome:'Attività Proprietà',   color:'#f59e0b'},
-  {id:'col_commerciale', nome:'Trattative / Studi',   color:'#10b981'},
-  {id:'col_followup',    nome:'Follow Up',             color:'#8b5cf6'},
-  {id:'col_ammin',       nome:'Amministrazione',       color:'#0099cc'},
-  {id:'col_pulizie',     nome:'Pulizie',               color:'#64748b'},
-  {id:'col_ricorrenti',  nome:'Task Mensili Ricorrenti',color:'#ec4899'},
-];
-
-function getKanbanCols() {
-  if(!DB.kanban_cols || !DB.kanban_cols.length) {
-    DB.kanban_cols = DEFAULT_COLS.map(function(c){ return Object.assign({},c); });
-    saveDB();
-  }
-  return DB.kanban_cols;
-}
-
-function dbDefaultsKanban() {
-  if(!DB.kanban_cols) DB.kanban_cols = [];
-}
-
-// ── Render board ─────────────────────────────────────────────────
-function renderKanban() {
-  dbDefaultsKanban();
-  var cols  = getKanbanCols();
-  var board = document.getElementById('kanban-board');
-  if(!board) return;
-
-  var today = new Date().toISOString().slice(0,10);
-
-  // Mantieni la colonna selezionata su mobile, default = prima
-  if(!window._kanbanMobileCol || !cols.find(function(c){return c.id===window._kanbanMobileCol;})){
-    window._kanbanMobileCol = cols.length ? cols[0].id : null;
-  }
-  var activeCol = window._kanbanMobileCol;
-
-  board.innerHTML = cols.map(function(col){
-    var tasks = DB.ops_tasks.filter(function(t){ return t.kanban_col === col.id && !t.prop_id; });
-    var open  = tasks.filter(function(t){ return t.stato!=='Completato'&&!t.done; });
-    var done  = tasks.filter(function(t){ return t.stato==='Completato'||t.done; });
-
-    var cards = tasks.map(function(t){
-      var isDone  = t.stato==='Completato'||t.done;
-      var isOver  = !isDone && t.scadenza && t.scadenza < today;
-      var urg     = URGENZA_CFG[t.urgenza]||{dot:'⚪',color:'#9ca3af',bg:'transparent'};
-      var dueStr  = '';
-      if(t.scadenza){
-        var d = new Date(t.scadenza+'T00:00:00');
-        dueStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
-      }
-      var borderColor = isOver ? '#fca5a5' : isDone ? 'var(--border)' : 'var(--border)';
-      var assColor = t.assegnato==='Romeo'?'#4361ee':t.assegnato==='Daniele'?'#10b981':'#f59e0b';
-
-      return '<div class="kb-card'+(isDone?' done':'')+'" style="border-color:'+borderColor+'" data-edit-task="'+t.id+'">'
-        +'<div class="kb-card-title">'+esc(t.titolo)+'</div>'
-        +'<div class="kb-card-meta">'
-        +(t.urgenza&&t.urgenza!=='Media'?'<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:'+urg.bg+';color:'+urg.color+'">'+urg.dot+' '+t.urgenza+'</span>':'')
-        +(t.assegnato?'<span style="font-size:10px;font-weight:700;color:'+assColor+'">'+esc(t.assegnato)+'</span>':'')
-        +(dueStr?'<span style="font-size:10px;color:'+(isOver?'#dc2626':'var(--text-light)')+'">📅 '+dueStr+'</span>':'')
-        +(isDone?'<span style="font-size:10px;color:#10b981">✓</span>':'')
-        +'</div>'
-        // Move to col dropdown
-        +'<div style="margin-top:6px;display:flex;gap:4px;align-items:center">'
-        +'<button data-toggle-task="'+t.id+'" style="background:'+(isDone?'#dcfce7':'var(--surface2)')+';border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer;color:'+(isDone?'#15803d':'var(--text-light)')+'">'+( isDone?'✓ Fatto':'Fatto')+'</button>'
-        +'<select onchange="moveKanbanTask(\''+t.id+'\',this.value);this.value=\'\';" style="flex:1;font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 4px;color:var(--text-light);cursor:pointer">'
-        +'<option value="">↔ Sposta</option>'
-        + cols.filter(function(c){ return c.id!==col.id; }).map(function(c){
-            return '<option value="'+c.id+'">'+esc(c.nome)+'</option>';
-          }).join('')
-        +'</select>'
-        +'</div>'
-        +'</div>';
-    }).join('');
-
-    var isActive = col.id === activeCol;
-    return '<div class="kb-col'+(isActive?' kb-col-active':'')+'" data-col-id="'+col.id+'">'
-      +'<div class="kb-col-header">'
-      +'<div style="width:10px;height:10px;border-radius:50%;background:'+col.color+';flex-shrink:0;margin-right:8px"></div>'
-      +'<div class="kb-col-title" data-rename-col="'+col.id+'">'+esc(col.nome)+'</div>'
-      +'<span style="font-size:11px;font-weight:700;color:var(--text-light);margin-left:6px">'+open.length+'</span>'
-      +'<div style="display:flex;gap:2px;margin-left:8px">'
-      +'<button onclick="renameKanbanCol(\''+col.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;color:var(--text-light)" title="Rinomina">✏️</button>'
-      +'<button onclick="deleteKanbanCol(\''+col.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;color:#dc2626" title="Elimina">🗑</button>'
-      +'</div>'
-      +'</div>'
-      +'<div class="kb-col-body">'+cards+'</div>'
-      +'<button class="kb-add-btn" onclick="openNewKanbanTask(\''+col.id+'\')">+ Aggiungi task</button>'
-      +'</div>';
-  }).join('');
-
-  // Render tab switcher mobile
-  var tabs = document.getElementById('kanban-mobile-tabs');
-  if(tabs){
-    tabs.innerHTML = cols.map(function(col){
-      var nOpen = DB.ops_tasks.filter(function(t){return t.kanban_col===col.id&&!t.prop_id&&t.stato!=='Completato'&&!t.done;}).length;
-      var isActive = col.id === activeCol;
-      return '<button onclick="switchKanbanCol(\''+col.id+'\')" class="kb-tab'+(isActive?' active':'')+'" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid '+(isActive?col.color:'var(--border)')+';background:'+(isActive?col.color+'18':'var(--surface)')+';color:'+(isActive?'var(--text)':'var(--text-mid)')+';border-radius:20px;font-size:12px;font-weight:'+(isActive?'700':'500')+';white-space:nowrap;cursor:pointer;flex-shrink:0">'
-        +'<span style="width:8px;height:8px;border-radius:50%;background:'+col.color+'"></span>'
-        +esc(col.nome)
-        +(nOpen>0?'<span style="font-size:10.5px;font-weight:700;background:'+(isActive?col.color:'var(--surface2)')+';color:'+(isActive?'#fff':'var(--text-light)')+';padding:1px 7px;border-radius:10px">'+nOpen+'</span>':'')
-        +'</button>';
-    }).join('');
-  }
-}
-
-function switchKanbanCol(colId){
-  window._kanbanMobileCol = colId;
-  renderKanban();
-}
-
-function moveKanbanTask(taskId, colId) {
-  var t = DB.ops_tasks.find(function(x){ return x.id===taskId; });
-  if(!t || !colId) return;
-  t.kanban_col = colId;
-  saveDB();
-  renderKanban();
-}
-
-// ── Column management ─────────────────────────────────────────────
-function addKanbanCol() {
-  var nome = prompt('Nome della nuova colonna:');
-  if(!nome || !nome.trim()) return;
-  var colors = ['#4361ee','#10b981','#f59e0b','#8b5cf6','#ec4899','#0099cc','#64748b'];
-  var col = {
-    id: 'col_'+uid(),
-    nome: nome.trim(),
-    color: colors[Math.floor(Math.random()*colors.length)]
-  };
-  DB.kanban_cols.push(col);
-  saveDB();
-  renderKanban();
-}
-
-function renameKanbanCol(colId) {
-  var col = DB.kanban_cols.find(function(c){ return c.id===colId; });
-  if(!col) return;
-  var nome = prompt('Nuovo nome:', col.nome);
-  if(!nome || !nome.trim()) return;
-  col.nome = nome.trim();
-  saveDB();
-  renderKanban();
-}
-
-function deleteKanbanCol(colId) {
-  var tasks = DB.ops_tasks.filter(function(t){ return t.kanban_col===colId; });
-  if(tasks.length && !confirm('La colonna ha '+tasks.length+' task. Eliminarla? I task resteranno senza colonna.')) return;
-  DB.kanban_cols = DB.kanban_cols.filter(function(c){ return c.id!==colId; });
-  saveDB();
-  renderKanban();
-}
-
-// ── New task from kanban ──────────────────────────────────────────
-function openNewKanbanTask(colId) {
-  openNewTask(null);
-  // Pre-set the kanban col after modal opens
-  setTimeout(function(){
-    var t = { _pendingCol: colId };
-    window._kanbanPendingCol = colId;
-  }, 50);
-}
-
-
-
-// ── Init ──────────────────────────────────────────────────────────
-function initKanban() {
-  dbDefaultsKanban();
-  // Assign existing generic tasks without col to first col
-  var cols = getKanbanCols();
-  if(cols.length) {
-    DB.ops_tasks.forEach(function(t){
-      if(!t.prop_id && !t.kanban_col) t.kanban_col = cols[0].id;
-    });
-  }
-  renderKanban();
 }
 
 
@@ -11976,6 +10634,562 @@ function adempExport770CSV(){
   rows.push(['TOTALE','—',r2(totBase),r2(totRit),'1919']);
   ademDownloadCSV('M770_'+anno+'.csv', rows);
   toast('CSV scaricato ✓');
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// CONTRATTI DI MANDATO — Sprint C1
+// Genera il Contratto Master v1.5 precompilato dalle anagrafiche.
+// I dati inseriti nel form completano Proprietari/Proprietà (write-back)
+// e diventano la fonte per DAC7 / CU / 770.
+// ════════════════════════════════════════════════════════════════════
+function ctrEnsure(){ if(!DB.contratti)DB.contratti=[]; }
+
+var CTR_PERC_WORDS={10:'dieci',12:'dodici',15:'quindici',18:'diciotto',20:'venti',22:'ventidue',24:'ventiquattro',25:'venticinque',28:'ventotto',30:'trenta',32:'trentadue',33:'trentatr\u00e9',35:'trentacinque',38:'trentotto',40:'quaranta'};
+function ctrPercLabel(p){
+  var w=CTR_PERC_WORDS[+p];
+  return p+'%'+(w?' ('+w+' per cento)':'');
+}
+
+// ─── LISTA ──────────────────────────────────────────────────────────
+function renderContratti(){
+  ctrEnsure();
+  var tb=document.getElementById('tbody-contratti');
+  var empty=document.getElementById('ctr-empty');
+  if(!tb)return;
+  if(!DB.contratti.length){tb.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tb.innerHTML=DB.contratti.slice().sort(function(a,b){return (b.created||'').localeCompare(a.created||'');}).map(function(c){
+    var owner=DB.proprietari.find(function(o){return o.id===c.owner_id;});
+    var nProps=(c.prop_ids||[]).length;
+    var regime=c.ritenuta?'Ritenuta 21%':'Azienda (fattura)';
+    var ivaL=c.iva==='esclusa'?' + IVA':' IVA incl.';
+    var statoOpts=['bozza','inviato','firmato'].map(function(s){
+      return '<option value="'+s+'"'+(c.stato===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';
+    }).join('');
+    var statoColor=c.stato==='firmato'?'var(--green)':(c.stato==='inviato'?'var(--orange)':'var(--text-light)');
+    return '<tr>'
+      +'<td><strong>'+escHtml(owner?nomeOwner(owner.id):'—')+'</strong>'
+        +(c.testo_override?'<br><span style="font-size:10.5px;color:#5b21b6">\u270e testo personalizzato</span>':'')+'</td>'
+      +'<td>'+nProps+' immobil'+(nProps===1?'e':'i')+'</td>'
+      +'<td>'+c.perc+'%'+ivaL+'</td>'
+      +'<td style="font-size:12px">'+regime+'</td>'
+      +'<td>'+(c.data?dateIt(c.data):'—')+'</td>'
+      +'<td><select onchange="ctrSetStato(\''+c.id+'\',this.value)" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;color:'+statoColor+';font-weight:600">'+statoOpts+'</select></td>'
+      +'<td style="white-space:nowrap">'
+        +'<button class="btn btn-sm btn-outline" onclick="ctrPreviewById(\''+c.id+'\')">\ud83d\udc41 Contratto</button> '
+        +'<button class="btn btn-sm btn-ghost" onclick="ctrEdit(\''+c.id+'\')">\u270e</button> '
+        +'<button class="btn btn-sm btn-ghost" onclick="ctrDelete(\''+c.id+'\')" style="color:var(--red)">\u2715</button>'
+      +'</td>'
+    +'</tr>';
+  }).join('');
+}
+function ctrSetStato(id,v){
+  ctrEnsure();
+  var c=DB.contratti.find(function(x){return x.id===id;});
+  if(!c)return;
+  c.stato=v;c.updated=new Date().toISOString();
+  saveDB();toast('Stato contratto: '+v);renderContratti();
+}
+function ctrDelete(id){
+  if(!confirm('Eliminare questo contratto? (le anagrafiche non vengono toccate)'))return;
+  DB.contratti=DB.contratti.filter(function(x){return x.id!==id;});
+  saveDB();renderContratti();toast('Contratto eliminato');
+}
+
+// ─── FORM ───────────────────────────────────────────────────────────
+var ctrEditingId=null;
+function ctrNew(){
+  ctrEnsure();
+  ctrEditingId=null;
+  document.getElementById('ctr-modal-title').textContent='Nuovo Contratto di Mandato';
+  var sel=document.getElementById('ctr-owner');
+  sel.innerHTML='<option value="">-- Seleziona --</option>'+DB.proprietari.slice().sort(function(a,b){
+    return nomeOwner(a.id).localeCompare(nomeOwner(b.id));
+  }).map(function(o){return '<option value="'+o.id+'">'+escHtml(nomeOwner(o.id))+(o.tipo==='azienda'?' \ud83c\udfe2':'')+'</option>';}).join('');
+  document.getElementById('ctr-props-list').innerHTML='<span style="color:var(--text-light)">Seleziona prima il mandante</span>';
+  document.getElementById('ctr-props-detail').innerHTML='';
+  document.getElementById('ctr-owner-gaps').style.display='none';
+  document.getElementById('ctr-perc').value='';
+  document.getElementById('ctr-iva').value='inclusa';
+  document.getElementById('ctr-ritenuta').value='1';
+  document.getElementById('ctr-durata').value='1';
+  document.getElementById('ctr-preavviso').value='6';
+  document.getElementById('ctr-soglia').value='50';
+  document.getElementById('ctr-luogo').value='Terranuova Bracciolini';
+  document.getElementById('ctr-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ctr-extra').value='';
+  openModal('modal-contratto');
+}
+function ctrEdit(id){
+  ctrEnsure();
+  var c=DB.contratti.find(function(x){return x.id===id;});
+  if(!c)return;
+  ctrNew();
+  ctrEditingId=id;
+  document.getElementById('ctr-modal-title').textContent='Modifica Contratto';
+  document.getElementById('ctr-owner').value=c.owner_id;
+  ctrOwnerChanged(c.prop_ids||[]);
+  document.getElementById('ctr-perc').value=c.perc;
+  document.getElementById('ctr-iva').value=c.iva||'inclusa';
+  document.getElementById('ctr-ritenuta').value=c.ritenuta?'1':'0';
+  document.getElementById('ctr-durata').value=c.durata||1;
+  document.getElementById('ctr-preavviso').value=c.preavviso||6;
+  document.getElementById('ctr-soglia').value=c.soglia!=null?c.soglia:50;
+  document.getElementById('ctr-luogo').value=c.luogo||'Terranuova Bracciolini';
+  document.getElementById('ctr-data').value=c.data||'';
+  document.getElementById('ctr-extra').value=c.extra||'';
+}
+
+// Popola proprietà + prefill condizioni + pannello completamento dati
+function ctrOwnerChanged(preChecked){
+  var oid=document.getElementById('ctr-owner').value;
+  var listEl=document.getElementById('ctr-props-list');
+  var gapsEl=document.getElementById('ctr-owner-gaps');
+  if(!oid){listEl.innerHTML='<span style="color:var(--text-light)">Seleziona prima il mandante</span>';gapsEl.style.display='none';document.getElementById('ctr-props-detail').innerHTML='';return;}
+  var owner=DB.proprietari.find(function(o){return o.id===oid;});
+  if(!owner)return;
+
+  // Prefill condizioni dal profilo fiscale esistente
+  document.getElementById('ctr-perc').value=+owner.houzly_perc||20;
+  document.getElementById('ctr-iva').value=owner.fisc_iva22?'esclusa':'inclusa';
+  document.getElementById('ctr-ritenuta').value=fiscRitenutaAttiva(owner)?'1':'0';
+
+  // Dati anagrafici mancanti per il contratto → quick-fill (write-back al salvataggio)
+  var gaps='';
+  if(owner.tipo==='persona_fisica'){
+    if(!owner.data_nascita||!owner.comune_nascita){
+      gaps+='<div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-top:6px">'
+        +'<div><label style="font-size:11px">Comune di nascita</label><input type="text" id="ctrg-comune-nascita" value="'+escHtml(owner.comune_nascita||'')+'"></div>'
+        +'<div><label style="font-size:11px">Data di nascita</label><input type="date" id="ctrg-data-nascita" value="'+escHtml(owner.data_nascita||'')+'"></div>'
+        +'<div><label style="font-size:11px">Prov.</label><input type="text" id="ctrg-prov-nascita" maxlength="2" value="'+escHtml(owner.prov_nascita||'')+'" style="text-transform:uppercase"></div>'
+        +'</div>';
+    }
+    if(!owner.cf) gaps+='<div style="margin-top:6px"><label style="font-size:11px">Codice Fiscale</label><input type="text" id="ctrg-cf" style="text-transform:uppercase"></div>';
+  } else {
+    gaps+='<div style="margin-top:6px"><label style="font-size:11px">Legale rappresentante pro tempore</label><input type="text" id="ctrg-legale" value="'+escHtml(owner.legale_rapp||'')+'" placeholder="Nome e cognome"></div>';
+  }
+  if(!owner.via||!owner.comune){
+    gaps+='<div style="display:grid;grid-template-columns:2fr 70px 1fr 60px;gap:8px;margin-top:6px">'
+      +'<div><label style="font-size:11px">Indirizzo residenza/sede</label><input type="text" id="ctrg-via" value="'+escHtml(owner.via||'')+'"></div>'
+      +'<div><label style="font-size:11px">CAP</label><input type="text" id="ctrg-cap" value="'+escHtml(owner.cap||'')+'"></div>'
+      +'<div><label style="font-size:11px">Comune</label><input type="text" id="ctrg-comune" value="'+escHtml(owner.comune||'')+'"></div>'
+      +'<div><label style="font-size:11px">Prov.</label><input type="text" id="ctrg-prov" maxlength="2" value="'+escHtml(owner.provincia||'')+'"></div>'
+      +'</div>';
+  }
+  if(gaps){
+    gapsEl.style.display='block';
+    gapsEl.innerHTML='<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:var(--radius);padding:10px 12px">'
+      +'<div style="font-size:11.5px;font-weight:600;color:#92400e;margin-bottom:2px">\u26a0 Dati anagrafici da completare (verranno salvati anche in Proprietari)</div>'+gaps+'</div>';
+  } else { gapsEl.style.display='none';gapsEl.innerHTML=''; }
+
+  // Lista proprietà del mandante
+  var props=DB.proprieta.filter(function(p){return p.proprietario_id===oid;});
+  if(!props.length){listEl.innerHTML='<span style="color:var(--red)">Questo proprietario non ha propriet\u00e0 collegate. Creale prima in Propriet\u00e0.</span>';document.getElementById('ctr-props-detail').innerHTML='';return;}
+  var checked=preChecked||props.map(function(p){return p.id;});
+  listEl.innerHTML=props.map(function(p){
+    var isC=checked.indexOf(p.id)>=0;
+    return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+      +'<input type="checkbox" class="ctr-prop-cb" value="'+p.id+'"'+(isC?' checked':'')+' onchange="ctrRenderPropDetail()" style="width:16px;height:16px">'
+      +'<span><strong>'+escHtml(p.nome)+'</strong>'+(p.indirizzo?' <span style="color:var(--text-light)">\u2014 '+escHtml(p.indirizzo)+'</span>':'')+'</span>'
+      +'</label>';
+  }).join('');
+  ctrRenderPropDetail();
+}
+
+// Pannello dettaglio per immobile selezionato: catasto/CIN/piano/interno (write-back)
+function ctrRenderPropDetail(){
+  var det=document.getElementById('ctr-props-detail');
+  var ids=Array.prototype.slice.call(document.querySelectorAll('.ctr-prop-cb:checked')).map(function(cb){return cb.value;});
+  if(!ids.length){det.innerHTML='';return;}
+  det.innerHTML=ids.map(function(pid){
+    var p=DB.proprieta.find(function(x){return x.id===pid;});
+    if(!p)return '';
+    var miss=(!p.cat_foglio||!p.cat_part)?' <span style="color:#b45309;font-weight:600">\u26a0 catasto incompleto</span>':'';
+    return '<div style="border:1px dashed var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:8px">'
+      +'<div style="font-size:12px;font-weight:600;margin-bottom:6px">\ud83c\udfe0 '+escHtml(p.nome)+miss+'</div>'
+      +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">'
+        +'<div><label style="font-size:11px">Indirizzo immobile</label><input type="text" id="ctrp-ind-'+pid+'" value="'+escHtml(p.indirizzo||'')+'"></div>'
+        +'<div><label style="font-size:11px">CIN</label><input type="text" id="ctrp-cin-'+pid+'" value="'+escHtml(p.cin||'')+'" style="text-transform:uppercase"></div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px">'
+        +'<div><label style="font-size:11px">Foglio</label><input type="text" id="ctrp-fg-'+pid+'" value="'+escHtml(p.cat_foglio||'')+'"></div>'
+        +'<div><label style="font-size:11px">Particella</label><input type="text" id="ctrp-pt-'+pid+'" value="'+escHtml(p.cat_part||'')+'"></div>'
+        +'<div><label style="font-size:11px">Sub</label><input type="text" id="ctrp-sb-'+pid+'" value="'+escHtml(p.cat_sub||'')+'"></div>'
+        +'<div><label style="font-size:11px">Categoria</label><input type="text" id="ctrp-ct-'+pid+'" value="'+escHtml(p.cat_cat||'')+'" placeholder="A/2"></div>'
+        +'<div><label style="font-size:11px">Piano</label><input type="text" id="ctrp-pn-'+pid+'" value="'+escHtml(p.piano||'')+'"></div>'
+        +'<div><label style="font-size:11px">Interno</label><input type="text" id="ctrp-in-'+pid+'" value="'+escHtml(p.interno||'')+'"></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+// ─── SALVATAGGIO (+ write-back anagrafiche) ─────────────────────────
+function ctrSave(andPreview){
+  ctrEnsure();
+  var oid=document.getElementById('ctr-owner').value;
+  if(!oid){toast('Seleziona il mandante');return;}
+  var owner=DB.proprietari.find(function(o){return o.id===oid;});
+  var propIds=Array.prototype.slice.call(document.querySelectorAll('.ctr-prop-cb:checked')).map(function(cb){return cb.value;});
+  if(!propIds.length){toast('Seleziona almeno un immobile');return;}
+  var perc=+document.getElementById('ctr-perc').value;
+  if(!perc||perc<=0){toast('Inserisci la % compenso');return;}
+
+  var g=function(id){var el=document.getElementById(id);return el?el.value.trim():null;};
+
+  // WRITE-BACK → Proprietario
+  if(g('ctrg-comune-nascita')!==null)owner.comune_nascita=g('ctrg-comune-nascita');
+  if(g('ctrg-data-nascita')!==null)owner.data_nascita=g('ctrg-data-nascita');
+  if(g('ctrg-prov-nascita')!==null)owner.prov_nascita=(g('ctrg-prov-nascita')||'').toUpperCase();
+  if(g('ctrg-cf')!==null&&g('ctrg-cf'))owner.cf=g('ctrg-cf').toUpperCase();
+  if(g('ctrg-legale')!==null)owner.legale_rapp=g('ctrg-legale');
+  if(g('ctrg-via')!==null)owner.via=g('ctrg-via');
+  if(g('ctrg-cap')!==null)owner.cap=g('ctrg-cap');
+  if(g('ctrg-comune')!==null)owner.comune=g('ctrg-comune');
+  if(g('ctrg-prov')!==null)owner.provincia=(g('ctrg-prov')||'').toUpperCase();
+
+  // WRITE-BACK → Proprietà (catasto, CIN, piano, interno)
+  propIds.forEach(function(pid){
+    var p=DB.proprieta.find(function(x){return x.id===pid;});
+    if(!p)return;
+    var v=function(pref){return g('ctrp-'+pref+'-'+pid);};
+    if(v('ind')!==null)p.indirizzo=v('ind');
+    if(v('cin')!==null)p.cin=(v('cin')||'').toUpperCase();
+    if(v('fg')!==null)p.cat_foglio=v('fg');
+    if(v('pt')!==null)p.cat_part=v('pt');
+    if(v('sb')!==null)p.cat_sub=v('sb');
+    if(v('ct')!==null)p.cat_cat=v('ct');
+    if(v('pn')!==null)p.piano=v('pn');
+    if(v('in')!==null)p.interno=v('in');
+  });
+
+  // Aggiorno anche il profilo fiscale del proprietario per coerenza col contratto
+  owner.houzly_perc=perc;
+  owner.fisc_iva22=document.getElementById('ctr-iva').value==='esclusa';
+  if(owner.tipo==='persona_fisica')owner.fisc_cedolare=document.getElementById('ctr-ritenuta').value==='1';
+
+  var now=new Date().toISOString();
+  var obj={
+    id:ctrEditingId||uid(),
+    owner_id:oid,
+    prop_ids:propIds,
+    perc:perc,
+    iva:document.getElementById('ctr-iva').value,
+    ritenuta:document.getElementById('ctr-ritenuta').value==='1',
+    durata:+document.getElementById('ctr-durata').value||1,
+    preavviso:+document.getElementById('ctr-preavviso').value||6,
+    soglia:+document.getElementById('ctr-soglia').value||50,
+    luogo:document.getElementById('ctr-luogo').value.trim(),
+    data:document.getElementById('ctr-data').value,
+    extra:document.getElementById('ctr-extra').value.trim(),
+    versione:'1.5',
+    stato:'bozza',
+    testo_override:null,
+    created:now,updated:now
+  };
+  if(ctrEditingId){
+    var idx=DB.contratti.findIndex(function(x){return x.id===ctrEditingId;});
+    if(idx>=0){
+      obj.created=DB.contratti[idx].created;
+      obj.stato=DB.contratti[idx].stato;
+      // Se cambiano le condizioni, il testo personalizzato non è più affidabile
+      obj.testo_override=null;
+      DB.contratti[idx]=obj;
+    } else DB.contratti.push(obj);
+  } else DB.contratti.push(obj);
+  saveDB();
+  closeModal('modal-contratto');
+  renderContratti();
+  toast('Contratto salvato \u2713 (anagrafiche aggiornate)');
+  if(andPreview)ctrPreviewById(obj.id);
+}
+
+// ─── GENERAZIONE CONTRATTO ──────────────────────────────────────────
+function ctrPreviewById(id){
+  ctrEnsure();
+  var c=DB.contratti.find(function(x){return x.id===id;});
+  if(!c){toast('Contratto non trovato');return;}
+  var owner=DB.proprietari.find(function(o){return o.id===c.owner_id;});
+  if(!owner){toast('Mandante non trovato');return;}
+  var html=c.testo_override||ctrBuildHtml(c,owner);
+  var bar='<div class="ctr-noprint" style="display:flex;gap:8px;align-items:center;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px">'
+    +'<span style="flex:1">\u270e Il testo qui sotto \u00e8 <strong>modificabile</strong>: clicca e correggi prima di stampare.</span>'
+    +'<button class="btn btn-sm btn-outline" onclick="ctrSaveText(\''+c.id+'\')">\ud83d\udcbe Salva testo modificato</button>'
+    +(c.testo_override?'<button class="btn btn-sm btn-ghost" onclick="ctrResetText(\''+c.id+'\')">\u21ba Rigenera da template</button>':'')
+    +'</div>';
+  openPrintModal('Contratto Mandato \u2014 '+escHtml(nomeOwner(owner.id)),
+    bar+'<div id="ctr-doc" contenteditable="true" spellcheck="false">'+html+'</div>');
+}
+function ctrSaveText(id){
+  var c=DB.contratti.find(function(x){return x.id===id;});
+  var doc=document.getElementById('ctr-doc');
+  if(!c||!doc)return;
+  c.testo_override=doc.innerHTML;
+  c.updated=new Date().toISOString();
+  saveDB();toast('Testo del contratto salvato \u2713');renderContratti();
+}
+function ctrResetText(id){
+  var c=DB.contratti.find(function(x){return x.id===id;});
+  if(!c)return;
+  if(!confirm('Ripristinare il testo generato dal template? Le modifiche manuali andranno perse.'))return;
+  c.testo_override=null;c.updated=new Date().toISOString();
+  saveDB();ctrPreviewById(id);
+}
+
+function ctrFmtDataEstesa(iso){
+  if(!iso)return '____________';
+  var mesi=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  var p=iso.split('-');
+  return (+p[2])+' '+mesi[+p[1]-1]+' '+p[0];
+}
+
+function ctrBuildHtml(c,owner){
+  var E=escHtml;
+  var props=(c.prop_ids||[]).map(function(pid){return DB.proprieta.find(function(x){return x.id===pid;});}).filter(Boolean);
+  var multi=props.length>1;
+  var IMM=multi?'gli Immobili':'l\u2019Immobile';
+  var immLabel=multi?'gli immobili di seguito descritti':'l\u2019immobile di seguito descritto';
+
+  // Epigrafe mandante
+  var mandante;
+  if(owner.tipo==='persona_fisica'){
+    var nascita=(owner.comune_nascita?'nato/a a <strong>'+E(owner.comune_nascita)+(owner.prov_nascita?' ('+E(owner.prov_nascita)+')':'')+'</strong>':'nato/a a ____________')
+      +(owner.data_nascita?' il <strong>'+dateIt(owner.data_nascita)+'</strong>':' il ____________');
+    mandante='Il/La Sig./Sig.ra <strong>'+E((owner.nome||'')+' '+(owner.cognome||''))+'</strong>, '+nascita
+      +', residente in <strong>'+E((owner.via||'____________')+', '+(owner.cap||'')+' '+(owner.comune||'')+(owner.provincia?' ('+owner.provincia+')':''))+'</strong>'
+      +', C.F. <strong>'+E(owner.cf||'____________')+'</strong>';
+  } else {
+    mandante='La societ\u00e0 <strong>'+E(owner.ragione_sociale||'____________')+'</strong>, con sede in <strong>'
+      +E((owner.via||'____________')+', '+(owner.cap||'')+' '+(owner.comune||'')+(owner.provincia?' ('+owner.provincia+')':''))+'</strong>'
+      +', P.IVA <strong>'+E(owner.piva||'____________')+'</strong>'
+      +(owner.cf_az?', C.F. <strong>'+E(owner.cf_az)+'</strong>':'')
+      +', in persona del legale rappresentante pro tempore <strong>'+E(owner.legale_rapp||'____________')+'</strong>';
+  }
+  mandante+=', di seguito \u201c<strong>Mandante</strong>\u201d o \u201c<strong>Proprietario</strong>\u201d.';
+
+  // Premessa a) — immobili
+  var premA=props.map(function(p){
+    var det=[];
+    if(p.piano)det.push('piano '+E(p.piano));
+    if(p.interno)det.push('interno '+E(p.interno));
+    var cat=[p.cat_foglio?'Foglio '+E(p.cat_foglio):null,p.cat_part?'Particella '+E(p.cat_part):null,p.cat_sub?'Subalterno '+E(p.cat_sub):null].filter(Boolean).join(' ');
+    return '<strong>'+E(p.indirizzo||p.nome||'____________')+'</strong>'
+      +(det.length?', '+det.join(', '):'')
+      +(cat?', identificato catastalmente al '+cat:'')
+      +(p.cat_cat?', categoria catastale '+E(p.cat_cat):'');
+  });
+  var premAtxt=multi
+    ? 'il Mandante \u00e8 proprietario esclusivo dei seguenti immobili: '+premA.map(function(t,i){return '('+(i+1)+') '+t;}).join('; ')+', di seguito congiuntamente '+'\u201cgli Immobili\u201d, come meglio rappresentati nelle planimetrie allegate;'
+    : 'il Mandante \u00e8 proprietario esclusivo dell\u2019immobile sito in '+premA[0]+', di seguito l\u2019\u201cImmobile\u201d, come meglio rappresentato nella planimetria allegata;';
+
+  // Premessa b) — CIN
+  var cins=props.filter(function(p){return p.cin;}).map(function(p){return E(p.cin)+(multi?' ('+E(p.nome)+')':'');});
+  var premBtxt=IMM+' '+(multi?'sono dotati':'\u00e8 dotato')+' (o '+(multi?'saranno dotati':'sar\u00e0 dotato')+' a cura della Mandataria) di Codice Identificativo Nazionale (CIN) '
+    +(cins.length?'n. <strong>'+cins.join(', ')+'</strong>':'n. ____________')
+    +', ai sensi del DL 145/2023 e della normativa regionale applicabile;';
+
+  // Compenso
+  var ivaTxt=c.iva==='esclusa'?'oltre IVA di legge (22%)':'IVA inclusa';
+  var art71='7.1 A fronte dei servizi di cui al presente contratto, il Mandante riconosce alla Mandataria una commissione di gestione pari al <strong>'
+    +ctrPercLabel(c.perc)+'</strong>, <strong>'+ivaTxt+'</strong>, dell\u2019importo netto percepito dagli ospiti, dopo la detrazione delle eventuali commissioni delle piattaforme di intermediazione (OTA).';
+
+  // Art. 8 — due varianti
+  var art8;
+  var premE;
+  if(c.ritenuta){
+    premE='la Mandataria opera in regime di mandato con rappresentanza e di mandato all\u2019incasso e agisce quale intermediario che incassa i corrispettivi ex art. 4 DL 50/2017, assumendo la qualifica di sostituto d\u2019imposta per conto dei propri Mandanti;';
+    art8='<h3>Art. 8 \u2014 Gestione fiscale e adempimenti del sostituto d\u2019imposta</h3>'
+    +'<p>8.1 La Mandataria, agendo quale intermediario che incassa i corrispettivi ai sensi dell\u2019art. 4 del DL 50/2017, opera in qualit\u00e0 di sostituto d\u2019imposta nei confronti del Mandante.</p>'
+    +'<p>8.2 Il Mandante prende atto che la Mandataria, in qualit\u00e0 di sostituto d\u2019imposta ai sensi dell\u2019art. 4 del DL 50/2017, \u00e8 obbligata per legge a operare una ritenuta del 21% a titolo d\u2019acconto sul canone di locazione puro, come definito al comma 8.3. Tale ritenuta non costituisce di per s\u00e9 applicazione della cedolare secca: la scelta del regime fiscale (cedolare secca ovvero regime ordinario IRPEF) \u00e8 effettuata dal Mandante, con l\u2019assistenza del proprio commercialista, in sede di dichiarazione dei redditi, nella quale la ritenuta subita sar\u00e0 scomputata dall\u2019imposta dovuta secondo il regime prescelto. Il Mandante conferisce pertanto alla Mandataria mandato affinch\u00e9:</p>'
+    +'<ul><li>operi la ritenuta del 21% a titolo d\u2019acconto sul canone di locazione puro, come definito al comma 8.3;</li>'
+    +'<li>versi mensilmente la ritenuta mediante modello F24, codice tributo 1919, entro il giorno 16 del mese successivo a quello dell\u2019incasso;</li>'
+    +'<li>trasmetta telematicamente all\u2019Agenzia delle Entrate la Certificazione Unica (CU) entro il 16 marzo dell\u2019anno successivo a quello di riferimento, inviando contestualmente al Mandante copia della CU in formato PDF riepilogativo, utile ai fini della dichiarazione dei redditi;</li>'
+    +'<li>trasmetta il modello 770 entro il 31 ottobre dell\u2019anno successivo;</li>'
+    +'<li>effettui la Comunicazione DAC7 ex D.Lgs. 32/2023 entro il 31 gennaio dell\u2019anno successivo, ricomprendendo il Mandante tra i soggetti oggetto di comunicazione.</li></ul>'
+    +'<p><strong>8.3</strong> Si definisce <strong>\u201ccanone di locazione puro\u201d</strong> \u2014 base imponibile della ritenuta del 21% \u2014 il canone lordo incassato dall\u2019ospite <strong>al netto delle commissioni delle piattaforme di intermediazione (OTA) e della commissione della Mandataria</strong>. La ritenuta del 21% \u00e8 calcolata su tale importo netto.</p>'
+    +'<p>8.4 Tale criterio di determinazione della base imponibile \u00e8 adottato in conformit\u00e0 all\u2019interpretazione formalizzata da AIGAB (Associazione Italiana Gestori Affitti Brevi) nelle proprie FAQ ufficiali, elaborate con il dott. Sergio Lombardi, Presidente dell\u2019Osservatorio sul Turismo dell\u2019Ordine dei Dottori Commercialisti di Roma, secondo cui la ritenuta \u2014 e l\u2019eventuale cedolare secca, ove optata dal Mandante \u2014 si applica sul canone netto risultante in Certificazione Unica.</p>'
+    +'<p>8.5 La Mandataria provvede inoltre alla riscossione e al versamento della tassa di soggiorno al Comune competente, secondo modalit\u00e0 e scadenze del regolamento comunale applicabile.</p>';
+  } else {
+    premE='la Mandataria opera in regime di mandato con rappresentanza e di mandato all\u2019incasso e agisce quale intermediario che incassa i corrispettivi ex art. 4 DL 50/2017;';
+    art8='<h3>Art. 8 \u2014 Gestione fiscale (Mandante titolare di partita IVA)</h3>'
+    +'<p>8.1 Il Mandante dichiara di esercitare l\u2019attivit\u00e0 in regime d\u2019impresa e di essere titolare di partita IVA. Le disposizioni relative alla ritenuta d\u2019acconto del 21% di cui all\u2019art. 4 del DL 50/2017 non trovano applicazione: nessuna ritenuta viene operata dalla Mandataria sui corrispettivi spettanti al Mandante.</p>'
+    +'<p>8.2 Il Mandante provvede in proprio agli adempimenti fiscali connessi ai corrispettivi dell\u2019attivit\u00e0 ricettiva, ivi inclusa l\u2019emissione dei documenti fiscali nei confronti degli ospiti secondo il regime IVA applicabile, sulla base dei dati delle prenotazioni messi a disposizione dalla Mandataria.</p>'
+    +'<p>8.3 La Mandataria fattura al Mandante il proprio compenso di cui all\u2019art. 7, nonch\u00e9 gli eventuali costi riaddebitati (commissioni delle piattaforme, pulizie e servizi ove pattuito), con applicazione dell\u2019IVA di legge.</p>'
+    +'<p>8.4 Resta in capo alla Mandataria l\u2019effettuazione della Comunicazione DAC7 ex D.Lgs. 32/2023 entro il 31 gennaio dell\u2019anno successivo, ricomprendendo il Mandante tra i soggetti oggetto di comunicazione, nonch\u00e9 la riscossione e il versamento della tassa di soggiorno al Comune competente secondo il regolamento applicabile.</p>';
+  }
+
+  // Art. 9 — rendicontazione (bullet ritenuta solo se attiva)
+  var rep='elenco delle prenotazioni con date, ospiti, canali e importi; totale canoni lordi incassati; totale commissioni OTA; spese di pulizia; commissione Houzly'
+    +(c.ritenuta?'; canone di locazione puro (base imponibile della ritenuta); ritenuta del 21% a titolo d\u2019acconto versata':'')
+    +'; netto spettante al Mandante.';
+  var rep92=c.ritenuta?', allegando la ricevuta di versamento della ritenuta':'';
+
+  var extra=c.extra?'<h3>Art. 20 \u2014 Pattuizioni particolari</h3><p>'+E(c.extra).replace(/\n/g,'<br>')+'</p>':'';
+
+  var durataTxt=c.durata===1?'1 (uno) anno':c.durata+' anni';
+  var preavTxt=c.preavviso+' ('+({1:'uno',2:'due',3:'tre',4:'quattro',5:'cinque',6:'sei',7:'sette',8:'otto',9:'nove',10:'dieci',11:'undici',12:'dodici'}[c.preavviso]||c.preavviso)+') mesi';
+  var sogliaTxt='\u20ac '+(+c.soglia).toFixed(2).replace('.',',');
+
+  return ''
+  +'<style>'
+  +'#ctr-doc{font-family:Georgia,\u201cTimes New Roman\u201d,serif;color:#111;font-size:12.5px;line-height:1.6;max-width:720px;margin:0 auto;text-align:justify}'
+  +'#ctr-doc h1{font-size:17px;text-align:center;margin:6px 0 2px;line-height:1.35}'
+  +'#ctr-doc h2{font-size:12px;text-align:center;font-weight:normal;font-style:italic;margin:0 0 18px}'
+  +'#ctr-doc h3{font-size:13px;margin:16px 0 6px;border-bottom:1px solid #999;padding-bottom:2px}'
+  +'#ctr-doc p{margin:0 0 8px}'
+  +'#ctr-doc ul{margin:0 0 8px 22px}'
+  +'#ctr-doc li{margin-bottom:4px}'
+  +'#ctr-doc .ctr-center{text-align:center;font-weight:bold;margin:12px 0}'
+  +'#ctr-doc .ctr-prem{margin-left:14px}'
+  +'#ctr-doc .ctr-firme{display:flex;justify-content:space-between;gap:40px;margin-top:34px}'
+  +'#ctr-doc .ctr-firme div{flex:1;text-align:center}'
+  +'#ctr-doc .ctr-line{border-top:1px solid #111;margin-top:44px;padding-top:4px;font-size:11.5px}'
+  +'#ctr-doc .ctr-brand{text-align:center;font-size:10px;letter-spacing:3px;color:#555;margin-bottom:4px}'
+  +'@media print{.ctr-noprint{display:none!important}#ctr-doc{max-width:100%}}'
+  +'</style>'
+  +'<div class="ctr-brand">HOUZLY \u00b7 PROPERTY MANAGEMENT</div>'
+  +'<h1>CONTRATTO DI MANDATO CON RAPPRESENTANZA<br>E MANDATO ALL\u2019INCASSO</h1>'
+  +'<h2>per la gestione in locazione breve di immobile ad uso abitativo \u2014 Modello v'+E(c.versione||'1.5')+'</h2>'
+  +'<p style="font-style:italic;font-size:11.5px">Redatto ai sensi degli artt. 1703 e ss. c.c. (mandato), 1387 e ss. c.c. (rappresentanza) e dell\u2019art. 4 del DL 50/2017 conv. in L. 96/2017, nonch\u00e9 in conformit\u00e0 alla Legge Regionale Toscana n. 61/2024 in materia di ricettivit\u00e0, turismo e attrattivit\u00e0 del territorio, e successive modifiche e integrazioni.</p>'
+  +'<div class="ctr-center">TRA</div>'
+  +'<p>La societ\u00e0 <strong>HOUZLY SNC DI CARELLA DANIELE E RUBERTI ROMEO</strong>, con sede legale in <strong>Via Alcide De Gasperi 90, Terranuova Bracciolini (AR)</strong>, P.IVA <strong>02499920516</strong>, esercente in forma imprenditoriale l\u2019attivit\u00e0 di gestione e conduzione di strutture ricettive di natura turistica, in persona del legale rappresentante pro tempore Daniele Carella, di seguito \u201c<strong>Mandataria</strong>\u201d o \u201c<strong>Houzly</strong>\u201d;</p>'
+  +'<div class="ctr-center">E</div>'
+  +'<p>'+mandante+'</p>'
+  +'<div class="ctr-center">PREMESSO CHE</div>'
+  +'<div class="ctr-prem">'
+  +'<p><strong>a)</strong> '+premAtxt+'</p>'
+  +'<p><strong>b)</strong> '+premBtxt+'</p>'
+  +'<p><strong>c)</strong> il Mandante intende destinare '+IMM+' alla locazione breve per finalit\u00e0 turistiche, ai sensi dell\u2019art. 4 del DL 50/2017 conv. in L. 96/2017 e successive modificazioni, e della L.R. Toscana n. 61/2024;</p>'
+  +'<p><strong>d)</strong> la Mandataria \u00e8 societ\u00e0 specializzata nella gestione professionale di immobili destinati alla locazione breve, opera con software gestionali professionali (a titolo esemplificativo Smoobu, PriceLabs) ed \u00e8 accreditata sui principali canali di distribuzione (Airbnb, Booking, VRBO, Expedia);</p>'
+  +'<p><strong>e)</strong> '+premE+'</p>'
+  +'<p><strong>f)</strong> il Mandante \u00e8 interessato ad affidare alla Mandataria, in via esclusiva, l\u2019incarico di promuovere, gestire e amministrare '+immLabel+' per finalit\u00e0 ricettive di breve periodo.</p>'
+  +'</div>'
+  +'<div class="ctr-center">TUTTO CI\u00d2 PREMESSO, SI CONVIENE E SI STIPULA QUANTO SEGUE</div>'
+
+  +'<h3>Art. 1 \u2014 Premesse e allegati</h3>'
+  +'<p>1.1 Le premesse e gli allegati (ove presenti) formano parte integrante e sostanziale del presente contratto.</p>'
+  +'<p>1.2 Sono allegati al contratto, ove applicabili: (A) scheda Immobile con dotazioni, arredo e documentazione fotografica dello stato di consegna; (C) informativa e nomina a Responsabile esterno del trattamento ex art. 28 GDPR; (F) planimetria e visura catastale.</p>'
+
+  +'<h3>Art. 2 \u2014 Oggetto del mandato con rappresentanza e mandato all\u2019incasso</h3>'
+  +'<p>2.1 Il Mandante conferisce alla Mandataria, che accetta, mandato con rappresentanza ai sensi degli artt. 1703 e ss. e 1387 e ss. c.c., unitamente a mandato all\u2019incasso, affinch\u00e9 in nome e per conto del Mandante provveda alla gestione integrale de'+(multi?'gli Immobili':'ll\u2019Immobile')+' in regime di locazione breve.</p>'
+  +'<p>2.2 Il mandato comprende, a titolo esemplificativo e non esaustivo:</p>'
+  +'<ul>'
+  +'<li>la promozione de'+(multi?'gli Immobili':'ll\u2019Immobile')+' sui canali di distribuzione online (OTA) e diretti, con ogni mezzo idoneo, inclusi i siti web e il channel manager;</li>'
+  +'<li>la predisposizione della scheda informativa dell\u2019immobile e del vademecum per gli ospiti (uso apparecchiature, servizi di zona, trasporti, ecc.);</li>'
+  +'<li>la realizzazione del materiale fotografico e multimediale per la promozione;</li>'
+  +'<li>la stipula dei contratti di locazione breve con gli ospiti in nome e per conto del Mandante;</li>'
+  +'<li>la riscossione dei canoni, delle cauzioni (ove richiesto) e dei corrispettivi per servizi accessori (mandato all\u2019incasso);</li>'
+  +'<li>l\u2019accoglienza degli ospiti (check-in/check-out), la gestione delle pulizie di soggiorno e della biancheria;</li>'
+  +'<li>la manutenzione ordinaria e le piccole riparazioni dovute all\u2019uso, entro la soglia di spesa autonoma di cui all\u2019art. 11;</li>'
+  +'<li>gli adempimenti fiscali di cui all\u2019art. 8;</li>'
+  +'<li>la richiesta del CIN e gli adempimenti amministrativi connessi all\u2019attivit\u00e0 ricettiva;</li>'
+  +'<li>gli adempimenti di pubblica sicurezza: comunicazione dei dati degli ospiti al Portale Alloggiati Web della Questura ex art. 109 TULPS;</li>'
+  +'<li>la riscossione e il versamento della tassa di soggiorno al Comune competente;</li>'
+  +'<li>le comunicazioni alle banche dati regionali e agli Uffici ISTAT secondo la Regione di ubicazione dell\u2019Immobile.</li>'
+  +'</ul>'
+
+  +'<h3>Art. 3 \u2014 Esclusiva</h3>'
+  +'<p>3.1 L\u2019incarico \u00e8 conferito in via esclusiva. Per tutta la durata del contratto, il Mandante si impegna a non affidare la gestione de'+(multi?'gli Immobili':'ll\u2019Immobile')+', in tutto o in parte, ad altri intermediari o operatori terzi, n\u00e9 a concludere autonomamente o tramite terzi contratti di locazione breve relativi a'+(multi?'gli Immobili':'ll\u2019Immobile')+'.</p>'
+  +'<p>3.2 La violazione del presente articolo costituisce inadempimento grave e legittima il recesso immediato della Mandataria ai sensi dell\u2019art. 1456 c.c., fatto salvo il risarcimento del danno.</p>'
+
+  +'<h3>Art. 4 \u2014 Durata e recesso</h3>'
+  +'<p>4.1 Il presente contratto ha durata di <strong>'+durataTxt+'</strong> a decorrere dalla data di sottoscrizione e si rinnova tacitamente per uguale periodo, salvo disdetta.</p>'
+  +'<p>4.2 Ciascuna parte pu\u00f2 recedere mediante comunicazione scritta a mezzo PEC o raccomandata A/R, con preavviso di almeno <strong>'+preavTxt+'</strong> rispetto alla data di efficacia del recesso, salva la giusta causa di cui al comma 4.4.</p>'
+  +'<p>4.3 Il recesso non comporta penale o indennit\u00e0. Le prenotazioni gi\u00e0 confermate alla data di efficacia del recesso saranno comunque onorate e gestite dalla Mandataria sino alla conclusione del soggiorno, alle condizioni economiche di cui all\u2019art. 7; in difetto, la parte recedente si far\u00e0 integralmente carico dei costi e dei danni derivanti dalla loro cancellazione o mancato adempimento.</p>'
+  +'<p>4.4 \u00c8 salvo il diritto di ciascuna parte di recedere per giusta causa, senza preavviso, in caso di inadempimento grave dell\u2019altra parte.</p>'
+
+  +'<h3>Art. 5 \u2014 Consegna dell\u2019Immobile e documentazione</h3>'
+  +'<p>5.1 Il Mandante consegna alla Mandataria la documentazione obbligatoria per lo svolgimento dell\u2019attivit\u00e0: dichiarazione di conformit\u00e0 degli impianti, visura e planimetria catastale, e ogni altro documento necessario o obbligatorio.</p>'
+  +'<p>5.2 Qualora taluni documenti non siano disponibili, il Mandante esonera la Mandataria da ogni responsabilit\u00e0 conseguente; la Mandataria accetta una congrua dilazione, riservandosi il diritto di recedere unilateralmente dal contratto senza nulla a pretendere.</p>'
+  +'<p>5.3 Il Mandante garantisce la regolarit\u00e0 urbanistica, catastale ed edilizia de'+(multi?'gli Immobili':'ll\u2019Immobile')+' e la veridicit\u00e0 delle dichiarazioni rese, manlevando la Mandataria da pretese di terzi connesse a vizi o irregolarit\u00e0 non imputabili alla Mandataria.</p>'
+
+  +'<h3>Art. 6 \u2014 Pulizia iniziale per apertura attivit\u00e0</h3>'
+  +'<p>6.1 Il Mandante prende atto e accetta che, prima dell\u2019avvio dell\u2019attivit\u00e0 ricettiva e della pubblicazione operativa de'+(multi?'gli Immobili':'ll\u2019Immobile')+' sui canali di vendita, dovr\u00e0 essere eseguita una pulizia straordinaria iniziale e approfondita, necessaria a garantire adeguati standard igienici, qualitativi e di presentazione.</p>'
+  +'<p>6.2 Tale pulizia iniziale \u00e8 organizzata, coordinata e gestita dalla Mandataria, direttamente o tramite l\u2019azienda di pulizia e/o i fornitori da essa incaricati, secondo gli standard richiesti per l\u2019avvio dell\u2019attivit\u00e0.</p>'
+  +'<p>6.3 Il relativo costo resta interamente a carico del Mandante e potr\u00e0 essere addebitato separatamente ovvero trattenuto dai primi incassi generati dalla struttura, previa comunicazione dell\u2019importo al Mandante.</p>'
+  +'<p>6.4 La pulizia iniziale per apertura attivit\u00e0 costituisce intervento straordinario e non rientra nelle ordinarie pulizie di soggiorno/check-out, disciplinate dall\u2019art. 7.</p>'
+
+  +'<h3>Art. 7 \u2014 Compenso della Mandataria, pulizie di soggiorno e mandato all\u2019incasso</h3>'
+  +'<p>'+art71+'</p>'
+  +'<p>7.2 In forza del mandato all\u2019incasso, la Mandataria incassa direttamente dagli ospiti i canoni e i corrispettivi e trattiene la propria commissione, fatturata al cliente finale o al Mandante secondo il modello fiscale adottato, riconoscendo al Mandante la quota spettante secondo l\u2019art. 9.</p>'
+  +'<p>7.3 Le pulizie di fine soggiorno (check-out) e la fornitura/sostituzione della biancheria a ogni check-out sono organizzate e gestite dalla Mandataria e addebitate direttamente agli ospiti; pertanto, non gravano sul Mandante, salvo quanto previsto agli artt. 6 e 10.4 per la pulizia iniziale e per l\u2019uso personale dell\u2019Immobile.</p>'
+
+  +art8
+
+  +'<h3>Art. 9 \u2014 Rendicontazione e accredito al Mandante</h3>'
+  +'<p>9.1 Entro il giorno 10 di ogni mese, la Mandataria trasmette al Mandante un report mensile dettagliato relativo al mese precedente, contenente: '+rep+'</p>'
+  +'<p>9.2 Il bonifico dell\u2019importo netto spettante al Mandante \u00e8 effettuato entro il giorno 10 del mese successivo a quello di riferimento del report'+rep92+'.</p>'
+  +'<p>9.3 Il Mandante pu\u00f2 consultare in tempo reale il calendario delle prenotazioni tramite l\u2019accesso al sistema gestionale fornito dalla Mandataria.</p>'
+
+  +'<h3>Art. 10 \u2014 Utilizzo dell\u2019Immobile da parte del Mandante</h3>'
+  +'<p>10.1 Il Mandante ha facolt\u00e0 di utilizzare personalmente '+IMM+', per uso non commerciale, previa richiesta alla Mandataria e solo in assenza di soggiorni programmati, prenotazioni confermate o richieste in via di definizione.</p>'
+  +'<p>10.2 Il Mandante pu\u00f2 consultare il calendario delle disponibilit\u00e0 tramite il sistema gestionale; resta inteso che solo la Mandataria pu\u00f2 confermare la disponibilit\u00e0 e autorizzare il soggiorno.</p>'
+  +'<p>10.3 La Mandataria si riserva la facolt\u00e0 di non accogliere le richieste di utilizzo personale nel periodo di altissima stagione <strong>1 luglio \u2013 31 agosto</strong>, nonch\u00e9 in periodi di elevata redditivit\u00e0, al fine di non pregiudicare i risultati economici della gestione.</p>'
+  +'<p>10.4 Al termine di ogni utilizzo da parte del Mandante o di suoi ospiti, l\u2019Immobile \u00e8 sottoposto al servizio di pulizia professionale necessario a ripristinare gli standard ricettivi, eseguito dai fornitori designati dalla Mandataria; il relativo costo della pulizia finale resta a carico del Mandante secondo il tariffario vigente.</p>'
+  +'<p>10.5 Non \u00e8 ammesso l\u2019annullamento di prenotazioni gi\u00e0 confermate; qualora il Mandante intenda comunque procedere, sosterr\u00e0 integralmente le relative penali, inclusi gli eventuali mancati guadagni.</p>'
+
+  +'<h3>Art. 11 \u2014 Manutenzione, danni e soglia di spesa autonoma</h3>'
+  +'<p>11.1 La Mandataria \u00e8 autorizzata a effettuare, senza preventiva autorizzazione del Mandante, interventi di manutenzione ordinaria e piccole riparazioni dovute all\u2019uso fino all\u2019importo di <strong>'+sogliaTxt+'</strong> per singolo intervento.</p>'
+  +'<p>11.2 Per interventi di importo superiore, e per ogni manutenzione straordinaria o riparazione dovuta a vetust\u00e0 o caso fortuito, \u00e8 necessaria la preventiva autorizzazione scritta del Mandante, con indicazione di preventivo e tempistiche; tali interventi sono di competenza economica del Mandante.</p>'
+  +'<p>11.3 In caso di urgenza per la salvaguardia dell\u2019Immobile o per garantirne la fruibilit\u00e0 da parte degli ospiti, la Mandataria pu\u00f2 procedere anche oltre la soglia, dandone tempestiva comunicazione al Mandante.</p>'
+  +'<p>11.4 Per ogni modifica, acquisto o riparazione dell\u2019arredo che renda necessario l\u2019intervento del Mandante, quest\u2019ultimo dovr\u00e0 provvedere entro 24 ore dalla richiesta; in difetto, la Mandataria potr\u00e0 procedere direttamente ai sensi dei commi precedenti, con diritto al rimborso.</p>'
+  +'<p>11.5 Le spese di manutenzione e i costi di intervento sono a carico del Mandante e possono essere trattenuti sull\u2019accredito mensile successivo, previa fatturazione. I danni causati dagli ospiti, se non recuperabili tramite la cauzione o la copertura assicurativa, sono a carico del Mandante.</p>'
+
+  +'<h3>Art. 11-bis \u2014 Servizi accessori di gestione del verde e della piscina (opzionali, su richiesta del Mandante)</h3>'
+  +'<p>11-bis.1 La gestione ordinaria delle aree verdi pertinenziali (giardino, prato, siepi, alberature, irrigazione) e/o della piscina (trattamento chimico delle acque, pulizia, manutenzione tecnica degli impianti, apertura e chiusura stagionale) non rientra nei servizi ordinari del presente mandato e non \u00e8 automaticamente compresa nella commissione di cui all\u2019art. 7.</p>'
+  +'<p>11-bis.2 Tali servizi sono erogati esclusivamente su richiesta espressa del Mandante e previa attivazione disciplinata dai commi seguenti. In assenza di attivazione, ogni onere relativo alla cura del verde e della piscina resta in capo al Mandante, che vi provveder\u00e0 direttamente e a propria cura, garantendo comunque le condizioni di fruibilit\u00e0 e sicurezza dell\u2019Immobile per gli ospiti.</p>'
+  +'<p>11-bis.3 La Mandataria, qualora richiesto, delega l\u2019esecuzione materiale dei servizi a professionisti terzi qualificati (a titolo esemplificativo: aziende agricole e di giardinaggio, ditte specializzate nel trattamento di piscine), da essa selezionati e coordinati. La Mandataria resta unico interlocutore operativo del Mandante per tali servizi, in coerenza con la logica del mandato.</p>'
+  +'<p>11-bis.4 A seguito della richiesta di attivazione, la Mandataria organizza un sopralluogo tecnico con i fornitori incaricati, all\u2019esito del quale verranno determinati: (i) la consistenza e la frequenza degli interventi necessari, in relazione alle caratteristiche specifiche dell\u2019Immobile e delle sue pertinenze; (ii) il corrispettivo economico dovuto ai fornitori per la prestazione; (iii) la commissione di coordinamento e gestione spettante alla Mandataria, che si applicher\u00e0 in misura percentuale maggiorata rispetto a quella di cui all\u2019art. 7, in ragione del maggior onere organizzativo, di supervisione e di responsabilit\u00e0 connesso al servizio. La misura specifica della commissione maggiorata sar\u00e0 definita caso per caso, in considerazione della complessit\u00e0 e dell\u2019entit\u00e0 del servizio.</p>'
+  +'<p>11-bis.5 La Mandataria seleziona i fornitori secondo criteri di professionalit\u00e0, ma non risponde dei vizi della prestazione resa dai terzi, restando obbligata unicamente al diligente coordinamento ai sensi dell\u2019art. 1176, comma 2, c.c. Eventuali contestazioni sulla qualit\u00e0 del servizio reso saranno gestite dalla Mandataria nei confronti del fornitore per conto del Mandante.</p>'
+
+  +'<h3>Art. 12 \u2014 Utenze e spese condominiali</h3>'
+  +'<p>12.1 Le utenze (energia elettrica, gas, acqua, riscaldamento, condizionamento, internet, canone RAI) sono intestate al Mandante e a suo carico; il Mandante si impegna a mantenerle attive per tutta la durata del contratto.</p>'
+  +'<p>12.2 Le spese condominiali, ordinarie e straordinarie, sono a carico del Mandante.</p>'
+
+  +'<h3>Art. 13 \u2014 Copertura assicurativa</h3>'
+  +'<p>13.1 La Mandataria dichiara di non disporre di una polizza assicurativa aziendale propria a copertura dei rischi connessi alla locazione breve dell\u2019Immobile.</p>'
+  +'<p>13.2 Le coperture eventualmente disponibili sono quelle offerte dalle piattaforme di intermediazione, con i limiti e le esclusioni dei rispettivi regolamenti, e segnatamente:</p>'
+  +'<ul><li>Airbnb \u2014 \u201cAirCover per gli host\u201d: copertura per danni alla propriet\u00e0 e responsabilit\u00e0 civile verso terzi, nei limiti e secondo le condizioni stabilite da Airbnb;</li>'
+  +'<li>Booking.com \u2014 \u201cPartner Liability Insurance\u201d: copertura della sola responsabilit\u00e0 civile verso terzi; i danni alla propriet\u00e0 sono gestiti tramite il \u201cProgramma Protezione Danni\u201d che prevede una richiesta di rimborso da parte dell\u2019ospite fino ad un tetto massimo di \u20ac300.</li></ul>'
+  +'<p>13.3 Tali coperture di piattaforma non sono sostitutive di una polizza dedicata. Alla luce di questo, la Mandataria raccomanda al Mandante di stipulare e mantenere una polizza assicurativa personale dedicata alla locazione breve, a copertura della responsabilit\u00e0 civile verso terzi e dei danni all\u2019Immobile.</p>'
+
+  +'<h3>Art. 14 \u2014 Materiale fotografico e propriet\u00e0 intellettuale</h3>'
+  +'<p>14.1 Il materiale fotografico, i video e ogni altro contenuto multimediale realizzato dalla Mandataria, o da professionisti da essa incaricati, all\u2019interno dell\u2019Immobile durante la vigenza del presente contratto, costituiscono propriet\u00e0 intellettuale esclusiva della Mandataria (Houzly).</p>'
+  +'<p>14.2 Il Mandante ha diritto all\u2019uso non commerciale di tale materiale durante la vigenza del contratto, per finalit\u00e0 personali. Al termine del contratto, la Mandataria potr\u00e0 conservare e utilizzare il materiale per il proprio archivio commerciale, ma cesser\u00e0 di pubblicizzare l\u2019Immobile. Salvo diverso accordo scritto, il materiale non \u00e8 trasferito o ceduto al Mandante.</p>'
+  +'<p>14.3 L\u2019eventuale materiale fotografico preesistente e di propriet\u00e0 del Mandante prima dell\u2019inizio del contratto resta integralmente di propriet\u00e0 del Mandante.</p>'
+
+  +'<h3>Art. 15 \u2014 Privacy e protezione dei dati personali</h3>'
+  +'<p>15.1 Le parti si impegnano al rispetto del Reg. UE 2016/679 (GDPR) e del D.Lgs. 196/2003 come modificato, autorizzandosi reciprocamente al trattamento dei propri dati personali per le finalit\u00e0 del presente contratto.</p>'
+  +'<p>15.2 La Mandataria \u00e8 nominata Responsabile esterno del trattamento ai sensi dell\u2019art. 28 GDPR per i dati personali degli ospiti, dei quali acquisisce e gestisce i documenti di identit\u00e0 ai fini delle comunicazioni alla Questura tramite il Portale Alloggiati Web, secondo l\u2019informativa e l\u2019atto di nomina allegati sub lettera E.</p>'
+
+  +'<h3>Art. 16 \u2014 Forza maggiore</h3>'
+  +'<p>16.1 Nessuna delle parti \u00e8 responsabile dell\u2019inadempimento delle proprie obbligazioni qualora questo sia dovuto a cause di forza maggiore, tra cui calamit\u00e0 naturali, pandemie, provvedimenti normativi che impediscano la locazione breve, sospensioni dei servizi essenziali.</p>'
+  +'<p>16.2 In tale ipotesi, le parti si impegnano a una rinegoziazione in buona fede delle condizioni contrattuali.</p>'
+
+  +'<h3>Art. 17 \u2014 Riservatezza</h3>'
+  +'<p>17.1 Le parti si impegnano a mantenere riservate tutte le informazioni economiche, tecniche e commerciali di cui vengano a conoscenza in ragione del presente contratto, anche dopo la sua cessazione.</p>'
+
+  +'<h3>Art. 18 \u2014 Clausole risolutive espresse (art. 1456 c.c.)</h3>'
+  +'<p>18.1 Ai sensi dell\u2019art. 1456 c.c., il presente contratto si intender\u00e0 risolto di diritto, con effetto immediato, mediante dichiarazione della parte non inadempiente, in caso di:</p>'
+  +'<ul><li>violazione del patto di esclusiva (art. 3);</li>'
+  +'<li>ritardato pagamento delle somme dovute alla Mandataria oltre 30 giorni;</li>'
+  +'<li>falsit\u00e0 nelle dichiarazioni rese sulla propriet\u00e0 o sulla regolarit\u00e0 urbanistica, edilizia o catastale dell\u2019Immobile;</li>'
+  +'<li>annullamento, da parte del Mandante, di prenotazioni gi\u00e0 confermate, in violazione dell\u2019art. 10.5.</li></ul>'
+
+  +'<h3>Art. 19 \u2014 Domicilio, foro competente e legge applicabile</h3>'
+  +'<p>19.1 Per ogni comunicazione le parti eleggono domicilio presso le rispettive sedi/residenze indicate in epigrafe.</p>'
+  +'<p>19.2 Il presente contratto \u00e8 regolato dalla legge italiana.</p>'
+  +'<p>19.3 Per qualsiasi controversia derivante dall\u2019interpretazione, validit\u00e0 o esecuzione del presente contratto \u00e8 competente in via esclusiva il Foro di Arezzo.</p>'
+
+  +extra
+
+  +'<p style="margin-top:22px">Luogo e data: <strong>'+E(c.luogo||'____________')+', '+ctrFmtDataEstesa(c.data)+'</strong></p>'
+  +'<div class="ctr-firme">'
+    +'<div><strong>Il Mandante</strong><div class="ctr-line">&nbsp;</div></div>'
+    +'<div><strong>La Mandataria \u2014 Houzly Snc</strong><div class="ctr-line">&nbsp;</div></div>'
+  +'</div>'
+  +'<p style="margin-top:26px"><strong>Ai sensi e per gli effetti degli artt. 1341 e 1342 c.c.</strong>, il Mandante dichiara di aver letto, compreso e di approvare specificamente le seguenti clausole: <strong>Art. 3</strong> (Esclusiva); <strong>Art. 4.2-4.3</strong> (Recesso e gestione prenotazioni post-recesso); <strong>Art. 10.3-10.5</strong> (Limitazioni all\u2019utilizzo personale in alta stagione e divieto di annullamento prenotazioni); <strong>Art. 11-bis.4</strong> (Commissione maggiorata per i servizi accessori di gestione del verde e della piscina); <strong>Art. 14</strong> (Propriet\u00e0 intellettuale del materiale fotografico); <strong>Art. 18</strong> (Clausole risolutive espresse); <strong>Art. 19.3</strong> (Foro competente esclusivo).</p>'
+  +'<div class="ctr-firme"><div><strong>Il Mandante</strong> (per specifica approvazione delle clausole sopra elencate)<div class="ctr-line">&nbsp;</div></div></div>';
 }
 
 </script>
