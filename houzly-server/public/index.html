@@ -1157,7 +1157,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div style="font-size:12px;color:var(--text-mid);line-height:1.5">Comunicazione annuale dei dati dei Mandanti all'Agenzia delle Entrate, da trasmettere via Entratel entro il <strong>31 gennaio</strong> dell'anno successivo. Houzly opera come Gestore di Piattaforma con obbligo di comunicazione (rif. Interpello AdE 122/2024).</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <button class="btn btn-primary btn-sm" onclick="adempGenerateDAC7XML()">&#9889; Genera XML DPI23</button>
+          <button class="btn btn-primary btn-sm" onclick="adempGenerateDAC7XML()">&#9889; Genera XML DPI23 (tutti i mandanti &mdash; file ufficiale)</button>
           <button class="btn btn-ghost btn-sm" onclick="adempExportDAC7CSV()">&#8595; CSV consolidato</button>
         </div>
       </div>
@@ -9898,6 +9898,7 @@ function renderAdempDAC7(){
       +'</div>'
       +'<div class="m-actions">'
         +'<button class="btn btn-sm btn-outline" onclick="adempViewDAC7(\''+owner.id+'\')">👁 Anteprima</button>'
+        +'<button class="btn btn-sm btn-outline" onclick="adempGenerateDAC7XML(\''+owner.id+'\')">⚡ XML</button>'
         +'<button class="btn btn-sm btn-ghost" onclick="adempExportDAC7Mandante(\''+owner.id+'\')">↓ CSV</button>'
       +'</div>'
     +'</div>';
@@ -11208,9 +11209,10 @@ function dac7AddressXml(tag, free, city, cap, prov){
   return x;
 }
 
-function adempGenerateDAC7XML(){
+function adempGenerateDAC7XML(ownerId){
   var anno=ademAnno();
   var mandanti=ademGetActiveMandanti(anno);
+  if(ownerId){mandanti=mandanti.filter(function(m){return m.id===ownerId;});}
   var statusEl=document.getElementById('adem-dac7-xml-status');
   if(!mandanti.length){toast('Nessun mandante attivo per l\'anno '+anno);return;}
 
@@ -11332,7 +11334,7 @@ function adempGenerateDAC7XML(){
     if(/^<[^\/?!][^>]*[^\/]>$/.test(l)&&!/<\/.+>$/.test(l))ind++;
   });
 
-  var fname='DAC7_DPI401_'+G.cf+'_'+anno+'.xml';
+  var fname='DAC7_DPI401_'+G.cf+'_'+anno+(ownerId?'_'+nomeOwner(ownerId).replace(/[^a-zA-Z0-9]+/g,'_'):'')+'.xml';
   var blob=new Blob([pretty],{type:'application/xml'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;
   document.body.appendChild(a);a.click();
@@ -11341,7 +11343,9 @@ function adempGenerateDAC7XML(){
   statusEl.innerHTML='<div class="card" style="padding:12px 16px;margin-bottom:14px;background:#f0fdf4;border:1px solid #86efac">'
     +'<div style="font-weight:700;color:#166534">\u2713 XML generato: '+fname+'</div>'
     +'<div style="font-size:12.5px;color:var(--text-mid);margin-top:4px">'+sellers.length+' venditori \u00b7 '+totAct+' attivit\u00e0 \u00b7 Corrispettivi totali '+eur(totCons)+' \u00b7 Logica AIGAB (Consideration = canone puro: lordo \u2212 OTA \u2212 Houzly \u2212 pulizie trattenute; Fees = comm. Houzly + pulizie trattenute; Taxes = ritenuta 21%)</div>'
-    +'<div style="font-size:12px;color:var(--text-mid);margin-top:6px">Invia il file al commercialista: validazione col modulo <strong>\u201cControllo comunicazioni DAC7\u201d (DPI23)</strong> su Desktop Telematico, poi trasmissione Entratel entro il 31/01/'+(anno+1)+'.</div>'
+    +'<div style="font-size:12px;color:var(--text-mid);margin-top:6px">'+(ownerId
+      ?'\u26a0 File di <strong>verifica per singolo mandante</strong>. Per la trasmissione ufficiale usa il bottone \u201cGenera XML DPI23\u201d in alto: la comunicazione DAC7 \u00e8 <strong>unica per Gestore</strong> e deve contenere tutti i venditori.'
+      :'Invia il file al commercialista: validazione col modulo <strong>\u201cControllo comunicazioni DAC7\u201d (DPI23)</strong> su Desktop Telematico, poi trasmissione Entratel entro il 31/01/'+(anno+1)+'.')+'</div>'
     +(warns.length?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid #bbf7d0"><div style="font-weight:600;color:#92400e;font-size:12px">\u26a0 Avvisi (non bloccanti):</div><ul style="margin-left:18px;font-size:12px;color:#92400e">'+warns.map(function(w){return '<li>'+escHtml(w)+'</li>';}).join('')+'</ul></div>':'')
     +'</div>';
   toast('\u2713 XML DAC7 scaricato');
