@@ -1004,12 +1004,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div id="page-contratti" class="page">
   <div class="section-header">
     <div class="section-title">&#128220; Contratti di Mandato</div>
-    <button class="btn btn-primary" onclick="ctrNew()">+ Nuovo Contratto</button>
+    <div style="display:flex;gap:8px">
+      <label class="btn btn-outline" style="cursor:pointer;margin:0">&#8613; Import Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="ctrImportExcel(event)"></label>
+      <button class="btn btn-primary" onclick="ctrNew()">+ Nuovo Contratto</button>
+    </div>
   </div>
   <div class="card" style="margin-bottom:14px;padding:12px 16px;font-size:12px;color:var(--text-mid);line-height:1.5">
     Generatore basato sul <strong>Contratto Master v1.5</strong> (mandato con rappresentanza + mandato all'incasso).
     I dati inseriti qui <strong>completano le anagrafiche</strong> di Proprietari e Proprietà, e alimentano DAC7 / CU / 770.
   </div>
+  <div id="ctr-import-report"></div>
   <div class="card">
     <div class="table-wrap">
       <table>
@@ -11162,6 +11166,180 @@ function ctrFmtDataEstesa(iso){
   var mesi=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
   var p=iso.split('-');
   return (+p[2])+' '+mesi[+p[1]-1]+' '+p[0];
+}
+
+// ════════════════════════════════════════════════════════════════════
+// IMPORT EXCEL CONTRATTI + ANAGRAFICHE (template Houzly_Import_Contratti.xlsx)
+// Foglio "PROPRIETARI E IMMOBILI": 1 riga per immobile, anagrafica ripetuta.
+// Foglio "CO-INTESTATARI": collegati per CF del proprietario principale.
+// Regole: match proprietari per CF/P.IVA, immobili per Nome Struttura;
+// cella vuota = dato esistente NON toccato; contratti creati in Bozza, mai duplicati.
+// ════════════════════════════════════════════════════════════════════
+function ctrImpDate(v){
+  if(!v)return '';
+  v=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
+  var m=v.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if(m){var y=m[3].length===2?('20'+m[3]):m[3];return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);}
+  return '';
+}
+function ctrImpStr(v){return v==null?'':String(v).trim();}
+
+function ctrImportExcel(ev){
+  var f=ev.target.files[0]; ev.target.value='';
+  if(!f)return;
+  if(typeof XLSX==='undefined'){toast('Libreria Excel non caricata: ricarica la pagina');return;}
+  ctrEnsure();
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var wsMain=wb.Sheets['PROPRIETARI E IMMOBILI'];
+      if(!wsMain){toast('Foglio "PROPRIETARI E IMMOBILI" non trovato nel file');return;}
+      var rows=XLSX.utils.sheet_to_json(wsMain,{header:1,raw:false,defval:''});
+      var wsCop=wb.Sheets['CO-INTESTATARI'];
+      var copRows=wsCop?XLSX.utils.sheet_to_json(wsCop,{header:1,raw:false,defval:''}):[];
+
+      var rep={ownNew:0,ownUpd:0,propNew:0,propUpd:0,ctrNew:0,ctrSkip:0,cop:0,warns:[]};
+      var byOwner={}; // cf -> {owner, propIds:[], cond:{}}
+
+      // ── Righe principali (salto header + esempi) ──
+      for(var r=1;r<rows.length;r++){
+        var R=rows[r]; if(!R||!R.length)continue;
+        var strutt=ctrImpStr(R[20]);
+        if(!strutt||/^ESEMPIO/i.test(strutt))continue;
+        var tipo=/^az/i.test(ctrImpStr(R[0]))?'azienda':'persona_fisica';
+        var cf=ctrImpStr(R[3]).toUpperCase();
+        var piva=ctrImpStr(R[8]).replace(/\D/g,'');
+        var key=cf||piva;
+        if(!key){rep.warns.push('Riga '+(r+1)+' ("'+strutt+'"): CF/P.IVA mancante — riga saltata.');continue;}
+
+        // ── PROPRIETARIO: match per CF o P.IVA ──
+        var owner=DB.proprietari.find(function(o){
+          return (o.cf&&o.cf.toUpperCase()===cf)||(cf&&o.cf_az===cf)||(piva&&o.piva===piva);
+        });
+        var created=false;
+        if(!owner){
+          owner={id:uid(),tipo:tipo,coprops:[],email:'',cin:'',iban:''};
+          DB.proprietari.push(owner);created=true;rep.ownNew++;
+        }
+        var set=function(field,val){if(val!=='')owner[field]=val;};
+        owner.tipo=tipo;
+        if(tipo==='persona_fisica'){
+          set('nome',ctrImpStr(R[1]));set('cognome',ctrImpStr(R[2]));
+          if(cf)owner.cf=cf;
+          set('data_nascita',ctrImpDate(R[4]));set('comune_nascita',ctrImpStr(R[5]));
+          set('prov_nascita',ctrImpStr(R[6]).toUpperCase());
+        }else{
+          set('ragione_sociale',ctrImpStr(R[7]));
+          if(piva)owner.piva=piva;
+          if(cf&&cf!==piva)owner.cf_az=cf;
+          set('legale_rapp',ctrImpStr(R[9]));
+        }
+        set('via',ctrImpStr(R[10]));set('cap',ctrImpStr(R[11]));
+        set('comune',ctrImpStr(R[12]));set('provincia',ctrImpStr(R[13]).toUpperCase());
+        set('email',ctrImpStr(R[14]));
+        var iban=ctrImpStr(R[15]).toUpperCase().replace(/\s+/g,'');
+        if(iban)owner.iban=iban;
+        if(!created)rep.ownUpd++;
+
+        // Condizioni contratto (prima riga del proprietario che le indica vince)
+        if(!byOwner[key])byOwner[key]={owner:owner,propIds:[],cond:{}};
+        var C=byOwner[key].cond;
+        var perc=parseFloat(ctrImpStr(R[16]).replace(',','.'));
+        if(perc&&!C.perc){C.perc=perc;owner.houzly_perc=perc;}
+        var ivaV=ctrImpStr(R[17]).toUpperCase();
+        if(ivaV&&!C.iva){C.iva=/ESC/.test(ivaV)?'esclusa':'inclusa';owner.fisc_iva22=(C.iva==='esclusa');}
+        var ritV=ctrImpStr(R[18]).toUpperCase();
+        if(ritV&&C.ritenuta==null){C.ritenuta=/^S/.test(ritV);if(tipo==='persona_fisica')owner.fisc_cedolare=C.ritenuta;}
+        var df=ctrImpDate(R[19]); if(df&&!C.data)C.data=df;
+
+        // ── IMMOBILE: match per nome struttura ──
+        var sKey=strutt.toLowerCase();
+        var prop=DB.proprieta.find(function(p){return (p.nome||'').trim().toLowerCase()===sKey;});
+        if(!prop){
+          prop={id:uid(),nome:strutt,proprietario_id:owner.id};
+          DB.proprieta.push(prop);rep.propNew++;
+        }else{
+          if(prop.proprietario_id&&prop.proprietario_id!==owner.id){
+            rep.warns.push('"'+strutt+'": era collegata a un altro proprietario — riassegnata a '+nomeOwner(owner.id)+'.');
+          }
+          prop.proprietario_id=owner.id;rep.propUpd++;
+        }
+        var setP=function(field,val){if(val!=='')prop[field]=val;};
+        setP('indirizzo',ctrImpStr(R[21]));
+        setP('cat_comune',ctrImpStr(R[24])||ctrImpStr(R[22]));
+        var cin=ctrImpStr(R[23]).toUpperCase();if(cin)prop.cin=cin;
+        setP('cat_foglio',ctrImpStr(R[25]));setP('cat_part',ctrImpStr(R[26]));
+        setP('cat_sub',ctrImpStr(R[27]));setP('cat_cat',ctrImpStr(R[28]));
+        setP('piano',ctrImpStr(R[29]));setP('interno',ctrImpStr(R[30]));
+        if(byOwner[key].propIds.indexOf(prop.id)<0)byOwner[key].propIds.push(prop.id);
+      }
+
+      // ── CO-INTESTATARI ──
+      for(var r2=1;r2<copRows.length;r2++){
+        var K=copRows[r2]; if(!K||!K.length)continue;
+        var mainCf=ctrImpStr(K[0]).toUpperCase();
+        var cnome=ctrImpStr(K[1]),ccogn=ctrImpStr(K[2]);
+        if(!mainCf||/^ESEMPIO/i.test(cnome))continue;
+        var mown=DB.proprietari.find(function(o){return (o.cf&&o.cf.toUpperCase()===mainCf)||o.cf_az===mainCf;});
+        if(!mown){rep.warns.push('Co-intestatario "'+cnome+' '+ccogn+'": proprietario principale CF '+mainCf+' non trovato.');continue;}
+        if(!mown.coprops)mown.coprops=[];
+        var ccf=ctrImpStr(K[3]).toUpperCase();
+        var ex=mown.coprops.find(function(x){return ccf&&(x.cf||'').toUpperCase()===ccf;});
+        var q=parseFloat(ctrImpStr(K[4]).replace(',','.'))||0; if(q>1)q=q/100;
+        var cp=ex||{};
+        cp.nome=cnome||cp.nome;cp.cognome=ccogn||cp.cognome;
+        if(ccf)cp.cf=ccf;
+        if(q)cp.perc=q;
+        var d=ctrImpDate(K[5]);if(d)cp.data_nascita=d;
+        if(ctrImpStr(K[6]))cp.comune_nascita=ctrImpStr(K[6]);
+        if(ctrImpStr(K[7]))cp.prov_nascita=ctrImpStr(K[7]).toUpperCase();
+        if(ctrImpStr(K[8]))cp.via=ctrImpStr(K[8]);
+        if(ctrImpStr(K[9]))cp.cap=ctrImpStr(K[9]);
+        if(ctrImpStr(K[10]))cp.comune=ctrImpStr(K[10]);
+        if(ctrImpStr(K[11]))cp.provincia=ctrImpStr(K[11]).toUpperCase();
+        if(!ex)mown.coprops.push(cp);
+        rep.cop++;
+      }
+
+      // ── CONTRATTI: uno per proprietario, mai duplicati ──
+      Object.keys(byOwner).forEach(function(key){
+        var B=byOwner[key];
+        var exists=DB.contratti.some(function(k){return k.owner_id===B.owner.id;});
+        if(exists){rep.ctrSkip++;rep.warns.push(nomeOwner(B.owner.id)+': contratto gi\u00e0 presente, non duplicato (anagrafiche comunque aggiornate).');return;}
+        var now=new Date().toISOString();
+        DB.contratti.push({
+          id:uid(),owner_id:B.owner.id,prop_ids:B.propIds,
+          perc:B.cond.perc||(+B.owner.houzly_perc)||30,
+          iva:B.cond.iva||(B.owner.fisc_iva22?'esclusa':'inclusa'),
+          ritenuta:B.cond.ritenuta!=null?B.cond.ritenuta:fiscRitenutaAttiva(B.owner),
+          durata:1,preavviso:6,soglia:50,
+          luogo:'Terranuova Bracciolini',data:B.cond.data||'',
+          extra:'',versione:'1.5',stato:'bozza',testo_override:null,
+          coprops:(B.owner.coprops||[]).map(function(c){var o={};for(var k in c)o[k]=c[k];return o;}),
+          created:now,updated:now
+        });
+        rep.ctrNew++;
+      });
+
+      saveDB();
+      renderContratti();
+      if(typeof renderProprietari==='function')try{renderProprietari();}catch(err){}
+      var box=document.getElementById('ctr-import-report');
+      box.innerHTML='<div class="card" style="padding:14px 18px;margin-bottom:14px;background:#f0fdf4;border:1px solid #86efac">'
+        +'<div style="font-weight:700;color:#166534">\u2713 Import completato</div>'
+        +'<div style="font-size:12.5px;color:var(--text-mid);margin-top:4px">Proprietari: '+rep.ownNew+' creati, '+rep.ownUpd+' aggiornati \u00b7 Immobili: '+rep.propNew+' creati, '+rep.propUpd+' aggiornati \u00b7 Contratti: '+rep.ctrNew+' creati in Bozza'+(rep.ctrSkip?', '+rep.ctrSkip+' gi\u00e0 esistenti':'')+' \u00b7 Co-intestatari: '+rep.cop+'</div>'
+        +(rep.warns.length?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid #bbf7d0"><div style="font-weight:600;color:#92400e;font-size:12px">\u26a0 Avvisi:</div><ul style="margin-left:18px;font-size:12px;color:#92400e">'+rep.warns.map(function(w){return '<li>'+escHtml(w)+'</li>';}).join('')+'</ul></div>':'')
+        +'<div style="font-size:12px;color:var(--text-mid);margin-top:8px">Ora apri ogni contratto \u2192 \u201cSalva e Anteprima\u201d per verificarlo, poi imposta lo stato a <strong>Firmato</strong>. Controlla il tab <strong>Alert Mandanti</strong> negli Adempimenti per i dati ancora mancanti.</div>'
+      +'</div>';
+      toast('\u2713 Import completato');
+    }catch(err){
+      console.error(err);
+      toast('\u2715 Errore import: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
 }
 
 // ════════════════════════════════════════════════════════════════════
