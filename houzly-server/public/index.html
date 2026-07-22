@@ -10909,7 +10909,8 @@ function ctrOwnerChanged(preChecked){
   document.getElementById('ctr-iva').value=owner.fisc_iva22?'esclusa':'inclusa';
   document.getElementById('ctr-ritenuta').value=fiscRitenutaAttiva(owner)?'1':'0';
 
-  // Co-intestatari: copio da anagrafica (inclusi di default)
+  // Co-intestatari: pulisco e copio da anagrafica (inclusi di default)
+  ctrMergeCoprops(owner);
   ctrCopropsTemp=(owner.coprops||[]).map(function(c){
     var o={};for(var k in c)o[k]=c[k];o._inc=true;return o;
   });
@@ -11175,6 +11176,36 @@ function ctrFmtDataEstesa(iso){
 // Regole: match proprietari per CF/P.IVA, immobili per Nome Struttura;
 // cella vuota = dato esistente NON toccato; contratti creati in Bozza, mai duplicati.
 // ════════════════════════════════════════════════════════════════════
+// Pulizia e fusione co-intestatari di un proprietario:
+// - rimuove voci vuote e l'intestatario principale finito tra i coprops
+// - deduplica per CF oppure, se CF assente, per nome+cognome
+// - fonde i dati (campo vuoto ← campo pieno)
+function ctrMergeCoprops(owner){
+  if(!owner||!owner.coprops||!owner.coprops.length)return;
+  var mainCf=(owner.cf||'').toUpperCase().trim();
+  var mainNm=owner.tipo==='persona_fisica'?(((owner.nome||'')+' '+(owner.cognome||'')).trim().toLowerCase()):'';
+  var out=[];
+  owner.coprops.forEach(function(c){
+    var cf=(c.cf||'').toUpperCase().trim();
+    var nm=((c.nome||'')+' '+(c.cognome||'')).trim().toLowerCase();
+    if(!cf&&!nm)return;                       // voce completamente vuota
+    if(cf&&mainCf&&cf===mainCf)return;        // è l'intestatario principale
+    if(!cf&&mainNm&&nm===mainNm)return;       // idem, senza CF
+    var ex=out.find(function(x){
+      var xcf=(x.cf||'').toUpperCase().trim();
+      if(cf&&xcf)return cf===xcf;
+      var xnm=((x.nome||'')+' '+(x.cognome||'')).trim().toLowerCase();
+      return nm&&xnm&&nm===xnm;
+    });
+    if(ex){
+      for(var k in c){
+        if((ex[k]==null||ex[k]==='')&&c[k]!=null&&c[k]!=='')ex[k]=c[k];
+      }
+    } else out.push(c);
+  });
+  owner.coprops=out;
+}
+
 function ctrImpDate(v){
   if(!v)return '';
   v=String(v).trim();
@@ -11286,7 +11317,13 @@ function ctrImportExcel(ev){
         if(!mown){rep.warns.push('Co-intestatario "'+cnome+' '+ccogn+'": proprietario principale CF '+mainCf+' non trovato.');continue;}
         if(!mown.coprops)mown.coprops=[];
         var ccf=ctrImpStr(K[3]).toUpperCase();
-        var ex=mown.coprops.find(function(x){return ccf&&(x.cf||'').toUpperCase()===ccf;});
+        var cnm=(cnome+' '+ccogn).trim().toLowerCase();
+        var ex=mown.coprops.find(function(x){
+          var xcf=(x.cf||'').toUpperCase().trim();
+          if(ccf&&xcf)return ccf===xcf;
+          var xnm=((x.nome||'')+' '+(x.cognome||'')).trim().toLowerCase();
+          return cnm&&xnm&&cnm===xnm;
+        });
         var q=parseFloat(ctrImpStr(K[4]).replace(',','.'))||0; if(q>1)q=q/100;
         var cp=ex||{};
         cp.nome=cnome||cp.nome;cp.cognome=ccogn||cp.cognome;
@@ -11303,11 +11340,26 @@ function ctrImportExcel(ev){
         rep.cop++;
       }
 
+      // ── PULIZIA CO-INTESTATARI su tutti gli owner toccati ──
+      Object.keys(byOwner).forEach(function(key){ctrMergeCoprops(byOwner[key].owner);});
+      DB.proprietari.forEach(function(o){if(o.coprops&&o.coprops.length)ctrMergeCoprops(o);});
+
       // ── CONTRATTI: uno per proprietario, mai duplicati ──
       Object.keys(byOwner).forEach(function(key){
         var B=byOwner[key];
-        var exists=DB.contratti.some(function(k){return k.owner_id===B.owner.id;});
-        if(exists){rep.ctrSkip++;rep.warns.push(nomeOwner(B.owner.id)+': contratto gi\u00e0 presente, non duplicato (anagrafiche comunque aggiornate).');return;}
+        var existing=DB.contratti.find(function(k){return k.owner_id===B.owner.id;});
+        if(existing){
+          rep.ctrSkip++;
+          if(existing.stato==='bozza'){
+            existing.coprops=(B.owner.coprops||[]).map(function(c){var o={};for(var k in c)o[k]=c[k];return o;});
+            B.propIds.forEach(function(pid){if(existing.prop_ids.indexOf(pid)<0)existing.prop_ids.push(pid);});
+            existing.updated=new Date().toISOString();
+            rep.warns.push(nomeOwner(B.owner.id)+': contratto in Bozza gi\u00e0 presente \u2192 aggiornati co-intestatari e immobili (non duplicato).');
+          } else {
+            rep.warns.push(nomeOwner(B.owner.id)+': contratto gi\u00e0 presente ('+existing.stato+'), non toccato.');
+          }
+          return;
+        }
         var now=new Date().toISOString();
         DB.contratti.push({
           id:uid(),owner_id:B.owner.id,prop_ids:B.propIds,
