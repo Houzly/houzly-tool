@@ -11457,7 +11457,7 @@ function ademImportStorico(ev){
       if(!list.length){toast('Nessuna prenotazione nel file');return;}
       var anno=data.anno||2025;
       if(!confirm('Importare '+list.length+' prenotazioni dell\'anno '+anno+'?\n\nLe prenotazioni gi\u00e0 presenti (stessa struttura, date e ospite) verranno aggiornate, non duplicate.'))return;
-      var rep={creati:0,agg:0,nomatch:{},scarti:0,diff:[]};
+      var rep={creati:0,agg:0,nomatch:{},scarti:0,diff:[],flagPul:{}};
       var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
       list.forEach(function(x){
         var p=DB.proprieta.find(function(pp){return norm(pp.nome)===norm(x.struttura);});
@@ -11472,9 +11472,14 @@ function ademImportStorico(ev){
           note:x.note||('Import storico '+anno),meseReportOverride:'',meseReportConfermato:false,
           storico:true,calc:{}};
         nb.calc=doCalc(nb);
-        // verifica coerenza col canone atteso
-        if(x.atteso_canone!=null && Math.abs((nb.calc.canone||0)-x.atteso_canone)>0.02){
-          rep.diff.push(x.struttura+' '+x.checkin+' '+(x.ospite||'')+': atteso '+eur(x.atteso_canone)+' calcolato '+eur(nb.calc.canone));
+        // verifica coerenza: se le pulizie sono rimborsate al proprietario si confronta il canone totale
+        var _canCalc = nb.calc.pulizie_owner ? nb.calc.canone_totale : nb.calc.canone;
+        if(x.pulizie_owner && !nb.calc.pulizie_owner){
+          rep.flagPul[p.nome]=true;
+          _canCalc = r2((nb.calc.canone||0)+(+x.pulizia||0));
+        }
+        if(x.atteso_canone!=null && Math.abs(_canCalc-x.atteso_canone)>0.02){
+          rep.diff.push(x.struttura+' '+x.checkin+' '+(x.ospite||'')+': atteso '+eur(x.atteso_canone)+' calcolato '+eur(_canCalc));
         }
         var k=key(nb);
         var idx=DB.prenotazioni.findIndex(function(b){return key(b)===k;});
@@ -11491,6 +11496,7 @@ function ademImportStorico(ev){
           +'<div style="font-weight:700;color:'+(rep.scarti?'#92400e':'#166534')+'">'+(rep.scarti?'\u26a0':'\u2713')+' Import prenotazioni '+anno+' completato</div>'
           +'<div style="font-size:12.5px;color:var(--text-mid);margin-top:4px">'+rep.creati+' create \u00b7 '+rep.agg+' aggiornate'+(rep.scarti?' \u00b7 '+rep.scarti+' scartate':'')+'</div>'
           +(nm.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#92400e">Strutture NON trovate in anagrafica (crea la propriet\u00e0 col nome esatto e reimporta):</div><ul style="margin-left:18px;font-size:12px;color:#92400e">'+nm.map(function(s){return '<li>'+escHtml(s)+' ('+rep.nomatch[s]+' pren.)</li>';}).join('')+'</ul></div>':'')
+          +(Object.keys(rep.flagPul).length?'<div style="margin-top:8px;padding:8px;background:#fff7ed;border-radius:6px"><div style="font-weight:600;font-size:12px;color:#92400e">\u26a0 Attiva il flag <strong>\u201cpulizie rimborsate al proprietario\u201d</strong> in Propriet\u00e0 per: '+Object.keys(rep.flagPul).map(escHtml).join(', ')+'</div><div style="font-size:11.5px;color:#92400e">Senza il flag i report mensili di queste strutture mostreranno un netto pi\u00f9 basso (la DAC7 non ne risente).</div></div>':'')
           +(rep.diff.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#b3323a">Scostamenti dal canone atteso ('+rep.diff.length+'):</div><ul style="margin-left:18px;font-size:11.5px;color:#b3323a">'+rep.diff.slice(0,12).map(function(s){return '<li>'+escHtml(s)+'</li>';}).join('')+'</ul></div>':'<div style="font-size:12px;color:#166534;margin-top:6px">\u2713 Tutti i canoni ricalcolati coincidono con quelli attesi.</div>')
           +'</div>';
       }
