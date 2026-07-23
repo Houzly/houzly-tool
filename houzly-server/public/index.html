@@ -2437,7 +2437,11 @@ function doCalc(b){
   var pulizia=+b.pulizia||0;
   // Check if this property has pulizie_owner flag
   var prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-  var pulizieOwner=prop?!!prop.pulizie_owner:false;
+  // v66: le prenotazioni storiche importate portano il proprio trattamento pulizie
+  // (b.pulizie_owner_ovr), così non cambiano se in futuro si modifica il flag di proprietà.
+  var pulizieOwner=(b.pulizie_owner_ovr!==undefined&&b.pulizie_owner_ovr!==null)
+      ? !!b.pulizie_owner_ovr
+      : (prop?!!prop.pulizie_owner:false);
   // Base netto: lordo - comm - tassa - pulizie (pulizie sempre escluse dalla base houzly)
   var netto=r2(tot-comm_ota-tassa-pulizia);
   var houzly=r2(netto*(b.houzly_perc/100));
@@ -11469,15 +11473,13 @@ function ademImportStorico(ev){
           tot:+x.tot||0,comm_ota_perc:0,comm_ota_abs:+x.comm_ota_abs||0,
           tassa_pn:0,tassa_tot:(+x.tassa_tot||0),pulizia:+x.pulizia||0,
           houzly_perc:+x.houzly_perc||0,iva22:!!(+x.iva22),incasso_diretto:false,
+          pulizie_owner_ovr:(x.pulizie_owner!==undefined?(+x.pulizie_owner?1:0):null),
           note:x.note||('Import storico '+anno),meseReportOverride:'',meseReportConfermato:false,
           storico:true,calc:{}};
         nb.calc=doCalc(nb);
+        if(x.pulizie_owner!==undefined && !!(+x.pulizie_owner)!==!!p.pulizie_owner) rep.flagPul[p.nome]=true;
         // verifica coerenza: se le pulizie sono rimborsate al proprietario si confronta il canone totale
         var _canCalc = nb.calc.pulizie_owner ? nb.calc.canone_totale : nb.calc.canone;
-        if(x.pulizie_owner && !nb.calc.pulizie_owner){
-          rep.flagPul[p.nome]=true;
-          _canCalc = r2((nb.calc.canone||0)+(+x.pulizia||0));
-        }
         if(x.atteso_canone!=null && Math.abs(_canCalc-x.atteso_canone)>0.02){
           rep.diff.push(x.struttura+' '+x.checkin+' '+(x.ospite||'')+': atteso '+eur(x.atteso_canone)+' calcolato '+eur(_canCalc));
         }
@@ -11496,7 +11498,7 @@ function ademImportStorico(ev){
           +'<div style="font-weight:700;color:'+(rep.scarti?'#92400e':'#166534')+'">'+(rep.scarti?'\u26a0':'\u2713')+' Import prenotazioni '+anno+' completato</div>'
           +'<div style="font-size:12.5px;color:var(--text-mid);margin-top:4px">'+rep.creati+' create \u00b7 '+rep.agg+' aggiornate'+(rep.scarti?' \u00b7 '+rep.scarti+' scartate':'')+'</div>'
           +(nm.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#92400e">Strutture NON trovate in anagrafica (crea la propriet\u00e0 col nome esatto e reimporta):</div><ul style="margin-left:18px;font-size:12px;color:#92400e">'+nm.map(function(s){return '<li>'+escHtml(s)+' ('+rep.nomatch[s]+' pren.)</li>';}).join('')+'</ul></div>':'')
-          +(Object.keys(rep.flagPul).length?'<div style="margin-top:8px;padding:8px;background:#fff7ed;border-radius:6px"><div style="font-weight:600;font-size:12px;color:#92400e">\u26a0 Attiva il flag <strong>\u201cpulizie rimborsate al proprietario\u201d</strong> in Propriet\u00e0 per: '+Object.keys(rep.flagPul).map(escHtml).join(', ')+'</div><div style="font-size:11.5px;color:#92400e">Senza il flag i report mensili di queste strutture mostreranno un netto pi\u00f9 basso (la DAC7 non ne risente).</div></div>':'')
+          +(Object.keys(rep.flagPul).length?'<div style="margin-top:8px;padding:8px;background:#eff6ff;border-radius:6px;font-size:11.5px;color:#1e40af">\u2139 Lo storico importato usa il trattamento pulizie risultante dai report, indipendente dal flag di Propriet\u00e0. Strutture in cui i due differiscono: '+Object.keys(rep.flagPul).map(escHtml).join(', ')+'</div>':'')
           +(rep.diff.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#b3323a">Scostamenti dal canone atteso ('+rep.diff.length+'):</div><ul style="margin-left:18px;font-size:11.5px;color:#b3323a">'+rep.diff.slice(0,12).map(function(s){return '<li>'+escHtml(s)+'</li>';}).join('')+'</ul></div>':'<div style="font-size:12px;color:#166534;margin-top:6px">\u2713 Tutti i canoni ricalcolati coincidono con quelli attesi.</div>')
           +'</div>';
       }
