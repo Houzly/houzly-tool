@@ -11473,7 +11473,7 @@ function ademImportStorico(ev){
           tot:+x.tot||0,comm_ota_perc:0,comm_ota_abs:+x.comm_ota_abs||0,
           tassa_pn:0,tassa_tot:(+x.tassa_tot||0),pulizia:+x.pulizia||0,
           houzly_perc:+x.houzly_perc||0,iva22:!!(+x.iva22),incasso_diretto:false,
-          pulizie_owner_ovr:(x.pulizie_owner!==undefined?(+x.pulizie_owner?1:0):null),
+          pulizie_owner_ovr:(+x.pulizie_owner?1:0),
           note:x.note||('Import storico '+anno),meseReportOverride:'',meseReportConfermato:false,
           storico:true,calc:{}};
         nb.calc=doCalc(nb);
