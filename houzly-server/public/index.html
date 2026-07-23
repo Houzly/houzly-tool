@@ -9782,7 +9782,7 @@ function ademGetActiveMandanti(anno){
   // Includo anche mandanti con override manuale per l'anno (caso dati 2025 pre-app)
   if(DB.adempimenti_manual && DB.adempimenti_manual[String(anno)]){
     Object.keys(DB.adempimenti_manual[String(anno)]).forEach(function(oid){
-      ids.add(oid);
+      if(!ademManualIsEmpty(DB.adempimenti_manual[String(anno)][oid])) ids.add(oid);
     });
   }
   return Array.from(ids).map(function(id){return DB.proprietari.find(function(o){return o.id===id;});}).filter(Boolean);
@@ -10292,11 +10292,20 @@ function renderAdempAlert(){
 // Struttura DB:
 //   DB.adempimenti_manual = { '2025': { <ownerId>: { lordo, commOTA, commHouzly, baseCedolare, ritenuta, tassaSogg, nPren, nGiorniLocazione, note } } }
 // Quando esiste un override per (anno, owner), ademCalcMandanteYearly usa quelli al posto del calcolo
+// Un override con TUTTI i valori a zero non è un dato: va ignorato,
+// altrimenti il mandante compare negli adempimenti pur non avendo attività.
+function ademManualIsEmpty(d){
+  if(!d)return true;
+  var campi=['lordo','commOTA','commHouzly','baseCedolare','ritenuta','tassaSogg','nPren','nGiorniLocazione'];
+  for(var i=0;i<campi.length;i++){ if(Math.abs(+d[campi[i]]||0)>0.004) return false; }
+  return true;
+}
 function ademGetManualData(anno, ownerId){
   if(!DB.adempimenti_manual)return null;
   var byYear=DB.adempimenti_manual[String(anno)];
   if(!byYear)return null;
-  return byYear[ownerId]||null;
+  var d=byYear[ownerId]||null;
+  return ademManualIsEmpty(d)?null:d;
 }
 function ademSetManualData(anno, ownerId, data){
   if(!DB.adempimenti_manual)DB.adempimenti_manual={};
