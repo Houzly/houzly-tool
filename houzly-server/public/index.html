@@ -1106,6 +1106,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <option value="2025">2025</option>
         <option value="2026" selected>2026</option>
       </select>
+      <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:8px">&#8613; Import prenotazioni storiche<input type="file" accept=".json" style="display:none" onchange="ademImportStorico(event)"></label>
     </div>
   </div>
 
@@ -1167,6 +1168,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </div>
     </div>
     <div id="adem-dac7-xml-status"></div>
+    <div id="adem-import-report"></div>
     <div id="adem-dac7-content"></div>
   </div>
 
@@ -11437,6 +11439,65 @@ function dac7AddressXml(tag, free, city, cap, prov){
   if(cap)x+='<dpi:PostCode>'+dac7Esc(cap)+'</dpi:PostCode>';
   x+='</dpi:AddressFix></dpi:'+tag+'>';
   return x;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// IMPORT PRENOTAZIONI STORICHE (anni pre-Houzly Tool)
+// Legge il JSON prodotto dalla ricostruzione report e crea le prenotazioni
+// nel DB, ricalcolando con doCalc(). Match struttura per NOME.
+// ════════════════════════════════════════════════════════════════════
+function ademImportStorico(ev){
+  var f=ev.target.files[0]; ev.target.value='';
+  if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      var list=data.prenotazioni||[];
+      if(!list.length){toast('Nessuna prenotazione nel file');return;}
+      var anno=data.anno||2025;
+      if(!confirm('Importare '+list.length+' prenotazioni dell\'anno '+anno+'?\n\nLe prenotazioni gi\u00e0 presenti (stessa struttura, date e ospite) verranno aggiornate, non duplicate.'))return;
+      var rep={creati:0,agg:0,nomatch:{},scarti:0,diff:[]};
+      var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
+      list.forEach(function(x){
+        var p=DB.proprieta.find(function(pp){return norm(pp.nome)===norm(x.struttura);});
+        if(!p){rep.nomatch[x.struttura]=(rep.nomatch[x.struttura]||0)+1;rep.scarti++;return;}
+        var key=function(b){return b.proprieta_id+'|'+b.checkin+'|'+b.checkout+'|'+norm(b.ospite_nome).slice(0,12);};
+        var nb={id:uid(),proprieta_id:p.id,canale:x.canale||'Diretta',ota_num:'',
+          ospite_nome:x.ospite||'Ospite',n_ospiti:+x.n_ospiti||1,ospite_cf:'',ospite_email:'',ospite_ind:'',
+          checkin:x.checkin,checkout:x.checkout,notti:+x.notti||1,
+          tot:+x.tot||0,comm_ota_perc:0,comm_ota_abs:+x.comm_ota_abs||0,
+          tassa_pn:0,tassa_tot:(+x.tassa_tot||0),pulizia:+x.pulizia||0,
+          houzly_perc:+x.houzly_perc||0,iva22:!!(+x.iva22),incasso_diretto:false,
+          note:x.note||('Import storico '+anno),meseReportOverride:'',meseReportConfermato:false,
+          storico:true,calc:{}};
+        nb.calc=doCalc(nb);
+        // verifica coerenza col canone atteso
+        if(x.atteso_canone!=null && Math.abs((nb.calc.canone||0)-x.atteso_canone)>0.02){
+          rep.diff.push(x.struttura+' '+x.checkin+' '+(x.ospite||'')+': atteso '+eur(x.atteso_canone)+' calcolato '+eur(nb.calc.canone));
+        }
+        var k=key(nb);
+        var idx=DB.prenotazioni.findIndex(function(b){return key(b)===k;});
+        if(idx>=0){nb.id=DB.prenotazioni[idx].id;DB.prenotazioni[idx]=nb;rep.agg++;}
+        else{DB.prenotazioni.push(nb);rep.creati++;}
+      });
+      saveDB();
+      var sel=document.getElementById('adem-anno'); if(sel)sel.value=String(anno);
+      renderAdempimenti();
+      var nm=Object.keys(rep.nomatch);
+      var box=document.getElementById('adem-import-report');
+      if(box){
+        box.innerHTML='<div class="card" style="padding:14px 18px;margin-bottom:14px;background:'+(rep.scarti?'#fffbeb':'#f0fdf4')+';border:1px solid '+(rep.scarti?'#fbbf24':'#86efac')+'">'
+          +'<div style="font-weight:700;color:'+(rep.scarti?'#92400e':'#166534')+'">'+(rep.scarti?'\u26a0':'\u2713')+' Import prenotazioni '+anno+' completato</div>'
+          +'<div style="font-size:12.5px;color:var(--text-mid);margin-top:4px">'+rep.creati+' create \u00b7 '+rep.agg+' aggiornate'+(rep.scarti?' \u00b7 '+rep.scarti+' scartate':'')+'</div>'
+          +(nm.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#92400e">Strutture NON trovate in anagrafica (crea la propriet\u00e0 col nome esatto e reimporta):</div><ul style="margin-left:18px;font-size:12px;color:#92400e">'+nm.map(function(s){return '<li>'+escHtml(s)+' ('+rep.nomatch[s]+' pren.)</li>';}).join('')+'</ul></div>':'')
+          +(rep.diff.length?'<div style="margin-top:8px"><div style="font-weight:600;font-size:12px;color:#b3323a">Scostamenti dal canone atteso ('+rep.diff.length+'):</div><ul style="margin-left:18px;font-size:11.5px;color:#b3323a">'+rep.diff.slice(0,12).map(function(s){return '<li>'+escHtml(s)+'</li>';}).join('')+'</ul></div>':'<div style="font-size:12px;color:#166534;margin-top:6px">\u2713 Tutti i canoni ricalcolati coincidono con quelli attesi.</div>')
+          +'</div>';
+      }
+      toast('\u2713 Import '+anno+': '+rep.creati+' create, '+rep.agg+' aggiornate');
+    }catch(err){console.error(err);toast('\u2715 Errore import: '+err.message);}
+  };
+  rd.readAsText(f);
 }
 
 function adempGenerateDAC7XML(ownerId){
