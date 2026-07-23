@@ -10318,6 +10318,17 @@ function ademSetManualData(anno, ownerId, data){
   saveDB();
 }
 
+// Rimuove TUTTI gli override manuali di un anno: si torna al calcolo dalle prenotazioni
+function ademClearAllManual(anno){
+  if(!DB.adempimenti_manual||!DB.adempimenti_manual[String(anno)]){toast('Nessun override da rimuovere');return;}
+  var n=Object.keys(DB.adempimenti_manual[String(anno)]).length;
+  if(!confirm('Cancellare TUTTI i '+n+' dati manuali dell\'anno '+anno+'?\n\nGli adempimenti torneranno a calcolarsi dalle prenotazioni registrate. Operazione consigliata dopo aver importato lo storico.'))return;
+  delete DB.adempimenti_manual[String(anno)];
+  saveDB();
+  renderAdempimenti();
+  toast('\u2713 Rimossi '+n+' override manuali del '+anno);
+}
+
 function renderAdempManuale(){
   var anno=ademAnno();
   // Tutti i mandanti che hanno almeno una proprietà
@@ -10333,7 +10344,8 @@ function renderAdempManuale(){
   allMandanti.forEach(function(m){if(ademGetManualData(anno,m.id))nOverrides++;});
   var statHtml='<div class="card" style="margin-bottom:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
     +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Override attivi per '+anno+'</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nOverrides+' / '+allMandanti.length+'</div></div>'
-    +'<div style="font-size:11.5px;color:var(--text-light);max-width:520px;line-height:1.5">I valori che inserisci qui vengono usati al posto del calcolo automatico per CU, DAC7 e Modello 770 dell\'anno selezionato. Lascia vuoto un campo per usare il calcolo automatico per quel valore.</div>'
+    +'<div style="font-size:11.5px;color:var(--text-light);max-width:460px;line-height:1.5">I valori che inserisci qui vengono usati al posto del calcolo automatico per CU, DAC7 e Modello 770 dell\'anno selezionato. Lascia vuoto un campo per usare il calcolo automatico per quel valore.</div>'
+    +(nOverrides?'<button class="btn btn-danger btn-sm" onclick="ademClearAllManual('+anno+')">\u2715 Cancella tutti gli override '+anno+'</button>':'')
   +'</div>';
   // Lista mandanti con form
   var rows=allMandanti.map(function(owner){
