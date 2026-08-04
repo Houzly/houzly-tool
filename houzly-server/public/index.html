@@ -753,7 +753,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v67 · 02/08</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v68 · 02/08</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -903,7 +903,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="section-header">
     <div class="section-title">Prenotazioni</div>
     <div style="display:flex;gap:10px;align-items:center">
-      <div class="search-bar"><span class="si">&#128269;</span><input type="text" id="pren-search" placeholder="Cerca ospite, proprietà..." oninput="if(_postImportFilter){_postImportFilter=null;}renderPrenotazioni()"></div>
+      <div class="search-bar"><span class="si">&#128269;</span><input type="text" id="pren-search" placeholder="Cerca ospite, proprietà..." oninput="debouncedRenderPren()"></div>
       <select id="pren-filter-canale" onchange="if(_postImportFilter){_postImportFilter=null;}renderPrenotazioni()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer">
         <option value="">Tutti i canali</option>
         <option value="Airbnb">Airbnb</option>
@@ -3073,10 +3073,18 @@ function renderDashPillsMobile(container){
 }
 
 // Re-render pillole quando il viewport cambia (mobile <-> desktop)
+var _lastIsMobile=(window.matchMedia&&window.matchMedia('(max-width: 768px)').matches);
 window.addEventListener('resize', function(){
   if(typeof renderDashPills==='function' && document.getElementById('dash-prop-pills')){
     var page=document.getElementById('page-dashboard');
     if(page&&page.classList.contains('active'))renderDashPills();
+  }
+  // v68 PERF: se cambia il breakpoint desktop/mobile e sono su Prenotazioni, ri-renderizzo
+  var nowMobile=(window.matchMedia&&window.matchMedia('(max-width: 768px)').matches);
+  if(nowMobile!==_lastIsMobile){
+    _lastIsMobile=nowMobile;
+    var pp=document.getElementById('page-prenotazioni');
+    if(pp&&pp.classList.contains('active')&&typeof renderPrenotazioni==='function')renderPrenotazioni();
   }
 });
 
@@ -4447,6 +4455,13 @@ function toggleBlack(id){
   toast(b.black?'Prenotazione Aggiuntiva — fuori standard':'Prenotazione riportata tra le Principali');
 }
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// v68 PERF: debounce sulla ricerca — evita di ri-renderizzare ad ogni singolo tasto
+var _prenSearchTimer=null;
+function debouncedRenderPren(){
+  if(_postImportFilter){_postImportFilter=null;}
+  if(_prenSearchTimer)clearTimeout(_prenSearchTimer);
+  _prenSearchTimer=setTimeout(function(){renderPrenotazioni();},200);
+}
 function renderPrenotazioni(){
   var tb=document.getElementById('tbody-prenotazioni');
   // v53: banner filtro post-import
@@ -4522,12 +4537,23 @@ function renderPrenotazioni(){
       ||(b.checkin||'').indexOf(q)>=0
       ||(b.ospite_email||'').toLowerCase().indexOf(q)>=0;
   });
-  if(!bks.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-light)">'+(q?'Nessun risultato per &laquo;'+q+'&raquo;':'Nessuna prenotazione')+'</td></tr>';return;}
+  if(!bks.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-light)">'+(q?'Nessun risultato per &laquo;'+q+'&raquo;':'Nessuna prenotazione')+'</td></tr>';
+    var mcE=document.getElementById('mclist-prenotazioni');if(mcE)mcE.innerHTML='<div class="mc-empty"><div class="ic">📋</div>'+(q?'Nessun risultato per «'+q+'»':'Nessuna prenotazione')+'</div>';
+    return;}
   var otaBadge={'Airbnb':'badge-orange','Booking.com':'badge-blue','Vrbo':'badge-cyan','Diretta':'badge-green'};
-  // Recalculate calc for each booking to ensure fresh values
-  bks.forEach(function(b){b.calc=doCalc(b);});
-  tb.innerHTML=bks.map(function(b){
-    var own=ownerOfProp(b.proprieta_id);
+  // v68 PERF: mappe di lookup O(1) invece di .find() lineare per ogni riga
+  var _propMap={}, _ownMap={};
+  (DB.proprieta||[]).forEach(function(p){_propMap[p.id]=p;});
+  (DB.proprietari||[]).forEach(function(o){_ownMap[o.id]=o;});
+  function _nomePropFast(id){var p=_propMap[id];return p?p.nome:'\u2014';}
+  function _ownerFast(propId){var pr=_propMap[propId];if(!pr)return null;return _ownMap[pr.proprietario_id]||null;}
+  // v68 PERF: calcola b.calc solo per le prenotazioni filtrate (non tutto il DB)
+  // e solo se manca o è marcato "dirty" (dopo una modifica)
+  bks.forEach(function(b){if(!b.calc||b._calcDirty){b.calc=doCalc(b);b._calcDirty=false;}});
+  // v68 PERF: rendo solo la vista visibile (desktop O mobile), non entrambe
+  var isMobileView = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  tb.innerHTML=(!isMobileView) ? bks.map(function(b){
+    var own=_ownerFast(b.proprieta_id);
     var cls=otaBadge[b.canale]||'badge-blue';
     var blackTitle=b.black?'Aggiuntiva (fuori standard) — riporta tra le Principali':'Segna come Aggiuntiva (fuori standard)';
     return '<tr class="'+(b.black?'bk-black':'')+'">'
@@ -4537,7 +4563,7 @@ function renderPrenotazioni(){
       +'<td><span class="badge '+cls+'">'+chIcon(b.canale,14)+esc(b.canale)+'</span></td>'
       +'<td class="bold">'+esc(b.ospite_nome)+(b.incasso_diretto?' <span title="Incassato dal proprietario" style="font-size:11px">&#128181;</span>':'')+meseBadgesHtmlGlobal(b)+'</td>'
       +'<td style="text-align:center">'+b.n_ospiti+'</td>'
-      +'<td>'+esc(nomeProp(b.proprieta_id))+'</td>'
+      +'<td>'+esc(_nomePropFast(b.proprieta_id))+'</td>'
       +'<td>'+dateIt(b.checkin)+'</td>'
       +'<td style="text-align:center">'+b.notti+'</td>'
       +'<td class="money">'+eur(b.calc.tot)+'</td>'
@@ -4554,17 +4580,14 @@ function renderPrenotazioni(){
       +'<button class="btn btn-sm btn-outline" data-action="goto-doc" data-id="'+b.id+'" title="Documento">&#128196;</button>'
       +'<button class="btn btn-sm btn-ghost" data-action="edit-pren" data-id="'+b.id+'" title="Modifica">&#9999;&#65039;</button>'
       +'<button class="btn btn-sm btn-danger" data-action="del-pren" data-id="'+b.id+'">&#128465;</button>'
-      +'</td></tr>';  }).join('');
-  wireTableActions('tbody-prenotazioni');
+      +'</td></tr>';  }).join('') : '';
+  if(!isMobileView) wireTableActions('tbody-prenotazioni');
 
-  // ─── MOBILE: card stack parallelo ─────────────────────────────
+  // ─── MOBILE: card stack parallelo (v68 PERF: solo se vista mobile) ───
   var mc=document.getElementById('mclist-prenotazioni');
-  if(mc){
-    if(!bks.length){
-      mc.innerHTML='<div class="mc-empty"><div class="ic">📋</div>'+(q?'Nessun risultato per «'+q+'»':'Nessuna prenotazione')+'</div>';
-    } else {
+  if(mc && isMobileView){
       mc.innerHTML=bks.map(function(b){
-        var own=ownerOfProp(b.proprieta_id);
+        var own=_ownerFast(b.proprieta_id);
         var cls=otaBadge[b.canale]||'badge-blue';
         var badgesM=meseBadgesHtmlGlobal(b);
         var blackTitle=b.black?'Riporta tra le Principali':'Segna come Aggiuntiva';
@@ -4576,7 +4599,7 @@ function renderPrenotazioni(){
           +'<div class="mc-card-h" style="padding-right:30px">'
           +'<div style="min-width:0;flex:1">'
           +'<div class="mc-card-title">'+pulWarn+esc(b.ospite_nome||'-')+badgesM+'</div>'
-          +'<div class="mc-card-sub">'+esc(nomeProp(b.proprieta_id))+'</div>'
+          +'<div class="mc-card-sub">'+esc(_nomePropFast(b.proprieta_id))+'</div>'
           +'</div>'
           +'<div class="mc-card-amount">'+eur(b.calc.canone)+'</div>'
           +'</div>'
@@ -4603,7 +4626,7 @@ function renderPrenotazioni(){
           +'</div>'
           +'</div>';
       }).join('');
-    }
+      wireTableActions('mclist-prenotazioni');
   }
 }
 function viewPren(id){
