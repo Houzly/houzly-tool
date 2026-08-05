@@ -480,25 +480,44 @@ app.post('/api/smoobu/sync', async (req, res) => {
       return checkout >= fromISO && checkout <= toISO;
     });
 
-    // Rimozione task durante il sync — SOLO se tutte queste condizioni:
-    // 1. Ha smoobu_id (non è manuale)
-    // 2. Checkout FUTURO (strettamente > oggi) — i passati non si toccano mai
-    // 3. NON ha date_override (data spostata manualmente)
-    // 4. NON è done
-    // 5. NON ha pulitrici assegnate
-    // 6. smoobu_id non compare più nelle prenotazioni attive Smoobu
+    // ══════════════════════════════════════════════════════════════
+    // RICONCILIAZIONE — rimozione task fantasma (v-reconcile 2026-08)
+    //
+    // Un task è "fantasma" se il suo smoobu_id non compare più tra le
+    // prenotazioni attive di Smoobu (prenotazione cancellata o modificata
+    // con cambio di id). Va rimosso anche se ha una pulitrice assegnata,
+    // perché è proprio quel caso a creare i doppioni.
+    //
+    // PROTEZIONI (per non cancellare per errore):
+    //  A. Non tocca mai i task manuali (senza smoobu_id)
+    //  B. Non tocca mai i task 'done' (storico)
+    //  C. Non tocca mai i task con checkout nel PASSATO o oggi
+    //  D. SAFETY: se Smoobu ha restituito 0 prenotazioni (probabile errore
+    //     temporaneo/API down), NON rimuove nulla — evita disastri di massa
+    //  E. Non tocca mai i task con date_override (spostati a mano) —
+    //     il lavoro manuale è sacro; eventuali fantasmi-con-override si
+    //     gestiscono col rilevatore duplicati del frontend.
+    // ══════════════════════════════════════════════════════════════
     const activeIds = new Set(relevant.map(b => String(b.id || '')));
     const todayISO = new Date().toISOString().split('T')[0];
     const before = db.cleaning.tasks.length;
+
+    // SAFETY D: se non è arrivata nessuna prenotazione, salta la rimozione
+    const safeToRemove = relevant.length > 0;
+
     db.cleaning.tasks = db.cleaning.tasks.filter(t => {
-      if (!t.smoobu_id) return true;                          // manuale: mai toccare
-      if (t.status === 'done') return true;                   // completato: mai toccare
-      if (t.date_override) return true;                       // data spostata: mai toccare
-      const hasCleaner = t.cleaner && (Array.isArray(t.cleaner) ? t.cleaner.length > 0 : true);
-      if (hasCleaner) return true;                            // assegnato: mai toccare
-      const d = t.date;
-      if (!d || d <= todayISO) return true;                   // passato/oggi: mai toccare
-      return activeIds.has(t.smoobu_id);                      // futuro non assegnato: rimuovi se cancellato
+      if (!safeToRemove) return true;                         // D: Smoobu vuoto → non rimuovere nulla
+      if (!t.smoobu_id) return true;                          // A: manuale → mai toccare
+      if (t.status === 'done') return true;                   // B: completato → mai toccare (storico)
+      if (t.date_override) return true;                       // E: data spostata a mano → mai toccare (protezione lavoro manuale)
+      // Data effettiva del task
+      const dEff = t.date_override || t.date;
+      if (!dEff || dEff <= todayISO) return true;             // C: passato/oggi → mai toccare
+      // Se la prenotazione è ancora attiva su Smoobu → mantieni
+      if (activeIds.has(t.smoobu_id)) return true;
+      // Altrimenti è un fantasma (prenotazione cancellata/modificata):
+      // rimuovi anche se ha pulitrice assegnata, perché è obsoleto.
+      return false;
     });
     const removed = before - db.cleaning.tasks.length;
 
