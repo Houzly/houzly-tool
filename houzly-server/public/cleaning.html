@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0f2e">
 <title>Houzly · Pulizie</title>
+<!-- Cleaning Manager · rilevatore duplicati + protezione modifiche manuali (2026-08) -->
 <link rel="manifest" href="/manifest-cleaning.json">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1432,6 +1433,75 @@ function renderStats() {
   document.getElementById('stats-bar').innerHTML = html;
 }
 
+// ═══════════════════════════════
+//  RILEVATORE DUPLICATI (v-dup)
+//  Trova task della STESSA proprietà con check-out ravvicinati (entro 3 giorni):
+//  tipico segnale di prenotazione modificata/cancellata su Smoobu che ha lasciato
+//  un task "fantasma" non rimosso dal sync.
+// ═══════════════════════════════
+function findDuplicateGroups(tasks) {
+  // Raggruppa per proprietà
+  const byProp = {};
+  tasks.forEach(t => {
+    const key = (t.prop_name || 'N/D').trim().toLowerCase();
+    if (!byProp[key]) byProp[key] = [];
+    byProp[key].push(t);
+  });
+  const groups = [];
+  Object.keys(byProp).forEach(key => {
+    const arr = byProp[key];
+    if (arr.length < 2) return;
+    // Ordina per data effettiva
+    arr.sort((a, b) => {
+      const da = a.date_override || a.date;
+      const db2 = b.date_override || b.date;
+      return da < db2 ? -1 : da > db2 ? 1 : 0;
+    });
+    // Cerca coppie con date entro 3 giorni
+    const flagged = [];
+    for (let i = 0; i < arr.length - 1; i++) {
+      const d1 = new Date((arr[i].date_override || arr[i].date) + 'T00:00:00');
+      const d2 = new Date((arr[i+1].date_override || arr[i+1].date) + 'T00:00:00');
+      const diffDays = Math.abs((d2 - d1) / 86400000);
+      if (diffDays <= 3) {
+        if (flagged.indexOf(arr[i]) < 0) flagged.push(arr[i]);
+        if (flagged.indexOf(arr[i+1]) < 0) flagged.push(arr[i+1]);
+      }
+    }
+    if (flagged.length >= 2) {
+      groups.push({ prop: arr[0].prop_name || 'N/D', tasks: flagged });
+    }
+  });
+  return groups;
+}
+
+// Set globale degli id task segnalati come possibili doppioni (per il badge nella card)
+var _dupTaskIds = new Set();
+
+// Elimina il task più vecchio di un gruppo di doppioni (identificato dalla proprietà)
+function resolveDuplicate(propName) {
+  const db = clDB();
+  const visible = getFilteredTasks().filter(t => (t.prop_name || 'N/D') === propName);
+  if (visible.length < 2) { renderAll(); return; }
+  // Trova il più vecchio SENZA modifica manuale (preferisci eliminare il fantasma, non l'override)
+  const sorted = visible.slice().sort((a, b) => {
+    // Priorità di eliminazione: prima quelli SENZA date_override (non modificati a mano), più vecchi
+    const aManual = a.date_override ? 1 : 0;
+    const bManual = b.date_override ? 1 : 0;
+    if (aManual !== bManual) return aManual - bManual; // i non-manuali (0) prima
+    const da = a.date_override || a.date;
+    const db2 = b.date_override || b.date;
+    return da < db2 ? -1 : 1;
+  });
+  const toRemove = sorted[0];
+  const dLabel = formatDate(toRemove.date_override || toRemove.date);
+  if (!confirm(`Eliminare il task più vecchio di "${propName}" (${dLabel})?\n\nQuesto rimuove la pulizia fantasma lasciata da una prenotazione modificata o cancellata. Le pulizie modificate a mano vengono preservate.`)) return;
+  db.tasks = db.tasks.filter(t => t.id !== toRemove.id);
+  saveDB();
+  renderAll();
+  toast('🗑 Doppione rimosso');
+}
+
 function renderTasks() {
   const tasks = getFilteredTasks();
   const container = document.getElementById('task-list');
@@ -1453,7 +1523,29 @@ function renderTasks() {
     groups[d].push(t);
   });
 
-  let html = '';
+  // v-dup: rileva possibili doppioni (stessa proprietà, check-out ravvicinati)
+  const isManagerDup = (myIdentity === 'tutti');
+  _dupTaskIds = new Set();
+  let dupBanner = '';
+  if (isManagerDup) {
+    const dupGroups = findDuplicateGroups(tasks);
+    dupGroups.forEach(g => g.tasks.forEach(t => _dupTaskIds.add(t.id)));
+    if (dupGroups.length > 0) {
+      dupBanner = `<div style="background:linear-gradient(135deg,rgba(255,179,71,0.15),rgba(255,179,71,0.08));border:1px solid var(--orange);border-radius:14px;padding:12px 14px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:16px">⚠</span>
+          <span style="font-weight:700;font-size:13px;color:var(--orange)">Possibili doppioni rilevati (${dupGroups.length})</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-mid);line-height:1.5;margin-bottom:10px">Queste proprietà hanno più check-out ravvicinati: probabile pulizia fantasma da una prenotazione modificata o cancellata su Smoobu.</div>
+        ${dupGroups.map(g => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,179,71,0.2)">
+          <span style="flex:1;font-size:12px;color:var(--text)"><strong>${g.prop}</strong> · ${g.tasks.map(t => formatDate(t.date_override||t.date)).join(' e ')}</span>
+          <button onclick="resolveDuplicate('${(g.prop||'').replace(/'/g,"\\'")}')" style="background:var(--orange);color:#111;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Rimuovi vecchio</button>
+        </div>`).join('')}
+      </div>`;
+    }
+  }
+
+  let html = dupBanner;
   Object.keys(groups).sort().forEach(dateISO => {
     const dt = new Date(dateISO + 'T00:00:00');
     const dow = DOW[dt.getDay()];
@@ -1501,13 +1593,15 @@ function renderTaskCard(t) {
   const unassigned = (isManager && _isUnassigned) ? `<span class="tc-unassigned">⚠ Non assegnato</span>` : '';
   const notes    = t.notes ? `<span class="tc-notes">📝 ${t.notes}</span>` : '';
   const smoobuBadge = t.smoobu_id ? `<span class="tc-smoobu">S</span>` : '';
-  // Override indicator
-  const overrideNote = t.date_override ? `<span class="tc-notes" style="color:var(--orange)">📅 Data spostata</span>` : '';
+  // v-dup: badge possibile doppione
+  const dupBadge = _dupTaskIds.has(t.id) ? `<span class="tc-notes" style="color:var(--orange);font-weight:700">⚠ Possibile doppione</span>` : '';
+  // Override indicator (v-dup: rinforzato con lucchetto — segnala modifica manuale protetta)
+  const overrideNote = t.date_override ? `<span class="tc-notes" style="color:var(--orange);font-weight:600">🔒 Data spostata a mano</span>` : '';
 
   // Card click: managers open edit, cleaners open checklist view
   const clickFn = isManager ? `openTaskEdit('${t.id}')` : `openCleanerView('${t.id}')`;
 
-  return `<div class="task-card ${isDone?'done':''}" onclick="${clickFn}">
+  return `<div class="task-card ${isDone?'done':''}" onclick="${clickFn}" ${_dupTaskIds.has(t.id)?'style="border-color:var(--orange);border-width:1.5px"':''}>
     <div class="tc-top">
       <div class="tc-check" onclick="toggleDone(event,'${t.id}')">${isDone?'✓':''}</div>
       <div class="tc-body">
@@ -1515,7 +1609,7 @@ function renderTaskCard(t) {
         <div class="tc-times">${checkout}${checkin}</div>
       </div>
     </div>
-    <div class="tc-bottom">${cleaner}${unassigned}${overrideNote}${notes}</div>
+    <div class="tc-bottom">${cleaner}${unassigned}${dupBadge}${overrideNote}${notes}</div>
     ${clBar}
   </div>`;
 }
