@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const path    = require('path');
 const crypto  = require('crypto');
 const { MongoClient } = require('mongodb');
@@ -285,6 +286,15 @@ ${baseSchema}`;
 ${baseSchema}`;
 }
 
+// ── COMPRESSIONE GZIP ─────────────────────────────────────────────
+// Deve stare PRIMA di express.json e express.static, altrimenti non
+// intercetta le risposte. Comprime HTML, JS, CSS e tutte le risposte
+// JSON delle API (incluso /api/db) — riduzione tipica 70-85%.
+app.use(compression({
+  threshold: 1024,        // non comprime risposte sotto 1 kB (inutile)
+  level: 6                // buon compromesso CPU/compressione
+}));
+
 app.use(express.json({ limit: "20mb" }));
 app.use("/api/booking", (req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -294,7 +304,16 @@ app.use("/api/booking", (req, res, next) => {
   next();
 });
 app.get('/guida/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'guida.html')));
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files con cache: i font (.otf/.woff2) non cambiano mai,
+// quindi 1 anno di cache. HTML/JS sempre rivalidati (etag) per non
+// servire versioni vecchie dopo un deploy.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(otf|ttf|woff|woff2|eot)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
