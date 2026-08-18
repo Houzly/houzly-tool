@@ -5,26 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0f2e">
+<meta name="theme-color" content="#170046">
 <title>Houzly · Pulizie</title>
 <!-- Cleaning Manager · rilevatore duplicati + protezione modifiche manuali (2026-08) -->
 <link rel="manifest" href="/manifest-cleaning.json">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0a0f2e;
-  --surface: #111836;
-  --surface2: #1a2347;
-  --border: rgba(255,255,255,0.08);
-  --border2: rgba(255,255,255,0.14);
-  --text: #f0f4ff;
-  --text-mid: rgba(240,244,255,0.65);
-  --text-dim: rgba(240,244,255,0.35);
-  --accent: #22d1ee;
-  --accent2: #4361ee;
-  --green: #00e5a0;
-  --orange: #ffb347;
-  --red: #ff4d6d;
+  /* Palette ufficiale houzly.it (tema chiaro) */
+  --bg: #f0f4fa;              /* sand — sfondo app */
+  --surface: #ffffff;         /* card bianche */
+  --surface2: #e4edf8;        /* warm — superfici secondarie */
+  --border: rgba(23,0,70,0.10);
+  --border2: rgba(23,0,70,0.18);
+  --text: #170046;            /* navy — testo principale */
+  --text-mid: rgba(23,0,70,0.62);
+  --text-dim: rgba(23,0,70,0.40);
+  --navy: #170046;            /* deep — brand */
+  --accent: #47a9e4;          /* accent azzurro */
+  --accent2: #4487da;         /* terra blu */
+  --clay: #4acbef;            /* azzurro chiaro */
+  --green: #1a9a5a;
+  --orange: #e0921a;
+  --red: #d63a4a;
   --radius: 16px;
   --radius-sm: 10px;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -64,8 +67,8 @@ body {
 }
 .way-btn:active { transform: scale(0.97); border-color: var(--accent); }
 .way-btn.tutti-btn {
-  background: linear-gradient(135deg, rgba(67,97,238,0.2), rgba(34,209,238,0.15));
-  border-color: var(--accent2); color: var(--accent);
+  background: linear-gradient(135deg, rgba(68,135,218,0.14), rgba(74,203,239,0.12));
+  border-color: var(--accent2); color: var(--accent2);
 }
 .way-btn .way-icon { font-size: 22px; }
 
@@ -134,11 +137,9 @@ body {
 /* ── HEADER ── */
 .app-header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(10,15,46,0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--navy);
   padding: calc(var(--safe-top) + 14px) 20px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .header-row {
   display: flex; align-items: center; justify-content: space-between;
@@ -146,10 +147,10 @@ body {
 .header-logo {
   font-family: 'DM Mono', monospace;
   font-size: 18px; font-weight: 500;
-  color: var(--accent); letter-spacing: 0.12em;
+  color: #ffffff; letter-spacing: 0.12em;
 }
 .header-sub {
-  font-size: 11px; color: var(--text-dim);
+  font-size: 11px; color: rgba(255,255,255,0.55);
   letter-spacing: 0.15em; text-transform: uppercase;
   margin-top: 1px;
 }
@@ -242,8 +243,9 @@ body {
 .day-group { margin-bottom: 24px; }
 .day-header {
   display: flex; align-items: baseline; gap: 10px;
-  padding: 8px 4px 10px; position: sticky; top: 112px; z-index: 5;
-  background: linear-gradient(to bottom, var(--bg) 70%, transparent);
+  padding: 10px 4px; position: sticky; top: 112px; z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 .day-header .dh-dow {
   font-family: 'DM Mono', monospace;
@@ -268,6 +270,7 @@ body {
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(23,0,70,0.06);
   active-transform: scale(0.99);
 }
 .task-card:active { border-color: var(--accent2); }
@@ -322,21 +325,6 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.tc-checklist-bar {
-  padding: 0 14px 12px;
-  display: flex; align-items: center; gap: 8px;
-}
-.tc-progress {
-  flex: 1; height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden;
-}
-.tc-progress-fill {
-  height: 100%; background: var(--green); border-radius: 4px;
-  transition: width 0.3s;
-}
-.tc-progress-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px; color: var(--text-dim); flex-shrink: 0;
-}
 
 /* ── EMPTY STATE ── */
 .empty-state {
@@ -521,7 +509,7 @@ body {
   padding: 12px 20px; border-radius: 30px;
   font-size: 14px; font-weight: 600;
   border: 1.5px solid var(--border2);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 24px rgba(23,0,70,0.28);
   opacity: 0; pointer-events: none;
   transition: all 0.25s; z-index: 999;
   white-space: nowrap;
@@ -607,35 +595,35 @@ select.field-input {
 }
 @keyframes lo-fadein { from { opacity: 0; } to { opacity: 1; } }
 .logout-card {
-  background: #1c2030; border-radius: 18px; width: 100%; max-width: 420px;
-  padding: 20px; box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  background: var(--surface); border-radius: 18px; width: 100%; max-width: 420px;
+  padding: 20px; box-shadow: 0 -8px 32px rgba(23,0,70,0.18);
   animation: lo-slideup 0.2s ease-out;
 }
 @keyframes lo-slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.logout-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-.logout-sub { font-size: 12.5px; color: rgba(255,255,255,0.55); margin-bottom: 18px; }
+.logout-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.logout-sub { font-size: 12.5px; color: var(--text-mid); margin-bottom: 18px; }
 .logout-action {
   display: flex; align-items: center; gap: 14px;
-  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
   border-radius: 12px; padding: 14px; margin-bottom: 8px;
-  color: #fff; cursor: pointer; text-align: left;
+  color: var(--text); cursor: pointer; text-align: left;
   transition: background 0.15s, border-color 0.15s;
 }
 .logout-action:hover, .logout-action:active {
-  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);
+  background: var(--warm,#e4edf8); border-color: var(--border2);
 }
-.logout-action-danger { background: rgba(244,67,54,0.08); border-color: rgba(244,67,54,0.25); }
-.logout-action-danger:hover, .logout-action-danger:active { background: rgba(244,67,54,0.12); border-color: rgba(244,67,54,0.4); }
+.logout-action-danger { background: rgba(214,58,74,0.08); border-color: rgba(214,58,74,0.25); }
+.logout-action-danger:hover, .logout-action-danger:active { background: rgba(214,58,74,0.12); border-color: rgba(214,58,74,0.4); }
 .logout-icon { font-size: 22px; flex-shrink: 0; }
 .logout-action-text { flex: 1; min-width: 0; }
 .logout-action-title { font-size: 14.5px; font-weight: 600; margin-bottom: 2px; }
-.logout-action-desc { font-size: 11.5px; color: rgba(255,255,255,0.5); line-height: 1.4; }
+.logout-action-desc { font-size: 11.5px; color: var(--text-mid); line-height: 1.4; }
 .logout-cancel {
   width: 100%; background: transparent; border: 0; padding: 12px;
-  color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer;
+  color: var(--text-mid); font-size: 14px; cursor: pointer;
   margin-top: 4px;
 }
-.logout-cancel:hover { color: rgba(255,255,255,0.8); }
+.logout-cancel:hover { color: var(--text); }
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -807,40 +795,9 @@ select.field-input {
         <textarea class="field-input" id="f-notes" rows="2" placeholder="Note aggiuntive..."></textarea>
       </div>
 
-      <!-- Checklist -->
-      <div class="field-group">
-        <label class="field-label">Checklist</label>
-        <div class="checklist-wrap" id="checklist-wrap"></div>
-        <div class="cl-add-row">
-          <input type="text" class="cl-add-input" id="cl-add-input" placeholder="Aggiungi voce..." onkeydown="if(event.key==='Enter')addCheckItem()">
-          <button class="cl-add-btn" onclick="addCheckItem()">+</button>
-        </div>
-      </div>
-
       <!-- Buttons -->
       <button class="save-btn" onclick="saveTask()">💾 Salva</button>
       <button class="delete-btn" id="delete-btn" onclick="deleteTask()" style="display:none">🗑 Elimina task</button>
-    </div>
-  </div>
-</div>
-
-<!-- CLEANER VIEW MODAL (read-only + checklist for cleaners) -->
-<div class="modal-overlay" id="cleaner-modal" onclick="handleCleanerModalClick(event)">
-  <div class="modal-sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <div>
-        <div class="sheet-title" id="cv-title">Task</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:2px" id="cv-sub"></div>
-      </div>
-      <button class="sheet-close" onclick="closeCleanerView()">×</button>
-    </div>
-    <div class="sheet-body">
-      <div id="cv-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap"></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px">Checklist</div>
-      <div class="checklist-wrap" id="cv-checklist"></div>
-      <button class="save-btn" style="margin-top:20px" onclick="saveCleanerView()">💾 Salva checklist</button>
-      <button class="st-btn done" id="cv-done-btn" style="width:100%;margin-top:10px;padding:14px" onclick="toggleCleanerTaskDone()">✅ Segna completato</button>
     </div>
   </div>
 </div>
@@ -904,19 +861,8 @@ select.field-input {
         <div id="s-prophours-wrap" style="max-height:320px;overflow-y:auto"></div>
       </div>
 
-      <!-- Default checklist -->
-      <div class="field-group">
-        <label class="field-label">✅ Checklist predefinita</label>
-        <div class="checklist-wrap" id="s-checklist-wrap"></div>
-        <div class="cl-add-row" style="margin-top:10px">
-          <input type="text" class="cl-add-input" id="s-cl-input" placeholder="Aggiungi voce..." onkeydown="if(event.key==='Enter')sAddCheckItem()">
-          <button class="cl-add-btn" onclick="sAddCheckItem()">+</button>
-        </div>
-      </div>
-
       <button class="save-btn" onclick="saveSettings()">💾 Salva impostazioni</button>
-      <button class="save-btn" onclick="saveSettings(true)" style="margin-top:10px;background:linear-gradient(135deg,#00b09b,#00e5a0)">↻ Salva e sincronizza ora</button>
-      <button class="save-btn" onclick="applyChecklistToUnassigned()" style="margin-top:10px;background:linear-gradient(135deg,#4361ee,#22d1ee)">📋 Applica checklist ai task non assegnati</button>
+      <button class="save-btn" onclick="saveSettings(true)" style="margin-top:10px;background:linear-gradient(135deg,var(--accent2),var(--clay))">↻ Salva e sincronizza ora</button>
     </div>
   </div>
 </div>
@@ -940,7 +886,6 @@ let myIdentity = localStorage.getItem(CLEANER_KEY); // null = non scelto, 'tutti
 let currentCleaner = (myIdentity && myIdentity !== 'tutti') ? myIdentity : null; // null = mostra tutto
 let weekOffset = 0; // 0 = questa settimana, 1 = prossima
 let editingId = null;
-let tempChecklist = [];
 let currentStatus = 'todo';
 
 // ═══════════════════════════════
@@ -1083,13 +1028,13 @@ function showWhoAreYou() {
   screen.classList.remove('hidden');
   const wrap = document.getElementById('way-chips');
   // PULITRICI in evidenza per evitare click accidentali su "Tutti"
-  let html = '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:12px;text-align:center">Seleziona il tuo nome</div>';
+  let html = '<div style="font-size:13px;color:var(--text-mid);margin-bottom:12px;text-align:center">Seleziona il tuo nome</div>';
   const icons = ['🧹','🧼','✨','🫧','💧'];
   getCleaners().forEach((c, i) => {
     html += `<button class="way-btn" onclick="selectIdentity('${c}')"><span class="way-icon">${icons[i]||'🧹'}</span> ${c}</button>`;
   });
   // Amministratore in fondo, separato visivamente e protetto con PIN
-  html += '<div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:18px;padding-top:14px"><div style="font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Solo Daniele/Romeo</div>';
+  html += '<div style="border-top:1px solid var(--border);margin-top:18px;padding-top:14px"><div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Solo Daniele/Romeo</div>';
   html += `<button class="way-btn tutti-btn" onclick="requestAdminAccess()" style="opacity:0.7"><span class="way-icon">🔑</span> Amministratore Houzly</button></div>`;
   wrap.innerHTML = html;
 }
@@ -1193,22 +1138,7 @@ function dbDefaults() {
     'Casa Ponente':{ore:1.5,ricavo:80},
     'Casa Levante':{ore:1.5,ricavo:80}
   };
-  if (!c.defaultChecklist || !c.defaultChecklist.length) {
-    c.defaultChecklist = [
-      '🔍 Check Danni Proprietà',
-      '🍳 Cucina — Stoviglie, Pentole e Moka',
-      '🍳 Cucina — Frigo e Freezer',
-      '🍳 Cucina — Lavastoviglie',
-      '🍳 Cucina — Forno',
-      '🍳 Cucina — Consumabili (Olio, Sale, Zucchero, Pastiglia/Sapone, Spugna)',
-      '🍳 Cucina — Asciughino',
-      '🚿 Bagni — Doccia (calcare)',
-      '🚿 Bagni — Carta igienica',
-      '🛏 Camere — Cassetti',
-      '🧺 Biancheria',
-      '🌿 Area Esterna',
-    ];
-  }
+  if (!c.defaultChecklist) c.defaultChecklist = [];
 }
 
 function clDB() { dbDefaults(); return DB.cleaning; }
@@ -1344,8 +1274,6 @@ function appInit() {
   renderAll();
   // Auto-pulizia task molto vecchi (checkout > 30 giorni fa) — solo per manager
   if (isManager) autoCleanOldTasks();
-  // Riempie silenziosamente checklist vuote su tutti i task
-  autoFillEmptyChecklists();
 }
 
 function autoCleanOldTasks() {
@@ -1520,15 +1448,6 @@ function renderStats() {
     if (unassigned > 0) {
       html += `<div class="stat-pill" style="border-color:var(--red)"><div class="sp-val" style="color:var(--red)">${unassigned}</div><div class="sp-label">No pulitrice</div></div>`;
     }
-    // Checklist progress: avg across todo tasks that have checklists
-    const withCl = tasks.filter(t => t.status !== 'done' && t.checklist && t.checklist.length > 0);
-    if (withCl.length > 0) {
-      const avgPct = Math.round(withCl.reduce((acc, t) => {
-        const checked = t.checklist.filter(i => i.done).length;
-        return acc + (checked / t.checklist.length);
-      }, 0) / withCl.length * 100);
-      html += `<div class="stat-pill"><div class="sp-val" style="color:var(--accent)">${avgPct}%</div><div class="sp-label">Checklist</div></div>`;
-    }
   }
 
   document.getElementById('stats-bar').innerHTML = html;
@@ -1673,17 +1592,6 @@ function renderTaskCard(t) {
   const isDone = t.status === 'done';
   const isManager = (myIdentity === 'tutti');
 
-  // Checklist progress
-  let clBar = '';
-  if (t.checklist && t.checklist.length > 0) {
-    const checked = t.checklist.filter(i => i.done).length;
-    const pct = Math.round(checked / t.checklist.length * 100);
-    clBar = `<div class="tc-checklist-bar">
-      <div class="tc-progress"><div class="tc-progress-fill" style="width:${pct}%"></div></div>
-      <span class="tc-progress-label">${checked}/${t.checklist.length}</span>
-    </div>`;
-  }
-
   const checkout = t.checkout_time ? `<span>🚪 ${t.checkout_time}</span>` : '';
   const checkin  = t.checkin_time  ? `<span>🔑 ${t.checkin_time}</span>`  : '';
   // Show cleaner badge only to managers
@@ -1722,10 +1630,12 @@ function renderTaskCard(t) {
     }
   }
 
-  // Card click: managers open edit, cleaners open checklist view
-  const clickFn = isManager ? `openTaskEdit('${t.id}')` : `openCleanerView('${t.id}')`;
+  // Card click: solo i manager aprono la modifica. Le pulitrici usano solo il pallino per completare (vista A minimale).
+  const clickFn = isManager ? `openTaskEdit('${t.id}')` : '';
+  const cardClick = clickFn ? ` onclick="${clickFn}"` : '';
+  const cardCursor = clickFn ? '' : 'cursor:default;';
 
-  return `<div class="task-card ${isDone?'done':''}" onclick="${clickFn}" ${_dupTaskIds.has(t.id)?'style="border-color:var(--orange);border-width:1.5px"':''}>
+  return `<div class="task-card ${isDone?'done':''}"${cardClick} style="${cardCursor}${_dupTaskIds.has(t.id)?'border-color:var(--orange);border-width:1.5px':''}">
     <div class="tc-top">
       <div class="tc-check" onclick="toggleDone(event,'${t.id}')">${isDone?'✓':''}</div>
       <div class="tc-body">
@@ -1735,7 +1645,6 @@ function renderTaskCard(t) {
     </div>
     <div class="tc-bottom">${cleaner}${unassigned}${dupBadge}${overrideNote}${notes}</div>
     ${econRow}
-    ${clBar}
   </div>`;
 }
 
@@ -1801,7 +1710,6 @@ function toggleDone(e, taskId) {
 function openModal(prefillDate) {
   editingId = null;
   currentStatus = 'todo';
-  tempChecklist = clDB().defaultChecklist.map(l => ({label: l, done: false}));
 
   document.getElementById('modal-title').textContent = 'Nuovo Task';
   document.getElementById('f-prop').value = '';
@@ -1814,7 +1722,6 @@ function openModal(prefillDate) {
 
   setStatus('todo');
   renderCleanerSelect(currentCleaner || null);
-  renderModalChecklist();
 
   document.getElementById('task-modal').classList.add('open');
 }
@@ -1826,9 +1733,6 @@ function openTaskEdit(taskId) {
 
   editingId = taskId;
   currentStatus = t.status || 'todo';
-  tempChecklist = (t.checklist || []).map(i =>
-    typeof i === 'string' ? {label: i, done: false} : {...i}
-  );
 
   document.getElementById('modal-title').textContent = 'Modifica Task';
   document.getElementById('f-prop').value = t.prop_name || '';
@@ -1841,7 +1745,6 @@ function openTaskEdit(taskId) {
 
   setStatus(currentStatus);
   renderCleanerSelect(t.cleaner || null); // supports string | array | null
-  renderModalChecklist();
 
   document.getElementById('task-modal').classList.add('open');
 }
@@ -1898,40 +1801,9 @@ function getSelectedModalCleaner() {
   return selected; // array multiplo
 }
 
-function renderModalChecklist() {
-  const wrap = document.getElementById('checklist-wrap');
-  if (!tempChecklist.length) {
-    wrap.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--text-dim)">Nessuna voce. Aggiungine una sotto.</div>';
-    return;
-  }
-  wrap.innerHTML = tempChecklist.map((item, i) =>
-    `<div class="cl-item">
-      <div class="cl-cb ${item.done?'checked':''}" onclick="toggleCheckItem(${i})"></div>
-      <span class="cl-item-label ${item.done?'done-label':''}" onclick="toggleCheckItem(${i})">${item.label}</span>
-      <span class="cl-item-del" onclick="removeCheckItem(${i})">×</span>
-    </div>`
-  ).join('');
-}
 
-function toggleCheckItem(i) {
-  tempChecklist[i].done = !tempChecklist[i].done;
-  renderModalChecklist();
-}
 
-function removeCheckItem(i) {
-  tempChecklist.splice(i, 1);
-  renderModalChecklist();
-}
 
-function addCheckItem() {
-  const inp = document.getElementById('cl-add-input');
-  const val = inp.value.trim();
-  if (!val) return;
-  tempChecklist.push({label: val, done: false});
-  inp.value = '';
-  renderModalChecklist();
-  inp.focus();
-}
 
 // ═══════════════════════════════
 //  SAVE / DELETE
@@ -1949,7 +1821,6 @@ function saveTask() {
     checkin_time: document.getElementById('f-checkin').value,
     cleaner: getSelectedModalCleaner(),
     notes: document.getElementById('f-notes').value.trim(),
-    checklist: tempChecklist.slice(),
     status: currentStatus
   };
 
@@ -1960,6 +1831,8 @@ function saveTask() {
       taskData.id = editingId;
       taskData.smoobu_id = ex.smoobu_id;
       taskData.created = ex.created;
+      // v-ore: preserva le ore effettive inserite dalla pulitrice (non vanno perse riassegnando)
+      if (ex.ore_effettive != null) taskData.ore_effettive = ex.ore_effettive;
       if (ex.smoobu_id && date !== ex.date) {
         taskData.date = ex.date;
         taskData.date_override = date;
@@ -1998,93 +1871,18 @@ function deleteTask() {
 // ═══════════════════════════════
 //  CLEANER VIEW (read-only modal)
 // ═══════════════════════════════
-let cvTaskId = null;
-let cvChecklist = [];
 
-function openCleanerView(taskId) {
-  const db = clDB();
-  const t = db.tasks.find(x => x.id === taskId);
-  if (!t) return;
-  cvTaskId = taskId;
-  cvChecklist = (t.checklist || []).map(i =>
-    typeof i === 'string' ? {label: i, done: false} : {...i}
-  );
 
-  const d = t.date_override || t.date;
-  document.getElementById('cv-title').textContent = t.prop_name || 'N/D';
-  document.getElementById('cv-sub').textContent = formatDate(d);
 
-  // Info row
-  const checkout = t.checkout_time ? `<div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em">Check-out</div><div style="font-size:18px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace">🚪 ${t.checkout_time}</div></div>` : '';
-  const checkin  = t.checkin_time  ? `<div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em">Check-in</div><div style="font-size:18px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">🔑 ${t.checkin_time}</div></div>` : '';
-  document.getElementById('cv-info').innerHTML = checkout + checkin;
 
-  const isDone = t.status === 'done';
-  const doneBtn = document.getElementById('cv-done-btn');
-  doneBtn.textContent = isDone ? '↩ Riapri task' : '✅ Segna completato';
-  doneBtn.classList.toggle('active', isDone);
 
-  renderCleanerChecklist();
-  document.getElementById('cleaner-modal').classList.add('open');
-}
 
-function closeCleanerView() {
-  document.getElementById('cleaner-modal').classList.remove('open');
-}
 
-function handleCleanerModalClick(e) {
-  if (e.target === document.getElementById('cleaner-modal')) closeCleanerView();
-}
 
-function renderCleanerChecklist() {
-  const wrap = document.getElementById('cv-checklist');
-  if (!cvChecklist.length) {
-    wrap.innerHTML = '<div style="padding:14px;font-size:13px;color:var(--text-dim)">Nessuna voce nella checklist.</div>';
-    return;
-  }
-  wrap.innerHTML = cvChecklist.map((item, i) =>
-    `<div class="cl-item" onclick="cvToggleItem(${i})" style="cursor:pointer">
-      <div class="cl-cb ${item.done?'checked':''}"></div>
-      <span class="cl-item-label ${item.done?'done-label':''}">${item.label}</span>
-    </div>`
-  ).join('');
-}
-
-function cvToggleItem(i) {
-  cvChecklist[i].done = !cvChecklist[i].done;
-  renderCleanerChecklist();
-}
-
-async function saveCleanerView() {
-  const db = clDB();
-  const t = db.tasks.find(x => x.id === cvTaskId);
-  if (!t) return;
-  t.checklist = cvChecklist.slice();
-  // Auto-complete if all items checked
-  if (cvChecklist.length > 0 && cvChecklist.every(i => i.done)) {
-    t.status = 'done';
-  }
-  await saveDB();
-  closeCleanerView();
-  renderAll();
-  toast('✓ Checklist salvata');
-}
-
-async function toggleCleanerTaskDone() {
-  const db = clDB();
-  const t = db.tasks.find(x => x.id === cvTaskId);
-  if (!t) return;
-  t.status = t.status === 'done' ? 'todo' : 'done';
-  await saveDB();
-  closeCleanerView();
-  renderAll();
-  toast(t.status === 'done' ? '✅ Completato' : '↩ Riaperto');
-}
 
 // ═══════════════════════════════
 //  SETTINGS
 // ═══════════════════════════════
-let sTempChecklist = [];
 let sTempCleaners = [];
 let sTempRates = {};       // v-ore: tariffe orarie temporanee
 let sTempPropHours = {};   // v-ore: ore+ricavo per proprietà temporanei
@@ -2095,12 +1893,10 @@ function openSettings() {
   const sel = document.getElementById('s-syncmonths');
   sel.value = db.syncMonths || '3';
   if (!sel.value) sel.value = '3';
-  sTempChecklist = (db.defaultChecklist || []).slice();
   sTempCleaners = (db.cleaners || []).slice();
   // v-ore: copie temporanee di tariffe e ore/ricavo
   sTempRates = Object.assign({}, db.cleanerRates || {});
   sTempPropHours = JSON.parse(JSON.stringify(db.propHours || {}));
-  renderSettingsChecklist();
   renderSettingsCleaners();
   renderSettingsRates();
   renderSettingsPropHours();
@@ -2234,35 +2030,6 @@ function handleSettingsClick(e) {
   if (e.target === document.getElementById('settings-modal')) closeSettings();
 }
 
-function renderSettingsChecklist() {
-  const wrap = document.getElementById('s-checklist-wrap');
-  if (!sTempChecklist.length) {
-    wrap.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--text-dim)">Nessuna voce.</div>';
-    return;
-  }
-  wrap.innerHTML = sTempChecklist.map((label, i) =>
-    `<div class="cl-item">
-      <span class="cl-item-label" style="cursor:default">${label}</span>
-      <span class="cl-item-del" data-idx="${i}" onclick="sRemoveItem(${i})">×</span>
-    </div>`
-  ).join('');
-}
-
-function sAddCheckItem() {
-  const inp = document.getElementById('s-cl-input');
-  const val = inp.value.trim();
-  if (!val) return;
-  sTempChecklist.push(val);
-  inp.value = '';
-  renderSettingsChecklist();
-  inp.focus();
-}
-
-function sRemoveItem(i) {
-  sTempChecklist.splice(i, 1);
-  renderSettingsChecklist();
-}
-
 async function saveSettings(andSync = false) {
   const db = clDB();
   const apiKey = document.getElementById('s-apikey').value.trim();
@@ -2270,7 +2037,6 @@ async function saveSettings(andSync = false) {
   db.apiKey = apiKey;
   db.syncMonths = syncMonths;
   db.cleaners = sTempCleaners.slice();
-  db.defaultChecklist = sTempChecklist.slice();
   // v-ore: salvo tariffe e ore/ricavo per proprietà
   db.cleanerRates = Object.assign({}, sTempRates);
   // pulisco propHours da voci completamente vuote
@@ -2310,42 +2076,8 @@ function updateHeaderSub() {
 // ═══════════════════════════════
 //  APPLY CHECKLIST TO UNASSIGNED
 // ═══════════════════════════════
-async function applyChecklistToUnassigned() {
-  const db = clDB();
-  const newChecklist = (db.defaultChecklist || []).map(l => ({ label: l, done: false }));
-
-  // Applica a TUTTI i task con checklist vuota o mancante (qualsiasi data/assegnazione/stato)
-  let count = 0;
-  db.tasks.forEach(t => {
-    if (t.checklist && t.checklist.length > 0) return; // ha già checklist: skip
-    t.checklist = newChecklist.map(i => ({...i}));
-    count++;
-  });
-
-  if (count === 0) {
-    toast('Nessun task con checklist vuota');
-    return;
-  }
-
-  await saveDB();
-  closeSettings();
-  renderAll();
-  toast(`✓ Checklist applicata su ${count} task`);
-}
 
 // Chiamata silenziosamente al boot: riempie checklist vuote
-async function autoFillEmptyChecklists() {
-  const db = clDB();
-  const newChecklist = (db.defaultChecklist || []);
-  if (!newChecklist.length) return;
-  let count = 0;
-  db.tasks.forEach(t => {
-    if (t.checklist && t.checklist.length > 0) return;
-    t.checklist = newChecklist.map(l => ({ label: l, done: false }));
-    count++;
-  });
-  if (count > 0) await saveDB();
-}
 
 // ═══════════════════════════════
 //  TOAST
