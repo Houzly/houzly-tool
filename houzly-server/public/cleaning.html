@@ -638,6 +638,7 @@ select.field-input {
 .logout-cancel:hover { color: rgba(255,255,255,0.8); }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -881,6 +882,26 @@ select.field-input {
           <input type="text" class="cl-add-input" id="s-cleaner-input" placeholder="Nome pulitrice..." onkeydown="if(event.key==='Enter')sAddCleaner()">
           <button class="cl-add-btn" onclick="sAddCleaner()">+</button>
         </div>
+      </div>
+
+      <!-- v-ore: Tariffe orarie -->
+      <div class="field-group">
+        <label class="field-label">💶 Tariffe orarie pulitrici (€/h)</label>
+        <div id="s-rates-wrap"></div>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Il costo di ogni pulizia = ore effettive × tariffa della pulitrice assegnata. GL Servizi 25 €/h, interne 10 €/h.</div>
+      </div>
+
+      <!-- v-ore: Ore e ricavo per proprietà -->
+      <div class="field-group">
+        <label class="field-label">🕐 Ore previste e ricavo per proprietà</label>
+        <div style="margin-bottom:8px">
+          <label class="cl-add-btn" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;width:auto;border-radius:10px">
+            📄 Importa Excel
+            <input type="file" accept=".xlsx,.xls" onchange="sImportOreExcel(event)" style="display:none">
+          </label>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:8px">Formato: colonne Proprietà · Ore · Ricavo</span>
+        </div>
+        <div id="s-prophours-wrap" style="max-height:320px;overflow-y:auto"></div>
       </div>
 
       <!-- Default checklist -->
@@ -1138,6 +1159,40 @@ function dbDefaults() {
   if (!c.cleaners || !c.cleaners.length) {
     c.cleaners = ['Ana','Luana','Caterina','GL Servizi','Patrizia','Carla'];
   }
+  // ── Tariffe orarie pulitrici (v-ore) — GL 25/h, interne 10/h ──
+  if (!c.cleanerRates) c.cleanerRates = {};
+  (c.cleaners||[]).forEach(function(name){
+    if (c.cleanerRates[name] === undefined) {
+      c.cleanerRates[name] = (name.toLowerCase().indexOf('gl') === 0 || name.toLowerCase().indexOf('gl serviz') >= 0) ? 25 : 10;
+    }
+  });
+  // ── Ore previste + ricavo pulizia per proprietà (v-ore) ──
+  // Precompilati dall'Excel Houzly_Pulizie_Ore_Ricavi (11/08/2026).
+  if (!c.propHours) c.propHours = {
+    'The Suite - Borgo Beppe & Gloria':{ore:3,ricavo:120},
+    'The Lodge - Borgo Beppe & Gloria':{ore:3,ricavo:120},
+    'Borgo Beppe & Gloria UNICO':{ore:5,ricavo:180},
+    'Belvedere San Leolino':{ore:2.5,ricavo:80},
+    'Podere Il Cellaino':{ore:6,ricavo:300},
+    'Casa Panorama':{ore:2,ricavo:80},
+    'Sabri\'s Modern Home':{ore:1.5,ricavo:80},
+    'Giovanni\'s Smart Flat':{ore:2,ricavo:80},
+    'Milu\'s Holiday Home':{ore:2.5,ricavo:100},
+    'Villa Belvedere':{ore:6,ricavo:250},
+    'La Capannina di Azzurra':{ore:3,ricavo:120},
+    'Villa La Quiete in Chianti':{ore:6,ricavo:250},
+    'Villetta di Sara':{ore:2.5,ricavo:100},
+    'La Torre - Villa Tommasini':{ore:3.5,ricavo:150},
+    'Villa Caterina':{ore:8,ricavo:250},
+    'Casa Vacanze Marina':{ore:2,ricavo:100},
+    'Casa Degli Olivi':{ore:4,ricavo:180},
+    'Corte Gorizia':{ore:2.5,ricavo:100},
+    'Casetta Il Roseto':{ore:1.5,ricavo:80},
+    'Terrazza Roanne':{ore:2.5,ricavo:100},
+    'Casa Vecchia':{ore:8,ricavo:300},
+    'Casa Ponente':{ore:1.5,ricavo:80},
+    'Casa Levante':{ore:1.5,ricavo:80}
+  };
   if (!c.defaultChecklist || !c.defaultChecklist.length) {
     c.defaultChecklist = [
       '🔍 Check Danni Proprietà',
@@ -1158,6 +1213,52 @@ function dbDefaults() {
 
 function clDB() { dbDefaults(); return DB.cleaning; }
 function getCleaners() { return clDB().cleaners || []; }
+
+// ═══════════════════════════════════════════════════════════════
+//  ORE / COSTO / MARGINE PULIZIE (v-ore)
+//  Costo = ore effettive × tariffa della pulitrice assegnata.
+//  GL Servizi = 25 €/h, interne = 10 €/h (configurabili in Impostazioni).
+//  Ricavo = valore fisso per proprietà (dal foglio Excel, configurabile).
+//  Margine = ricavo − costo.
+// ═══════════════════════════════════════════════════════════════
+function clCleanerRate(name){
+  const c = clDB();
+  if (!name) return 0;
+  if (c.cleanerRates && c.cleanerRates[name] !== undefined) return +c.cleanerRates[name] || 0;
+  // fallback: GL 25, altre 10
+  return (String(name).toLowerCase().indexOf('gl') === 0) ? 25 : 10;
+}
+// Tariffa applicabile a un task in base a chi è assegnato.
+// Se più operatrici assegnate, usa la tariffa della PRIMA (di norma stesso team).
+function clTaskRate(t){
+  let assigned = t.cleaner;
+  if (Array.isArray(assigned)) assigned = assigned[0];
+  return clCleanerRate(assigned);
+}
+// Ore previste per la proprietà del task
+function clPropOre(propName){
+  const c = clDB();
+  const p = c.propHours && c.propHours[propName];
+  return p && p.ore != null ? +p.ore : null;
+}
+// Ricavo pulizia per la proprietà del task
+function clPropRicavo(propName){
+  const c = clDB();
+  const p = c.propHours && c.propHours[propName];
+  return p && p.ricavo != null ? +p.ricavo : null;
+}
+// Calcolo economico completo di un task
+function clTaskEconomics(t){
+  const orePrev = clPropOre(t.prop_name);
+  const oreEff  = (t.ore_effettive != null && t.ore_effettive !== '') ? +t.ore_effettive : null;
+  const rate    = clTaskRate(t);
+  const ricavo  = clPropRicavo(t.prop_name);
+  const oreForCost = oreEff != null ? oreEff : orePrev; // se non ci sono le effettive, stima col previsto
+  const costo   = (oreForCost != null && rate != null) ? +(oreForCost * rate).toFixed(2) : null;
+  const margine = (ricavo != null && costo != null) ? +(ricavo - costo).toFixed(2) : null;
+  const sforato = (orePrev != null && oreEff != null) ? (oreEff > orePrev) : false;
+  return { orePrev, oreEff, rate, ricavo, costo, margine, sforato, usaEffettive: oreEff != null };
+}
 
 async function syncSmoobu() {
   const btn = document.getElementById('sync-btn');
@@ -1598,6 +1699,29 @@ function renderTaskCard(t) {
   // Override indicator (v-dup: rinforzato con lucchetto — segnala modifica manuale protetta)
   const overrideNote = t.date_override ? `<span class="tc-notes" style="color:var(--orange);font-weight:600">🔒 Data spostata a mano</span>` : '';
 
+  // v-ore: riepilogo economico (solo manager, solo proprietà con ore/ricavo configurati)
+  let econRow = '';
+  if (isManager) {
+    const ec = clTaskEconomics(t);
+    if (ec.orePrev != null || ec.oreEff != null) {
+      const oreTxt = ec.oreEff != null
+        ? `<strong style="color:${ec.sforato?'var(--orange)':'var(--text)'}">${ec.oreEff}h</strong>${ec.orePrev!=null?` / ${ec.orePrev}h prev.`:''}${ec.sforato?' ⚠':''}`
+        : `${ec.orePrev}h prev.`;
+      const costoTxt = ec.costo != null ? `Costo €${ec.costo.toFixed(0)}` : '';
+      let margTxt = '';
+      if (ec.margine != null) {
+        const mColor = ec.margine < 0 ? 'var(--red,#dc2626)' : ec.margine < ec.ricavo*0.25 ? 'var(--orange)' : 'var(--green,#16a34a)';
+        margTxt = `<span style="color:${mColor};font-weight:700">Margine €${ec.margine.toFixed(0)}</span>`;
+      }
+      const stima = !ec.usaEffettive ? ' <span style="opacity:0.6">(stima)</span>' : '';
+      econRow = `<div class="tc-econ" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border,#eee);display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text-dim,#888);align-items:center">
+        <span>🕐 ${oreTxt}${stima}</span>
+        ${costoTxt?`<span>·</span><span>${costoTxt}</span>`:''}
+        ${margTxt?`<span>·</span>${margTxt}`:''}
+      </div>`;
+    }
+  }
+
   // Card click: managers open edit, cleaners open checklist view
   const clickFn = isManager ? `openTaskEdit('${t.id}')` : `openCleanerView('${t.id}')`;
 
@@ -1610,6 +1734,7 @@ function renderTaskCard(t) {
       </div>
     </div>
     <div class="tc-bottom">${cleaner}${unassigned}${dupBadge}${overrideNote}${notes}</div>
+    ${econRow}
     ${clBar}
   </div>`;
 }
@@ -1653,7 +1778,18 @@ function toggleDone(e, taskId) {
   const db = clDB();
   const t = db.tasks.find(x => x.id === taskId);
   if (!t) return;
-  t.status = t.status === 'done' ? 'todo' : 'done';
+  const nuovoStato = t.status === 'done' ? 'todo' : 'done';
+  // v-ore: quando si completa, chiedi le ore totali effettive (se non già inserite)
+  if (nuovoStato === 'done') {
+    const orePrev = clPropOre(t.prop_name);
+    const hint = orePrev != null ? ('Ore previste per questa proprietà: ' + orePrev + 'h.\n') : '';
+    const prevVal = (t.ore_effettive != null && t.ore_effettive !== '') ? String(t.ore_effettive) : (orePrev != null ? String(orePrev) : '');
+    const input = prompt('🕐 Quante ore TOTALI sono state impiegate?\n\n' + hint + '(Se più operatrici, somma il totale delle ore. Es: 2 persone × 1,5h = 3)', prevVal);
+    if (input === null) return; // annullato → non completare
+    const val = parseFloat(String(input).replace(',', '.'));
+    if (!isNaN(val) && val > 0) t.ore_effettive = val;
+  }
+  t.status = nuovoStato;
   saveDB();
   renderAll();
   toast(t.status === 'done' ? '✅ Completato' : '↩ Riaperto');
@@ -1950,6 +2086,8 @@ async function toggleCleanerTaskDone() {
 // ═══════════════════════════════
 let sTempChecklist = [];
 let sTempCleaners = [];
+let sTempRates = {};       // v-ore: tariffe orarie temporanee
+let sTempPropHours = {};   // v-ore: ore+ricavo per proprietà temporanei
 
 function openSettings() {
   const db = clDB();
@@ -1959,9 +2097,100 @@ function openSettings() {
   if (!sel.value) sel.value = '3';
   sTempChecklist = (db.defaultChecklist || []).slice();
   sTempCleaners = (db.cleaners || []).slice();
+  // v-ore: copie temporanee di tariffe e ore/ricavo
+  sTempRates = Object.assign({}, db.cleanerRates || {});
+  sTempPropHours = JSON.parse(JSON.stringify(db.propHours || {}));
   renderSettingsChecklist();
   renderSettingsCleaners();
+  renderSettingsRates();
+  renderSettingsPropHours();
   document.getElementById('settings-modal').classList.add('open');
+}
+
+// v-ore: render tariffe orarie per pulitrice
+function renderSettingsRates() {
+  const wrap = document.getElementById('s-rates-wrap');
+  if (!wrap) return;
+  if (!sTempCleaners.length) { wrap.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text-dim)">Aggiungi prima le pulitrici.</div>'; return; }
+  wrap.innerHTML = sTempCleaners.map(name => {
+    const rate = sTempRates[name] !== undefined ? sTempRates[name] : (name.toLowerCase().indexOf('gl') === 0 ? 25 : 10);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+      <span style="flex:1;font-size:13px">${name}</span>
+      <input type="number" min="0" step="0.5" value="${rate}" onchange="sSetRate('${name.replace(/'/g,"\\'")}', this.value)" style="width:80px;padding:6px 8px;border:1.5px solid var(--border,#ddd);border-radius:8px;font-size:13px;text-align:right">
+      <span style="font-size:12px;color:var(--text-dim)">€/h</span>
+    </div>`;
+  }).join('');
+}
+function sSetRate(name, val) {
+  sTempRates[name] = parseFloat(String(val).replace(',', '.')) || 0;
+}
+
+// v-ore: render ore + ricavo per proprietà
+function renderSettingsPropHours() {
+  const wrap = document.getElementById('s-prophours-wrap');
+  if (!wrap) return;
+  // Unione: proprietà da propHours + proprietà dai task esistenti
+  const db = clDB();
+  const fromTasks = [...new Set((db.tasks || []).map(t => t.prop_name).filter(n => n && n !== 'N/D'))];
+  const fromHours = Object.keys(sTempPropHours);
+  const allProps = [...new Set([...fromHours, ...fromTasks])].sort((a, b) => a.localeCompare(b, 'it'));
+  if (!allProps.length) { wrap.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text-dim)">Nessuna proprietà. Importa l\'Excel o sincronizza i task.</div>'; return; }
+  wrap.innerHTML = `<div style="display:flex;gap:8px;padding:4px 0;font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.04em">
+      <span style="flex:1">Proprietà</span><span style="width:60px;text-align:right">Ore</span><span style="width:75px;text-align:right">Ricavo €</span>
+    </div>` + allProps.map(name => {
+    const ph = sTempPropHours[name] || {};
+    const ore = ph.ore != null ? ph.ore : '';
+    const ric = ph.ricavo != null ? ph.ricavo : '';
+    const esc = name.replace(/'/g, "\\'");
+    return `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#f0f0f0)">
+      <span style="flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+      <input type="number" min="0" step="0.5" value="${ore}" placeholder="—" onchange="sSetPropHour('${esc}','ore',this.value)" style="width:60px;padding:5px 6px;border:1.5px solid var(--border,#ddd);border-radius:8px;font-size:12.5px;text-align:right">
+      <input type="number" min="0" step="10" value="${ric}" placeholder="—" onchange="sSetPropHour('${esc}','ricavo',this.value)" style="width:75px;padding:5px 6px;border:1.5px solid var(--border,#ddd);border-radius:8px;font-size:12.5px;text-align:right">
+    </div>`;
+  }).join('');
+}
+function sSetPropHour(name, field, val) {
+  if (!sTempPropHours[name]) sTempPropHours[name] = {};
+  const num = parseFloat(String(val).replace(',', '.'));
+  sTempPropHours[name][field] = isNaN(num) ? null : num;
+}
+
+// v-ore: import Excel ore/ricavo (formato: colonne Proprietà, Ore, Ricavo)
+function sImportOreExcel(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { toast('⚠ Libreria Excel non caricata (serve connessione)'); ev.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      // Cerca il foglio "Proprieta" o usa il primo
+      let sheet = wb.Sheets['Proprieta'] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      let imported = 0;
+      rows.forEach(r => {
+        if (!r || !r[0]) return;
+        const nome = String(r[0]).trim();
+        // salta intestazioni/righe totali
+        if (/propriet|totali|solo |legenda|celle|ore previste|elenco|eventuali/i.test(nome)) return;
+        const ore = parseFloat(String(r[2]).replace(',', '.'));
+        const ric = parseFloat(String(r[3]).replace(',', '.'));
+        if (isNaN(ore) && isNaN(ric)) return;
+        if (!sTempPropHours[nome]) sTempPropHours[nome] = {};
+        if (!isNaN(ore)) sTempPropHours[nome].ore = ore;
+        if (!isNaN(ric)) sTempPropHours[nome].ricavo = ric;
+        imported++;
+      });
+      renderSettingsPropHours();
+      toast('📄 Importate ' + imported + ' proprietà');
+    } catch (err) {
+      toast('⚠ Errore lettura Excel');
+      console.error(err);
+    }
+    ev.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function renderSettingsCleaners() {
@@ -1984,14 +2213,17 @@ function sAddCleaner() {
   if (!val) return;
   if (sTempCleaners.includes(val)) { toast('Pulitrice già presente'); return; }
   sTempCleaners.push(val);
+  if (sTempRates[val] === undefined) sTempRates[val] = (val.toLowerCase().indexOf('gl') === 0 ? 25 : 10);
   inp.value = '';
   renderSettingsCleaners();
+  renderSettingsRates();
   inp.focus();
 }
 
 function sRemoveCleaner(i) {
   sTempCleaners.splice(i, 1);
   renderSettingsCleaners();
+  renderSettingsRates();
 }
 
 function closeSettings() {
@@ -2039,6 +2271,15 @@ async function saveSettings(andSync = false) {
   db.syncMonths = syncMonths;
   db.cleaners = sTempCleaners.slice();
   db.defaultChecklist = sTempChecklist.slice();
+  // v-ore: salvo tariffe e ore/ricavo per proprietà
+  db.cleanerRates = Object.assign({}, sTempRates);
+  // pulisco propHours da voci completamente vuote
+  const cleanPH = {};
+  Object.keys(sTempPropHours).forEach(k => {
+    const v = sTempPropHours[k];
+    if (v && (v.ore != null || v.ricavo != null)) cleanPH[k] = v;
+  });
+  db.propHours = cleanPH;
   await saveDB();
   closeSettings();
   updateHeaderSub();
