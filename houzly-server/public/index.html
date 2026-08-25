@@ -754,7 +754,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v69 · 02/08 · +Contratti</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v70 · 08/08 · Cleaning→app esterna</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2194,42 +2194,20 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div id="page-pulizie" class="page">
   <div class="section-header">
     <div class="section-title">🧹 Cleaning Manager</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-outline btn-sm" onclick="clSyncSmoobu()">⟳ Sync Smoobu</button>
-      <button class="btn btn-danger btn-sm" onclick="clResetAndSync()">🗑 Reset &amp; Sync</button>
-      <button class="btn btn-primary btn-sm" onclick="clOpenModal(null,null)">+ Task manuale</button>
-      <button class="btn btn-ghost btn-sm" onclick="showPage('cl-settings')">⚙ Cleaners</button>
+  </div>
+  <div class="card" style="max-width:640px;margin:0 auto;text-align:center;padding:40px 32px">
+    <div style="font-size:52px;margin-bottom:8px">🧹</div>
+    <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:10px">Cleaning Manager</div>
+    <div style="font-size:14px;color:var(--text-mid);line-height:1.6;margin-bottom:26px;max-width:440px;margin-left:auto;margin-right:auto">
+      La gestione delle pulizie è ora un'app dedicata, con vista settimanale, assegnazione pulitrici, calcolo ore e margini, ed export mensile. Le pulitrici accedono con il proprio nome; tu con l'accesso Amministratore.
+    </div>
+    <a href="/cleaning.html" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:10px;font-size:15px;padding:14px 28px;text-decoration:none">
+      Apri Cleaning Manager →
+    </a>
+    <div style="margin-top:18px;font-size:12px;color:var(--text-light)">
+      Si apre in una nuova scheda &middot; <a href="/cleaning.html" style="color:var(--blue)">houzly-tool.onrender.com/cleaning.html</a>
     </div>
   </div>
-
-  <!-- Smoobu sync status bar -->
-  <div class="cl-smoobu-bar">
-    <span style="font-size:13px;font-weight:600;color:var(--text)">Smoobu Live</span>
-    <span id="cl-sync-status" class="sb-status">Non sincronizzato</span>
-    <span id="cl-sync-time" style="font-size:11px;color:var(--text-light)"></span>
-    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="showPage('cl-settings')">Configura API Key →</button>
-  </div>
-
-  <!-- Stats settimana -->
-  <div class="cl-stats" id="cl-stats"></div>
-
-  <!-- Toolbar settimana -->
-  <div class="cl-toolbar">
-    <div class="cl-week-nav">
-      <button onclick="clPrevWeek()">&#8592;</button>
-      <div class="cl-week-label" id="cl-week-label"></div>
-      <button onclick="clNextWeek()">&#8594;</button>
-      <button onclick="clGoToday()" class="btn btn-ghost btn-sm">Oggi</button>
-    </div>
-    <!-- Filtro cleaner -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;align-items:center">
-      <span style="font-size:11px;color:var(--text-light);font-weight:600">Filtra:</span>
-      <div id="cl-cleaner-filter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    </div>
-  </div>
-
-  <!-- Calendario settimanale -->
-  <div class="cl-calendar" id="cl-calendar"></div>
 </div>
 
 <!-- ── Cleaning Settings page ───────────────────────────────────── -->
@@ -2893,7 +2871,7 @@ function renderPage(p){
   if(p==='anticipi')renderAnticipi();
   if(p==='operations'){switchOpsTab('generici');}
   if(p==='import-tasks'){initImportTasksPage();}
-  if(p==='pulizie'){if(typeof clDB==='function'){clDB();renderCleaning();}}
+  if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
 }
