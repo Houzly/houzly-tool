@@ -685,6 +685,7 @@ select.field-input {
       </div>
       <div class="header-right">
         <button class="sync-btn" id="sync-btn" onclick="syncSmoobu()" title="Sync Smoobu">↻</button>
+        <button class="sync-btn" id="export-btn" onclick="openExportMese()" title="Export Excel pulizie" style="display:none">📊</button>
         <button class="sync-btn" id="settings-btn" onclick="openSettings()" title="Impostazioni" style="display:none">⚙</button>
         <button class="logout-btn-header" id="logout-btn" onclick="openLogoutMenu()" title="Esci">🚪 Esci</button>
       </div>
@@ -803,6 +804,22 @@ select.field-input {
 </div>
 
 <!-- SETTINGS MODAL -->
+<!-- EXPORT MESE MODAL -->
+<div class="modal-overlay" id="export-modal" onclick="if(event.target===this)closeExportMese()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="sheet-title">📊 Export pulizie</div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">Scegli il mese da esportare. Il file Excel includerà tutte le pulizie <strong>completate</strong> con ore, costi, ricavi e margini, più i totali.</div>
+    <div class="field-group">
+      <label class="field-label">Mese</label>
+      <input type="month" id="export-mese-input" onchange="updateExportPreview()" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;background:var(--surface);color:var(--text)">
+    </div>
+    <div id="export-preview" style="font-size:12.5px;color:var(--text-mid);margin:8px 0 16px;min-height:20px"></div>
+    <button class="save-btn" onclick="doExportMese()">📥 Scarica Excel</button>
+    <button class="save-btn" onclick="closeExportMese()" style="margin-top:10px;background:var(--surface2);color:var(--text)">Annulla</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="settings-modal" onclick="handleSettingsClick(event)">
   <div class="modal-sheet">
     <div class="sheet-handle"></div>
@@ -1267,6 +1284,8 @@ function appInit() {
   const isManager = (myIdentity === 'tutti');
   // Sync visibile a tutti; ⚙ solo ai manager
   document.getElementById('settings-btn').style.display = isManager ? 'flex' : 'none';
+  var expBtn = document.getElementById('export-btn');
+  if (expBtn) expBtn.style.display = isManager ? 'flex' : 'none';
   // FAB + solo ai manager
   document.getElementById('main-fab').style.display = isManager ? 'flex' : 'none';
   updateHeaderSub();
@@ -1949,6 +1968,90 @@ function sSetPropHour(name, field, val) {
   if (!sTempPropHours[name]) sTempPropHours[name] = {};
   const num = parseFloat(String(val).replace(',', '.'));
   sTempPropHours[name][field] = isNaN(num) ? null : num;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT EXCEL PULIZIE PER MESE (v-export)
+//  Esporta tutte le pulizie COMPLETATE del mese scelto, con ore,
+//  costi, ricavi, margini e riga totali.
+// ═══════════════════════════════════════════════════════════════
+function openExportMese() {
+  const inp = document.getElementById('export-mese-input');
+  if (inp && !inp.value) {
+    const now = new Date();
+    inp.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+  updateExportPreview();
+  document.getElementById('export-modal').classList.add('open');
+}
+function closeExportMese() {
+  document.getElementById('export-modal').classList.remove('open');
+}
+function getCompletedTasksForMonth(ym) {
+  const db = clDB();
+  return (db.tasks || []).filter(t => {
+    if (t.status !== 'done') return false;
+    const d = t.date_override || t.date || '';
+    return d.slice(0, 7) === ym;
+  }).sort((a, b) => {
+    const da = a.date_override || a.date, dbb = b.date_override || b.date;
+    return da < dbb ? -1 : da > dbb ? 1 : 0;
+  });
+}
+function updateExportPreview() {
+  const inp = document.getElementById('export-mese-input');
+  const prev = document.getElementById('export-preview');
+  if (!inp || !prev || !inp.value) { if (prev) prev.textContent = ''; return; }
+  const tasks = getCompletedTasksForMonth(inp.value);
+  if (!tasks.length) { prev.innerHTML = '⚠ Nessuna pulizia completata in questo mese.'; return; }
+  let costoTot = 0, ricavoTot = 0, oreTot = 0;
+  tasks.forEach(t => {
+    const ec = clTaskEconomics(t);
+    if (ec.oreEff != null) oreTot += ec.oreEff;
+    if (ec.costo != null) costoTot += ec.costo;
+    if (ec.ricavo != null) ricavoTot += ec.ricavo;
+  });
+  const margine = ricavoTot - costoTot;
+  prev.innerHTML = `<strong>${tasks.length}</strong> pulizie · ${oreTot.toFixed(1)}h · Costo €${costoTot.toFixed(0)} · Ricavo €${ricavoTot.toFixed(0)} · <strong style="color:${margine<0?'var(--red)':'var(--green)'}">Margine €${margine.toFixed(0)}</strong>`;
+}
+function doExportMese() {
+  const inp = document.getElementById('export-mese-input');
+  if (!inp || !inp.value) { toast('⚠ Scegli un mese'); return; }
+  if (typeof XLSX === 'undefined') { toast('⚠ Libreria Excel non caricata'); return; }
+  const ym = inp.value;
+  const tasks = getCompletedTasksForMonth(ym);
+  if (!tasks.length) { toast('⚠ Nessuna pulizia completata in ' + ym); return; }
+  const rows = [];
+  rows.push(['Data', 'Proprietà', 'Pulitrice', 'Ore previste', 'Ore effettive', 'Tariffa €/h', 'Costo €', 'Ricavo €', 'Margine €']);
+  let oreTot = 0, costoTot = 0, ricavoTot = 0;
+  tasks.forEach(t => {
+    const ec = clTaskEconomics(t);
+    const cleaner = Array.isArray(t.cleaner) ? t.cleaner.join(' & ') : (t.cleaner || '');
+    const d = t.date_override || t.date || '';
+    if (ec.oreEff != null) oreTot += ec.oreEff;
+    if (ec.costo != null) costoTot += ec.costo;
+    if (ec.ricavo != null) ricavoTot += ec.ricavo;
+    rows.push([
+      d, t.prop_name || 'N/D', cleaner,
+      ec.orePrev != null ? ec.orePrev : '',
+      ec.oreEff != null ? ec.oreEff : '',
+      ec.rate != null ? ec.rate : '',
+      ec.costo != null ? ec.costo : '',
+      ec.ricavo != null ? ec.ricavo : '',
+      ec.margine != null ? ec.margine : ''
+    ]);
+  });
+  rows.push([]);
+  rows.push(['TOTALI', tasks.length + ' pulizie', '', '', oreTot, '', costoTot, ricavoTot, ricavoTot - costoTot]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:28},{wch:18},{wch:12},{wch:13},{wch:11},{wch:11},{wch:11},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  const mesiNomi = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const [yy, mm] = ym.split('-');
+  XLSX.utils.book_append_sheet(wb, ws, mesiNomi[+mm - 1] + ' ' + yy);
+  XLSX.writeFile(wb, 'Pulizie_' + ym + '.xlsx');
+  toast('📥 Export completato');
+  closeExportMese();
 }
 
 // v-ore: import Excel ore/ricavo (formato: colonne Proprietà, Ore, Ricavo)
