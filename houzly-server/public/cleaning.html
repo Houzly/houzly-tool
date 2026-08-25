@@ -1426,7 +1426,7 @@ function autoCleanOldTasks() {
   const db = clDB();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
-  const cutoffISO = cutoff.toISOString().split('T')[0];
+  const cutoffISO = toISO(cutoff);
   const before = db.tasks.length;
   db.tasks = db.tasks.filter(t => {
     const d = t.date_override || t.date;
@@ -1497,7 +1497,12 @@ function getWeekDays(offset) {
 }
 
 function toISO(d) {
-  return d.toISOString().split('T')[0];
+  // FIX fuso orario: costruisco la stringa dalla data LOCALE, non da toISOString (che converte in UTC
+  // e in Italia sposta la mezzanotte al giorno precedente, slittando le colonne di 1 giorno).
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatDate(iso) {
