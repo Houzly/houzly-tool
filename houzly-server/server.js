@@ -1072,6 +1072,232 @@ app.get('/api/cloudinary/list-folder', cloudinaryCors, requireAdminAuth, async (
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+// ── DELETE /api/cloudinary/delete-asset — elimina UNA foto ────────
+//
+//  Usata dal Photo Studio quando l'utente sceglie "Anche da Cloudinary"
+//  nel dialog di rimozione foto singola.
+//
+//  Body JSON:  { publicId: "houzly-site/villa-belvedere/abc123" }
+//  Auth:       X-Admin-PIN header (o ?pin= query)
+//
+//  Flow:
+//   1. Verifica esistenza asset (GET resources/image/upload/{publicId})
+//   2. Se esiste → firma richiesta e chiama /image/destroy
+//   3. Ritorna { ok:true, deleted:true, result:"ok" }
+//   4. Se non esiste → { ok:true, deleted:false, result:"not_found" }
+//      (non è errore: la foto era già stata cancellata a mano da qualcuno)
+//
+//  invalidate:true → svuota anche la CDN cache di Cloudinary, così la foto
+//  sparisce subito dagli URL già in cache invece che dopo ore.
+// ══════════════════════════════════════════════════════════════════
+app.options('/api/cloudinary/delete-asset', cloudinaryCors, (req, res) => {
+  res.sendStatus(204);
+});
+
+app.delete('/api/cloudinary/delete-asset', cloudinaryCors, requireAdminAuth, async (req, res) => {
+  try {
+    const publicId = (req.body && req.body.publicId) || req.query.publicId;
+
+    if (!publicId || typeof publicId !== 'string') {
+      return res.status(400).json({ ok: false, error: 'missing_public_id' });
+    }
+    if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        ok: false,
+        error: 'cloudinary_credentials_not_configured',
+      });
+    }
+
+    const auth = Buffer.from(`${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`).toString('base64');
+    const authHeader = { 'Authorization': `Basic ${auth}` };
+
+    // ── Step 1: verifica esistenza asset (evita "silent not found") ──
+    const verifyUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/image/upload/${encodeURIComponent(publicId)}`;
+    const verifyResp = await fetch(verifyUrl, { method: 'GET', headers: authHeader });
+
+    if (verifyResp.status === 404) {
+      // Asset non trovato: probabilmente già cancellato a mano.
+      // Non è un errore per il client — comunichiamolo per trasparenza.
+      return res.json({
+        ok: true,
+        deleted: false,
+        result: 'not_found',
+        publicId,
+        message: 'Asset non trovato su Cloudinary (forse già cancellato)',
+      });
+    }
+    if (!verifyResp.ok) {
+      const txt = await verifyResp.text().catch(() => '');
+      return res.status(500).json({
+        ok: false,
+        error: `cloudinary_verify_failed_${verifyResp.status}`,
+        detail: txt.slice(0, 300),
+      });
+    }
+
+    // ── Step 2: elimina via /image/destroy (richiesta firmata) ──
+    const timestamp = Math.floor(Date.now() / 1000);
+    // Signature = SHA1("invalidate=true&public_id={pid}&timestamp={ts}" + API_SECRET)
+    // NB: parametri in ordine alfabetico, escluso api_key e signature.
+    const paramsToSign = `invalidate=true&public_id=${publicId}&timestamp=${timestamp}`;
+    const signature = crypto
+      .createHash('sha1')
+      .update(paramsToSign + CLOUDINARY_API_SECRET)
+      .digest('hex');
+
+    const destroyUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`;
+    const destroyBody = new URLSearchParams({
+      public_id: publicId,
+      timestamp: String(timestamp),
+      api_key: CLOUDINARY_API_KEY,
+      signature: signature,
+      invalidate: 'true',
+    });
+
+    const destroyResp = await fetch(destroyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: destroyBody.toString(),
+    });
+
+    const destroyData = await destroyResp.json().catch(() => ({}));
+
+    if (!destroyResp.ok) {
+      return res.status(500).json({
+        ok: false,
+        error: `cloudinary_destroy_failed_${destroyResp.status}`,
+        detail: destroyData,
+      });
+    }
+
+    // Cloudinary risponde { result: "ok" } se cancellato, "not found" se già rimosso
+    const result = destroyData.result || 'unknown';
+    console.log(`[cloudinary/delete-asset] ${publicId} → ${result}`);
+    return res.json({
+      ok: true,
+      deleted: result === 'ok',
+      result,
+      publicId,
+    });
+
+  } catch (e) {
+    console.error('[cloudinary/delete-asset]', e.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'internal_error',
+      detail: String(e && e.message || e),
+    });
+  }
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── POST /api/cloudinary/delete-many — elimina PIÙ foto in batch ──
+//
+//  Usata dal Photo Studio per "Rimuovi N dal sito + Cloudinary"
+//  (rimozione multipla via checkbox selection).
+//
+//  Body JSON:  { publicIds: ["path/a", "path/b", ...] }  max 100/chiamata
+//  Auth:       X-Admin-PIN header (o ?pin= query)
+//
+//  Risposta:
+//   {
+//     ok: true,
+//     requested: 15,
+//     deleted:  ["public/id/a","public/id/b"],   // effettivamente cancellati
+//     notFound: ["public/id/c"],                  // non esistevano già
+//     failed:   [{ publicId, error }],            // errori specifici
+//     partial: false                              // true se Cloudinary ha truncato
+//   }
+//
+//  Usa l'endpoint Admin DELETE resources/image/upload che accetta
+//  fino a 100 public_ids per chiamata (più efficiente del loop singolo).
+//  Auth via Basic Auth (API Key + Secret), no signature.
+// ══════════════════════════════════════════════════════════════════
+app.options('/api/cloudinary/delete-many', cloudinaryCors, (req, res) => {
+  res.sendStatus(204);
+});
+
+app.post('/api/cloudinary/delete-many', cloudinaryCors, requireAdminAuth, async (req, res) => {
+  try {
+    const publicIds = (req.body && req.body.publicIds) || [];
+
+    if (!Array.isArray(publicIds) || publicIds.length === 0) {
+      return res.status(400).json({ ok: false, error: 'missing_public_ids' });
+    }
+    if (publicIds.length > 100) {
+      return res.status(400).json({
+        ok: false,
+        error: 'too_many_public_ids',
+        hint: 'max 100 per chiamata (limite Cloudinary Admin API)',
+      });
+    }
+    if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        ok: false,
+        error: 'cloudinary_credentials_not_configured',
+      });
+    }
+
+    const auth = Buffer.from(`${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`).toString('base64');
+    const authHeader = { 'Authorization': `Basic ${auth}` };
+
+    // Costruisco query string: public_ids[]=id1&public_ids[]=id2...
+    // + invalidate=true per svuotare anche la CDN cache
+    const params = new URLSearchParams();
+    publicIds.forEach(pid => params.append('public_ids[]', pid));
+    params.append('invalidate', 'true');
+
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/image/upload?${params.toString()}`;
+
+    const resp = await fetch(url, {
+      method: 'DELETE',
+      headers: authHeader,
+    });
+
+    const data = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      return res.status(500).json({
+        ok: false,
+        error: `cloudinary_bulk_delete_failed_${resp.status}`,
+        detail: data,
+      });
+    }
+
+    // Cloudinary risponde con { deleted: { "id1": "deleted", "id2": "not_found" } }
+    const deletedMap = data.deleted || {};
+    const deleted = [];
+    const notFound = [];
+    const failed = [];
+
+    Object.entries(deletedMap).forEach(([pid, status]) => {
+      if (status === 'deleted') deleted.push(pid);
+      else if (status === 'not_found') notFound.push(pid);
+      else failed.push({ publicId: pid, error: status });
+    });
+
+    console.log(`[cloudinary/delete-many] requested:${publicIds.length} deleted:${deleted.length} notFound:${notFound.length} failed:${failed.length}`);
+    return res.json({
+      ok: true,
+      requested: publicIds.length,
+      deleted,
+      notFound,
+      failed,
+      partial: data.partial || false,
+    });
+
+  } catch (e) {
+    console.error('[cloudinary/delete-many]', e.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'internal_error',
+      detail: String(e && e.message || e),
+    });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────
 
 // ── Reset checklist su tutti i task (one-shot) ───────────────────
