@@ -919,7 +919,7 @@ const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dhhwuufhw';
 // Middleware CORS aperto (come bookingCors)
 function cloudinaryCors(req, res, next) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-PIN");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
