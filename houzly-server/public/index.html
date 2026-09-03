@@ -2623,6 +2623,103 @@ function backfillCommBookingV19(){
   }
   return changed>0;
 }
+// ─── MIGRAZIONE ONE-TIME v70: Cala Di Seta → Abaco Immobiliare ───────────
+// La proprietà passa dal proprietario persona fisica ad Abaco (tipo azienda)
+// con divisione compensi 50/50 IVA INCLUSA, con decorrenza da maggio 2026.
+// Conseguenze automatiche (nessun intervento manuale necessario):
+//   · la ritenuta d'acconto 21% sparisce — fiscRitenutaAttiva() esclude le aziende
+//   · la struttura esce da CU, 770 e DAC7 per tutto il 2026
+//   · nel DAC7 il venditore diventa EntitySeller con la P.IVA di Abaco
+// I dati di ogni prenotazione vengono riallineati al report Excel ufficiale.
+// Si esegue UNA SOLA VOLTA, marcato da DB.migCalaSetaAbacoV70=true.
+//
+// NOTA TASSE DI SOGGIORNO — i valori qui sotto sono quelli dell'Excel, che per
+// giugno riporta zero. Applicando la regola di luglio/agosto (1 €/persona/notte)
+// giugno varrebbe 42 € in totale: Nicolodi 8, Menechyan 2, Perrone 10,
+// Micucci 8, Leonida 14. Per reintrodurle basta sostituire gli zeri nella
+// colonna "tassa" delle prime cinque righe della tabella MIG_DATI.
+var MIG_CALASETA_PROP  = 'Cala Di Seta';   // nome esatto in DB.proprieta
+var MIG_CALASETA_PERC  = 50;               // % Houzly, IVA inclusa
+var MIG_CALASETA_OWNER = 'abaco';          // match sulla ragione sociale
+// ospite | tot | comm.OTA | tassa sogg. | pulizia | notti | n.ospiti
+var MIG_DATI = [
+  ['Roberta Nicolodi',        192.00,  29.76,  0, 80,  2, 4],
+  ['Armen Menechyan',         155.48,  15.59,  0, 80,  1, 2],
+  ['Nicola Perrone',          364.32,  58.46,  0, 80,  2, 5],
+  ['Fabrizio Micucci',        348.87,  56.24,  0, 80,  2, 4],
+  ['Leonida',                 860.00,   0.00,  0, 80,  7, 2],
+  ['Alessio Pintore',         525.51,  83.74, 18, 80,  3, 6],
+  ['Kristin Harris',         2089.60, 323.89, 20, 80, 10, 4],
+  ['Sebastian Memmesheimer', 1106.00, 171.43, 20, 80,  5, 4],
+  ['Albert Sarr',            1500.00,   0.00, 44, 80, 11, 4],
+  ['Filippo Grossi',         1065.50, 175.80, 30, 80,  6, 5]
+];
+function migCalaSetaAbacoV70(){
+  if(DB.migCalaSetaAbacoV70)return false;
+  if(!DB.proprieta||!DB.prenotazioni)return false;
+
+  var prop=DB.proprieta.find(function(p){return p.nome===MIG_CALASETA_PROP;});
+  if(!prop){console.warn('[mig v70] Proprietà "'+MIG_CALASETA_PROP+'" non trovata — migrazione rinviata');return false;}
+
+  var abaco=DB.proprietari.find(function(o){
+    return o.tipo==='azienda' &&
+           (o.ragione_sociale||'').toLowerCase().indexOf(MIG_CALASETA_OWNER)>=0;});
+  if(!abaco){console.warn('[mig v70] Proprietario Abaco non ancora presente — migrazione rinviata al prossimo caricamento');return false;}
+
+  // Verifica preliminare: tutte le prenotazioni devono essere presenti.
+  // Se anche una sola manca non tocco nulla, per non lasciare il DB a metà.
+  var mancanti=[];
+  MIG_DATI.forEach(function(f){
+    var b=DB.prenotazioni.find(function(x){
+      return x.proprieta_id===prop.id &&
+             (x.ospite_nome||'').trim().toLowerCase()===f[0].toLowerCase();});
+    if(!b)mancanti.push(f[0]);
+  });
+  if(mancanti.length){
+    console.error('[mig v70] ANNULLATA — prenotazioni non trovate: '+mancanti.join(', '));
+    return false;
+  }
+
+  // 1) Associazione proprietà → Abaco + override commissione
+  prop.proprietario_id=abaco.id;
+  prop.houzly_perc=MIG_CALASETA_PERC;
+  prop.iva22_override=false;              // il 50% è IVA inclusa
+  var bfee=(prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5);
+
+  // 2) Riallineamento e ricalcolo delle prenotazioni
+  var n=0,totNetto=0,totH=0,totAb=0;
+  MIG_DATI.forEach(function(f){
+    var b=DB.prenotazioni.find(function(x){
+      return x.proprieta_id===prop.id &&
+             (x.ospite_nome||'').trim().toLowerCase()===f[0].toLowerCase();});
+    b.tot=f[1];
+    // doCalc riaggiunge la fee bancaria Booking: la scorporo qui perché il
+    // valore dell'Excel è la commissione finale già comprensiva di fee.
+    b.comm_ota_abs=(b.canale==='Booking.com')?r2(f[2]-r2(f[1]*bfee/100)):f[2];
+    if(b.comm_ota_abs<0)b.comm_ota_abs=0;
+    b.comm_ota_perc=f[1]>0?r2(b.comm_ota_abs/f[1]*100):0;
+    b.tassa_tot=f[3];
+    b.tassa_pn=0;
+    b.pulizia=f[4];
+    b.notti=f[5];
+    b.n_ospiti=f[6];
+    b.houzly_perc=MIG_CALASETA_PERC;
+    b.iva22=false;
+    b.calc=doCalc(b);
+    totNetto+=b.calc.netto;totH+=b.calc.houzly;totAb+=b.calc.canone;
+    n++;
+  });
+
+  DB.migCalaSetaAbacoV70=true;
+  console.log('[mig v70] Cala Di Seta → '+abaco.ragione_sociale+' · '+n+' prenotazioni · '
+    +'netto '+r2(totNetto).toFixed(2)+' · Houzly '+r2(totH).toFixed(2)
+    +' (imponibile '+r2(r2(totH)/1.22).toFixed(2)+' + IVA '+r2(r2(totH)-r2(r2(totH)/1.22)).toFixed(2)+')'
+    +' · Abaco '+r2(totAb).toFixed(2));
+  saveDB(function(){console.log('[mig v70] DB salvato ✓');},
+         function(e){console.error('[mig v70] ERRORE salvataggio: '+e);});
+  if(typeof toast==='function')toast('✅ Cala Di Seta migrata su Abaco — '+n+' prenotazioni ricalcolate');
+  return true;
+}
 function saveDocDoneLocal(){
   // Manteniamo anche localStorage come cache locale rapida
   try{ localStorage.setItem('houzly_docdone', JSON.stringify(DB.docDone||{})); }catch(e){}
@@ -2635,12 +2732,14 @@ function loadDB(){
       DB=data.db;
       dbDefaults();
       backfillCommBookingV19();
+      migCalaSetaAbacoV70();
       if(DB.proprietari.length===0)seedDemo();
     } else {
       // No data on server yet
       try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
       dbDefaults();
       backfillCommBookingV19();
+      migCalaSetaAbacoV70();
       if(DB.proprietari.length===0)seedDemo();
     }
     // Refresh all UI after data loaded
