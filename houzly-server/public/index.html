@@ -2864,6 +2864,21 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function nomeProp(id){var p=DB.proprieta.find(function(x){return x.id===id;});return p?p.nome:'&#8212;';}
 function nomeOwner(id){var p=DB.proprietari.find(function(x){return x.id===id;});if(!p)return'&#8212;';return p.tipo==='persona_fisica'?p.nome+' '+p.cognome:p.ragione_sociale;}
 function ownerOfProp(propId){var pr=DB.proprieta.find(function(x){return x.id===propId;});if(!pr)return null;return DB.proprietari.find(function(x){return x.id===pr.proprietario_id;})||null;}
+// v71: proprietario di un gruppo. Restituisce l'owner solo se TUTTE le unità del
+// gruppo appartengono allo stesso record di anagrafica; se sono intestate a
+// proprietari diversi torna null, perché in quel caso un report unico con un
+// solo intestatario (e la sua ripartizione co-proprietari) sarebbe scorretto.
+function ownerOfGroup(grp){
+  if(!grp||!grp.children||!grp.children.length)return null;
+  var ownId=null;
+  for(var i=0;i<grp.children.length;i++){
+    var pr=DB.proprieta.find(function(x){return x.id===grp.children[i];});
+    if(!pr||!pr.proprietario_id)return null;
+    if(ownId===null)ownId=pr.proprietario_id;
+    else if(ownId!==pr.proprietario_id)return null;
+  }
+  return DB.proprietari.find(function(x){return x.id===ownId;})||null;
+}
 
 // v42: legge configurazione commissione effettiva per una proprietà
 // Override su Proprietà prevale, altrimenti eredita dal Proprietario
@@ -5751,6 +5766,7 @@ function previewReportProp(){
   var grp=isGroup?(DB.propGroups||[]).find(function(g){return g.id===grpIdResolved;}):null;
   var prop=(!isGrpProp&&propId)?DB.proprieta.find(function(x){return x.id===propId;}):null;
   var own=prop?DB.proprietari.find(function(x){return x.id===prop.proprietario_id;}):null;
+  if(!own&&isGroup&&grp)own=ownerOfGroup(grp);   // v71: report di gruppo → owner comune
   var allBksForReport=getReportBksFull();
   var mese=document.getElementById('rpt-mese').value||'Tutti i mesi';
   var anno=document.getElementById('rpt-anno').value;
@@ -6204,6 +6220,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
   var prop=propId?DB.proprieta.find(function(x){return x.id===propId;}):null;
   var grp=(!propId&&groupId)?(DB.propGroups||[]).find(function(g){return g.id===groupId;}):null;
   var own=prop?DB.proprietari.find(function(x){return x.id===prop.proprietario_id;}):null;
+  if(!own&&grp)own=ownerOfGroup(grp);            // v71: report di gruppo → owner comune
   var mese=document.getElementById('rpt-mese').value||'Anno';
   var anno=document.getElementById('rpt-anno').value;
   var title='Report Mensile — '+(grp?grp.nome:(prop?prop.nome:''))+' — '+mese+' '+anno;
@@ -6448,8 +6465,9 @@ function exportReportExcel(){
   var groupId=document.getElementById('rpt-group-sel').value;
   if(!propId&&!groupId){toast('Seleziona un gruppo o una proprietà');return;}
   var prop=propId?DB.proprieta.find(function(x){return x.id===propId;}):null;
-  var own=prop?DB.proprietari.find(function(x){return x.id===prop.proprietario_id;}):null;
   var grp=groupId&&!propId?(DB.propGroups||[]).find(function(g){return g.id===groupId;}):null;
+  var own=prop?DB.proprietari.find(function(x){return x.id===prop.proprietario_id;}):null;
+  if(!own&&grp)own=ownerOfGroup(grp);            // v71: report di gruppo → owner comune
   var bks=getReportBks();
   if(!bks.length){toast('Nessuna prenotazione');return;}
   var mese=document.getElementById('rpt-mese').value||'Anno';
