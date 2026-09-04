@@ -1166,6 +1166,7 @@ async function onAuthOk() {
   const stored = localStorage.getItem(CLEANER_KEY);
   // Se l'identità non è ancora stata scelta, mostra "Chi sei?"
   if (stored === null) {
+    await loadDB();   // v72: lista pulitrici dal server, non dal fallback
     showWhoAreYou();
     return;
   }
@@ -2374,6 +2375,10 @@ async function boot() {
       if (d.exists) {
         // If identity not chosen yet, show who-are-you
         if (localStorage.getItem(CLEANER_KEY) === null) {
+          // v72: carico il DB PRIMA di disegnare "Chi sei?", altrimenti la
+          // lista viene costruita sul fallback di dbDefaults() e mostra le
+          // pulitrici di default invece di quelle salvate sul server.
+          await loadDB();
           document.getElementById('loading').classList.add('hidden');
           showWhoAreYou();
           return;
