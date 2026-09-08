@@ -755,7 +755,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v70 · 08/08 · Cleaning→app esterna</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v72 · 08/09 · guardia CSV + check cancellate</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6506,6 +6506,23 @@ function setupDropZone(){
 }
 function importSmoobu(input){if(input.files[0])processSmoobu(input.files[0]);}
 
+// v71 (2026-09-08): guardia lingua CSV.
+// Smoobu manda via email un CSV in INGLESE con intestazioni e formato data
+// diversi. Il Tool sa leggere solo il "Download diretto" italiano: con quello
+// inglese importava righe con date vuote e importi a zero, senza errori.
+// Restituisce un messaggio se il file non e' quello giusto, altrimenti null.
+function csvLinguaError(headers){
+  var richiesti=['Arrivo','Partenza','Ospite','Portale','stato'];
+  var mancanti=richiesti.filter(function(h){return headers.indexOf(h)<0;});
+  if(mancanti.length===0)return null;
+  var spieInglesi=['Arrival','Departure','Guest','Channel','Apartment','status'];
+  var pareInglese=spieInglesi.some(function(h){return headers.indexOf(h)>=0;});
+  var msg=pareInglese
+    ? 'Questo CSV sembra in <strong>inglese</strong> (\u00e8 quello che Smoobu manda via email).'
+    : 'Intestazioni non riconosciute \u2014 mancano: <strong>'+esc(mancanti.join(', '))+'</strong>.';
+  return msg+'<br>Il Tool legge solo il formato italiano: riscaricalo da Smoobu con <strong>Download diretto</strong>, non dall\'email. <strong>Nessuna riga \u00e8 stata letta.</strong>';
+}
+
 // v36: Verifica passiva — confronta CSV con DB senza scrivere nulla
 function verifyCSV(input){
   if(!input.files[0])return;
@@ -6547,6 +6564,12 @@ function verifyCSVProcess(text){
   var header=parseLine(lines[0]).map(function(h){return h.trim();});
   var idx={};
   header.forEach(function(h,i){idx[h]=i;});
+  // v71: stessa guardia lingua dell'import
+  var errLingua=csvLinguaError(Object.keys(idx));
+  if(errLingua){
+    document.getElementById('verify-result').innerHTML='<div class="alert alert-danger"><strong>&#9888; CSV non compatibile</strong><br>'+errLingua+'</div>';
+    return;
+  }
   // Multi-line cell handling (come processSmoobu)
   var rawRows=[];
   var cur=null;
@@ -6571,7 +6594,7 @@ function verifyCSVProcess(text){
   // - missing: presente in CSV ma NON nel DB (potenziale problema, da importare)
   // - cancellate: nel CSV con stato cancellata
   // - noProp: prop non in anagrafica
-  var inDb=[], missing=[], cancellate=[], noProp=[];
+  var inDb=[], missing=[], cancellate=[], noProp=[], cancMaAttive=[];
   rawRows.forEach(function(line){
     var cols=parseLine(line);
     var get=function(key){
@@ -6586,7 +6609,19 @@ function verifyCSVProcess(text){
     var propName=get('Proprietà')||get('Proprieta');
     var stato=get('stato');
     var rec={pos:pos,arrivo:arrivo,ospite:ospite,portale:portale,prop:propName,stato:stato};
-    if(stato.toLowerCase().indexOf('cancellat')>=0){cancellate.push(rec);return;}
+    if(stato.toLowerCase().indexOf('cancellat')>=0){
+      // v71: se e' cancellata su Smoobu ma esiste ancora nel DB, e' attiva
+      // nei report e li gonfia. L'import la salta soltanto, non la rimuove.
+      if(dbByPos[pos]){
+        var bc=dbByPos[pos];
+        var pc=DB.proprieta.find(function(pp){return pp.id===bc.proprieta_id;});
+        rec.db_checkin=bc.checkin;
+        rec.db_propname=pc?pc.nome:'?';
+        rec.db_tot=bc.tot;
+        cancMaAttive.push(rec);
+      }
+      cancellate.push(rec);return;
+    }
     var propObj=findPropByName(propName);
     if(!propObj){noProp.push(rec);return;}
     if(dbByPos[pos]){
@@ -6638,6 +6673,15 @@ function verifyCSVProcess(text){
     t+='</tbody></table>';
     return t;
   };
+  // v71: blocco prioritario — cancellate su Smoobu ma ancora attive nel DB
+  if(cancMaAttive.length){
+    var totFantasmi=cancMaAttive.reduce(function(a,r){return a+(+r.db_tot||0);},0);
+    html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #ef4444">';
+    html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+cancMaAttive.length+' prenotazioni CANCELLATE su Smoobu ma ancora ATTIVE nel Tool</div>';
+    html+='<div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5">Erano gi&agrave; state importate quando erano valide. L\'import le salta come cancellate, <strong>ma non le rimuove dal database</strong>: restano nei report e li gonfiano. Valore complessivo: <strong>&euro;'+totFantasmi.toFixed(2)+'</strong>. Aprile una a una in Prenotazioni (cerca il numero Pos.) e cancellale a mano.</div>';
+    html+=renderTbl(cancMaAttive, true);
+    html+='</div>';
+  }
   if(missing.length){
     html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5">';
     html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+missing.length+' prenotazioni MANCANTI nel DB</div>';
@@ -6744,6 +6788,13 @@ function processSmoobu(file){
       var headers=parseLine(lines[0]);
       var idx={};
       headers.forEach(function(h,i){idx[h.replace(/^\uFEFF/,'').trim()]=i;});
+
+      // v71: blocca l'import se il CSV non e' il download italiano
+      var errLingua=csvLinguaError(Object.keys(idx));
+      if(errLingua){
+        document.getElementById('import-result').innerHTML='<div class="alert alert-danger"><strong>&#9888; CSV non compatibile</strong><br>'+errLingua+'</div>';
+        return;
+      }
 
       // Handle multi-line cells by joining continuation lines
       var rawRows=[];
