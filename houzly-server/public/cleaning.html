@@ -217,38 +217,6 @@ body {
 .sync-btn.spinning { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── v72: HEADER ADATTIVO ──────────────────────────────────────────
-   Su schermi stretti i controlli admin (sync, export, impostazioni,
-   esci) uscivano dalla riga e diventavano irraggiungibili.
-   Regola di base: il blocco logo può stringersi, i bottoni no. */
-.header-row > div:first-child { min-width: 0; flex-shrink: 1; }
-.header-logo { white-space: nowrap; }
-.header-sub  { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.header-right { flex-shrink: 0; }
-.sync-btn, .logout-btn-header { flex-shrink: 0; }
-
-/* Telefoni medi: si recuperano ~60px riducendo logo e bottoni,
-   restando sopra la soglia di tocco comoda (36px). */
-@media (max-width: 560px) {
-  .app-header { padding-left: 14px; padding-right: 14px; }
-  .header-logo { font-size: 21px; letter-spacing: 0.08em; gap: 7px; }
-  .header-logo img { height: 24px; }
-  .header-sub { font-size: 10px; letter-spacing: 0.10em; }
-  .header-right { gap: 7px; }
-  .sync-btn { width: 36px; height: 36px; font-size: 15px; }
-  .logout-btn-header { font-size: 12px; padding: 6px 10px; height: 36px; }
-}
-
-/* Telefoni piccoli (iPhone SE/mini, Android compatti): i controlli
-   vanno a capo su una riga propria e tornano a piena dimensione,
-   così restano tutti visibili e comodi da toccare. */
-@media (max-width: 400px) {
-  .header-row { flex-wrap: wrap; row-gap: 10px; }
-  .header-right { flex: 1 1 100%; justify-content: flex-end; gap: 8px; }
-  .sync-btn { width: 38px; height: 38px; font-size: 16px; }
-  .logout-btn-header { height: 38px; font-size: 12.5px; }
-}
-
 /* ── WHO AM I ── */
 .cleaner-bar {
   padding: 12px 20px;
@@ -1166,7 +1134,6 @@ async function onAuthOk() {
   const stored = localStorage.getItem(CLEANER_KEY);
   // Se l'identità non è ancora stata scelta, mostra "Chi sei?"
   if (stored === null) {
-    await loadDB();   // v72: lista pulitrici dal server, non dal fallback
     showWhoAreYou();
     return;
   }
@@ -1456,12 +1423,21 @@ function appInit() {
 }
 
 function autoCleanOldTasks() {
+  // v16 (2026-09-08) — FIX PERDITA DATI STORICI
+  // Prima cancellava TUTTO oltre 30 giorni, anche i task completati con
+  // pulitrice e ore registrate: l'export Statistics perdeva lo storico
+  // (es. l'8/9 le pulizie di agosto ripartivano dal 9/8). Ora:
+  //  - i task 'done' non si toccano MAI (sono lo storico economico)
+  //  - gli altri restano oltre un anno
+  // Il vecchio limite dei 30gg veniva dal tetto di 100 KB di JSONBin;
+  // su MongoDB il limite per documento e' 16 MB, quindi non serve piu'.
   const db = clDB();
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
+  cutoff.setDate(cutoff.getDate() - 400);
   const cutoffISO = toISO(cutoff);
   const before = db.tasks.length;
   db.tasks = db.tasks.filter(t => {
+    if (t.status === 'done') return true;   // storico: mai cancellare
     const d = t.date_override || t.date;
     return d >= cutoffISO;
   });
@@ -2375,10 +2351,6 @@ async function boot() {
       if (d.exists) {
         // If identity not chosen yet, show who-are-you
         if (localStorage.getItem(CLEANER_KEY) === null) {
-          // v72: carico il DB PRIMA di disegnare "Chi sei?", altrimenti la
-          // lista viene costruita sul fallback di dbDefaults() e mostra le
-          // pulitrici di default invece di quelle salvate sul server.
-          await loadDB();
           document.getElementById('loading').classList.add('hidden');
           showWhoAreYou();
           return;
