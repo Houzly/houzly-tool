@@ -2481,6 +2481,43 @@ app.get('/api/contracts/test-pdf', requireAdminAuth, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+//  CONTRATTI — router admin e pubblico
+// ══════════════════════════════════════════════════════════════════
+//
+//  /api/contracts  → backoffice, protetto da requireAdminAuth
+//  /api/sign       → pubblico, protetto dal token monouso dell'invito
+//
+//  Il require sta dentro un try/catch: se il modulo contratti avesse un
+//  problema di caricamento, il server parte comunque e continua a servire
+//  check-in, Cleaning Manager e booking engine. Le due route contratti
+//  risponderebbero 404, il resto funziona.
+// ══════════════════════════════════════════════════════════════════
+
+let contrattiAttivi = false;
+try {
+  const { createContractsAdminRouter, createContractsPublicRouter } = require('./lib/contracts-router');
+
+  app.use('/api/contracts', requireAdminAuth, createContractsAdminRouter({
+    getDb,
+    resend,
+    r2GetSignedUrl,
+    APP_BASE_URL,
+  }));
+
+  app.use('/api/sign', createContractsPublicRouter({
+    getDb,
+    r2Upload,
+    resend,
+    validateTaxCode,
+  }));
+
+  contrattiAttivi = true;
+  console.log('[contracts] router montati su /api/contracts e /api/sign');
+} catch (e) {
+  console.error('[contracts] modulo NON caricato:', e.message);
+}
+
 app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
 app.use(require('./guida'));
 app.use(require('./guida-admin'));
@@ -2493,5 +2530,16 @@ app.listen(PORT, async () => {
     console.log('[MongoDB] Connected successfully');
   } catch (e) {
     console.error('[MongoDB] Connection FAILED:', e.message);
+  }
+
+  // Indici delle collezioni contratti: idempotente, si puo' rieseguire a ogni avvio.
+  if (contrattiAttivi) {
+    try {
+      const { ensureIndexes } = require('./lib/contracts-store');
+      await ensureIndexes(getDb);
+      console.log('[contracts] indici verificati');
+    } catch (e) {
+      console.error('[contracts] creazione indici fallita:', e.message);
+    }
   }
 });
