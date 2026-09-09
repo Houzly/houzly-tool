@@ -279,10 +279,10 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
       <p class="occhio">Può fotografarli direttamente con il telefono. Le immagini vengono
         ridotte automaticamente prima dell'invio.</p>
       <div id="documenti"></div>
-      <div class="nota"><b>Due sono indispensabili</b>
-        Documento d'identità e visura catastale servono per firmare: il primo identifica chi
-        sottoscrive, la seconda ci permette di verificare la proprietà. Planimetria e
-        conformità impianti può mandarcele anche più avanti.</div>
+      <div class="nota"><b>Tre sono indispensabili</b>
+        Documento d'identità fronte e retro e visura catastale servono per firmare: il
+        documento identifica chi sottoscrive, la visura ci permette di verificare la
+        proprietà. Planimetria e conformità impianti può mandarcele anche più avanti.</div>
       <div class="barra">
         <button class="second" onclick="vai(2)">Indietro</button>
         <button class="primario" onclick="vai(4)">Continua</button>
@@ -383,8 +383,10 @@ const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const API = '/api/sign/' + encodeURIComponent(TOKEN);
 
 const DOCUMENTI = [
-  {tipo:'documento',   nome:"Documento d'identità", obbl:true,
-   desc:'Carta d\u2019identità o passaporto di chi firma'},
+  {tipo:'documento_fronte', nome:"Documento d'identità — fronte", obbl:true,
+   desc:'Il lato con la fotografia'},
+  {tipo:'documento_retro',  nome:"Documento d'identità — retro", obbl:true,
+   desc:'Il lato con scadenza e luogo di rilascio'},
   {tipo:'visura',      nome:'Visura catastale',     obbl:true,
    desc:'Serve a verificare la titolarità — anche una foto leggibile va bene'},
   {tipo:'planimetria', nome:'Planimetria',          obbl:false, desc:'La piantina catastale'},
@@ -607,6 +609,47 @@ function convalida(passo){
     else e.classList.remove('sbagliato');
   });
   if(primo){ primo.scrollIntoView({block:'center',behavior:'smooth'}); primo.focus(); return false; }
+
+  // In comproprietà i dati degli altri titolari sono obbligatori quanto i propri:
+  // senza, il contratto non può nemmeno nominarli in epigrafe.
+  if(passo===1 && document.getElementById('condivisa').checked){
+    const suddiviso = document.getElementById('modalitaPagamento').value==='suddiviso';
+    const richiesti = ['nomeCognome','cfPiva','quota'].concat(suddiviso ? ['iban'] : []);
+    let primoC=null;
+
+    const q=document.getElementById('quota');
+    if(!q.value.trim()){ q.classList.add('sbagliato'); primoC=q; } else q.classList.remove('sbagliato');
+
+    const box=[...document.querySelectorAll('.comproprietario')];
+    if(!box.length){ mostraToast('Aggiunga almeno un comproprietario'); return false; }
+
+    box.forEach(b=>{
+      richiesti.forEach(k=>{
+        const e=b.querySelector('[data-c="'+k+'"]');
+        if(!e) return;
+        if(!e.value.trim()){ e.classList.add('sbagliato'); if(!primoC) primoC=e; }
+        else e.classList.remove('sbagliato');
+      });
+    });
+
+    if(primoC){
+      primoC.scrollIntoView({block:'center',behavior:'smooth'}); primoC.focus();
+      mostraToast(suddiviso
+        ? 'Per ogni titolare servono nome, codice fiscale, quota e IBAN'
+        : 'Per ogni titolare servono nome, codice fiscale e quota');
+      return false;
+    }
+
+    const num=v=>parseFloat(String(v||'').replace(',','.'))||0;
+    let t=num(q.value);
+    document.querySelectorAll('.comproprietario [data-c="quota"]').forEach(e=>{ t+=num(e.value); });
+    if(Math.abs(t-100)>0.5){
+      aggiornaSomma();
+      document.getElementById('somma-quote').scrollIntoView({block:'center',behavior:'smooth'});
+      mostraToast('Le quote sommano a '+t+'%, devono fare 100%');
+      return false;
+    }
+  }
   return true;
 }
 
