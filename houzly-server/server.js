@@ -2386,6 +2386,101 @@ app.post('/api/onboarding/cron-tick', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+//  CONTRATTI — endpoint di test generazione PDF
+// ══════════════════════════════════════════════════════════════════
+//
+//  Verifica che pdfmake e i font funzionino nell'ambiente Render.
+//  Da rimuovere quando il modulo contratti sarà completo.
+//
+//  Uso dal browser:
+//    /api/contracts/test-pdf?pin=<PIN>          → contratto firmato (11 pagine)
+//    /api/contracts/test-pdf?pin=<PIN>&bozza=1  → bozza con filigrana
+//
+//  I require sono DENTRO l'handler, non in cima al file: se il modulo
+//  contratti fallisse il caricamento (font mancanti, file non caricato),
+//  l'errore resta confinato a questa route invece di impedire l'avvio del
+//  server e portare giù check-in e Cleaning Manager.
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/contracts/test-pdf', requireAdminAuth, async (req, res) => {
+  try {
+    const { getTemplate, VERSIONE_ATTIVA } = require('./templates');
+    const { risolviTemplate, generaPdf } = require('./lib/pdf-generator');
+
+    const bozza = req.query.bozza === '1';
+
+    // PNG 1x1 al posto della firma reale: serve solo a verificare che
+    // l'incorporamento delle immagini funzioni. Apparirà come un quadratino.
+    const FIRMA_FINTA =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari/605.1.15';
+    const caso = {
+      riferimento: 'HZ-TEST-0001',
+      email: 'test@houzly.it',
+      tokenHash: 'sha256:test (hash del token, mai il token in chiaro)',
+      luogoFirma: 'Terranuova Bracciolini (AR)',
+      dataFirma: new Date().toLocaleDateString('it-IT'),
+      mandante: {
+        nomeCognome: 'Mario Rossi',
+        luogoNascita: 'Firenze',
+        dataNascita: '14/03/1972',
+        residenza: 'Via dei Mille 21, 50123 Firenze (FI)',
+        cfPiva: 'RSSMRA72C14D612K',
+      },
+      immobile: {
+        indirizzo: 'Via delle Fonti 8, Cavriglia (AR)',
+        piano: 'T-1',
+        interno: '\u2014',
+        foglio: '42',
+        particella: '187',
+        subalterno: '3',
+        categoria: 'A/7',
+        cin: 'IT051012B4XY7K9TQ2',
+      },
+      condizioni: {
+        commissione: '30% (trenta per cento)',
+        commissioneMaggiorata: '35% (trentacinque per cento)',
+        servizi11bis: true,
+      },
+      clausole1341: bozza
+        ? {}
+        : { art3: true, art4: true, art10: true, art11bis: true, art14: true, art18: true, art19: true },
+      firme: bozza
+        ? {}
+        : {
+            contratto: { dataUrl: FIRMA_FINTA, ts: new Date().toISOString() },
+            clausole:  { dataUrl: FIRMA_FINTA, ts: new Date().toISOString() },
+          },
+      audit: bozza
+        ? []
+        : [
+            { ts: new Date().toISOString(), evento: 'Pratica creata e invito inviato', ip: '81.2.14.9', userAgent: 'backoffice/houzly-tool' },
+            { ts: new Date().toISOString(), evento: 'Link aperto dal destinatario', ip: '93.44.201.7', userAgent: ua },
+            { ts: new Date().toISOString(), evento: 'Dati anagrafici e immobile salvati', ip: '93.44.201.7', userAgent: ua },
+            { ts: new Date().toISOString(), evento: 'Anteprima contratto visualizzata integralmente', ip: '93.44.201.7', userAgent: ua },
+            { ts: new Date().toISOString(), evento: 'Firma contratto apposta', ip: '93.44.201.7', userAgent: ua },
+            { ts: new Date().toISOString(), evento: 'Clausole 1341-1342 approvate e firmate', ip: '93.44.201.7', userAgent: ua },
+          ],
+    };
+
+    const template = getTemplate(VERSIONE_ATTIVA);
+    const snapshot = risolviTemplate(template, caso);
+    const { buffer, sha256, bytes } = await generaPdf(snapshot, caso, { bozza });
+
+    console.log(`[contracts/test-pdf] generato ${bytes} byte, sha256 ${sha256.slice(0, 16)}…`);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="contratto-test${bozza ? '-bozza' : ''}.pdf"`);
+    res.setHeader('X-Contract-SHA256', sha256);
+    res.send(buffer);
+  } catch (e) {
+    console.error('[contracts/test-pdf]', e);
+    res.status(500).json({ ok: false, error: e.message, stack: (e.stack || '').split('\n').slice(0, 5) });
+  }
+});
+
 app.use('/api/onboarding', requireAdminAuth, createOnboardingRouter(getDb));
 app.use(require('./guida'));
 app.use(require('./guida-admin'));
