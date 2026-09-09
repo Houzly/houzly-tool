@@ -77,41 +77,65 @@ function sostituisci(testo, dati) {
   });
 }
 
+/** Formula il complemento oggetto dell'art. 11-bis in base ai servizi scelti. */
+function oggettoServizi(verde, piscina) {
+  if (verde && piscina) return 'delle aree verdi pertinenziali e della piscina';
+  if (verde) return 'delle aree verdi pertinenziali';
+  if (piscina) return 'della piscina';
+  return 'del verde e della piscina';
+}
+
 /**
  * Produce lo snapshot: template + dati della pratica, con tutti i placeholder
- * già risolti e gli articoli opzionali non attivati già rimossi.
+ * già risolti e la variante corretta dell'art. 11-bis.
  */
 function risolviTemplate(template, caso) {
+  const cond = caso.condizioni || {};
+  const verde = !!cond.verde;
+  const piscina = !!cond.piscina;
+  const accessoriAttivi = verde || piscina;
+
   const dati = {
     mandante: caso.mandante || {},
     immobile: caso.immobile || {},
     ...template.defaults,
-    ...(caso.condizioni || {}),
+    ...cond,
+    servizi11bisOggetto: oggettoServizi(verde, piscina),
   };
 
   const mappaTesto = (t) => (typeof t === 'string' ? sostituisci(t, dati) : t);
 
+  // L'art. 11-bis ha due varianti che si escludono a vicenda: quella con i
+  // servizi attivati e quella che dichiara l'onere in capo al Mandante.
   const articoli = template.articoli
     .filter((a) => {
-      if (a.id === 'art11bis' && !(caso.condizioni || {}).servizi11bis) return false;
+      if (a.id === 'art11bis') return accessoriAttivi;
+      if (a.id === 'art11bis_escluso') return !accessoriAttivi;
       return true;
     })
     .map((a) => ({
       ...a,
       titolo: mappaTesto(a.titolo),
-      commi: a.commi.map((c) => ({
-        ...c,
-        testo: mappaTesto(c.testo),
-        elenco: (c.elenco || []).map(mappaTesto),
-      })),
+      commi: a.commi.map((c) => {
+        // Le voci condizionali compaiono solo per i servizi effettivamente scelti.
+        const daCondizionale = (c.elencoCondizionale || [])
+          .filter((v) => cond[v.chiave] === true)
+          .map((v) => v.testo);
+        const { elencoCondizionale, ...resto } = c;
+        return {
+          ...resto,
+          testo: mappaTesto(c.testo),
+          elenco: [...(c.elenco || []), ...daCondizionale].map(mappaTesto),
+        };
+      }),
     }));
 
-  // Se i servizi accessori non sono attivi, sparisce anche la relativa
-  // clausola vessatoria: non si fa approvare specificamente un articolo assente.
+  // La clausola vessatoria dell'art. 11-bis riguarda la limitazione di
+  // responsabilità sui fornitori terzi: senza servizi attivati non esiste.
   const clausole = {
     ...template.clausoleVessatorie,
     elenco: template.clausoleVessatorie.elenco.filter(
-      (c) => c.key !== 'art11bis' || (caso.condizioni || {}).servizi11bis
+      (c) => c.key !== 'art11bis' || accessoriAttivi
     ),
   };
 
@@ -142,6 +166,18 @@ function rich(testo, stileBase = {}) {
 
 function paragrafo(testo, opts = {}) {
   return { text: rich(testo), alignment: 'justify', margin: [0, 0, 0, 6], ...opts };
+}
+
+/**
+ * Comma con il suo numero. Il numero è un nodo noWrap: senza, pdfmake va a capo
+ * sul trattino e stampa "11- bis.2" a fine riga.
+ */
+function comma(numero, testo) {
+  return {
+    text: [{ text: numero + ' ', noWrap: true }, ...rich(testo)],
+    alignment: 'justify',
+    margin: [0, 0, 0, 6],
+  };
 }
 
 function elencoPuntato(voci) {
@@ -218,7 +254,7 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
       headlineLevel: 1,
     });
     a.commi.forEach((c) => {
-      content.push(paragrafo(`${c.n} ${c.testo}`));
+      content.push(comma(c.n, c.testo));
       if (c.elenco && c.elenco.length) content.push(elencoPuntato(c.elenco));
     });
   });
