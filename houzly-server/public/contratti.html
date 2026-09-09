@@ -155,14 +155,18 @@ input:focus{outline:none;border-color:var(--accent)}
           placeholder="proprietario@esempio.it"></label>
       <label><span>Nome della struttura</span>
         <input type="text" id="n-struttura" placeholder="es. Villa La Poggetta"></label>
-      <div class="duo">
-        <label><span>Commissione</span>
-          <input type="text" id="n-commissione" value="30% (trenta per cento)"></label>
-        <label><span>Commissione maggiorata (art. 11-bis)</span>
-          <input type="text" id="n-magg" value="35% (trentacinque per cento)"></label>
-      </div>
-      <label class="check"><input type="checkbox" id="n-servizi">
-        <span>Include gestione verde e piscina (art. 11-bis)</span></label>
+      <label><span>Commissione di gestione (totale, come concordata)</span>
+        <input type="text" id="n-commissione" value="30% (trenta per cento)">
+        <div style="font-size:12px;color:var(--text-dim);margin-top:5px">
+          È l'unica commissione del contratto: se attivi i servizi qui sotto,
+          indica qui la percentuale già concordata comprensiva di quelli.
+        </div></label>
+      <div style="font-size:12.5px;font-weight:500;color:var(--text-mid);margin-bottom:8px">
+        Servizi accessori inclusi nel mandato (art. 11-bis)</div>
+      <label class="check"><input type="checkbox" id="n-verde">
+        <span>Gestione del verde — giardino, prato, siepi, irrigazione</span></label>
+      <label class="check"><input type="checkbox" id="n-piscina">
+        <span>Gestione della piscina — acque, pulizia, apertura e chiusura</span></label>
       <button class="primario" id="n-btn" onclick="crea()">Crea e invia l'invito</button>
     </div>
 
@@ -337,8 +341,8 @@ async function crea(){
       nomeStruttura: document.getElementById('n-struttura').value.trim() || null,
       condizioni:{
         commissione: document.getElementById('n-commissione').value.trim(),
-        commissioneMaggiorata: document.getElementById('n-magg').value.trim(),
-        servizi11bis: document.getElementById('n-servizi').checked,
+        verde: document.getElementById('n-verde').checked,
+        piscina: document.getElementById('n-piscina').checked,
       },
     })});
 
@@ -355,7 +359,8 @@ async function crea(){
 
     document.getElementById('n-email').value = '';
     document.getElementById('n-struttura').value = '';
-    document.getElementById('n-servizi').checked = false;
+    document.getElementById('n-verde').checked = false;
+    document.getElementById('n-piscina').checked = false;
     carica();
   }catch(e){ /* reload già partito */ }
   finally{ btn.disabled = false; btn.textContent = 'Crea e invia l\u2019invito'; }
