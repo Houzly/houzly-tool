@@ -197,7 +197,7 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
         <input type="text" id="cfPiva" autocapitalize="characters" spellcheck="false">
         <div class="aiuto" id="cf-aiuto"></div></label>
 
-      <label><span>IBAN per gli accrediti</span>
+      <label><span>IBAN per gli accrediti <i>*</i></span>
         <input type="text" id="iban" autocapitalize="characters" spellcheck="false"
           placeholder="IT00 A000 0000 000 0000000000">
         <div class="aiuto">Ci serve per bonificarle il netto entro il giorno 10 di ogni mese.</div></label>
@@ -206,6 +206,33 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
         <label><span>PEC</span><input type="email" id="pec" autocomplete="email"
           autocapitalize="none" spellcheck="false"></label>
         <label><span>Telefono</span><input type="tel" id="telefono" autocomplete="tel"></label>
+      </div>
+
+      <h3 style="font-size:16px;margin:26px 0 6px">Proprietà dell'immobile</h3>
+      <p class="occhio" style="margin-bottom:14px">Se l'immobile è intestato a più
+        persone, servono i dati di tutte: il contratto deve riportarle.</p>
+
+      <label class="clausola" style="cursor:pointer">
+        <input type="checkbox" id="condivisa" onchange="cambiaProprieta()">
+        <span>L'immobile è in comproprietà con altre persone</span>
+      </label>
+
+      <div id="blocco-comproprieta" style="display:none">
+        <label><span>La sua quota di proprietà (%)</span>
+          <input type="text" id="quota" inputmode="decimal" placeholder="es. 50"></label>
+
+        <div id="comproprietari"></div>
+        <button class="second" type="button" onclick="aggiungiComproprietario()"
+          style="width:100%;margin-bottom:18px">+ Aggiungi un comproprietario</button>
+
+        <label><span>Come volete ricevere i bonifici?</span>
+          <select id="modalitaPagamento" onchange="cambiaPagamento()">
+            <option value="unico">Tutto su un solo IBAN, il mio</option>
+            <option value="suddiviso">Suddiviso fra i titolari secondo le quote</option>
+          </select>
+          <div class="aiuto" id="aiuto-pagamento"></div></label>
+
+        <div class="nota" id="somma-quote"></div>
       </div>
 
       <div class="barra"><button class="primario" onclick="vai(2)">Continua</button></div>
@@ -252,9 +279,10 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
       <p class="occhio">Può fotografarli direttamente con il telefono. Le immagini vengono
         ridotte automaticamente prima dell'invio.</p>
       <div id="documenti"></div>
-      <div class="nota"><b>Se le manca qualcosa</b>
-        Prosegua comunque. Ce li può mandare dopo: l'unico documento che serve per firmare
-        è il suo documento d'identità.</div>
+      <div class="nota"><b>Due sono indispensabili</b>
+        Documento d'identità e visura catastale servono per firmare: il primo identifica chi
+        sottoscrive, la seconda ci permette di verificare la proprietà. Planimetria e
+        conformità impianti può mandarcele anche più avanti.</div>
       <div class="barra">
         <button class="second" onclick="vai(2)">Indietro</button>
         <button class="primario" onclick="vai(4)">Continua</button>
@@ -355,15 +383,18 @@ const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const API = '/api/sign/' + encodeURIComponent(TOKEN);
 
 const DOCUMENTI = [
-  {tipo:'documento',   nome:"Documento d'identità", desc:'Carta d\u2019identità o passaporto'},
-  {tipo:'visura',      nome:'Visura catastale',     desc:'Anche una foto leggibile va bene'},
-  {tipo:'planimetria', nome:'Planimetria',          desc:'La piantina catastale'},
-  {tipo:'conformita',  nome:'Conformità impianti',  desc:'Dichiarazione dell\u2019installatore'},
+  {tipo:'documento',   nome:"Documento d'identità", obbl:true,
+   desc:'Carta d\u2019identità o passaporto di chi firma'},
+  {tipo:'visura',      nome:'Visura catastale',     obbl:true,
+   desc:'Serve a verificare la titolarità — anche una foto leggibile va bene'},
+  {tipo:'planimetria', nome:'Planimetria',          obbl:false, desc:'La piantina catastale'},
+  {tipo:'conformita',  nome:'Conformità impianti',  obbl:false,
+   desc:'Dichiarazione dell\u2019installatore'},
 ];
 
 const ETICHETTE = ['Dati personali','Immobile','Documenti','Contratto','Firma','Completato'];
 
-let stato = {passo:1, pratica:null, letto:false, firme:{}, inCorso:false};
+let stato = {passo:1, pratica:null, letto:false, firme:{}, inCorso:false, caricati:[]};
 
 /* ── avvio ─────────────────────────────────────────────────────── */
 
@@ -374,6 +405,7 @@ async function avvia(){
     const d = await r.json();
     if(!d.ok) return bloccaPerErrore(d.error);
     stato.pratica = d.pratica;
+    stato.caricati = (d.pratica.allegati || []).map(a => a.tipo);
 
     if(d.pratica.firmato){
       return blocca('Contratto già firmato',
@@ -441,7 +473,7 @@ function disegnaAvanzamento(){
 
 /* ── campi ─────────────────────────────────────────────────────── */
 
-const CAMPI_M = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','iban','pec','telefono','tipoSoggetto'];
+const CAMPI_M = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','iban','pec','telefono','tipoSoggetto','quota'];
 const CAMPI_I = ['indirizzo','piano','interno','foglio','particella','subalterno','categoria','cin'];
 
 function riempiCampi(p){
@@ -452,6 +484,15 @@ function riempiCampi(p){
     if(c&&v){c.checked=true;c.closest('.clausola').classList.add('presa');}
   });
   aggiornaTipoSoggetto();
+
+  if((p.comproprietari||[]).length){
+    document.getElementById('condivisa').checked=true;
+    document.getElementById('blocco-comproprieta').style.display='block';
+    p.comproprietari.forEach(c=>aggiungiComproprietario(c));
+  }
+  if(p.pagamento && p.pagamento.modalita)
+    document.getElementById('modalitaPagamento').value=p.pagamento.modalita;
+  cambiaPagamento();
 }
 
 function raccogli(){
@@ -460,13 +501,105 @@ function raccogli(){
   CAMPI_I.forEach(k=>{const e=document.getElementById(k); if(e) i[k]=e.value.trim();});
   const c={};
   document.querySelectorAll('[data-clausola]').forEach(e=>{c[e.dataset.clausola]=e.checked;});
-  return {mandante:m, immobile:i, clausole1341:c};
+  return {
+    mandante:m, immobile:i, clausole1341:c,
+    comproprietari: leggiComproprietari(),
+    pagamento:{modalita: document.getElementById('modalitaPagamento').value},
+  };
+}
+
+/* ── comproprietari ────────────────────────────────────────────── */
+
+const CAMPI_C = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','quota','iban'];
+
+// Se la casella non è spuntata l'elenco è vuoto: il contratto torna a proprietario unico.
+function leggiComproprietari(){
+  if(!document.getElementById('condivisa').checked) return [];
+  return [...document.querySelectorAll('.comproprietario')].map(box=>{
+    const o={};
+    CAMPI_C.forEach(k=>{ const e=box.querySelector('[data-c="'+k+'"]'); if(e) o[k]=e.value.trim(); });
+    return o;
+  }).filter(o=>o.nomeCognome || o.cfPiva);
+}
+
+function cambiaProprieta(){
+  const on = document.getElementById('condivisa').checked;
+  document.getElementById('blocco-comproprieta').style.display = on ? 'block' : 'none';
+  if(on && !document.querySelectorAll('.comproprietario').length) aggiungiComproprietario();
+  cambiaPagamento();
+  salvaFraPoco();
+}
+
+function cambiaPagamento(){
+  const suddiviso = document.getElementById('modalitaPagamento').value === 'suddiviso';
+  document.getElementById('aiuto-pagamento').textContent = suddiviso
+    ? 'Ogni titolare riceve la sua parte sul proprio IBAN. Serve l\u2019IBAN di ciascuno.'
+    : 'Versiamo tutto sul suo IBAN. La ripartizione fra voi resta un fatto vostro.';
+  document.querySelectorAll('.riga-iban').forEach(r=>{ r.style.display = suddiviso ? 'block' : 'none'; });
+  aggiornaSomma();
+}
+
+function aggiungiComproprietario(dati){
+  const box=document.createElement('div');
+  box.className='comproprietario';
+  box.style.cssText='border:1.5px solid var(--bordo);border-radius:var(--raggio);'+
+    'padding:14px;margin-bottom:12px;background:var(--bianco)';
+  const n=document.querySelectorAll('.comproprietario').length+2;
+  box.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:14px">Comproprietario ${n}</b>
+      <button class="testuale" type="button" onclick="this.closest('.comproprietario').remove();aggiornaSomma();salvaFraPoco()">Rimuovi</button>
+    </div>
+    <label><span>Nome e cognome</span><input type="text" data-c="nomeCognome"></label>
+    <div class="duo">
+      <label><span>Luogo di nascita</span><input type="text" data-c="luogoNascita"></label>
+      <label><span>Data di nascita</span><input type="text" data-c="dataNascita" placeholder="gg/mm/aaaa" inputmode="numeric"></label>
+    </div>
+    <label><span>Residenza</span><input type="text" data-c="residenza"></label>
+    <div class="duo">
+      <label><span>Codice fiscale</span><input type="text" data-c="cfPiva" autocapitalize="characters" spellcheck="false"></label>
+      <label><span>Quota (%)</span><input type="text" data-c="quota" inputmode="decimal" oninput="aggiornaSomma()"></label>
+    </div>
+    <div class="riga-iban" style="display:none">
+      <label style="margin-bottom:0"><span>IBAN di questo titolare</span>
+        <input type="text" data-c="iban" autocapitalize="characters" spellcheck="false"></label>
+    </div>`;
+  document.getElementById('comproprietari').appendChild(box);
+  if(dati) CAMPI_C.forEach(k=>{ const e=box.querySelector('[data-c="'+k+'"]'); if(e&&dati[k]) e.value=dati[k]; });
+  cambiaPagamento();
+}
+
+// Le quote devono chiudere a 100: il server rifiuta la firma se non tornano.
+function aggiornaSomma(){
+  const el=document.getElementById('somma-quote');
+  if(!document.getElementById('condivisa').checked) return;
+  const num=v=>parseFloat(String(v||'').replace(',','.'))||0;
+  let t=num(document.getElementById('quota').value);
+  document.querySelectorAll('.comproprietario [data-c="quota"]').forEach(e=>{ t+=num(e.value); });
+  const ok=Math.abs(t-100)<=0.5;
+  el.className='nota'+(ok?'':' grave');
+  el.innerHTML=ok
+    ? `<b>Quote: ${t}%</b>Le quote tornano.`
+    : `<b>Quote: ${t}%</b>La somma di tutte le quote deve fare 100. Controlli i valori inseriti.`;
 }
 
 function convalida(passo){
   let obbligatori=[];
-  if(passo===1) obbligatori=['nomeCognome','residenza','cfPiva'];
+  if(passo===1) obbligatori=['nomeCognome','residenza','cfPiva','iban'];
   if(passo===2) obbligatori=['indirizzo'];
+  if(passo===3){
+    const caricati=(stato.caricati||[]);
+    const mancanti=DOCUMENTI.filter(d=>d.obbl && !caricati.includes(d.tipo));
+    if(mancanti.length){
+      const d=document.getElementById('doc-'+mancanti[0].tipo);
+      d.scrollIntoView({block:'center',behavior:'smooth'});
+      d.style.borderColor='var(--errore)';
+      mostraToast(mancanti.length===1
+        ? 'Manca ancora: '+mancanti[0].nome
+        : 'Mancano '+mancanti.length+' documenti obbligatori');
+      return false;
+    }
+  }
   let primo=null;
   obbligatori.forEach(k=>{
     const e=document.getElementById(k);
@@ -528,12 +661,12 @@ document.getElementById('tipoSoggetto').addEventListener('change',aggiornaTipoSo
 
 function creaDocumenti(){
   const c=document.getElementById('documenti');
-  const gia=(stato.pratica.allegati||[]).map(a=>a.tipo);
+  const gia=stato.caricati;
   c.innerHTML = DOCUMENTI.map(d=>`
     <div class="doc${gia.includes(d.tipo)?' caricato':''}" id="doc-${d.tipo}">
       <div class="segno"></div>
-      <div class="doc-testo"><b>${d.nome}</b><small id="st-${d.tipo}">${
-        gia.includes(d.tipo)?'Caricato':d.desc}</small></div>
+      <div class="doc-testo"><b>${d.nome}${d.obbl?' <i style="color:var(--oro);font-style:normal">*</i>':''}</b>
+        <small id="st-${d.tipo}">${gia.includes(d.tipo)?'Caricato':d.desc}</small></div>
       <label class="scegli">${gia.includes(d.tipo)?'Sostituisci':'Scegli'}
         <input type="file" accept="image/*,application/pdf" data-tipo="${d.tipo}">
       </label>
@@ -563,7 +696,10 @@ async function caricaFile(input){
     const d=await r.json();
 
     if(d.ok){
-      document.getElementById('doc-'+tipo).classList.add('caricato');
+      if(!stato.caricati.includes(tipo)) stato.caricati.push(tipo);
+      const box=document.getElementById('doc-'+tipo);
+      box.classList.add('caricato');
+      box.style.borderColor='';
       st.textContent='Caricato · '+Math.round(d.bytes/1024)+' KB';
       input.closest('label').firstChild.textContent='Sostituisci ';
       mostraToast('Documento caricato');
@@ -776,6 +912,16 @@ async function firma(){
       return mostraErrore(`<b>Dati incompleti</b>Torni indietro e completi: ${d.campi.join(', ')}.`);
     if(d.error==='clausole_non_approvate')
       return mostraErrore('<b>Clausole non approvate</b>Deve spuntarle tutte.');
+    if(d.error==='allegati_mancanti'){
+      const nomi=d.tipi.map(t=>(DOCUMENTI.find(x=>x.tipo===t)||{}).nome||t).join(', ');
+      return mostraErrore('<b>Documenti mancanti</b>Torni al passo 3 e carichi: '+nomi+'.');
+    }
+    if(d.error==='comproprietari_incompleti')
+      return mostraErrore('<b>Dati dei comproprietari incompleti</b>Per ciascuno servono nome, codice fiscale e quota.');
+    if(d.error==='iban_comproprietari_mancanti')
+      return mostraErrore('<b>Manca un IBAN</b>Avete scelto il bonifico suddiviso: serve l\u2019IBAN di ogni titolare.');
+    if(d.error==='quote_non_valide')
+      return mostraErrore('<b>Le quote non tornano</b>La somma è '+d.somma+'% e deve fare 100%.');
     mostraErrore('<b>Non è stato possibile firmare</b>'+(d.error||'Riprovi fra poco.'));
   }catch(e){
     mostraErrore('<b>Errore di collegamento</b>Controlli la connessione e riprovi. Nulla è andato perso.');
