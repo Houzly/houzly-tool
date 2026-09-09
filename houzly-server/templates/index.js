@@ -13,19 +13,22 @@
  * 1.7 → comproprietà: le parti in epigrafe diventano più d'una con le rispettive
  *       quote, documento d'identità e visura diventano obbligatori (art. 5.1),
  *       l'IBAN entra nell'art. 9 con accredito unico o suddiviso per quota.
+ * 1.8 → art. 5.1: il documento d'identità va acquisito fronte e retro.
  */
 
 const v15 = require('./mandato-v1.5');
 const v16 = require('./mandato-v1.6');
 const v17 = require('./mandato-v1.7');
+const v18 = require('./mandato-v1.8');
 
 const TEMPLATES = {
   '1.5': v15,
   '1.6': v16,
   '1.7': v17,
+  '1.8': v18,
 };
 
-const VERSIONE_ATTIVA = '1.7';
+const VERSIONE_ATTIVA = '1.8';
 
 function getTemplate(versione = VERSIONE_ATTIVA) {
   const t = TEMPLATES[versione];
