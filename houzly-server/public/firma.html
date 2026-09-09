@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Contratto di mandato · Houzly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --indigo:#170046; --indigo-80:#3a2a6b; --oro:#C8A55B; --oro-soft:#f0e4c8;
+  --carta:#FBFAF7; --bianco:#fff; --bordo:#e3dfd6; --testo:#1a1a1a;
+  --grigio:#6b6660; --errore:#a8321f; --ok:#1f6b45; --attenzione:#8a6d1f;
+  --raggio:12px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--carta); color:var(--testo);
+  font-family:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:16px; line-height:1.55;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+h1,h2,h3,.display{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.01em}
+
+/* ── intestazione ── */
+.top{background:var(--indigo);color:#fff;padding:18px 20px 20px;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,var(--oro) 0%,var(--oro-soft) 50%,var(--oro) 100%)}
+.marchio{font-family:'Fraunces',serif;font-size:19px;letter-spacing:.16em;font-weight:600}
+.marchio span{color:var(--oro)}
+.top p{margin:4px 0 0;font-size:12.5px;opacity:.72;letter-spacing:.04em;text-transform:uppercase}
+.rif{position:absolute;top:20px;right:20px;font-size:11px;opacity:.6;letter-spacing:.06em}
+
+/* ── avanzamento ── */
+.avanz{display:flex;gap:5px;padding:16px 20px 0;max-width:640px;margin:0 auto}
+.tacca{flex:1;height:3px;background:var(--bordo);border-radius:2px;transition:background .35s}
+.tacca.fatto{background:var(--oro)}
+.tacca.ora{background:var(--indigo)}
+.passo-eti{max-width:640px;margin:0 auto;padding:8px 20px 0;font-size:12px;
+  color:var(--grigio);letter-spacing:.09em;text-transform:uppercase}
+
+/* ── contenitore ── */
+main{max-width:640px;margin:0 auto;padding:6px 20px 40px}
+section{display:none;animation:entra .32s ease both}
+section.viva{display:block}
+@keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h2{font-size:25px;margin:14px 0 6px;line-height:1.2}
+.occhio{color:var(--grigio);font-size:14.5px;margin:0 0 22px}
+
+/* ── campi ── */
+label{display:block;margin:0 0 16px}
+label>span{display:block;font-size:13px;font-weight:600;margin-bottom:6px;letter-spacing:.02em}
+label>span i{color:var(--oro);font-style:normal;font-weight:700}
+input[type=text],input[type=email],input[type=tel],input[type=date],select,textarea{
+  width:100%;padding:13px 14px;border:1.5px solid var(--bordo);border-radius:var(--raggio);
+  font:inherit;font-size:16px;background:var(--bianco);color:var(--testo);
+  transition:border-color .18s,box-shadow .18s;appearance:none
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--indigo);
+  box-shadow:0 0 0 3px rgba(23,0,70,.09)}
+input.sbagliato{border-color:var(--errore)}
+.aiuto{font-size:12.5px;color:var(--grigio);margin-top:5px}
+.aiuto.attenzione{color:var(--attenzione);font-weight:600}
+.aiuto.buono{color:var(--ok);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media(max-width:420px){.duo{grid-template-columns:1fr}}
+
+/* ── pulsanti ── */
+.barra{display:flex;gap:10px;margin-top:26px}
+button{font:inherit;font-weight:600;border-radius:var(--raggio);cursor:pointer;
+  padding:15px 20px;border:1.5px solid transparent;transition:transform .12s,opacity .2s}
+button:active{transform:scale(.985)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.primario{background:var(--indigo);color:#fff;flex:1}
+.second{background:transparent;color:var(--indigo);border-color:var(--bordo)}
+.testuale{background:none;border:none;color:var(--indigo);text-decoration:underline;
+  padding:8px 0;font-weight:600;font-size:14.5px}
+
+/* ── allegati ── */
+.doc{border:1.5px solid var(--bordo);border-radius:var(--raggio);padding:15px;
+  margin-bottom:12px;background:var(--bianco);display:flex;align-items:center;gap:13px}
+.doc.caricato{border-color:var(--ok);background:#f4faf6}
+.doc-testo{flex:1;min-width:0}
+.doc-testo b{display:block;font-size:14.5px}
+.doc-testo small{color:var(--grigio);font-size:12.5px;display:block;margin-top:2px}
+.doc input[type=file]{display:none}
+.doc label.scegli{margin:0;background:var(--indigo);color:#fff;padding:10px 15px;
+  border-radius:9px;font-size:13.5px;font-weight:600;white-space:nowrap;cursor:pointer;display:block}
+.doc.caricato label.scegli{background:var(--grigio)}
+.segno{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--bordo)}
+.doc.caricato .segno{background:var(--ok);position:relative}
+.doc.caricato .segno::after{content:"";position:absolute;left:7.5px;top:4px;width:5px;height:10px;
+  border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(43deg)}
+
+/* ── clausole ── */
+.clausola{display:flex;gap:13px;padding:14px;border:1.5px solid var(--bordo);
+  border-radius:var(--raggio);margin-bottom:10px;background:var(--bianco);cursor:pointer;
+  align-items:flex-start;transition:border-color .18s,background .18s}
+.clausola.presa{border-color:var(--indigo);background:#f7f5fc}
+.clausola input{margin:0;width:23px;height:23px;flex:0 0 23px;accent-color:var(--indigo)}
+.clausola span{font-size:14px;line-height:1.45}
+
+/* ── firma ── */
+.firma-box{border:1.5px dashed var(--bordo);border-radius:var(--raggio);
+  background:var(--bianco);position:relative;overflow:hidden;margin-bottom:8px}
+.firma-box.piena{border-style:solid;border-color:var(--indigo)}
+canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
+.firma-vuota{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#b9b3aa;font-size:14.5px;pointer-events:none;letter-spacing:.03em}
+.firma-box.piena .firma-vuota{display:none}
+.firma-piede{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.firma-piede small{color:var(--grigio);font-size:12.5px}
+
+/* ── riquadri ── */
+.nota{border-left:3px solid var(--oro);background:#fdfaf3;padding:13px 15px;
+  border-radius:0 9px 9px 0;font-size:14px;margin:18px 0}
+.nota b{display:block;margin-bottom:3px}
+.grave{border-left-color:var(--errore);background:#fdf5f3}
+.riepilogo{background:var(--bianco);border:1.5px solid var(--bordo);border-radius:var(--raggio);
+  padding:16px;margin-bottom:18px}
+.riga{display:flex;justify-content:space-between;gap:14px;padding:7px 0;
+  border-bottom:1px solid #f0ede7;font-size:14px}
+.riga:last-child{border-bottom:none}
+.riga b{color:var(--grigio);font-weight:600;flex:0 0 42%}
+.riga span{text-align:right;word-break:break-word}
+
+/* ── stato salvataggio ── */
+.salvato{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--indigo);
+  color:#fff;padding:9px 18px;border-radius:22px;font-size:13px;opacity:0;
+  transition:opacity .3s;pointer-events:none;z-index:40;box-shadow:0 6px 20px rgba(0,0,0,.16)}
+.salvato.mostra{opacity:.94}
+
+/* ── schermate di servizio ── */
+.centro{text-align:center;padding:70px 24px}
+.centro h2{margin-bottom:10px}
+.centro p{color:var(--grigio);max-width:400px;margin:0 auto}
+.bollo{width:66px;height:66px;border-radius:50%;background:var(--oro-soft);margin:0 auto 22px;
+  display:flex;align-items:center;justify-content:center;font-size:31px}
+.filatore{width:34px;height:34px;border:3px solid var(--bordo);border-top-color:var(--indigo);
+  border-radius:50%;animation:gira .8s linear infinite;margin:0 auto}
+@keyframes gira{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="marchio">H<span>◆</span>UZLY</div>
+  <p>Contratto di mandato</p>
+  <div class="rif" id="rif"></div>
+</div>
+
+<div id="caricamento" class="centro"><div class="filatore"></div>
+  <p style="margin-top:18px">Caricamento…</p></div>
+
+<div id="bloccato" class="centro" style="display:none">
+  <div class="bollo">⚠</div>
+  <h2 id="bloccato-t">Link non valido</h2>
+  <p id="bloccato-p"></p>
+</div>
+
+<div id="app" style="display:none">
+  <div class="avanz" id="avanz"></div>
+  <div class="passo-eti" id="passo-eti"></div>
+
+  <main>
+    <!-- 1 · anagrafica -->
+    <section id="s1">
+      <h2>I suoi dati</h2>
+      <p class="occhio">Servono a intestare il contratto e agli adempimenti fiscali che Houzly
+        cura per suo conto.</p>
+
+      <label><span>Tipo di soggetto</span>
+        <select id="tipoSoggetto">
+          <option value="privato">Persona fisica</option>
+          <option value="azienda">Società o ditta</option>
+        </select>
+      </label>
+
+      <label><span id="et-nome">Nome e cognome <i>*</i></span>
+        <input type="text" id="nomeCognome" autocomplete="name"></label>
+
+      <div class="duo" id="blocco-nascita">
+        <label><span>Luogo di nascita</span>
+          <input type="text" id="luogoNascita"></label>
+        <label><span>Data di nascita</span>
+          <input type="text" id="dataNascita" placeholder="gg/mm/aaaa" inputmode="numeric"></label>
+      </div>
+
+      <label><span id="et-res">Residenza completa <i>*</i></span>
+        <input type="text" id="residenza" placeholder="Via, numero, CAP, città (prov.)"
+          autocomplete="street-address"></label>
+
+      <label><span id="et-cf">Codice fiscale <i>*</i></span>
+        <input type="text" id="cfPiva" autocapitalize="characters" spellcheck="false">
+        <div class="aiuto" id="cf-aiuto"></div></label>
+
+      <label><span>IBAN per gli accrediti</span>
+        <input type="text" id="iban" autocapitalize="characters" spellcheck="false"
+          placeholder="IT00 A000 0000 000 0000000000">
+        <div class="aiuto">Ci serve per bonificarle il netto entro il giorno 10 di ogni mese.</div></label>
+
+      <div class="duo">
+        <label><span>PEC</span><input type="email" id="pec" autocomplete="email"
+          autocapitalize="none" spellcheck="false"></label>
+        <label><span>Telefono</span><input type="tel" id="telefono" autocomplete="tel"></label>
+      </div>
+
+      <div class="barra"><button class="primario" onclick="vai(2)">Continua</button></div>
+    </section>
+
+    <!-- 2 · immobile -->
+    <section id="s2">
+      <h2>L'immobile</h2>
+      <p class="occhio">I dati catastali si trovano sulla visura. Se non li ha sottomano può
+        proseguire e completarli più tardi: quello che scrive resta salvato.</p>
+
+      <label><span>Indirizzo dell'immobile <i>*</i></span>
+        <input type="text" id="indirizzo" placeholder="Via, numero, CAP, città (prov.)"></label>
+
+      <div class="duo">
+        <label><span>Piano</span><input type="text" id="piano"></label>
+        <label><span>Interno</span><input type="text" id="interno"></label>
+      </div>
+
+      <div class="duo">
+        <label><span>Foglio</span><input type="text" id="foglio" inputmode="numeric"></label>
+        <label><span>Particella</span><input type="text" id="particella" inputmode="numeric"></label>
+      </div>
+
+      <div class="duo">
+        <label><span>Subalterno</span><input type="text" id="subalterno" inputmode="numeric"></label>
+        <label><span>Categoria catastale</span><input type="text" id="categoria"
+          placeholder="es. A/2" autocapitalize="characters"></label>
+      </div>
+
+      <label><span>CIN — Codice Identificativo Nazionale</span>
+        <input type="text" id="cin" autocapitalize="characters" spellcheck="false">
+        <div class="aiuto">Se non ce l'ha, lasci vuoto: lo richiediamo noi per suo conto.</div></label>
+
+      <div class="barra">
+        <button class="second" onclick="vai(1)">Indietro</button>
+        <button class="primario" onclick="vai(3)">Continua</button>
+      </div>
+    </section>
+
+    <!-- 3 · documenti -->
+    <section id="s3">
+      <h2>I documenti</h2>
+      <p class="occhio">Può fotografarli direttamente con il telefono. Le immagini vengono
+        ridotte automaticamente prima dell'invio.</p>
+      <div id="documenti"></div>
+      <div class="nota"><b>Se le manca qualcosa</b>
+        Prosegua comunque. Ce li può mandare dopo: l'unico documento che serve per firmare
+        è il suo documento d'identità.</div>
+      <div class="barra">
+        <button class="second" onclick="vai(2)">Indietro</button>
+        <button class="primario" onclick="vai(4)">Continua</button>
+      </div>
+    </section>
+
+    <!-- 4 · lettura -->
+    <section id="s4">
+      <h2>Il contratto</h2>
+      <p class="occhio">Prima di firmare deve leggere il testo completo. Si apre in una nuova
+        scheda e può scaricarlo.</p>
+
+      <div class="riepilogo" id="riepilogo"></div>
+
+      <div class="barra" style="margin-bottom:8px">
+        <button class="primario" id="btn-anteprima" onclick="apriAnteprima()">
+          Apri e leggi il contratto</button>
+      </div>
+      <div class="aiuto" id="stato-lettura">Il pulsante per firmare si attiva dopo l'apertura.</div>
+
+      <div class="nota"><b>Un controllo prima di proseguire</b>
+        Verifichi che nome, codice fiscale e indirizzo dell'immobile siano esatti.
+        Dopo la firma il contratto non è più modificabile.</div>
+
+      <div class="barra">
+        <button class="second" onclick="vai(3)">Indietro</button>
+        <button class="primario" id="btn-vai-firma" onclick="vai(5)" disabled>Procedi alla firma</button>
+      </div>
+    </section>
+
+    <!-- 5 · firma -->
+    <section id="s5">
+      <h2>Firma</h2>
+      <p class="occhio">Approvi una per una le clausole indicate, poi firmi nei due riquadri.</p>
+
+      <h3 style="font-size:16px;margin:22px 0 10px">Approvazione specifica ex artt. 1341-1342 c.c.</h3>
+      <div id="clausole"></div>
+
+      <h3 style="font-size:16px;margin:26px 0 10px">Firma del contratto</h3>
+      <div class="firma-box" id="box-c">
+        <canvas id="firma-contratto"></canvas>
+        <div class="firma-vuota">Firmi qui con il dito</div>
+      </div>
+      <div class="firma-piede">
+        <small>Usi il dito o un pennino</small>
+        <button class="testuale" onclick="pulisci('contratto')">Cancella</button>
+      </div>
+
+      <h3 style="font-size:16px;margin:6px 0 10px">Firma di approvazione delle clausole</h3>
+      <div class="firma-box" id="box-l">
+        <canvas id="firma-clausole"></canvas>
+        <div class="firma-vuota">Seconda firma, richiesta per legge</div>
+      </div>
+      <div class="firma-piede">
+        <small>Deve essere apposta separatamente</small>
+        <button class="testuale" onclick="pulisci('clausole')">Cancella</button>
+      </div>
+
+      <label><span>Luogo della firma</span>
+        <input type="text" id="luogoFirma" placeholder="Città"></label>
+
+      <div class="nota grave" id="errore-firma" style="display:none"></div>
+
+      <div class="barra">
+        <button class="second" onclick="vai(4)">Indietro</button>
+        <button class="primario" id="btn-firma" onclick="firma()">Firma il contratto</button>
+      </div>
+      <p class="aiuto" style="text-align:center;margin-top:14px">
+        Firmando dichiara di aver letto e accettato il contratto nella sua interezza.</p>
+    </section>
+
+    <!-- 6 · fatto -->
+    <section id="s6">
+      <div class="centro">
+        <div class="bollo">✓</div>
+        <h2>Contratto firmato</h2>
+        <p>Le abbiamo inviato una copia per email, all'indirizzo su cui ha ricevuto il link.
+           Conservi il messaggio: contiene il PDF completo.</p>
+        <div class="riepilogo" style="text-align:left;margin-top:26px">
+          <div class="riga"><b>Riferimento</b><span id="fine-rif"></span></div>
+          <div class="riga"><b>Firmato il</b><span id="fine-data"></span></div>
+          <div class="riga"><b>Impronta SHA-256</b><span id="fine-hash"
+            style="font-size:11px;font-family:ui-monospace,monospace"></span></div>
+        </div>
+        <p class="aiuto" style="margin-top:20px">Ci occupiamo noi dei prossimi passi.
+          La contatteremo per organizzare foto e apertura dell'attività.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="salvato" id="toast">Salvato</div>
+
+<script>
+'use strict';
+
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const API = '/api/sign/' + encodeURIComponent(TOKEN);
+
+const DOCUMENTI = [
+  {tipo:'documento',   nome:"Documento d'identità", desc:'Carta d\u2019identità o passaporto'},
+  {tipo:'visura',      nome:'Visura catastale',     desc:'Anche una foto leggibile va bene'},
+  {tipo:'planimetria', nome:'Planimetria',          desc:'La piantina catastale'},
+  {tipo:'conformita',  nome:'Conformità impianti',  desc:'Dichiarazione dell\u2019installatore'},
+];
+
+const ETICHETTE = ['Dati personali','Immobile','Documenti','Contratto','Firma','Completato'];
+
+let stato = {passo:1, pratica:null, letto:false, firme:{}, inCorso:false};
+
+/* ── avvio ─────────────────────────────────────────────────────── */
+
+async function avvia(){
+  if(!TOKEN) return blocca('Link non valido','Il link è incompleto. Usi quello ricevuto per email.');
+  try{
+    const r = await fetch(API);
+    const d = await r.json();
+    if(!d.ok) return bloccaPerErrore(d.error);
+    stato.pratica = d.pratica;
+
+    if(d.pratica.firmato){
+      return blocca('Contratto già firmato',
+        'Questo contratto risulta firmato. Trova la copia nella sua casella email.');
+    }
+
+    document.getElementById('rif').textContent = d.pratica.riferimento;
+    // creaClausole PRIMA di riempiCampi: quest'ultima ripristina le spunte
+    // salvate, e le checkbox devono già esistere nel DOM.
+    creaDocumenti();
+    creaClausole(d.pratica.clausoleRichieste || []);
+    riempiCampi(d.pratica);
+    document.getElementById('caricamento').style.display='none';
+    document.getElementById('app').style.display='block';
+    vai(1);
+    preparaCanvas();
+  }catch(e){
+    blocca('Errore di collegamento','Controlli la connessione e ricarichi la pagina.');
+  }
+}
+
+function bloccaPerErrore(codice){
+  const m = {
+    link_scaduto:['Link scaduto','Il link è scaduto. Ci scriva e gliene inviamo uno nuovo.'],
+    pratica_annullata:['Pratica annullata','Questa pratica è stata annullata. Ci contatti per chiarimenti.'],
+    link_non_valido:['Link non valido','Il link non risulta valido. Usi quello ricevuto per email.'],
+  };
+  const [t,p] = m[codice] || ['Link non valido','Non è stato possibile aprire il contratto.'];
+  blocca(t,p);
+}
+
+function blocca(titolo,testo){
+  document.getElementById('caricamento').style.display='none';
+  document.getElementById('app').style.display='none';
+  document.getElementById('bloccato').style.display='block';
+  document.getElementById('bloccato-t').textContent = titolo;
+  document.getElementById('bloccato-p').textContent = testo;
+}
+
+/* ── navigazione ───────────────────────────────────────────────── */
+
+function vai(n){
+  if(n>stato.passo && !convalida(stato.passo)) return;
+  if(n>stato.passo || n<stato.passo) salva();
+  stato.passo = n;
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('viva'));
+  document.getElementById('s'+n).classList.add('viva');
+  disegnaAvanzamento();
+  if(n===4) riempiRiepilogo();
+  if(n===5) ridimensionaFirme();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function disegnaAvanzamento(){
+  const a = document.getElementById('avanz');
+  a.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const t=document.createElement('div');
+    t.className='tacca'+(i<stato.passo?' fatto':i===stato.passo?' ora':'');
+    a.appendChild(t);
+  }
+  document.getElementById('passo-eti').textContent =
+    stato.passo<=5 ? `Passo ${stato.passo} di 5 · ${ETICHETTE[stato.passo-1]}` : '';
+}
+
+/* ── campi ─────────────────────────────────────────────────────── */
+
+const CAMPI_M = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','iban','pec','telefono','tipoSoggetto'];
+const CAMPI_I = ['indirizzo','piano','interno','foglio','particella','subalterno','categoria','cin'];
+
+function riempiCampi(p){
+  CAMPI_M.forEach(k=>{ const e=document.getElementById(k); if(e&&p.mandante&&p.mandante[k]) e.value=p.mandante[k]; });
+  CAMPI_I.forEach(k=>{ const e=document.getElementById(k); if(e&&p.immobile&&p.immobile[k]) e.value=p.immobile[k]; });
+  Object.entries(p.clausole1341||{}).forEach(([k,v])=>{
+    const c=document.querySelector(`[data-clausola="${k}"]`);
+    if(c&&v){c.checked=true;c.closest('.clausola').classList.add('presa');}
+  });
+  aggiornaTipoSoggetto();
+}
+
+function raccogli(){
+  const m={},i={};
+  CAMPI_M.forEach(k=>{const e=document.getElementById(k); if(e) m[k]=e.value.trim();});
+  CAMPI_I.forEach(k=>{const e=document.getElementById(k); if(e) i[k]=e.value.trim();});
+  const c={};
+  document.querySelectorAll('[data-clausola]').forEach(e=>{c[e.dataset.clausola]=e.checked;});
+  return {mandante:m, immobile:i, clausole1341:c};
+}
+
+function convalida(passo){
+  let obbligatori=[];
+  if(passo===1) obbligatori=['nomeCognome','residenza','cfPiva'];
+  if(passo===2) obbligatori=['indirizzo'];
+  let primo=null;
+  obbligatori.forEach(k=>{
+    const e=document.getElementById(k);
+    if(!e.value.trim()){ e.classList.add('sbagliato'); if(!primo) primo=e; }
+    else e.classList.remove('sbagliato');
+  });
+  if(primo){ primo.scrollIntoView({block:'center',behavior:'smooth'}); primo.focus(); return false; }
+  return true;
+}
+
+/* ── salvataggio progressivo ───────────────────────────────────── */
+
+let timerSalva=null;
+function salvaFraPoco(){ clearTimeout(timerSalva); timerSalva=setTimeout(salva,1200); }
+
+async function salva(){
+  try{
+    const r = await fetch(API,{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(raccogli())});
+    const d = await r.json();
+    if(d.ok){
+      mostraToast('Salvato');
+      if(d.cfValido===false) segnalaCF(false);
+      else if(d.cfValido===true) segnalaCF(true);
+    }
+  }catch(e){ /* offline: i dati restano nei campi, si riprova al passo dopo */ }
+}
+
+function segnalaCF(valido){
+  const a=document.getElementById('cf-aiuto');
+  a.className='aiuto '+(valido?'buono':'attenzione');
+  a.textContent = valido ? 'Codice fiscale corretto'
+    : 'Il codice fiscale non supera il controllo. Verifichi — può comunque proseguire.';
+}
+
+function mostraToast(t){
+  const e=document.getElementById('toast');
+  e.textContent=t; e.classList.add('mostra');
+  setTimeout(()=>e.classList.remove('mostra'),1500);
+}
+
+document.addEventListener('input',ev=>{
+  if(ev.target.matches('input,select,textarea')) salvaFraPoco();
+});
+
+function aggiornaTipoSoggetto(){
+  const azienda = document.getElementById('tipoSoggetto').value==='azienda';
+  document.getElementById('et-nome').innerHTML =
+    (azienda?'Ragione sociale':'Nome e cognome')+' <i>*</i>';
+  document.getElementById('et-res').innerHTML =
+    (azienda?'Sede legale':'Residenza completa')+' <i>*</i>';
+  document.getElementById('et-cf').innerHTML =
+    (azienda?'Partita IVA':'Codice fiscale')+' <i>*</i>';
+  document.getElementById('blocco-nascita').style.display = azienda?'none':'grid';
+}
+document.getElementById('tipoSoggetto').addEventListener('change',aggiornaTipoSoggetto);
+
+/* ── documenti ─────────────────────────────────────────────────── */
+
+function creaDocumenti(){
+  const c=document.getElementById('documenti');
+  const gia=(stato.pratica.allegati||[]).map(a=>a.tipo);
+  c.innerHTML = DOCUMENTI.map(d=>`
+    <div class="doc${gia.includes(d.tipo)?' caricato':''}" id="doc-${d.tipo}">
+      <div class="segno"></div>
+      <div class="doc-testo"><b>${d.nome}</b><small id="st-${d.tipo}">${
+        gia.includes(d.tipo)?'Caricato':d.desc}</small></div>
+      <label class="scegli">${gia.includes(d.tipo)?'Sostituisci':'Scegli'}
+        <input type="file" accept="image/*,application/pdf" data-tipo="${d.tipo}">
+      </label>
+    </div>`).join('');
+  c.querySelectorAll('input[type=file]').forEach(i=>
+    i.addEventListener('change',ev=>caricaFile(ev.target)));
+}
+
+async function caricaFile(input){
+  const file=input.files[0]; if(!file) return;
+  const tipo=input.dataset.tipo;
+  const st=document.getElementById('st-'+tipo);
+  st.textContent='Preparazione…';
+
+  try{
+    // Le foto da telefono pesano diversi MB: si ridimensionano nel browser
+    // prima dell'invio, altrimenti il base64 gonfia il payload del 33%.
+    const dati = file.type.startsWith('image/')
+      ? await comprimi(file)
+      : await leggiBase64(file);
+
+    st.textContent='Invio…';
+    const r=await fetch(API+'/allegato',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tipo,nomeFile:file.name,
+        contentType:file.type.startsWith('image/')?'image/jpeg':file.type, dataBase64:dati})});
+    const d=await r.json();
+
+    if(d.ok){
+      document.getElementById('doc-'+tipo).classList.add('caricato');
+      st.textContent='Caricato · '+Math.round(d.bytes/1024)+' KB';
+      input.closest('label').firstChild.textContent='Sostituisci ';
+      mostraToast('Documento caricato');
+    }else{
+      st.textContent = d.error==='file_troppo_grande'
+        ? 'File troppo grande, provi con una foto' : 'Errore, riprovi';
+    }
+  }catch(e){ st.textContent='Errore nel caricamento, riprovi'; }
+}
+
+function comprimi(file,latoMax=2000,qualita=.82){
+  return new Promise((ris,rif)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let {width:w,height:h}=img;
+      if(Math.max(w,h)>latoMax){const s=latoMax/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s);}
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      ris(cv.toDataURL('image/jpeg',qualita).split(',')[1]);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url); rif(new Error('immagine illeggibile'));};
+    img.src=url;
+  });
+}
+
+function leggiBase64(file){
+  return new Promise((ris,rif)=>{
+    const l=new FileReader();
+    l.onload=()=>ris(String(l.result).split(',')[1]);
+    l.onerror=()=>rif(new Error('lettura fallita'));
+    l.readAsDataURL(file);
+  });
+}
+
+/* ── riepilogo e anteprima ─────────────────────────────────────── */
+
+function riempiRiepilogo(){
+  const d=raccogli();
+  const righe=[
+    ['Intestatario', d.mandante.nomeCognome],
+    ['Codice fiscale / P.IVA', d.mandante.cfPiva],
+    ['Immobile', d.immobile.indirizzo],
+    ['Commissione di gestione', stato.pratica.condizioni.commissione],
+  ];
+  if(stato.pratica.condizioni.servizi11bis)
+    righe.push(['Verde e piscina', stato.pratica.condizioni.commissioneMaggiorata]);
+  document.getElementById('riepilogo').innerHTML = righe
+    .map(([k,v])=>`<div class="riga"><b>${k}</b><span>${v||'—'}</span></div>`).join('');
+}
+
+async function apriAnteprima(){
+  await salva();
+  // Su iOS un PDF dentro un iframe è inaffidabile: si apre in una scheda nuova.
+  window.open(API+'/anteprima','_blank');
+  stato.letto=true;
+  document.getElementById('btn-vai-firma').disabled=false;
+  const s=document.getElementById('stato-lettura');
+  s.className='aiuto buono';
+  s.textContent='Contratto aperto. Se non lo vede, controlli il blocco dei popup.';
+}
+
+/* ── clausole ──────────────────────────────────────────────────── */
+
+function creaClausole(elenco){
+  document.getElementById('clausole').innerHTML = elenco.map(c=>`
+    <label class="clausola">
+      <input type="checkbox" data-clausola="${c.key}">
+      <span>${c.label}</span>
+    </label>`).join('');
+  document.querySelectorAll('[data-clausola]').forEach(i=>
+    i.addEventListener('change',ev=>{
+      ev.target.closest('.clausola').classList.toggle('presa',ev.target.checked);
+      salvaFraPoco();
+    }));
+}
+
+/* ── firme ─────────────────────────────────────────────────────── */
+
+const tele={};
+
+function preparaCanvas(){
+  [['contratto','box-c'],['clausole','box-l']].forEach(([nome,box])=>{
+    const cv=document.getElementById('firma-'+nome);
+    tele[nome]={cv, box:document.getElementById(box), disegnato:false, ctx:null, larghezza:0};
+    dimensiona(nome);
+    collega(nome);
+  });
+  // Il ridimensionamento azzera il canvas: si riparte da bianco e lo si dice.
+  window.addEventListener('resize',()=>{
+    if(stato.passo===5) ridimensionaFirme();
+  });
+}
+
+/**
+ * I canvas vivono in una section nascosta finché non si arriva al passo 5:
+ * lì getBoundingClientRect() vale 0 e il canvas resterebbe largo zero.
+ * Si dimensionano quando la sezione diventa visibile, e solo se la larghezza
+ * e' cambiata davvero — ridimensionare azzera il disegno.
+ */
+function ridimensionaFirme(){
+  ['contratto','clausole'].forEach(n=>{
+    const t=tele[n]; if(!t) return;
+    const largh=Math.round(t.cv.getBoundingClientRect().width);
+    if(largh>0 && largh!==t.larghezza){
+      t.larghezza=largh;
+      dimensiona(n);
+      pulisci(n);
+    }
+  });
+}
+
+function dimensiona(nome){
+  const t=tele[nome], r=t.cv.getBoundingClientRect(), d=window.devicePixelRatio||1;
+  t.cv.width=Math.round(r.width*d);
+  t.cv.height=Math.round(r.height*d);
+  const c=t.cv.getContext('2d');
+  c.scale(d,d);
+  c.lineWidth=2.4; c.lineCap='round'; c.lineJoin='round'; c.strokeStyle='#170046';
+  t.ctx=c;
+}
+
+function collega(nome){
+  const t=tele[nome], cv=t.cv;
+  let giu=false, px=0, py=0;
+
+  const punto=ev=>{
+    const r=cv.getBoundingClientRect();
+    const s=ev.touches?ev.touches[0]:ev;
+    return {x:s.clientX-r.left, y:s.clientY-r.top};
+  };
+  const inizio=ev=>{
+    // Senza preventDefault iOS fa scorrere la pagina invece di far firmare.
+    ev.preventDefault();
+    giu=true; const p=punto(ev); px=p.x; py=p.y;
+    t.ctx.beginPath(); t.ctx.moveTo(px,py); t.ctx.lineTo(px+.1,py+.1); t.ctx.stroke();
+    t.disegnato=true; t.box.classList.add('piena');
+  };
+  const muovi=ev=>{
+    if(!giu) return; ev.preventDefault();
+    const p=punto(ev);
+    t.ctx.beginPath(); t.ctx.moveTo(px,py); t.ctx.lineTo(p.x,p.y); t.ctx.stroke();
+    px=p.x; py=p.y;
+  };
+  const fine=()=>{giu=false;};
+
+  cv.addEventListener('touchstart',inizio,{passive:false});
+  cv.addEventListener('touchmove',muovi,{passive:false});
+  cv.addEventListener('touchend',fine);
+  cv.addEventListener('mousedown',inizio);
+  cv.addEventListener('mousemove',muovi);
+  window.addEventListener('mouseup',fine);
+}
+
+function pulisci(nome){
+  const t=tele[nome];
+  t.ctx.clearRect(0,0,t.cv.width,t.cv.height);
+  t.disegnato=false; t.box.classList.remove('piena');
+}
+
+/* ── firma finale ──────────────────────────────────────────────── */
+
+async function firma(){
+  if(stato.inCorso) return;
+  const err=document.getElementById('errore-firma');
+  const mostraErrore=t=>{err.style.display='block';err.innerHTML=t;
+    err.scrollIntoView({block:'center',behavior:'smooth'});};
+  err.style.display='none';
+
+  const mancanti=[...document.querySelectorAll('[data-clausola]')].filter(i=>!i.checked);
+  if(mancanti.length) return mostraErrore(
+    `<b>Mancano ${mancanti.length} approvazioni</b>Deve spuntare tutte le clausole elencate sopra.`);
+  if(!tele.contratto.disegnato) return mostraErrore('<b>Manca la firma del contratto</b>Firmi nel primo riquadro.');
+  if(!tele.clausole.disegnato) return mostraErrore('<b>Manca la seconda firma</b>Firmi anche nel riquadro delle clausole.');
+
+  const b=document.getElementById('btn-firma');
+  stato.inCorso=true; b.disabled=true; b.textContent='Firma in corso…';
+
+  try{
+    await salva();
+    const c={};
+    document.querySelectorAll('[data-clausola]').forEach(e=>{c[e.dataset.clausola]=e.checked;});
+    const r=await fetch(API+'/firma',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        firmaContratto:tele.contratto.cv.toDataURL('image/png'),
+        firmaClausole:tele.clausole.cv.toDataURL('image/png'),
+        clausole1341:c,
+        luogoFirma:document.getElementById('luogoFirma').value.trim(),
+      })});
+    const d=await r.json();
+
+    if(d.ok){
+      document.getElementById('fine-rif').textContent=d.riferimento;
+      document.getElementById('fine-data').textContent=new Date(d.firmatoIl).toLocaleString('it-IT');
+      document.getElementById('fine-hash').textContent=d.sha256;
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('viva'));
+      document.getElementById('s6').classList.add('viva');
+      document.getElementById('avanz').style.display='none';
+      document.getElementById('passo-eti').style.display='none';
+      window.scrollTo({top:0});
+      return;
+    }
+
+    if(d.error==='gia_firmata')
+      return blocca('Contratto già firmato','Risulta già firmato. Controlli la sua email.');
+    if(d.error==='dati_mancanti')
+      return mostraErrore(`<b>Dati incompleti</b>Torni indietro e completi: ${d.campi.join(', ')}.`);
+    if(d.error==='clausole_non_approvate')
+      return mostraErrore('<b>Clausole non approvate</b>Deve spuntarle tutte.');
+    mostraErrore('<b>Non è stato possibile firmare</b>'+(d.error||'Riprovi fra poco.'));
+  }catch(e){
+    mostraErrore('<b>Errore di collegamento</b>Controlli la connessione e riprovi. Nulla è andato perso.');
+  }finally{
+    stato.inCorso=false;
+    b.disabled=false; b.textContent='Firma il contratto';
+  }
+}
+
+avvia();
+</script>
+</body>
+</html>
