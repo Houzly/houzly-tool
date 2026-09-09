@@ -55,6 +55,16 @@ function hashToken(token) {
 async function ensureIndexes(getDb) {
   const db = await getDb();
   const col = db.collection(COL_CASES);
+
+  // Un indice sparse salta i documenti in cui il campo MANCA, non quelli in cui
+  // vale null: due pratiche con tokenHash:null violerebbero l'unicità. Le
+  // pratiche chiuse rimuovono il campo (unset); qui si sistemano quelle create
+  // prima della correzione. L'operazione è idempotente.
+  const bonifica = await col.updateMany({ tokenHash: null }, { $unset: { tokenHash: '' } });
+  if (bonifica.modifiedCount) {
+    console.log(`[contracts] bonificate ${bonifica.modifiedCount} pratiche con tokenHash null`);
+  }
+
   await col.createIndex({ tokenHash: 1 }, { unique: true, sparse: true });
   await col.createIndex({ riferimento: 1 }, { unique: true });
   await col.createIndex({ stato: 1, createdAt: -1 });
