@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const PdfPrinter = require('pdfmake');
+const { FIRMA_MANDATARIA } = require('../assets/firma-mandataria');
 
 const INDIGO = '#170046';
 const ORO = '#C8A55B';
@@ -488,8 +489,9 @@ function bloccoFirma(etichetta, firma, caso, mandataria = false) {
 
   if (firma && firma.dataUrl) {
     stack.push({ image: firma.dataUrl, fit: [170, 48] });
-  } else if (mandataria && caso.firmaMandataria) {
-    stack.push({ image: caso.firmaMandataria, fit: [170, 48] });
+  } else if (mandataria) {
+    // Timbro e firma di Houzly: sempre presente, salvo override esplicito.
+    stack.push({ image: caso.firmaMandataria || FIRMA_MANDATARIA, fit: [205, 105], margin: [0, -12, 0, -14] });
   } else {
     stack.push({ text: '', margin: [0, 22, 0, 0] });
   }
@@ -498,6 +500,10 @@ function bloccoFirma(etichetta, firma, caso, mandataria = false) {
     canvas: [{ type: 'line', x1: 0, y1: 0, x2: 190, y2: 0, lineWidth: 0.7, lineColor: '#999999' }],
     margin: [0, 2, 0, 3],
   });
+
+  if (mandataria) {
+    stack.push({ text: 'Timbro e firma della Mandataria', fontSize: 7.5, color: GRIGIO });
+  }
 
   if (firma && firma.ts) {
     stack.push({
