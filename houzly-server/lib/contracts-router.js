@@ -22,9 +22,20 @@ const MAX_ALLEGATO_BYTE = 8 * 1024 * 1024;
 
 const TIPI_ALLEGATO = ['visura', 'planimetria', 'conformita', 'documento', 'altro'];
 
+/**
+ * Allegati senza i quali non si firma.
+ * documento → identifica il firmatario e sostiene la volontà negoziale
+ * visura    → verifica titolarità e dati catastali dichiarati
+ */
+const ALLEGATI_OBBLIGATORI = ['documento', 'visura'];
+
+const CAMPI_COMPROPRIETARIO = [
+  'nomeCognome', 'luogoNascita', 'dataNascita', 'residenza', 'cfPiva', 'quota', 'iban',
+];
+
 const CAMPI_MANDANTE = [
   'nomeCognome', 'luogoNascita', 'dataNascita', 'residenza', 'cfPiva',
-  'iban', 'pec', 'telefono', 'tipoSoggetto',
+  'iban', 'pec', 'telefono', 'tipoSoggetto', 'quota',
 ];
 const CAMPI_IMMOBILE = [
   'indirizzo', 'piano', 'interno', 'foglio', 'particella', 'subalterno',
@@ -49,6 +60,9 @@ function vistaPubblica(caso) {
     nomeStruttura: caso.nomeStruttura || null,
     mandante: caso.mandante || {},
     immobile: caso.immobile || {},
+    comproprietari: caso.comproprietari || [],
+    pagamento: caso.pagamento || { modalita: 'unico' },
+    allegatiObbligatori: ALLEGATI_OBBLIGATORI,
     allegati: (caso.allegati || []).map((a) => ({
       tipo: a.tipo, nomeFile: a.nomeFile, uploadedAt: a.uploadedAt,
     })),
@@ -109,6 +123,8 @@ function createContractsAdminRouter(deps) {
         },
         mandante: filtra(mandante, CAMPI_MANDANTE),
         immobile: filtra(immobile, CAMPI_IMMOBILE),
+        comproprietari: [],
+        pagamento: { modalita: 'unico' },
         allegati: [],
         clausole1341: {},
         firme: {},
@@ -310,6 +326,17 @@ function createContractsPublicRouter(deps) {
       for (const [k, v] of Object.entries(mandante)) set[`mandante.${k}`] = v;
       for (const [k, v] of Object.entries(immobile)) set[`immobile.${k}`] = v;
 
+      // I comproprietari si salvano in blocco: sono un elenco, non campi sparsi.
+      if (Array.isArray(req.body?.comproprietari)) {
+        set.comproprietari = req.body.comproprietari
+          .slice(0, 9)
+          .map((c) => filtra(c, CAMPI_COMPROPRIETARIO))
+          .filter((c) => c.nomeCognome || c.cfPiva);
+      }
+      if (req.body?.pagamento?.modalita === 'unico' || req.body?.pagamento?.modalita === 'suddiviso') {
+        set['pagamento.modalita'] = req.body.pagamento.modalita;
+      }
+
       if (req.body?.clausole1341 && typeof req.body.clausole1341 === 'object') {
         for (const c of elencoClausole(caso)) {
           if (req.body.clausole1341[c.key] !== undefined) {
@@ -432,10 +459,36 @@ function createContractsPublicRouter(deps) {
         return res.status(400).json({ ok: false, error: 'clausole_non_approvate', mancanti });
       }
 
-      const obbligatori = ['nomeCognome', 'residenza', 'cfPiva'];
+      const obbligatori = ['nomeCognome', 'residenza', 'cfPiva', 'iban'];
       const mancantiAnagrafica = obbligatori.filter((k) => !caso.mandante?.[k]);
       if (mancantiAnagrafica.length) {
         return res.status(400).json({ ok: false, error: 'dati_mancanti', campi: mancantiAnagrafica });
+      }
+
+      // Documento d'identità e visura sono condizione di firma (art. 5.1).
+      const tipiCaricati = (caso.allegati || []).map((a) => a.tipo);
+      const allegatiMancanti = ALLEGATI_OBBLIGATORI.filter((t) => !tipiCaricati.includes(t));
+      if (allegatiMancanti.length) {
+        return res.status(400).json({ ok: false, error: 'allegati_mancanti', tipi: allegatiMancanti });
+      }
+
+      // Comproprietà: ogni titolare deve essere identificato e le quote devono
+      // chiudere a 100, altrimenti l'art. 9 ripartirebbe su una base sbagliata.
+      const comprop = caso.comproprietari || [];
+      if (comprop.length) {
+        const incompleti = comprop.filter((c) => !c.nomeCognome || !c.cfPiva || !c.quota);
+        if (incompleti.length) {
+          return res.status(400).json({ ok: false, error: 'comproprietari_incompleti' });
+        }
+        const suddiviso = caso.pagamento?.modalita === 'suddiviso';
+        if (suddiviso && comprop.some((c) => !c.iban)) {
+          return res.status(400).json({ ok: false, error: 'iban_comproprietari_mancanti' });
+        }
+        const somma = [caso.mandante, ...comprop]
+          .reduce((t, p) => t + (parseFloat(String(p.quota || 0).replace(',', '.')) || 0), 0);
+        if (Math.abs(somma - 100) > 0.5) {
+          return res.status(400).json({ ok: false, error: 'quote_non_valide', somma });
+        }
       }
 
       const ora = new Date().toISOString();
