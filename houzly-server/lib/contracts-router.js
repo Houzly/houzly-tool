@@ -20,14 +20,20 @@ const GIORNI_VALIDITA = 30;
 /** Tetto per singolo allegato (byte decodificati). */
 const MAX_ALLEGATO_BYTE = 8 * 1024 * 1024;
 
-const TIPI_ALLEGATO = ['visura', 'planimetria', 'conformita', 'documento', 'altro'];
+// 'documento' resta ammesso per le pratiche aperte prima della v1.8, che
+// avevano un unico caricamento invece di fronte e retro.
+const TIPI_ALLEGATO = [
+  'visura', 'planimetria', 'conformita',
+  'documento', 'documento_fronte', 'documento_retro', 'altro',
+];
 
 /**
  * Allegati senza i quali non si firma.
- * documento → identifica il firmatario e sostiene la volontà negoziale
- * visura    → verifica titolarità e dati catastali dichiarati
+ * documento fronte/retro → identifica il firmatario, con scadenza e rilascio
+ *                          leggibili sul retro
+ * visura                 → verifica titolarità e dati catastali dichiarati
  */
-const ALLEGATI_OBBLIGATORI = ['documento', 'visura'];
+const ALLEGATI_OBBLIGATORI = ['documento_fronte', 'documento_retro', 'visura'];
 
 const CAMPI_COMPROPRIETARIO = [
   'nomeCognome', 'luogoNascita', 'dataNascita', 'residenza', 'cfPiva', 'quota', 'iban',
@@ -244,7 +250,8 @@ function createContractsAdminRouter(deps) {
       await col.updateOne(
         { riferimento: caso.riferimento },
         {
-          $set: { stato: 'annullata', tokenHash: null, updatedAt: new Date().toISOString() },
+          $unset: { tokenHash: '' },
+          $set: { stato: 'annullata', updatedAt: new Date().toISOString() },
           $push: { audit: store.eventoAudit(`Pratica annullata${req.body?.motivo ? ': ' + req.body.motivo : ''}`, null) },
         }
       );
@@ -522,9 +529,11 @@ function createContractsPublicRouter(deps) {
       const esito = await col.updateOne(
         { _id: caso._id, stato: { $ne: 'firmata' } },
         {
+          // $unset e non null: con null l'indice unique+sparse considererebbe
+          // uguali fra loro tutte le pratiche chiuse e rifiuterebbe la seconda.
+          $unset: { tokenHash: '' },       // il link non è più riutilizzabile
           $set: {
             stato: 'firmata',
-            tokenHash: null,               // il link non è più riutilizzabile
             clausole1341: spunte,
             luogoFirma: casoFirmato.luogoFirma,
             dataFirma: casoFirmato.dataFirma,
