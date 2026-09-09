@@ -609,8 +609,10 @@ function riempiRiepilogo(){
     ['Immobile', d.immobile.indirizzo],
     ['Commissione di gestione', stato.pratica.condizioni.commissione],
   ];
-  if(stato.pratica.condizioni.servizi11bis)
-    righe.push(['Verde e piscina', stato.pratica.condizioni.commissioneMaggiorata]);
+  const acc=[];
+  if(stato.pratica.condizioni.verde) acc.push('gestione del verde');
+  if(stato.pratica.condizioni.piscina) acc.push('gestione della piscina');
+  if(acc.length) righe.push(['Servizi inclusi', acc.join(' e ')]);
   document.getElementById('riepilogo').innerHTML = righe
     .map(([k,v])=>`<div class="riga"><b>${k}</b><span>${v||'—'}</span></div>`).join('');
 }
