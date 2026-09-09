@@ -77,6 +77,26 @@ function sostituisci(testo, dati) {
   });
 }
 
+/**
+ * Costruisce il blocco "E" delle parti: un solo capoverso se il proprietario è
+ * unico, altrimenti intro + una voce per ciascun comproprietario + chiusura.
+ * In caso di accredito suddiviso, a ogni voce si aggiunge il suo IBAN.
+ */
+function bloccoParti(template, caso, condivisa, suddiviso) {
+  if (!condivisa) return [sostituisci(template.mandante, { mandante: caso.mandante || {} })];
+  const m = template.mandanteMultiplo;
+  if (!m) return [sostituisci(template.mandante, { mandante: caso.mandante || {} })];
+
+  const parti = [caso.mandante || {}, ...(caso.comproprietari || [])];
+  const voci = parti.map((p) => {
+    let t = sostituisci(m.voce, p);
+    if (suddiviso && p.iban) t = t.replace(/;$/, `, IBAN **${p.iban}**;`);
+    return t;
+  });
+  // L'ultima voce chiude con il punto e virgola sostituito dalla chiusura.
+  return [m.intro, ...voci, m.chiusura];
+}
+
 /** Formula il complemento oggetto dell'art. 11-bis in base ai servizi scelti. */
 function oggettoServizi(verde, piscina) {
   if (verde && piscina) return 'delle aree verdi pertinenziali e della piscina';
@@ -95,6 +115,18 @@ function risolviTemplate(template, caso) {
   const piscina = !!cond.piscina;
   const accessoriAttivi = verde || piscina;
 
+  const comproprietari = caso.comproprietari || [];
+  const condivisa = comproprietari.length > 0;
+  const suddiviso = (caso.pagamento || {}).modalita === 'suddiviso';
+
+  // Flag usati dai `soloSe` di premesse, articoli e commi.
+  const flag = {
+    proprietaEsclusiva: !condivisa,
+    proprietaCondivisa: condivisa,
+    pagamentoUnico: condivisa && !suddiviso,
+    pagamentoSuddiviso: condivisa && suddiviso,
+  };
+
   const dati = {
     mandante: caso.mandante || {},
     immobile: caso.immobile || {},
@@ -104,6 +136,7 @@ function risolviTemplate(template, caso) {
   };
 
   const mappaTesto = (t) => (typeof t === 'string' ? sostituisci(t, dati) : t);
+  const visibile = (x) => !x.soloSe || flag[x.soloSe] === true;
 
   // L'art. 11-bis ha due varianti che si escludono a vicenda: quella con i
   // servizi attivati e quella che dichiara l'onere in capo al Mandante.
@@ -111,12 +144,12 @@ function risolviTemplate(template, caso) {
     .filter((a) => {
       if (a.id === 'art11bis') return accessoriAttivi;
       if (a.id === 'art11bis_escluso') return !accessoriAttivi;
-      return true;
+      return visibile(a);
     })
     .map((a) => ({
       ...a,
       titolo: mappaTesto(a.titolo),
-      commi: a.commi.map((c) => {
+      commi: a.commi.filter(visibile).map((c) => {
         // Le voci condizionali compaiono solo per i servizi effettivamente scelti.
         const daCondizionale = (c.elencoCondizionale || [])
           .filter((v) => cond[v.chiave] === true)
@@ -146,7 +179,10 @@ function risolviTemplate(template, caso) {
     preambolo: template.preambolo,
     mandataria: template.mandataria,
     mandante: mappaTesto(template.mandante),
-    premesse: template.premesse.map((p) => ({ ...p, testo: mappaTesto(p.testo) })),
+    mandanteBlocchi: bloccoParti(template, caso, condivisa, suddiviso),
+    premesse: template.premesse
+      .filter(visibile)
+      .map((p) => ({ ...p, testo: mappaTesto(p.testo) })),
     articoli,
     clausoleVessatorie: clausole,
     glossario: template.glossario,
@@ -227,13 +263,15 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
     { text: 'TRA', style: 'centrato' },
     paragrafo(snapshot.mandataria),
     { text: 'E', style: 'centrato' },
-    paragrafo(snapshot.mandante),
+    // Gli snapshot vecchi hanno solo la stringa singola: si continua a leggerli.
+    ...(snapshot.mandanteBlocchi || [snapshot.mandante]).map((b) => paragrafo(b)),
     { text: 'PREMESSO CHE', style: 'centrato' }
   );
 
   snapshot.premesse.forEach((p) => {
     content.push({
-      text: [{ text: `${p.lettera}) `, bold: true, color: INDIGO }, ...rich(p.testo)],
+      // noWrap sulla lettera: senza, "a-bis)" va a capo sul trattino.
+      text: [{ text: `${p.lettera}) `, bold: true, color: INDIGO, noWrap: true }, ...rich(p.testo)],
       alignment: 'justify',
       margin: [14, 0, 0, 5],
     });
