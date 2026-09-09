@@ -56,8 +56,8 @@ function vistaPubblica(caso) {
     clausoleRichieste: elencoClausole(caso),
     condizioni: {
       commissione: caso.condizioni?.commissione,
-      commissioneMaggiorata: caso.condizioni?.commissioneMaggiorata,
-      servizi11bis: !!caso.condizioni?.servizi11bis,
+      verde: !!caso.condizioni?.verde,
+      piscina: !!caso.condizioni?.piscina,
     },
     firmato: caso.stato === 'firmata',
     scadenzaAt: caso.scadenzaAt,
@@ -67,7 +67,7 @@ function vistaPubblica(caso) {
 function elencoClausole(caso) {
   const t = getTemplate(caso.templateVersione || VERSIONE_ATTIVA);
   return t.clausoleVessatorie.elenco
-    .filter((c) => c.key !== 'art11bis' || caso.condizioni?.servizi11bis)
+    .filter((c) => c.key !== 'art11bis' || caso.condizioni?.verde || caso.condizioni?.piscina)
     .map((c) => ({ key: c.key, label: c.label }));
 }
 
@@ -100,10 +100,12 @@ function createContractsAdminRouter(deps) {
         templateVersione: VERSIONE_ATTIVA,
         tokenHash,
         scadenzaAt: new Date(Date.now() + GIORNI_VALIDITA * 86400000).toISOString(),
+        // La commissione è unica e totale: comprende già gli eventuali
+        // servizi accessori attivati qui sotto.
         condizioni: {
           commissione: condizioni?.commissione || template.defaults.commissione,
-          commissioneMaggiorata: condizioni?.commissioneMaggiorata || template.defaults.commissioneMaggiorata,
-          servizi11bis: !!condizioni?.servizi11bis,
+          verde: !!condizioni?.verde,
+          piscina: !!condizioni?.piscina,
         },
         mandante: filtra(mandante, CAMPI_MANDANTE),
         immobile: filtra(immobile, CAMPI_IMMOBILE),
