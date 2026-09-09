@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Contratti · Houzly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f4fa; --surface:#fff; --border:rgba(23,0,70,0.10);
+  --text:#170046; --text-mid:rgba(23,0,70,0.62); --text-dim:rgba(23,0,70,0.40);
+  --navy:#170046; --accent:#47a9e4; --clay:#4acbef;
+  --green:#1a9a5a; --orange:#e0921a; --red:#d63a4a;
+  --radius:16px; --radius-sm:10px;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,20px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Jost','DM Sans',sans-serif;font-size:15px;line-height:1.5}
+.hidden{display:none!important}
+
+/* ── login PIN ── */
+#auth-screen{position:fixed;inset:0;background:var(--navy);color:#fff;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.auth-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;letter-spacing:.02em}
+.auth-sub{opacity:.62;font-size:14px;margin:6px 0 30px}
+.pin-dots{display:flex;gap:14px;margin-bottom:34px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);
+  transition:all .2s}
+.pin-dot.filled{background:var(--clay);border-color:var(--clay);box-shadow:0 0 16px rgba(74,203,239,.9)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,74px);gap:15px}
+.pin-btn{width:74px;height:74px;border-radius:50%;border:1px solid rgba(255,255,255,.22);
+  background:rgba(255,255,255,.07);color:#fff;font-family:'Jost',sans-serif;font-size:26px;
+  font-weight:400;cursor:pointer;transition:transform .1s,background .15s}
+.pin-btn:active{background:rgba(74,135,218,.4);transform:scale(.93)}
+.pin-btn.del{font-size:18px;color:rgba(255,255,255,.7)}
+.pin-btn.zero{grid-column:2}
+#auth-err{height:22px;margin-top:18px;color:#ff9d9d;font-size:14px}
+
+/* ── header ── */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:calc(var(--safe-top) + 14px) 18px 14px;position:sticky;top:0;z-index:20}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  max-width:900px;margin:0 auto}
+.header-sub{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:17px;cursor:pointer}
+.logout-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-mid);
+  border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+
+main{max-width:900px;margin:0 auto;padding:18px 18px calc(var(--safe-bottom) + 40px)}
+
+/* ── filtri ── */
+.pills{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;
+  -webkit-overflow-scrolling:touch}
+.pill{white-space:nowrap;border:1px solid var(--border);background:var(--surface);
+  color:var(--text-mid);border-radius:20px;padding:8px 15px;font:inherit;font-size:13.5px;cursor:pointer}
+.pill.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── card pratica ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.rif{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600}
+.who{color:var(--text-mid);font-size:13.5px;margin-top:2px;word-break:break-word}
+.stato{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;white-space:nowrap;
+  text-transform:uppercase;letter-spacing:.05em}
+.s-bozza{background:rgba(23,0,70,.07);color:var(--text-mid)}
+.s-inviata{background:rgba(71,169,228,.15);color:#1c6ea3}
+.s-in_compilazione{background:rgba(224,146,26,.15);color:#8a5c05}
+.s-firmata{background:rgba(26,154,90,.14);color:#116b3d}
+.s-annullata{background:rgba(214,58,74,.12);color:#9c2231}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:11px;font-size:12.5px;color:var(--text-dim)}
+.azioni{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;
+  border-top:1px solid var(--border);padding-top:13px}
+.az{border:1px solid var(--border);background:var(--surface);color:var(--text);
+  border-radius:var(--radius-sm);padding:9px 13px;font:inherit;font-size:13px;cursor:pointer}
+.az.forte{background:var(--navy);color:#fff;border-color:var(--navy)}
+.az.rischio{color:var(--red);border-color:rgba(214,58,74,.3)}
+.az:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── form nuova ── */
+.nuovo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;margin-bottom:18px}
+.nuovo h2{font-family:'Cormorant Garamond',serif;font-size:23px;margin:0 0 14px;font-weight:600}
+label{display:block;margin-bottom:13px}
+label>span{display:block;font-size:12.5px;font-weight:500;color:var(--text-mid);margin-bottom:5px}
+input[type=text],input[type=email]{width:100%;padding:12px 13px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);font:inherit;font-size:16px;background:var(--bg);color:var(--text)}
+input:focus{outline:none;border-color:var(--accent)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media(max-width:480px){.duo{grid-template-columns:1fr}}
+.check{display:flex;align-items:center;gap:11px;margin-bottom:15px;cursor:pointer}
+.check input{width:21px;height:21px;accent-color:var(--navy);margin:0}
+.check span{font-size:14px}
+.primario{width:100%;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);
+  padding:14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.primario:disabled{opacity:.5}
+
+.vuoto{text-align:center;padding:50px 20px;color:var(--text-dim)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--navy);
+  color:#fff;padding:11px 20px;border-radius:22px;font-size:13.5px;opacity:0;
+  transition:opacity .3s;pointer-events:none;z-index:60;max-width:88vw;text-align:center}
+.toast.on{opacity:.95}
+.filatore{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--navy);
+  border-radius:50%;animation:gira .8s linear infinite;margin:40px auto}
+@keyframes gira{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-title">Houzly</div>
+  <div class="auth-sub">Inserisci il PIN per accedere</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    <button class="pin-btn zero" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinClear()">✕</button>
+  </div>
+  <div id="auth-err"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="app-header">
+    <div class="header-row">
+      <div class="header-sub">Contratti</div>
+      <div style="display:flex;gap:9px;align-items:center">
+        <button class="icon-btn" onclick="carica()" title="Aggiorna">↻</button>
+        <button class="logout-btn" onclick="esci()">🔒 Esci</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="nuovo">
+      <h2>Nuova pratica</h2>
+      <label><span>Email del proprietario *</span>
+        <input type="email" id="n-email" autocapitalize="none" spellcheck="false"
+          placeholder="proprietario@esempio.it"></label>
+      <label><span>Nome della struttura</span>
+        <input type="text" id="n-struttura" placeholder="es. Villa La Poggetta"></label>
+      <div class="duo">
+        <label><span>Commissione</span>
+          <input type="text" id="n-commissione" value="30% (trenta per cento)"></label>
+        <label><span>Commissione maggiorata (art. 11-bis)</span>
+          <input type="text" id="n-magg" value="35% (trentacinque per cento)"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="n-servizi">
+        <span>Include gestione verde e piscina (art. 11-bis)</span></label>
+      <button class="primario" id="n-btn" onclick="crea()">Crea e invia l'invito</button>
+    </div>
+
+    <div class="pills" id="pills"></div>
+    <div id="elenco"><div class="filatore"></div></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const AUTH_KEY = 'houzly_auth_v2';
+const PIN_KEY  = 'houzly_contratti_pin';   // sessionStorage: si svuota alla chiusura della scheda
+
+const STATI = [
+  ['', 'Tutte'], ['inviata','Inviate'], ['in_compilazione','In compilazione'],
+  ['firmata','Firmate'], ['bozza','Bozze'], ['annullata','Annullate'],
+];
+const ETICHETTE = {bozza:'Bozza', inviata:'Inviata', in_compilazione:'In compilazione',
+  firmata:'Firmata', annullata:'Annullata'};
+
+let filtro = '';
+let pratiche = [];
+
+/* ── login ─────────────────────────────────────────────────────── */
+
+let pinBuffer = '';
+
+function pinPress(d){
+  if(pinBuffer.length >= 10) return;
+  pinBuffer += d; aggiornaPunti();
+  if(pinBuffer.length >= 4) setTimeout(login, 180);
+}
+function pinDel(){ pinBuffer = pinBuffer.slice(0,-1); aggiornaPunti(); }
+function pinClear(){ pinBuffer = ''; aggiornaPunti(); }
+function aggiornaPunti(){
+  for(let i=0;i<4;i++)
+    document.getElementById('d'+i).classList.toggle('filled', i < pinBuffer.length);
+}
+function erroreAuth(m){
+  document.getElementById('auth-err').textContent = m;
+  setTimeout(()=>{document.getElementById('auth-err').textContent='';}, 2200);
+}
+
+async function login(){
+  try{
+    const r = await fetch('/api/auth/login',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin:pinBuffer})});
+    const d = await r.json();
+    if(d.ok){
+      // Il PIN resta in sessionStorage perché /api/contracts è protetto lato server
+      // e richiede l'header X-Admin-PIN a ogni chiamata. Alla chiusura della
+      // scheda sparisce: non finisce in localStorage né in cronologia.
+      sessionStorage.setItem(PIN_KEY, pinBuffer);
+      localStorage.setItem(AUTH_KEY, '1');
+      pinBuffer = ''; aggiornaPunti();
+      entra();
+    }else{
+      erroreAuth('PIN errato'); pinBuffer=''; aggiornaPunti();
+    }
+  }catch(e){ erroreAuth('Errore di connessione'); pinBuffer=''; aggiornaPunti(); }
+}
+
+function entra(){
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  disegnaPills();
+  carica();
+}
+
+function esci(){
+  sessionStorage.removeItem(PIN_KEY);
+  localStorage.removeItem(AUTH_KEY);
+  location.reload();
+}
+
+/* ── chiamate API ──────────────────────────────────────────────── */
+
+async function api(percorso, opzioni = {}){
+  const pin = sessionStorage.getItem(PIN_KEY);
+  const r = await fetch('/api/contracts' + percorso, {
+    ...opzioni,
+    headers: {'Content-Type':'application/json', 'X-Admin-PIN': pin || '', ...(opzioni.headers||{})},
+  });
+  if(r.status === 401){
+    // Sessione persa (scheda riaperta, PIN cambiato): si rientra dal PIN.
+    sessionStorage.removeItem(PIN_KEY);
+    localStorage.removeItem(AUTH_KEY);
+    location.reload();
+    throw new Error('non autorizzato');
+  }
+  return r.json();
+}
+
+/* ── elenco ────────────────────────────────────────────────────── */
+
+function disegnaPills(){
+  document.getElementById('pills').innerHTML = STATI.map(([v,l]) =>
+    `<button class="pill${v===filtro?' on':''}" onclick="setFiltro('${v}')">${l}</button>`).join('');
+}
+function setFiltro(v){ filtro = v; disegnaPills(); disegnaElenco(); }
+
+async function carica(){
+  document.getElementById('elenco').innerHTML = '<div class="filatore"></div>';
+  try{
+    const d = await api('');
+    if(!d.ok) return mostra('Errore: ' + d.error);
+    pratiche = d.pratiche || [];
+    disegnaElenco();
+  }catch(e){ /* il reload è già partito in api() */ }
+}
+
+function disegnaElenco(){
+  const lista = filtro ? pratiche.filter(p => p.stato === filtro) : pratiche;
+  const el = document.getElementById('elenco');
+
+  if(!lista.length){
+    el.innerHTML = '<div class="vuoto">Nessuna pratica' +
+      (filtro ? ' in questo stato' : ' ancora creata') + '.</div>';
+    return;
+  }
+
+  el.innerHTML = lista.map(p => {
+    const nome = (p.mandante && p.mandante.nomeCognome) || p.email;
+    const firmata = p.stato === 'firmata';
+    const chiusa  = firmata || p.stato === 'annullata';
+    const nAll = (p.allegati || []).length;
+
+    const meta = [];
+    if(p.nomeStruttura) meta.push('🏠 ' + esc(p.nomeStruttura));
+    if(p.createdAt) meta.push('creata ' + dataIt(p.createdAt));
+    if(firmata && p.pdfFinale) meta.push('firmata ' + dataIt(p.pdfFinale.generatoIl));
+    if(nAll) meta.push(nAll + (nAll === 1 ? ' allegato' : ' allegati'));
+    if(!chiusa && p.scadenzaAt) meta.push('scade ' + dataIt(p.scadenzaAt));
+
+    return `
+    <div class="card">
+      <div class="card-top">
+        <div style="min-width:0">
+          <div class="rif">${esc(p.riferimento)}</div>
+          <div class="who">${esc(nome)}</div>
+        </div>
+        <div class="stato s-${p.stato}">${ETICHETTE[p.stato] || p.stato}</div>
+      </div>
+      <div class="meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
+      <div class="azioni">
+        ${firmata
+          ? `<button class="az forte" onclick="scaricaPdf('${p.riferimento}')">Scarica il PDF</button>`
+          : chiusa ? ''
+          : `<button class="az forte" onclick="rigenera('${p.riferimento}')">Nuovo link e invio</button>
+             <button class="az rischio" onclick="annulla('${p.riferimento}')">Annulla</button>`}
+        <button class="az" onclick="dettaglio('${p.riferimento}')">Dettagli</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── azioni ────────────────────────────────────────────────────── */
+
+async function crea(){
+  const email = document.getElementById('n-email').value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return mostra('Email non valida');
+
+  const btn = document.getElementById('n-btn');
+  btn.disabled = true; btn.textContent = 'Creazione…';
+
+  try{
+    const d = await api('', {method:'POST', body: JSON.stringify({
+      email,
+      nomeStruttura: document.getElementById('n-struttura').value.trim() || null,
+      condizioni:{
+        commissione: document.getElementById('n-commissione').value.trim(),
+        commissioneMaggiorata: document.getElementById('n-magg').value.trim(),
+        servizi11bis: document.getElementById('n-servizi').checked,
+      },
+    })});
+
+    if(!d.ok) return mostra('Errore: ' + d.error);
+
+    // Il link in chiaro non è più recuperabile dopo questa risposta:
+    // se l'email non è partita, va copiato adesso.
+    if(d.emailInviata){
+      mostra(d.riferimento + ' creata, invito inviato');
+    }else{
+      await copia(d.link);
+      mostra('Creata, ma email NON inviata — link copiato negli appunti');
+    }
+
+    document.getElementById('n-email').value = '';
+    document.getElementById('n-struttura').value = '';
+    document.getElementById('n-servizi').checked = false;
+    carica();
+  }catch(e){ /* reload già partito */ }
+  finally{ btn.disabled = false; btn.textContent = 'Crea e invia l\u2019invito'; }
+}
+
+async function rigenera(rif){
+  if(!confirm('Genera un nuovo link e invia di nuovo l\u2019email?\n\nIl link precedente smetterà di funzionare.')) return;
+  const d = await api('/' + rif + '/rigenera-link', {method:'POST'});
+  if(!d.ok) return mostra('Errore: ' + d.error);
+  if(d.emailInviata) mostra('Nuovo invito inviato');
+  else { await copia(d.link); mostra('Email non inviata — link copiato negli appunti'); }
+  carica();
+}
+
+async function annulla(rif){
+  const motivo = prompt('Annullare la pratica ' + rif + '?\n\nMotivo (facoltativo):');
+  if(motivo === null) return;
+  const d = await api('/' + rif + '/annulla', {method:'POST', body: JSON.stringify({motivo})});
+  if(!d.ok) return mostra('Errore: ' + d.error);
+  mostra('Pratica annullata');
+  carica();
+}
+
+async function scaricaPdf(rif){
+  // Il PDF si scarica con fetch e l'header X-Admin-PIN, non aprendo un link
+  // con ?pin= nella query: quello finirebbe nella cronologia del browser e
+  // nei log di Render. Il blob viene poi aperto in una scheda nuova.
+  mostra('Preparazione del PDF…');
+  try{
+    const pin = sessionStorage.getItem(PIN_KEY) || '';
+    const r = await fetch('/api/contracts/' + rif + '/pdf', {headers:{'X-Admin-PIN':pin}});
+    if(!r.ok) return mostra('PDF non disponibile');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'contratto-' + rif + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  }catch(e){ mostra('Errore nello scaricamento'); }
+}
+
+async function dettaglio(rif){
+  const d = await api('/' + rif);
+  if(!d.ok) return mostra('Errore: ' + d.error);
+  const p = d.pratica;
+  const righe = [];
+  righe.push('Stato: ' + (ETICHETTE[p.stato] || p.stato));
+  righe.push('Email: ' + p.email);
+  if(p.mandante && p.mandante.nomeCognome) righe.push('Intestatario: ' + p.mandante.nomeCognome);
+  if(p.mandante && p.mandante.cfPiva) righe.push('CF/P.IVA: ' + p.mandante.cfPiva);
+  if(p.immobile && p.immobile.indirizzo) righe.push('Immobile: ' + p.immobile.indirizzo);
+  if(p.pdfFinale) righe.push('SHA-256: ' + p.pdfFinale.sha256);
+  righe.push('');
+  righe.push('Cronologia:');
+  (p.audit || []).forEach(a => righe.push('· ' + dataIt(a.ts) + ' — ' + a.evento));
+  alert(righe.join('\n'));
+}
+
+/* ── utilità ───────────────────────────────────────────────────── */
+
+async function copia(testo){
+  try{ await navigator.clipboard.writeText(testo); }
+  catch(e){ prompt('Copi il link a mano:', testo); }
+}
+
+function mostra(t){
+  const e = document.getElementById('toast');
+  e.textContent = t; e.classList.add('on');
+  setTimeout(()=>e.classList.remove('on'), 3200);
+}
+
+function dataIt(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) + ' ' +
+         d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── avvio ─────────────────────────────────────────────────────── */
+
+// Il flag in localStorage non basta: senza il PIN in sessionStorage le
+// chiamate protette fallirebbero, quindi si torna alla schermata del PIN.
+if(localStorage.getItem(AUTH_KEY) === '1' && sessionStorage.getItem(PIN_KEY)) entra();
+</script>
+</body>
+</html>
