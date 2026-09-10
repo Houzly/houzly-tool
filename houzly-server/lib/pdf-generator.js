@@ -16,6 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 const PdfPrinter = require('pdfmake');
 const { FIRMA_MANDATARIA } = require('../assets/firma-mandataria');
+const { LOGO_HEADER, LOGO_COPERTINA } = require('../assets/logo-houzly');
 
 const INDIGO = '#170046';
 const ORO = '#C8A55B';
@@ -236,6 +237,7 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
 
   /* --- Frontespizio --- */
   content.push(
+    { image: LOGO_COPERTINA, width: 250, alignment: 'center', margin: [0, 150, 0, 26] },
     { text: int.occhiello, style: 'occhiello' },
     {
       canvas: [
@@ -398,18 +400,19 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
     defaultStyle: { font: 'Roboto', fontSize: 9.5, lineHeight: 1.25, color: '#1A1A1A' },
 
     header: () => ({
-      margin: [55, 24, 55, 0],
+      margin: [55, 22, 55, 0],
       stack: [
         {
           columns: [
-            { text: 'HOUZLY', bold: true, fontSize: 9, color: INDIGO, width: 'auto' },
+            { image: LOGO_HEADER, width: 74, margin: [0, 1, 0, 0] },
             {
-              text: ' \u00b7 Luxury Property Management',
+              text: int.headerDx,
               fontSize: 8,
               color: GRIGIO,
+              alignment: 'right',
               width: '*',
+              margin: [0, 6, 0, 0],
             },
-            { text: int.headerDx, fontSize: 8, color: GRIGIO, alignment: 'right', width: 'auto' },
           ],
         },
         {
@@ -447,7 +450,7 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
       : undefined,
 
     styles: {
-      occhiello: { fontSize: 10, bold: true, alignment: 'center', color: INDIGO, margin: [0, 200, 0, 0] },
+      occhiello: { fontSize: 10, bold: true, alignment: 'center', color: INDIGO, margin: [0, 0, 0, 0] },
       titoloDoc: { fontSize: 18, bold: true, alignment: 'center', color: INDIGO, margin: [0, 0, 0, 6] },
       sottotitoloDoc: { fontSize: 11, italics: true, alignment: 'center', margin: [0, 0, 0, 16] },
       versione: { fontSize: 9, alignment: 'center', color: GRIGIO },
@@ -491,7 +494,8 @@ function bloccoFirma(etichetta, firma, caso, mandataria = false) {
     stack.push({ image: firma.dataUrl, fit: [170, 48] });
   } else if (mandataria) {
     // Timbro e firma di Houzly: sempre presente, salvo override esplicito.
-    stack.push({ image: caso.firmaMandataria || FIRMA_MANDATARIA, fit: [205, 105], margin: [0, -12, 0, -14] });
+    // Stesso ingombro della firma del Mandante, così i due blocchi restano allineati.
+    stack.push({ image: caso.firmaMandataria || FIRMA_MANDATARIA, fit: [170, 48] });
   } else {
     stack.push({ text: '', margin: [0, 22, 0, 0] });
   }
