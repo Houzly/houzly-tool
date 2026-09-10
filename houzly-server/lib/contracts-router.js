@@ -148,7 +148,7 @@ function createContractsAdminRouter(deps) {
       let inviata = false;
 
       if (inviaSubito !== false) {
-        const esito = await inviaInvito({ resend, email: caso.email, link, caso });
+        const esito = await inviaInvito({ resend, email: caso.email, link, caso, baseUrl: APP_BASE_URL });
         if (esito.success) {
           inviata = true;
           await col.updateOne(
@@ -231,7 +231,7 @@ function createContractsAdminRouter(deps) {
         }
       );
 
-      const esito = await inviaInvito({ resend, email: caso.email, link, caso });
+      const esito = await inviaInvito({ resend, email: caso.email, link, caso, baseUrl: APP_BASE_URL });
       res.json({ ok: true, link, emailInviata: esito.success, erroreEmail: esito.error || null });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -578,7 +578,7 @@ function createContractsPublicRouter(deps) {
 
 const FROM = process.env.RESEND_FROM_CONTRATTI || 'Houzly <contratti@houzly.it>';
 
-async function inviaInvito({ resend, email, link, caso }) {
+async function inviaInvito({ resend, email, link, caso, baseUrl }) {
   const struttura = caso.nomeStruttura ? ` per ${caso.nomeStruttura}` : '';
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;color:#1a1a1a;max-width:560px">
@@ -594,6 +594,11 @@ async function inviaInvito({ resend, email, link, caso }) {
       </p>
       <p style="font-size:13px;color:#666">
         Il link è personale e scade fra ${GIORNI_VALIDITA} giorni. Riferimento pratica: ${caso.riferimento}.
+      </p>
+      <p style="font-size:13px;color:#666">
+        Prima di cominciare può dare un'occhiata alla
+        <a href="${baseUrl}/guida-firma.html" style="color:#170046">guida in tre minuti</a>:
+        spiega cosa serve avere sottomano e risponde alle domande più frequenti.
       </p>
       <p style="font-size:13px;color:#666">
         Per qualsiasi dubbio può rispondere a questa email.
