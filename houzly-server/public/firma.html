@@ -33,6 +33,20 @@ h1,h2,h3,.display{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-sp
 .marchio span{color:var(--oro)}
 .top p{margin:4px 0 0;font-size:12.5px;opacity:.72;letter-spacing:.04em;text-transform:uppercase}
 .rif{position:absolute;top:20px;right:20px;font-size:11px;opacity:.6;letter-spacing:.06em}
+.link-guida{display:inline-flex;align-items:center;gap:7px;margin-top:12px;
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.09);color:#fff;
+  text-decoration:none;padding:8px 14px;border-radius:20px;font-size:13.5px;font-weight:600}
+.link-guida span{width:18px;height:18px;border-radius:50%;background:var(--oro);
+  color:var(--indigo);display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;flex:0 0 18px}
+.guida-box{display:flex;align-items:center;gap:14px;border:1.5px solid var(--bordo);
+  border-radius:var(--raggio);background:var(--bianco);padding:15px;margin:22px 0 4px;
+  text-decoration:none;color:inherit}
+.guida-box .tondo{width:38px;height:38px;flex:0 0 38px;border-radius:50%;
+  background:var(--oro-soft);color:var(--indigo);display:flex;align-items:center;
+  justify-content:center;font-size:19px;font-weight:700;font-family:'Fraunces',serif}
+.guida-box b{display:block;font-size:15px}
+.guida-box small{color:var(--grigio);font-size:13.5px}
 
 /* ── avanzamento ── */
 .avanz{display:flex;gap:5px;padding:16px 20px 0;max-width:640px;margin:0 auto}
@@ -150,6 +164,9 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
   <div class="marchio">H<span>◆</span>UZLY</div>
   <p>Contratto di mandato</p>
   <div class="rif" id="rif"></div>
+  <!-- target _blank: aprendo nella stessa scheda si perderebbe il punto in cui è arrivato -->
+  <a class="link-guida" href="/guida-firma.html" target="_blank" rel="noopener">
+    <span>?</span> Hai dubbi? Leggi la guida</a>
 </div>
 
 <div id="caricamento" class="centro"><div class="filatore"></div>
@@ -236,6 +253,13 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
       </div>
 
       <div class="barra"><button class="primario" onclick="vai(2)">Continua</button></div>
+
+      <a class="guida-box" href="/guida-firma.html" target="_blank" rel="noopener">
+        <div class="tondo">?</div>
+        <div><b>Non è sicuro di qualcosa?</b>
+          <small>La guida completa spiega cosa serve, quanto tempo ci vuole e cosa
+            succede dopo la firma.</small></div>
+      </a>
     </section>
 
     <!-- 2 · immobile -->
@@ -287,6 +311,12 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
         <button class="second" onclick="vai(2)">Indietro</button>
         <button class="primario" onclick="vai(4)">Continua</button>
       </div>
+
+      <a class="guida-box" href="/guida-firma.html" target="_blank" rel="noopener">
+        <div class="tondo">?</div>
+        <div><b>Dubbi sui documenti?</b>
+          <small>La guida spiega quali servono, perché, e cosa può mandarci più avanti.</small></div>
+      </a>
     </section>
 
     <!-- 4 · lettura -->
