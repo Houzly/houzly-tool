@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Come firmare il contratto · Houzly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --indigo:#170046; --oro:#C8A55B; --oro-soft:#f0e4c8;
+  --carta:#FBFAF7; --bianco:#fff; --bordo:#e3dfd6;
+  --testo:#1a1a1a; --grigio:#6b6660; --ok:#1f6b45;
+  --raggio:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--carta);color:var(--testo);
+  font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:16px;line-height:1.62}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+
+.top{background:var(--indigo);color:#fff;padding:34px 22px 36px;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,var(--oro) 0%,var(--oro-soft) 50%,var(--oro) 100%)}
+.top-in{max-width:660px;margin:0 auto}
+.marchio{font-family:'Fraunces',serif;font-size:20px;letter-spacing:.17em;font-weight:600}
+.marchio span{color:var(--oro)}
+.top h1{font-size:31px;margin:16px 0 8px;color:#fff}
+.top p{margin:0;opacity:.75;font-size:15.5px}
+
+main{max-width:660px;margin:0 auto;padding:34px 22px 70px}
+h2{font-size:24px;margin:38px 0 12px}
+h2:first-child{margin-top:0}
+h3{font-size:17px;margin:24px 0 6px}
+p{margin:0 0 14px}
+
+.passi{counter-reset:p;list-style:none;padding:0;margin:22px 0 0}
+.passi li{counter-increment:p;position:relative;padding-left:52px;margin-bottom:24px}
+.passi li::before{content:counter(p);position:absolute;left:0;top:-2px;width:34px;height:34px;
+  background:var(--indigo);color:#fff;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:15px;font-family:'Manrope',sans-serif}
+.passi b{display:block;margin-bottom:2px;font-size:16.5px}
+.passi span{color:var(--grigio);font-size:15px}
+
+.serve{background:var(--bianco);border:1.5px solid var(--bordo);border-radius:var(--raggio);
+  padding:20px;margin:18px 0}
+.serve ul{margin:0;padding-left:20px}
+.serve li{margin-bottom:11px}
+.serve li:last-child{margin-bottom:0}
+.serve b{font-weight:600}
+.serve small{display:block;color:var(--grigio);font-size:14px;margin-top:1px}
+
+.nota{border-left:3px solid var(--oro);background:#fdfaf3;padding:15px 18px;
+  border-radius:0 9px 9px 0;margin:20px 0}
+.nota b{display:block;margin-bottom:4px}
+.nota p:last-child{margin-bottom:0}
+
+details{border:1.5px solid var(--bordo);border-radius:var(--raggio);background:var(--bianco);
+  margin-bottom:10px;overflow:hidden}
+summary{padding:15px 18px;cursor:pointer;font-weight:600;font-size:15.5px;list-style:none;
+  display:flex;justify-content:space-between;align-items:center;gap:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--oro);font-size:21px;font-weight:400;flex:0 0 auto}
+details[open] summary::after{content:"\2212"}
+details .corpo{padding:0 18px 17px;color:var(--grigio);font-size:15px}
+details .corpo p:last-child{margin-bottom:0}
+
+.chiusura{background:var(--indigo);color:#fff;border-radius:var(--raggio);padding:24px;margin-top:40px}
+.chiusura h2{color:#fff;margin:0 0 8px;font-size:21px}
+.chiusura p{opacity:.82;margin-bottom:0;font-size:15.5px}
+.chiusura a{color:var(--oro-soft)}
+
+footer{text-align:center;color:var(--grigio);font-size:13.5px;padding:30px 22px 44px}
+
+@media print{
+  body{background:#fff;font-size:11.5pt}
+  .top{background:#fff;color:var(--indigo);padding:0 0 16px}
+  .top h1{color:var(--indigo)}
+  .top::after{display:none}
+  .chiusura{background:#fff;color:var(--testo);border:1.5px solid var(--bordo)}
+  .chiusura h2{color:var(--indigo)}
+  .chiusura a{color:var(--indigo)}
+  details{break-inside:avoid}
+  details .corpo{display:block!important}
+  summary::after{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="top-in">
+  <div class="marchio">H<span>◆</span>UZLY</div>
+  <h1>Come firmare il contratto</h1>
+  <p>Una guida breve per arrivare preparato. Servono circa dieci minuti.</p>
+</div></div>
+
+<main>
+
+<h2>In tre passaggi</h2>
+<ol class="passi">
+  <li><b>Riceve un link per email</b>
+    <span>È personale e vale trenta giorni. Lo apra dal telefono o dal computer,
+      indifferentemente.</span></li>
+  <li><b>Compila i suoi dati e carica i documenti</b>
+    <span>Anagrafica, riferimenti dell'immobile, IBAN. Può fotografare i documenti
+      direttamente con il telefono.</span></li>
+  <li><b>Legge il contratto e firma con il dito</b>
+    <span>Il testo si apre completo prima della firma. Riceverà subito una copia in PDF
+      via email.</span></li>
+</ol>
+
+<h2>Cosa tenere a portata di mano</h2>
+<p>Non è indispensabile avere tutto subito — quello che scrive resta salvato e può riprendere
+  in un secondo momento — ma con questi tre documenti finisce in una volta sola.</p>
+
+<div class="serve">
+  <ul>
+    <li><b>Documento d'identità, fronte e retro</b>
+      <small>Carta d'identità o passaporto di chi firma. Servono entrambi i lati: sul retro
+        ci sono scadenza e luogo di rilascio.</small></li>
+    <li><b>Visura catastale dell'immobile</b>
+      <small>Ci serve per verificare la proprietà e i dati catastali. Da lì prenderà anche
+        foglio, particella, subalterno e categoria.</small></li>
+    <li><b>IBAN</b>
+      <small>Il conto su cui le accrediteremo il netto ogni mese.</small></li>
+  </ul>
+</div>
+
+<p>Se ha anche la <b>planimetria</b> e la <b>dichiarazione di conformità degli impianti</b>,
+  le carichi pure: non sono obbligatorie per firmare e ce le può mandare più avanti.</p>
+
+<div class="nota">
+  <b>Se l'immobile è intestato a più persone</b>
+  <p>Il contratto deve riportare tutti i comproprietari con le rispettive quote. Prepari nome,
+    codice fiscale e quota di ciascuno. Potrà scegliere se ricevere l'intero importo su un
+    solo conto oppure farlo suddividere fra i titolari secondo le quote: in questo secondo
+    caso serve l'IBAN di ognuno.</p>
+</div>
+
+<h2>Le domande che ci fanno più spesso</h2>
+
+<details>
+  <summary>Una firma fatta con il dito ha valore?</summary>
+  <div class="corpo">
+    <p>Sì. È una firma elettronica, e il sistema registra tutto ciò che serve a dimostrare
+      che è stata apposta da lei: l'apertura del link inviato al suo indirizzo, il momento
+      esatto di ogni passaggio, il dispositivo e la connessione da cui ha operato.</p>
+    <p>Questi dati vengono allegati al PDF in una pagina finale, insieme a un codice che
+      certifica che il documento non è stato modificato dopo la firma.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Posso interrompere e riprendere più tardi?</summary>
+  <div class="corpo">
+    <p>Sì, in qualsiasi momento. Ogni cosa che scrive viene salvata mentre digita. Chiuda pure
+      la pagina e riapra lo stesso link quando vuole: ritroverà tutto dove l'aveva lasciato.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Posso leggere il contratto prima di firmare?</summary>
+  <div class="corpo">
+    <p>Non solo può: deve. Il pulsante per firmare resta disattivato finché non apre il
+      contratto completo, già compilato con i suoi dati. Si apre in una scheda nuova e lo
+      può scaricare o stampare.</p>
+    <p>Se qualcosa non le torna, si fermi e ci chiami prima di firmare.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Ho sbagliato a scrivere un dato. Posso correggerlo?</summary>
+  <div class="corpo">
+    <p>Prima della firma sì, tornando indietro nei passaggi. Dopo la firma il contratto è
+      definitivo e non si modifica: ci scriva e prepareremo la correzione nel modo corretto.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Che fine fanno i miei documenti?</summary>
+  <div class="corpo">
+    <p>Restano archiviati nei nostri sistemi e li usiamo solo per la gestione del suo
+      immobile e per gli adempimenti che la legge ci impone — comunicazioni alla Questura,
+      ritenuta d'acconto, Certificazione Unica.</p>
+    <p>Non vengono ceduti a terzi. Il trattamento è disciplinato dall'art. 15 del contratto,
+      che può leggere prima di firmare.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Il link non funziona o l'ho perso</summary>
+  <div class="corpo">
+    <p>Ci scriva e gliene mandiamo uno nuovo in pochi minuti. Il vecchio smette di funzionare
+      e i dati che aveva già inserito restano al loro posto.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Preferisco firmare di persona</summary>
+  <div class="corpo">
+    <p>Nessun problema, si può fare come sempre. Ci dica come preferisce e ci organizziamo:
+      la firma digitale è pensata per farle risparmiare tempo, non per obbligarla.</p>
+  </div>
+</details>
+
+<h2>Dopo la firma</h2>
+<p>Riceve immediatamente il contratto firmato in PDF all'indirizzo su cui le è arrivato il
+  link. Lo conservi: è la sua copia.</p>
+<p>Da lì ci muoviamo noi. La contatteremo per organizzare il servizio fotografico, la pulizia
+  iniziale e tutti gli adempimenti necessari all'apertura — dal codice identificativo alle
+  comunicazioni obbligatorie. Non deve fare altro.</p>
+
+<div class="chiusura">
+  <h2>Se qualcosa non è chiaro</h2>
+  <p>Ci chiami o risponda alla email con cui ha ricevuto il link. Preferiamo una domanda in
+    più adesso che un dubbio dopo la firma.</p>
+</div>
+
+</main>
+
+<footer>
+  Houzly Snc · P.IVA 02499920516 · Terranuova Bracciolini (AR) · www.houzly.it
+</footer>
+
+</body>
+</html>
