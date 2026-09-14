@@ -755,7 +755,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v72 · 08/09 · guardia CSV + check cancellate</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v73 · 14/09 · Smoobu HMAC</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2219,14 +2219,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
     <div class="card">
-      <div class="card-title">API Key Smoobu</div>
-      <div class="field" style="margin-bottom:12px">
-        <label>API Key</label>
-        <input type="password" id="cl-api-key-input" placeholder="Incolla qui la tua API key Smoobu">
-        <div class="field-hint">Smoobu → Account → Settings → API → copia la chiave</div>
+      <div class="card-title">Connessione Smoobu</div>
+      <!-- v73 (08/09/2026): campo API Key rimosso per la migrazione HMAC.
+           Chiave e secret stanno solo nelle Environment Variables di Render:
+           un secret nel browser sarebbe leggibile da chiunque. -->
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.6">
+        Le credenziali Smoobu sono gestite sul server e non passano pi&ugrave; da questa pagina.<br><br>
+        Per cambiarle: Render &rarr; Environment &rarr; <code>SMOOBU_API_KEY</code> e <code>SMOOBU_API_SECRET</code>.<br><br>
+        Per verificare che la firma funzioni, apri
+        <a href="/api/smoobu-hmac-test" target="_blank" rel="noopener">/api/smoobu-hmac-test</a>.
       </div>
-      <button class="btn btn-primary" onclick="clSaveApiKey()">Salva API Key</button>
-      <div id="cl-api-test-result" style="margin-top:10px;font-size:12px"></div>
     </div>
     <div class="card">
       <div class="card-title">Cleaners</div>
@@ -8970,7 +8972,9 @@ var CL = {
 
 // ── Storage helpers ──────────────────────────────────────────────
 function clDB() {
-  if (!DB.cleaning) DB.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], apiKey: '', lastSync: null };
+  if (!DB.cleaning) DB.cleaning = { tasks: [], cleaners: [], defaultChecklist: [], lastSync: null };
+  // v73: la chiave non deve piu' stare nel database dell'app
+  if (DB.cleaning.apiKey) { delete DB.cleaning.apiKey; }
   if (!DB.cleaning.tasks) DB.cleaning.tasks = [];
   if (!DB.cleaning.cleaners) DB.cleaning.cleaners = [];
   if (!DB.cleaning.defaultChecklist) DB.cleaning.defaultChecklist = ['Bagni', 'Cucina', 'Camere da letto', 'Soggiorno', 'Cambio biancheria', 'Verifica inventario'];
@@ -9019,11 +9023,7 @@ async function clResetAndSync() {
 
 async function clSyncSmoobu() {
   var db = clDB();
-  if (!db.apiKey) {
-    toast('⚠ Configura prima la API Key Smoobu nelle impostazioni');
-    showPage('cl-settings');
-    return;
-  }
+  // v73: la chiave sta sul server, non c'e' piu' niente da configurare qui
   var statusEl = document.getElementById('cl-sync-status');
   var timeEl   = document.getElementById('cl-sync-time');
   if (statusEl) { statusEl.textContent = 'Sincronizzazione...'; statusEl.className = 'sb-status'; }
@@ -9033,7 +9033,7 @@ async function clSyncSmoobu() {
     var resp = await fetch('/api/smoobu/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ months: parseInt(db.syncMonths || 3), apiKey: db.apiKey })
+      body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     var result = await resp.json();
@@ -9077,7 +9077,9 @@ function renderCleaning() {
   var statusEl = document.getElementById('cl-sync-status');
   var timeEl = document.getElementById('cl-sync-time');
   if (statusEl) {
-    if (db.apiKey) {
+    // v73: la connessione e' sempre "configurata" — le credenziali stanno
+    // sul server, quindi non esiste piu' lo stato "API non configurata".
+    if (true) {
       if (db.lastSync) {
         statusEl.textContent = '✓ API configurata';
         statusEl.className = 'sb-status ok';
@@ -9454,9 +9456,7 @@ function clDeleteTask() {
 // ── Settings page ────────────────────────────────────────────────
 function renderClSettings() {
   var db = clDB();
-  // API key
-  var inp = document.getElementById('cl-api-key-input');
-  if (inp) inp.value = db.apiKey || '';
+  // v73: nessun campo API key da popolare — le credenziali stanno sul server
 
   // Cleaners list
   var cl = document.getElementById('cl-cleaners-list');
@@ -9486,14 +9486,10 @@ function renderClSettings() {
   }
 }
 
+// v73: rimossa con la migrazione HMAC. Tenuta come stub perche' potrebbe
+// essere ancora richiamata da una pagina in cache dopo il deploy.
 function clSaveApiKey() {
-  var db = clDB();
-  var key = (document.getElementById('cl-api-key-input').value || '').trim();
-  db.apiKey = key;
-  clSave();
-  var res = document.getElementById('cl-api-test-result');
-  if (res) res.innerHTML = '<span style="color:var(--green)">✓ API Key salvata. Torna su Pulizie e premi Sync Smoobu.</span>';
-  toast('API Key salvata ✓');
+  toast('Le credenziali Smoobu si gestiscono su Render');
 }
 
 function clAddCleaner() {
