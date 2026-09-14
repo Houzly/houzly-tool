@@ -956,11 +956,16 @@ select.field-input {
     </div>
     <div class="sheet-body">
 
-      <!-- API Key -->
+      <!-- API Key — RIMOSSA il 08/09/2026 (migrazione HMAC).
+           La chiave e il secret Smoobu vivono solo sul server, nelle
+           Environment Variables di Render. Un secret nel browser sarebbe
+           leggibile da chiunque apra gli strumenti sviluppatore. -->
       <div class="field-group">
-        <label class="field-label">🔑 Smoobu API Key</label>
-        <input type="password" class="field-input" id="s-apikey" placeholder="Incolla la tua API Key Smoobu..." autocomplete="off" autocorrect="off" spellcheck="false">
-        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Smoobu → Impostazioni → Sviluppatori → API Key</div>
+        <label class="field-label">🔑 Connessione Smoobu</label>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.5;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:10px">
+          Gestita sul server. Le credenziali non passano piu&#39; da qui.<br>
+          Per cambiarle: Render &rarr; Environment &rarr; <code>SMOOBU_API_KEY</code> e <code>SMOOBU_API_SECRET</code>.
+        </div>
       </div>
 
       <!-- Sync range -->
@@ -1339,12 +1344,11 @@ async function syncSmoobu() {
   btn.classList.add('spinning');
   try {
     const db = clDB();
-    if (!db.apiKey) { toast('⚠ API Key mancante — apri ⚙ Impostazioni'); return; }
-
+    // v22: la chiave non viene piu' inviata dal browser — la mette il server
     const r = await fetch('/api/smoobu/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ months: parseInt(db.syncMonths || 3), apiKey: db.apiKey })
+      body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Errore sconosciuto');
@@ -2053,7 +2057,6 @@ let sTempPropHours = {};   // v-ore: ore+ricavo per proprietà temporanei
 
 function openSettings() {
   const db = clDB();
-  document.getElementById('s-apikey').value = db.apiKey || '';
   const sel = document.getElementById('s-syncmonths');
   sel.value = db.syncMonths || '3';
   if (!sel.value) sel.value = '3';
@@ -2280,10 +2283,11 @@ function handleSettingsClick(e) {
 
 async function saveSettings(andSync = false) {
   const db = clDB();
-  const apiKey = document.getElementById('s-apikey').value.trim();
   const syncMonths = document.getElementById('s-syncmonths').value;
-  db.apiKey = apiKey;
   db.syncMonths = syncMonths;
+  // v22: db.apiKey non viene piu' scritta. Se esiste ancora dai salvataggi
+  // precedenti la cancelliamo, cosi' la chiave sparisce dal database.
+  if (db.apiKey) delete db.apiKey;
   db.cleaners = sTempCleaners.slice();
   // v-ore: salvo tariffe e ore/ricavo per proprietà
   db.cleanerRates = Object.assign({}, sTempRates);
