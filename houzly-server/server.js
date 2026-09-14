@@ -187,23 +187,39 @@ function smoobuAuthHeaders(method, pathOnly, canonicalQuery, bodyStr) {
 //   smoobuFetch('GET',  '/api/apartments')
 //   smoobuFetch('GET',  '/api/rates', { query: { 'apartments[]': 398, start_date: a, end_date: b } })
 //   smoobuFetch('POST', '/api/reservations', { body: payload })
-async function smoobuFetch(method, pathOnly, opts) {
-  opts = opts || {};
-  const canonicalQuery = smoobuQuery(opts.query);
-  const bodyStr = (opts.body !== undefined && opts.body !== null)
-    ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body))
-    : '';
-
+// Livello basso: permette di firmare una stringa e spedirne un'altra.
+// Serve solo alla rotta diagnostica /api/smoobu-hmac-probe, che prova le
+// varianti di canonicalizzazione della query per capire quale accetta Smoobu.
+async function smoobuRawFetch(method, pathOnly, canonicalQuery, urlQuery, bodyStr, extraHeaders) {
   const headers = Object.assign(
     { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
     smoobuAuthHeaders(method, pathOnly, canonicalQuery, bodyStr),
-    opts.headers || {}
+    extraHeaders || {}
   );
-
-  const url = SMOOBU_BASE + pathOnly + (canonicalQuery ? '?' + canonicalQuery : '');
+  const url = SMOOBU_BASE + pathOnly + (urlQuery ? '?' + urlQuery : '');
   const init = { method: method, headers: headers };
   if (bodyStr) init.body = bodyStr;
   return fetch(url, init);
+}
+
+async function smoobuFetch(method, pathOnly, opts) {
+  opts = opts || {};
+  const q = smoobuQuery(opts.query);
+  const bodyStr = (opts.body !== undefined && opts.body !== null)
+    ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body))
+    : '';
+  // SMOOBU_QUERY_MODE (env, opzionale): permette di cambiare la
+  // canonicalizzazione senza rideployare il codice. Valori: 'raw' (default),
+  // 'encoded' (parentesi in %5B%5D sia nella firma sia nella URL),
+  // 'sign-encoded' (firma codificata, URL grezza),
+  // 'sign-raw' (firma grezza, URL codificata).
+  const mode = process.env.SMOOBU_QUERY_MODE || 'raw';
+  const enc  = q.replace(/\[/g, '%5B').replace(/\]/g, '%5D');
+  let canonicalQuery = q, urlQuery = q;
+  if (mode === 'encoded')          { canonicalQuery = enc; urlQuery = enc; }
+  else if (mode === 'sign-encoded'){ canonicalQuery = enc; urlQuery = q;   }
+  else if (mode === 'sign-raw')    { canonicalQuery = q;   urlQuery = enc; }
+  return smoobuRawFetch(method, pathOnly, canonicalQuery, urlQuery, bodyStr, opts.headers);
 }
 
 async function sendSmoobuChatMessage(reservationId, messageText) {
@@ -534,6 +550,56 @@ app.get('/api/smoobu-hmac-test', async (req, res) => {
   } catch (e) {
     res.status(500).json(Object.assign(out, { ok: false, errore: e.message }));
   }
+});
+
+// ── GET /api/smoobu-hmac-probe ────────────────────────────────────
+// Prova le varianti di canonicalizzazione della query su /api/rates e
+// riporta quale viene accettata da Smoobu. Serve una volta sola, per
+// scoprire il formato giusto senza rideployare a tentativi.
+app.get('/api/smoobu-hmac-probe', async (req, res) => {
+  if (!SMOOBU_HMAC_ON) return res.status(400).json({ ok: false, errore: 'SMOOBU_API_SECRET non impostata: la sonda serve solo in modalita HMAC' });
+
+  const apt   = req.query.apartmentId || '2642743';
+  const start = req.query.start || '2026-10-10';
+  const end   = req.query.end   || '2026-10-13';
+
+  const raw = `apartments[]=${apt}&end_date=${end}&start_date=${start}`;
+  const enc = raw.replace(/\[/g, '%5B').replace(/\]/g, '%5D');
+  const unsorted = `apartments[]=${apt}&start_date=${start}&end_date=${end}`;
+
+  const varianti = [
+    { nome: 'A · firma grezza, URL grezza (attuale)',      SMOOBU_QUERY_MODE: 'raw',          firma: raw,      url: raw },
+    { nome: 'B · firma %5B%5D, URL %5B%5D',                SMOOBU_QUERY_MODE: 'encoded',      firma: enc,      url: enc },
+    { nome: 'C · firma %5B%5D, URL grezza',                SMOOBU_QUERY_MODE: 'sign-encoded', firma: enc,      url: raw },
+    { nome: 'D · firma grezza, URL %5B%5D',                SMOOBU_QUERY_MODE: 'sign-raw',     firma: raw,      url: enc },
+    { nome: 'E · ordine di invio invece che alfabetico',   SMOOBU_QUERY_MODE: null,           firma: unsorted, url: unsorted }
+  ];
+
+  const esiti = [];
+  for (const v of varianti) {
+    try {
+      const r = await smoobuRawFetch('GET', '/api/rates', v.firma, v.url, '');
+      const testo = await r.text();
+      esiti.push({
+        variante: v.nome,
+        http: r.status,
+        accettata: r.ok,
+        imposta_su_render: r.ok ? (v.SMOOBU_QUERY_MODE ? ('SMOOBU_QUERY_MODE=' + v.SMOOBU_QUERY_MODE) : 'richiede modifica al codice (ordine query)') : null,
+        risposta: testo.slice(0, 120)
+      });
+    } catch (e) {
+      esiti.push({ variante: v.nome, errore: e.message });
+    }
+    await new Promise(r => setTimeout(r, 350)); // gentile col rate limit
+  }
+
+  const vincente = esiti.find(e => e.accettata);
+  res.json({
+    appartamento: apt, dal: start, al: end,
+    esito: vincente ? ('FUNZIONA: ' + vincente.variante) : 'nessuna variante accettata — mandare l\'esito a Smoobu',
+    azione: vincente ? vincente.imposta_su_render : null,
+    dettaglio: esiti
+  });
 });
 
 // ── Smoobu Proxy (Houzly Tool — cleaning sync) ────────────────────
