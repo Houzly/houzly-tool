@@ -125,12 +125,91 @@ async function r2Delete(key) {
   await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  SMOOBU API — autenticazione HMAC  (migrazione obbligatoria 25/09/2026)
+// ══════════════════════════════════════════════════════════════════
+//  Smoobu dismette le richieste firmate con il solo header `Api-Key`.
+//  Da qui in avanti ogni chiamata viene firmata con HMAC-SHA256.
+//
+//  Variabili d'ambiente su Render:
+//    SMOOBU_API_KEY     la chiave (Impostazioni > Avanzate > Chiavi API)
+//    SMOOBU_API_SECRET  il secret, mostrato una sola volta alla creazione
+//
+//  INTERRUTTORE DI SICUREZZA: se SMOOBU_API_SECRET non e' impostata, il
+//  codice ricade sul vecchio header `Api-Key`. Togliere quella variabile
+//  da Render riporta tutto al comportamento precedente in 30 secondi.
+//  Dopo il 25/09/2026 il ramo legacy smette di funzionare lato Smoobu.
+//
+//  Canonical string firmata (a-capo veri fra i campi):
+//    METODO \n PATH \n QUERY-ordinata \n TIMESTAMP \n NONCE \n SHA256(body) \n API_KEY
+// ══════════════════════════════════════════════════════════════════
+
+const SMOOBU_BASE      = 'https://login.smoobu.com';
+const SMOOBU_API_SECRET = process.env.SMOOBU_API_SECRET || '';
+const SMOOBU_HMAC_ON    = !!SMOOBU_API_SECRET;
+
+// Costruisce la query string UNA sola volta: la stessa stringa viene usata
+// sia per firmare sia per la URL, cosi' non possono divergere.
+// I parametri vanno in ordine alfabetico (lo impone Smoobu per il canonical).
+function smoobuQuery(query) {
+  if (!query) return '';
+  const parts = [];
+  Object.keys(query).sort().forEach(function (k) {
+    const v = query[k];
+    if (v === undefined || v === null || v === '') return;
+    if (Array.isArray(v)) v.forEach(function (x) { parts.push(k + '=' + x); });
+    else parts.push(k + '=' + v);
+  });
+  return parts.join('&');
+}
+
+function smoobuAuthHeaders(method, pathOnly, canonicalQuery, bodyStr) {
+  const apiKey = process.env.SMOOBU_API_KEY || '';
+  if (!SMOOBU_HMAC_ON) return { 'Api-Key': apiKey };   // fallback legacy
+
+  const bodyHash  = crypto.createHash('sha256').update(bodyStr || '', 'utf8').digest('hex');
+  // ISO 8601 UTC senza millisecondi: 2026-04-01T12:00:00Z
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const nonce     = crypto.randomUUID();
+
+  const canonical = [method, pathOnly, canonicalQuery || '', timestamp, nonce, bodyHash, apiKey].join('\n');
+  const signature = crypto.createHmac('sha256', SMOOBU_API_SECRET).update(canonical, 'utf8').digest('base64');
+
+  return {
+    'X-API-Key':   apiKey,
+    'X-Timestamp': timestamp,
+    'X-Nonce':     nonce,
+    'X-Signature': signature
+  };
+}
+
+// Unico punto di uscita verso Smoobu. Firma e chiama.
+//   smoobuFetch('GET',  '/api/apartments')
+//   smoobuFetch('GET',  '/api/rates', { query: { 'apartments[]': 398, start_date: a, end_date: b } })
+//   smoobuFetch('POST', '/api/reservations', { body: payload })
+async function smoobuFetch(method, pathOnly, opts) {
+  opts = opts || {};
+  const canonicalQuery = smoobuQuery(opts.query);
+  const bodyStr = (opts.body !== undefined && opts.body !== null)
+    ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body))
+    : '';
+
+  const headers = Object.assign(
+    { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+    smoobuAuthHeaders(method, pathOnly, canonicalQuery, bodyStr),
+    opts.headers || {}
+  );
+
+  const url = SMOOBU_BASE + pathOnly + (canonicalQuery ? '?' + canonicalQuery : '');
+  const init = { method: method, headers: headers };
+  if (bodyStr) init.body = bodyStr;
+  return fetch(url, init);
+}
+
 async function sendSmoobuChatMessage(reservationId, messageText) {
   try {
-    const r = await fetch(`https://login.smoobu.com/api/reservations/${reservationId}/messages`, {
-      method: 'POST',
-      headers: { 'Api-Key': process.env.SMOOBU_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject: 'Online Check-in', message: messageText, emailAddress: null }),
+    const r = await smoobuFetch('POST', `/api/reservations/${reservationId}/messages`, {
+      body: { subject: 'Online Check-in', message: messageText, emailAddress: null }
     });
     if (!r.ok) { const text = await r.text(); return { success: false, error: `Smoobu ${r.status}: ${text}` }; }
     return { success: true };
@@ -421,16 +500,52 @@ app.post('/api/restore', async (req, res) => {
   }
 });
 
+// ── GET /api/smoobu/hmac-test ─────────────────────────────────────
+// Diagnostica della migrazione HMAC. Chiama /api/me su Smoobu (sola
+// lettura, innocua) e riporta se la firma viene accettata.
+// Da aprire nel browser PRIMA di fidarsi del resto:
+//   https://houzly-tool.onrender.com/api/smoobu-hmac-test
+app.get('/api/smoobu-hmac-test', async (req, res) => {
+  const key = process.env.SMOOBU_API_KEY || '';
+  const out = {
+    modalita: SMOOBU_HMAC_ON ? 'HMAC (firmata)' : 'LEGACY (header Api-Key)',
+    chiave_presente: !!key,
+    chiave_mascherata: key ? key.slice(0, 4) + '…' + key.slice(-4) : null,
+    secret_presente: !!SMOOBU_API_SECRET
+  };
+  if (!key) return res.status(500).json(Object.assign(out, { ok: false, errore: 'SMOOBU_API_KEY non impostata su Render' }));
+  try {
+    const r = await smoobuFetch('GET', '/api/me');
+    const testo = await r.text();
+    out.http = r.status;
+    if (r.ok) {
+      let me = {}; try { me = JSON.parse(testo); } catch (e) {}
+      out.ok = true;
+      out.esito = 'Smoobu ha accettato la richiesta';
+      out.utente = [me.firstName, me.lastName].filter(Boolean).join(' ') || null;
+    } else {
+      out.ok = false;
+      out.esito = r.status === 401
+        ? 'Rifiutata (401): firma, chiave, orologio o nonce. Se sei in HMAC, controlla SMOOBU_API_SECRET.'
+        : 'Rifiutata da Smoobu';
+      out.risposta = testo.slice(0, 300);
+    }
+    res.status(r.ok ? 200 : 502).json(out);
+  } catch (e) {
+    res.status(500).json(Object.assign(out, { ok: false, errore: e.message }));
+  }
+});
+
 // ── Smoobu Proxy (Houzly Tool — cleaning sync) ────────────────────
 app.get('/api/smoobu/reservations', async (req, res) => {
   try {
-    const apiKey   = req.query.apiKey;
+    // v53-HMAC: la chiave NON arriva piu' dal browser — solo da process.env.
+    // req.query.apiKey viene ignorato (accettato per compatibilita' col frontend vecchio).
     const pageSize = req.query.pageSize || 100;
     const page     = req.query.page || 1;
-    if (!apiKey) return res.status(400).json({ ok: false, error: 'missing_api_key' });
-    const url = `https://login.smoobu.com/api/reservations?pageSize=${pageSize}&page=${page}`;
-    const r = await fetch(url, {
-      headers: { 'Api-Key': apiKey, 'Cache-Control': 'no-cache' }
+    if (!process.env.SMOOBU_API_KEY) return res.status(500).json({ ok: false, error: 'missing_api_key_server' });
+    const r = await smoobuFetch('GET', '/api/reservations', {
+      query: { pageSize: pageSize, page: page }
     });
     if (!r.ok) {
       const text = await r.text();
@@ -461,8 +576,9 @@ app.post('/api/smoobu/sync', async (req, res) => {
     if (!db.cleaning) db.cleaning = { tasks: [], defaultChecklist: [], apiKey: '', lastSync: null };
     if (!db.cleaning.tasks) db.cleaning.tasks = [];
 
-    const apiKey = req.body?.apiKey || db.cleaning.apiKey || '';
-    if (!apiKey) return res.status(400).json({ ok: false, error: 'missing_api_key' });
+    // v53-HMAC: chiave e secret solo lato server. Il valore eventualmente
+    // inviato dal frontend (req.body.apiKey) viene deliberatamente ignorato.
+    if (!process.env.SMOOBU_API_KEY) return res.status(500).json({ ok: false, error: 'missing_api_key_server' });
 
     // Finestra temporale — scarica 60 giorni indietro + N mesi avanti
     // (60gg indietro per non perdere task recenti ancora in lavorazione)
@@ -477,8 +593,9 @@ app.post('/api/smoobu/sync', async (req, res) => {
     const MAX_PAGES = 20;
     while (page <= MAX_PAGES) {
       // departureFrom: forza Smoobu a includere prenotazioni con checkout >= fromISO
-      const url = `https://login.smoobu.com/api/reservations?pageSize=100&page=${page}&departureFrom=${fromISO}`;
-      const r = await fetch(url, { headers: { 'Api-Key': apiKey, 'Cache-Control': 'no-cache' } });
+      const r = await smoobuFetch('GET', '/api/reservations', {
+        query: { pageSize: 100, page: page, departureFrom: fromISO }
+      });
       if (!r.ok) {
         const text = await r.text();
         return res.status(r.status).json({ ok: false, error: `Smoobu ${r.status}`, detail: text });
@@ -713,7 +830,9 @@ function bookingCors(req, res, next) {
   next();
 }
 
-// Helper: headers Smoobu
+// Helper: headers Smoobu — DEPRECATO dal 08/09/2026, non piu' usato.
+// Non puo' firmare in HMAC perche' la firma dipende da metodo, path e query.
+// Ogni chiamata a Smoobu passa ora da smoobuFetch(). Non riutilizzare.
 function smoobuHdr() {
   return { 'Api-Key': SMOOBU_API_KEY, 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' };
 }
@@ -724,7 +843,7 @@ function smoobuHdr() {
 // Esempio: https://houzly-tool.onrender.com/api/booking/apartments
 app.get('/api/booking/apartments', bookingCors, async (req, res) => {
   try {
-    const r = await fetch('https://login.smoobu.com/api/apartments', { headers: smoobuHdr() });
+    const r = await smoobuFetch('GET', '/api/apartments');
     const data = await r.json();
     console.log('[booking/apartments] raw response keys:', Object.keys(data));
 
@@ -763,8 +882,8 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
   try {
     // Chiamate parallele: rates + apartment details (per costo pulizie)
     const [ratesResp, aptResp] = await Promise.all([
-      fetch(`https://login.smoobu.com/api/rates?apartments[]=${apartmentId}&start_date=${arrival}&end_date=${departure}`, { headers: smoobuHdr() }),
-      fetch(`https://login.smoobu.com/api/apartments/${apartmentId}`, { headers: smoobuHdr() })
+      smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': apartmentId, start_date: arrival, end_date: departure } }),
+      smoobuFetch('GET', `/api/apartments/${apartmentId}`)
     ]);
 
     const ratesText = await ratesResp.text();
@@ -842,8 +961,9 @@ app.get('/api/booking/rates', bookingCors, async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, start, end' });
   }
   try {
-    const url = `https://login.smoobu.com/api/rates?apartments[]=${apartmentId}&start_date=${start}&end_date=${end}`;
-    const r   = await fetch(url, { headers: smoobuHdr() });
+    const r = await smoobuFetch('GET', '/api/rates', {
+      query: { 'apartments[]': apartmentId, start_date: start, end_date: end }
+    });
     const data = await r.json();
     res.json(data);
   } catch (e) {
@@ -878,9 +998,7 @@ app.post('/api/booking/create', bookingCors, async (req, res) => {
     if (note)  payload.notice = note;
 
     console.log('[booking/create] payload to Smoobu:', JSON.stringify(payload));
-    const r = await fetch('https://login.smoobu.com/api/reservations', {
-      method: 'POST', headers: smoobuHdr(), body: JSON.stringify(payload)
-    });
+    const r = await smoobuFetch('POST', '/api/reservations', { body: payload });
     const data = await r.json();
     if (!r.ok) {
       console.error('[booking/create] Smoobu rejected:', data);
@@ -1372,9 +1490,7 @@ app.get('/api/checkin/properties', requireAdminAuth, async (req, res) => {
 
 app.post('/api/checkin/properties/sync', requireAdminAuth, async (req, res) => {
   try {
-    const r = await fetch('https://login.smoobu.com/api/apartments', {
-      headers: { 'Api-Key': process.env.SMOOBU_API_KEY, 'Cache-Control': 'no-cache' },
-    });
+    const r = await smoobuFetch('GET', '/api/apartments');
     if (!r.ok) return res.status(r.status).json({ ok: false, error: `Smoobu ${r.status}` });
     const data = await r.json();
     let apartments = [];
