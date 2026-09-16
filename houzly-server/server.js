@@ -33,6 +33,12 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // JWT config
 const JWT_SECRET = process.env.JWT_SECRET;
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://houzly-tool.onrender.com';
+// Check-in: minuti di attesa tra l'arrivo della prenotazione e l'invio del link,
+// così il messaggio arriva DOPO il primo messaggio automatico di Airbnb/Booking/Smoobu.
+// Modificabile da Render con la env var CHECKIN_INITIAL_DELAY_MINUTES.
+const CHECKIN_INITIAL_DELAY_MINUTES = parseInt(process.env.CHECKIN_INITIAL_DELAY_MINUTES || '30', 10);
+// Giorni dopo il check-out in cui la scheda resta attiva prima dell'archiviazione
+const CHECKIN_ARCHIVE_AFTER_DAYS = 50;
 
 // Smoobu channel IDs
 const SMOOBU_CHANNEL_DIRECT = 4090393;  // "Direct booking" — houzly.it booking engine
@@ -1932,6 +1938,12 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
       if (tokenData) {
         updates.access_token = tokenData.token;
         updates.token_expires_at = tokenData.expiresAt;
+        // Se il messaggio iniziale non è mai partito, lo programma ora
+        if (!existing.initial_message_sent_at) {
+          updates.initial_message_due_at = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString();
+          updates.initial_message_attempts = 0;
+          updates.initial_dispatch_claimed_at = null;
+        }
       }
     }
     // Se la prenotazione ora prevede più ospiti, aggiunge gli slot mancanti
@@ -1960,6 +1972,13 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
     guests: Array.from({ length: totalGuests }, (_, i) => buildEmptyGuest(i + 1,
       i === 0 ? firstName : null, i === 0 ? lastName : null)),
     messages_sent: [],
+    // Invio link programmato (vedi cron /api/cron/checkin/dispatch)
+    initial_message_due_at: (evaluation.status === 'pending' && tokenData)
+      ? new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString()
+      : null,
+    initial_message_sent_at: null,
+    initial_message_attempts: 0,
+    initial_dispatch_claimed_at: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     completed_at: null,
@@ -1967,10 +1986,8 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
   };
   await sessionsCol.insertOne(newSession);
 
-  // Se pending, invia subito il messaggio iniziale
-  if (evaluation.status === 'pending' && tokenData) {
-    await dispatchInitialMessage(newSession);
-  }
+  // Il messaggio iniziale NON parte subito: lo invia il cron /api/cron/checkin/dispatch
+  // dopo CHECKIN_INITIAL_DELAY_MINUTES, così arriva dopo il primo messaggio automatico.
 
   return { ok: true, action: 'created', status: evaluation.status };
 }
@@ -2002,9 +2019,13 @@ async function dispatchInitialMessage(session) {
   }
 
   const sessionsCol = await getCollection('checkin_sessions');
+  const sentFields = result.success
+    ? { initial_message_sent_at: new Date().toISOString() }
+    : {};
   await sessionsCol.updateOne(
     { _id: session._id },
     {
+      $set: sentFields,
       $push: {
         messages_sent: {
           type: 'initial',
@@ -2321,6 +2342,7 @@ app.post('/api/checkin/sessions/:id/override-status', requireAdminAuth, async (r
 // dell'onboarding cron-tick). Header X-Cron-Secret o ?secret=...
 //
 // Schedule consigliato su cron-job.org:
+//   /api/cron/checkin/dispatch  → ogni 5 minuti (invio link programmati)
 //   /api/cron/checkin/reminders → ogni giorno alle 10:00 Europe/Rome
 //   /api/cron/checkin/cleanup   → ogni notte alle 03:00 Europe/Rome
 
@@ -2330,6 +2352,14 @@ function requireCronSecret(req, res, next) {
   if (!secret) return res.status(500).json({ ok: false, error: 'cron_secret_not_configured' });
   if (provided !== secret) return res.status(401).json({ ok: false, error: 'invalid_cron_secret' });
   next();
+}
+
+// Evita doppioni: niente reminder se il link iniziale non è ancora partito
+// o è partito da meno di 12 ore (prenotazioni last minute)
+function reminderTooEarly(s) {
+  if (s.initial_message_due_at && !s.initial_message_sent_at) return true;
+  if (s.initial_message_sent_at && Date.now() - new Date(s.initial_message_sent_at).getTime() < 12 * 3600000) return true;
+  return false;
 }
 
 // POST /api/cron/checkin/reminders
@@ -2354,7 +2384,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     }).toArray();
     for (const s of d3Sessions) {
       const alreadySent = s.messages_sent?.some(m => m.type === 'reminder_d3');
-      if (alreadySent) continue;
+      if (alreadySent || reminderTooEarly(s)) continue;
       const link = `${APP_BASE_URL}/checkin.html?t=${s.access_token}`;
       const msg = buildReminderD3({
         guestFirstName: s.booking.primary_guest_name?.split(' ')[0] || 'guest',
@@ -2379,7 +2409,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     }).toArray();
     for (const s of d1Sessions) {
       const alreadySent = s.messages_sent?.some(m => m.type === 'reminder_d1');
-      if (alreadySent) continue;
+      if (alreadySent || reminderTooEarly(s)) continue;
       const link = `${APP_BASE_URL}/checkin.html?t=${s.access_token}`;
       const msg = buildReminderD1({
         guestFirstName: s.booking.primary_guest_name?.split(' ')[0] || 'guest',
@@ -2414,20 +2444,72 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
   }
 });
 
+// POST /api/cron/checkin/dispatch
+// Invia i link di check-in programmati (initial_message_due_at scaduto).
+// Da chiamare ogni 5 minuti da cron-job.org.
+// Ogni session viene "prenotata" in modo atomico prima dell'invio, così due
+// esecuzioni sovrapposte non mandano mai lo stesso messaggio due volte.
+// In caso di errore riprova fino a 3 volte (ai giri successivi).
+app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const nowIso = new Date().toISOString();
+    const staleClaim = new Date(Date.now() - 10 * 60000).toISOString();
+    let sent = 0, failed = 0;
+
+    for (let i = 0; i < 50; i++) {
+      const claimed = await col.findOneAndUpdate(
+        {
+          status: { $in: ['pending', 'partial', 'manual_required'] },
+          initial_message_due_at: { $ne: null, $lte: nowIso },
+          initial_message_sent_at: null,
+          initial_message_attempts: { $lt: 3 },
+          $or: [{ initial_dispatch_claimed_at: null }, { initial_dispatch_claimed_at: { $lt: staleClaim } }],
+        },
+        { $set: { initial_dispatch_claimed_at: nowIso }, $inc: { initial_message_attempts: 1 } },
+        { returnDocument: 'after' }
+      );
+      const session = claimed && claimed.value !== undefined ? claimed.value : claimed;
+      if (!session) break;
+
+      // Check-out già passato: niente invio
+      if (session.booking?.departure && session.booking.departure < nowIso.slice(0, 10)) {
+        await col.updateOne({ _id: session._id }, { $set: { initial_message_due_at: null, initial_dispatch_claimed_at: null } });
+        continue;
+      }
+
+      let result;
+      try { result = await dispatchInitialMessage(session); }
+      catch (e) { result = { success: false, error: e.message }; }
+
+      await col.updateOne({ _id: session._id }, { $set: { initial_dispatch_claimed_at: null } });
+      if (result?.success) sent++; else failed++;
+    }
+
+    console.log(`[cron/checkin/dispatch] sent=${sent} failed=${failed}`);
+    res.json({ ok: true, sent, failed });
+  } catch (e) {
+    console.error('[cron/checkin/dispatch]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // POST /api/cron/checkin/cleanup
 // Cleanup notturno:
 // - LEGACY: cancella eventuali foto R2 rimaste dalle session di test create
 //   quando il check-in raccoglieva le foto (da settembre 2026 non ne arrivano
 //   più; il blocco non trova nulla e si può eliminare in futuro)
-// - Archivia session con checkout > 30 giorni fa (status=archived)
+// - Archivia session con checkout > 50 giorni fa (status=archived).
+//   L'archiviazione cambia solo lo stato: i dati restano in MongoDB e
+//   visibili in dashboard. Nessun dato ospite viene cancellato.
 app.post('/api/cron/checkin/cleanup', requireCronSecret, async (req, res) => {
   try {
     const col = await getCollection('checkin_sessions');
     const now = new Date();
     const cutoff7 = new Date(now); cutoff7.setDate(cutoff7.getDate() - 7);
-    const cutoff30 = new Date(now); cutoff30.setDate(cutoff30.getDate() - 30);
+    const cutoffArchive = new Date(now); cutoffArchive.setDate(cutoffArchive.getDate() - CHECKIN_ARCHIVE_AFTER_DAYS);
     const cutoff7Str = cutoff7.toISOString().slice(0, 10);
-    const cutoff30Str = cutoff30.toISOString().slice(0, 10);
+    const cutoffArchiveStr = cutoffArchive.toISOString().slice(0, 10);
 
     // Foto da cancellare: session con checkout > 7gg fa che hanno ancora foto
     const toCleanPhotos = await col.find({
@@ -2457,9 +2539,9 @@ app.post('/api/cron/checkin/cleanup', requireCronSecret, async (req, res) => {
       });
     }
 
-    // Archiviazione session con checkout > 30gg fa
+    // Archiviazione session con checkout > 50gg fa
     const archiveResult = await col.updateMany(
-      { 'booking.departure': { $lt: cutoff30Str }, status: { $ne: 'archived' } },
+      { 'booking.departure': { $lt: cutoffArchiveStr }, status: { $ne: 'archived' } },
       { $set: { status: 'archived', archived_at: new Date().toISOString() } }
     );
 
