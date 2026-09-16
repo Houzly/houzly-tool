@@ -26,7 +26,8 @@ const R2_BUCKET = process.env.R2_BUCKET_NAME || 'houzly-guest-documents';
 // Resend client (email fallback for direct bookings)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Anthropic client (OCR Claude Vision — used in Phase 1B)
+// Anthropic client — non più usato dal check-in (OCR rimosso a settembre 2026,
+// l'ospite inserisce i dati a mano). Lasciato disponibile per altri moduli.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // JWT config
@@ -100,6 +101,210 @@ function validateTaxCode(cf) {
   const expectedChar = String.fromCharCode(65 + (sum % 26));
   return upperCF[15] === expectedChar;
 }
+
+// ══════════════════════════════════════════════════════════════════
+// ── Check-in: validazione dati ospite (versione senza foto) ───────
+// ══════════════════════════════════════════════════════════════════
+// Da settembre 2026 il check-in online NON raccoglie foto dei documenti:
+// l'ospite inserisce i dati a mano, il riconoscimento de visu avviene
+// all'arrivo (di persona o in videochiamata). Qui vivono tutte le regole
+// di validazione, usate sia da /save (controllo formato) sia da /submit
+// (controllo completo con campi obbligatori).
+
+const CHECKIN_DOCUMENT_TYPES = ['ID_CARD', 'PASSPORT', 'DRIVING_LICENSE'];
+
+// Campi che l'ospite può scrivere tramite /save
+const CHECKIN_GUEST_FIELDS = [
+  'first_name', 'last_name', 'sex', 'date_of_birth',
+  'birth_country', 'birth_city', 'birth_province',
+  'nationality', 'tax_code',
+  'document_type', 'document_number', 'document_issue_country', 'document_issue_city',
+  'document_expiry_date',
+  'address_street', 'address_zip', 'address_city', 'address_province', 'address_country',
+  'privacy_consent',
+];
+
+const CHECKIN_UPPERCASE_FIELDS = ['sex', 'birth_country', 'birth_province', 'nationality',
+  'document_type', 'document_issue_country', 'address_province', 'address_country', 'address_zip'];
+
+function isValidIsoDate(v) {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + 'T00:00:00Z');
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
+// Età compiuta alla data di riferimento (arrivo), entrambe YYYY-MM-DD
+function computeAgeAt(dob, refDate) {
+  if (!isValidIsoDate(dob)) return null;
+  const ref = isValidIsoDate(refDate) ? refDate : new Date().toISOString().slice(0, 10);
+  const [by, bm, bd] = dob.split('-').map(Number);
+  const [ry, rm, rd] = ref.split('-').map(Number);
+  let age = ry - by;
+  if (rm < bm || (rm === bm && rd < bd)) age--;
+  return age;
+}
+
+// Pulisce l'input grezzo del frontend: spazi, maiuscole, stringhe vuote → null
+function normalizeGuestInput(data) {
+  const out = {};
+  for (const k of CHECKIN_GUEST_FIELDS) {
+    if (!(k in data)) continue;
+    let v = data[k];
+    if (k === 'privacy_consent') { out[k] = v === true; continue; }
+    if (v === null || v === undefined) { out[k] = null; continue; }
+    v = String(v).replace(/\s+/g, ' ').trim();
+    if (v === '') { out[k] = null; continue; }
+    if (CHECKIN_UPPERCASE_FIELDS.includes(k)) v = v.toUpperCase();
+    if (k === 'tax_code' || k === 'document_number') v = v.toUpperCase().replace(/[\s.\-]/g, '');
+    out[k] = v;
+  }
+  return out;
+}
+
+// ── Coerenza codice fiscale con nome, cognome, data di nascita e sesso ──
+const CF_MONTH_LETTERS = 'ABCDEHLMPRST';
+const CF_OMOCODIA_LETTERS = 'LMNPQRSTUV';
+
+function cfLetters(v) {
+  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z]/g, '');
+}
+function cfSurnameCode(surname) {
+  const l = cfLetters(surname);
+  const cons = l.replace(/[AEIOU]/g, ''), vow = l.replace(/[^AEIOU]/g, '');
+  return (cons + vow + 'XXX').slice(0, 3);
+}
+function cfNameCode(name) {
+  const l = cfLetters(name);
+  const cons = l.replace(/[AEIOU]/g, ''), vow = l.replace(/[^AEIOU]/g, '');
+  if (cons.length >= 4) return cons[0] + cons[2] + cons[3];
+  return (cons + vow + 'XXX').slice(0, 3);
+}
+// Omocodia: l'Agenzia sostituisce alcune cifre con lettere → le riconverte
+function cfDecodeOmocodia(cf) {
+  const ch = cf.split('');
+  [6, 7, 9, 10, 12, 13, 14].forEach(i => {
+    const pos = CF_OMOCODIA_LETTERS.indexOf(ch[i]);
+    if (pos >= 0) ch[i] = String(pos);
+  });
+  return ch.join('');
+}
+// Ritorna { dateSexOk, nameOk } — true quando non verificabile (dati mancanti)
+function checkTaxCodeCoherence(cf, g) {
+  const out = { dateSexOk: true, nameOk: true };
+  const c = cfDecodeOmocodia(cf.toUpperCase());
+  if (isValidIsoDate(g.date_of_birth) && (g.sex === 'M' || g.sex === 'F')) {
+    const [y, m, d] = g.date_of_birth.split('-');
+    const day = parseInt(d, 10) + (g.sex === 'F' ? 40 : 0);
+    const expected = y.slice(2) + CF_MONTH_LETTERS[parseInt(m, 10) - 1] + String(day).padStart(2, '0');
+    out.dateSexOk = c.slice(6, 11) === expected;
+  }
+  if (g.last_name && g.first_name) {
+    out.nameOk = c.slice(0, 3) === cfSurnameCode(g.last_name)
+              && c.slice(3, 6) === cfNameCode(g.first_name);
+  }
+  return out;
+}
+
+function checkDocumentNumber(type, issueCountry, num) {
+  if (!/^[A-Z0-9]{5,20}$/.test(num)) return false;
+  if (issueCountry !== 'IT') return true;
+  // CIE (CA12345AB) o numerazione a 2 lettere + 7 cifre
+  if (type === 'ID_CARD') return /^[A-Z]{2}\d{5}[A-Z]{2}$/.test(num) || /^[A-Z]{2}\d{7}$/.test(num);
+  if (type === 'PASSPORT') return /^[A-Z]{2}\d{7}$/.test(num);
+  return true; // patente italiana: formati storici troppo vari, solo controllo generico
+}
+
+// Valida un ospite (dati già uniti: salvati + nuovi).
+// ctx = { isPrimary, arrival, full }
+//   full=false → solo formato dei campi presenti (usato da /save)
+//   full=true  → anche campi obbligatori (usato da /submit)
+// Ritorna { errors: [{field, code}], warnings: [{field, code}], age, isMinor, taxCodeVerified }
+function validateCheckinGuest(g, ctx) {
+  const errors = [], warnings = [];
+  const add = (field, code) => errors.push({ field, code });
+  const empty = f => g[f] === null || g[f] === undefined || g[f] === '';
+  const req = f => { if (ctx.full && empty(f)) add(f, 'required'); };
+  const iso2 = /^[A-Z]{2}$/;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // ── Anagrafica (tutti gli ospiti) ──
+  ['first_name', 'last_name', 'sex', 'date_of_birth', 'birth_country', 'nationality'].forEach(req);
+  for (const f of ['first_name', 'last_name']) {
+    if (!empty(f) && (g[f].length > 60 || !/^[\p{L}' .\-]+$/u.test(g[f]))) add(f, 'invalid_format');
+  }
+  if (!empty('sex') && !['M', 'F'].includes(g.sex)) add('sex', 'invalid_value');
+
+  let age = null;
+  if (!empty('date_of_birth')) {
+    if (!isValidIsoDate(g.date_of_birth)) add('date_of_birth', 'invalid_date');
+    else if (g.date_of_birth > today || g.date_of_birth < '1900-01-01') add('date_of_birth', 'out_of_range');
+    else age = computeAgeAt(g.date_of_birth, ctx.arrival);
+  }
+  const isMinor = age !== null && age < 18;
+  if (ctx.isPrimary && isMinor) add('date_of_birth', 'primary_must_be_adult');
+
+  // ── Luogo di nascita: comune + provincia se Italia, solo nazione se estero ──
+  if (!empty('birth_country') && !iso2.test(g.birth_country)) add('birth_country', 'invalid_country');
+  if (g.birth_country === 'IT') {
+    req('birth_city'); req('birth_province');
+    if (!empty('birth_province') && !iso2.test(g.birth_province)) add('birth_province', 'invalid_province');
+  }
+  if (!empty('birth_city') && g.birth_city.length > 80) add('birth_city', 'invalid_format');
+
+  // ── Cittadinanza + codice fiscale (obbligatorio per tutti gli italiani) ──
+  if (!empty('nationality') && !iso2.test(g.nationality)) add('nationality', 'invalid_country');
+  if (g.nationality === 'IT') req('tax_code');
+
+  let taxCodeVerified = false;
+  if (!empty('tax_code')) {
+    if (!validateTaxCode(g.tax_code)) {
+      add('tax_code', 'invalid_tax_code');
+    } else {
+      const coh = checkTaxCodeCoherence(g.tax_code, g);
+      if (!coh.dateSexOk) add('tax_code', 'tax_code_birth_date_or_sex_mismatch');
+      // Nome/cognome: solo avviso (doppi nomi, cognomi composti, traslitterazioni)
+      if (!coh.nameOk) warnings.push({ field: 'tax_code', code: 'tax_code_name_mismatch' });
+      taxCodeVerified = coh.dateSexOk && coh.nameOk
+        && !empty('date_of_birth') && !empty('sex') && !empty('first_name') && !empty('last_name');
+    }
+  }
+
+  // ── Documento: obbligatorio per TUTTI gli ospiti, minori e neonati compresi ──
+  {
+    req('document_type'); req('document_number'); req('document_issue_country');
+    if (!empty('document_type') && !CHECKIN_DOCUMENT_TYPES.includes(g.document_type)) add('document_type', 'invalid_value');
+    if (!empty('document_issue_country') && !iso2.test(g.document_issue_country)) add('document_issue_country', 'invalid_country');
+    if (g.document_issue_country === 'IT') req('document_issue_city');
+    if (!empty('document_number') && !empty('document_type') && CHECKIN_DOCUMENT_TYPES.includes(g.document_type)
+        && !checkDocumentNumber(g.document_type, g.document_issue_country, g.document_number)) {
+      add('document_number', 'invalid_document_number');
+    }
+    if (!empty('document_expiry_date')) {
+      if (!isValidIsoDate(g.document_expiry_date)) add('document_expiry_date', 'invalid_date');
+      else if (g.document_expiry_date < (ctx.arrival || today)) add('document_expiry_date', 'document_expired');
+    }
+  }
+
+  // ── Residenza: solo ospite principale (serve per la fattura) ──
+  if (ctx.isPrimary) {
+    ['address_street', 'address_city', 'address_country'].forEach(req);
+    if (!empty('address_country') && !iso2.test(g.address_country)) add('address_country', 'invalid_country');
+    if (g.address_country === 'IT') {
+      req('address_zip'); req('address_province');
+      if (!empty('address_zip') && !/^\d{5}$/.test(g.address_zip)) add('address_zip', 'invalid_zip');
+      if (!empty('address_province') && !iso2.test(g.address_province)) add('address_province', 'invalid_province');
+    } else if (!empty('address_zip') && !/^[A-Z0-9 \-]{2,12}$/.test(g.address_zip)) {
+      add('address_zip', 'invalid_zip');
+    }
+    if (ctx.full && g.privacy_consent !== true) add('privacy_consent', 'required');
+  }
+
+  return { errors, warnings, age, isMinor, taxCodeVerified };
+}
+
+// Stati in cui l'ospite può ancora modificare i dati
+const CHECKIN_EDITABLE_STATUSES = ['pending', 'partial', 'complete', 'manual_required'];
 
 function inferRegion(propertyName) {
   if (!propertyName) return null;
@@ -253,7 +458,7 @@ La legge italiana ci obbliga a registrare tutti gli ospiti presso le autorità l
 
 → ${checkinLink}
 
-Richiede circa 3 minuti per ospite. Servirà una foto del documento d'identità o passaporto di ciascun ospite. Tutti i dati vengono trasmessi in modo sicuro e utilizzati esclusivamente per la registrazione prevista dalla legge.
+Richiede pochi minuti: tenga a portata di mano i documenti d'identità di tutti gli ospiti (e il codice fiscale per i cittadini italiani). Non serve caricare foto: i documenti verranno verificati al suo arrivo. Tutti i dati vengono trasmessi in modo sicuro e utilizzati esclusivamente per la registrazione prevista dalla legge.
 
 Per qualsiasi domanda, risponda pure a questo messaggio.
 
@@ -268,7 +473,7 @@ Italian law requires us to register all guests with local authorities before arr
 
 → ${checkinLink}
 
-It takes about 3 minutes per guest. You'll just need a photo of each guest's ID or passport. All data is transmitted securely and used only for the legally required registration.
+It only takes a few minutes: just have each guest's ID card or passport at hand. No photo upload is needed, documents will be checked on arrival. All data is transmitted securely and used only for the legally required registration.
 
 If you have any questions, just reply to this message.
 
@@ -311,76 +516,6 @@ Please complete your online check-in before arrival, otherwise we'll need to col
 
 Thank you, and safe travels!`;
 }
-// ── Check-in OCR: prompt builder per tipo documento ──────────────
-function buildOcrPrompt(documentType) {
-  const baseSchema = `Estrai i dati dal documento e rispondi SOLO con un JSON valido (no markdown, no commenti, no testo prima/dopo) con questo schema esatto:
-{
-  "first_name": "stringa o null",
-  "last_name": "stringa o null",
-  "sex": "M oppure F oppure null",
-  "date_of_birth": "YYYY-MM-DD o null",
-  "place_of_birth": "stringa o null",
-  "nationality": "codice ISO 3166-1 alpha-2 (es. IT, FR, DE) o null",
-  "document_number": "stringa o null",
-  "document_issue_date": "YYYY-MM-DD o null",
-  "document_expiry_date": "YYYY-MM-DD o null",
-  "document_issue_country": "codice ISO 3166-1 alpha-2 o null",
-  "tax_code": "stringa di 16 caratteri (codice fiscale italiano) o null",
-  "address_street": "via e numero civico o null",
-  "address_zip": "CAP o null",
-  "address_city": "comune o null",
-  "address_province": "sigla 2 lettere provincia italiana o null",
-  "address_country": "codice ISO 3166-1 alpha-2 o null",
-  "confidence": "numero decimale da 0 a 1 che indica la tua confidenza media nell'estrazione",
-  "warnings": ["array di stringhe con eventuali avvisi (es. 'foto sfocata', 'campo parzialmente coperto')"]
-}
-
-Regole importanti:
-- Se un campo non è visibile o leggibile, usa null (mai stringhe vuote o placeholder).
-- Date sempre in formato ISO YYYY-MM-DD.
-- Codici nazione e provincia sempre in maiuscolo.
-- Il sesso (sex) deduci da nome/foto/dati nel documento, se non chiaro metti null.
-- Rispondi SOLO con il JSON. Nessun altro testo.`;
-
-  if (documentType === 'CIE') {
-    return `Hai ricevuto la foto fronte e retro di una Carta d'Identità Elettronica italiana (CIE).
-Sul fronte trovi: nome, cognome, data e luogo di nascita, sesso, scadenza, foto.
-Sul retro trovi: codice fiscale (testo + barcode), indirizzo di residenza completo (via, civico, CAP, comune, provincia), ente di rilascio.
-
-${baseSchema}`;
-  }
-
-  if (documentType === 'PAPER_ID') {
-    return `Hai ricevuto la foto fronte e retro di una Carta d'Identità cartacea italiana (formato vecchio, non elettronica).
-Sul fronte trovi: nome, cognome, data e luogo di nascita, sesso, foto.
-Sul retro trovi: indirizzo di residenza, ente di rilascio, data rilascio/scadenza.
-IMPORTANTE: questo tipo di documento NON contiene il codice fiscale. Lascia tax_code a null.
-
-${baseSchema}`;
-  }
-
-  if (documentType === 'DRIVING_LICENSE') {
-    return `Hai ricevuto la foto della patente di guida italiana (formato carta di credito).
-Sul fronte trovi: nome, cognome, data e luogo di nascita, numero patente, data rilascio, scadenza, foto.
-IMPORTANTE: la patente italiana NON contiene il codice fiscale né l'indirizzo di residenza. Lascia tax_code, address_* a null.
-
-${baseSchema}`;
-  }
-
-  if (documentType === 'PASSPORT') {
-    return `Hai ricevuto la foto della pagina principale di un passaporto.
-Estrai: nome, cognome, data e luogo di nascita, sesso, nazionalità, numero passaporto, data rilascio e scadenza, paese di rilascio.
-IMPORTANTE: il passaporto NON contiene codice fiscale né indirizzo di residenza. Lascia tax_code, address_* a null.
-
-${baseSchema}`;
-  }
-
-  // Fallback generico se documentType non riconosciuto
-  return `Hai ricevuto la foto di un documento d'identità. Estrai tutti i dati visibili.
-
-${baseSchema}`;
-}
-
 // ── COMPRESSIONE GZIP ─────────────────────────────────────────────
 // Deve stare PRIMA di express.json e express.static, altrimenti non
 // intercetta le risposte. Comprime HTML, JS, CSS e tutte le risposte
@@ -1686,6 +1821,42 @@ async function evaluateBooking(booking) {
   return { status: 'pending', reason: null, nights, propConfig };
 }
 
+// Slot ospite vuoto (schema check-in senza foto, settembre 2026)
+function buildEmptyGuest(slot, firstName, lastName) {
+  return {
+    slot,
+    first_name: firstName || null,
+    last_name: lastName || null,
+    sex: null,
+    date_of_birth: null,
+    is_minor: false,
+    // Nascita: comune + provincia se Italia, altrimenti solo nazione
+    birth_country: null,
+    birth_city: null,
+    birth_province: null,
+    nationality: null,
+    // Codice fiscale: obbligatorio per tutti i cittadini italiani
+    tax_code: null,
+    tax_code_verified: false,
+    tax_code_warnings: [],
+    // Documento: obbligatorio per tutti gli ospiti, neonati compresi
+    document_type: null,            // ID_CARD | PASSPORT | DRIVING_LICENSE
+    document_number: null,
+    document_issue_country: null,
+    document_issue_city: null,      // obbligatorio se rilasciato in Italia
+    document_expiry_date: null,     // facoltativo
+    // Residenza: solo ospite principale (slot 1)
+    address_street: null,
+    address_zip: null,
+    address_city: null,
+    address_province: null,
+    address_country: null,
+    submitted_at: null,
+    privacy_consent: false,
+    privacy_consent_at: null,
+  };
+}
+
 async function upsertCheckinSession(booking, action = 'newReservation') {
   const bookingId = String(booking.id || booking.reservationId || '');
   if (!bookingId) return { ok: false, error: 'missing_booking_id' };
@@ -1763,8 +1934,17 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
         updates.token_expires_at = tokenData.expiresAt;
       }
     }
-    await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
-    return { ok: true, action: 'updated', status: existing.status };
+    // Se la prenotazione ora prevede più ospiti, aggiunge gli slot mancanti
+    // (non rimuove mai slot esistenti: potrebbero contenere dati già inseriti)
+    const pushOps = {};
+    const currentSlots = Array.isArray(existing.guests) ? existing.guests.length : 0;
+    if (totalGuests > currentSlots) {
+      pushOps.$push = { guests: { $each: Array.from({ length: totalGuests - currentSlots },
+        (_, i) => buildEmptyGuest(currentSlots + i + 1, null, null)) } };
+      if (existing.status === 'complete') updates.status = 'partial';
+    }
+    await sessionsCol.updateOne({ _id: sessionId }, { $set: updates, ...pushOps });
+    return { ok: true, action: 'updated', status: updates.status || existing.status };
   }
 
   // Insert nuovo
@@ -1777,43 +1957,8 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
     exclusion_reason: evaluation.reason,
     access_token: tokenData?.token || null,
     token_expires_at: tokenData?.expiresAt || null,
-    guests: Array.from({ length: totalGuests }, (_, i) => ({
-      slot: i + 1,
-      first_name: i === 0 ? firstName || null : null,
-      last_name: i === 0 ? lastName || null : null,
-      date_of_birth: null,
-      place_of_birth: null,
-      country_of_residence: null,
-      nationality: null,
-      document_type: null,
-      document_number: null,
-      document_issue_country: null,
-      document_issue_date: null,
-      document_expiry_date: null,
-      is_minor: false,
-      // Sesso (per compliance e correlazione CF)
-      sex: null,
-      // Codice fiscale (solo ospite slot 1 italiano)
-      tax_code: null,
-      tax_code_source: null,
-      tax_code_verified: false,
-      // Indirizzo di residenza (solo ospite slot 1 italiano)
-      address_street: null,
-      address_zip: null,
-      address_city: null,
-      address_province: null,
-      address_country: null,
-      address_source: null,
-      // Metadata OCR
-      ocr_confidence_overall: null,
-      ocr_warnings: [],
-      r2_front_key: null,
-      r2_back_key: null,
-      submitted_at: null,
-      ocr_confidence: null,
-      privacy_consent: false,
-      privacy_consent_at: null,
-    })),
+    guests: Array.from({ length: totalGuests }, (_, i) => buildEmptyGuest(i + 1,
+      i === 0 ? firstName : null, i === 0 ? lastName : null)),
     messages_sent: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -1893,8 +2038,43 @@ async function requireGuestAuth(req, res, next) {
   next();
 }
 
+// Vista ospite restituita al frontend (niente campi interni)
+function publicGuestView(g, session) {
+  const v = validateCheckinGuest(g, { isPrimary: g.slot === 1, arrival: session.booking?.arrival, full: true });
+  return {
+    slot: g.slot,
+    is_primary: g.slot === 1,
+    first_name: g.first_name ?? null,
+    last_name: g.last_name ?? null,
+    sex: g.sex ?? null,
+    date_of_birth: g.date_of_birth ?? null,
+    is_minor: v.isMinor,
+    birth_country: g.birth_country ?? null,
+    birth_city: g.birth_city ?? null,
+    birth_province: g.birth_province ?? null,
+    nationality: g.nationality ?? null,
+    tax_code: g.tax_code ?? null,
+    document_type: g.document_type ?? null,
+    document_number: g.document_number ?? null,
+    document_issue_country: g.document_issue_country ?? null,
+    document_issue_city: g.document_issue_city ?? null,
+    document_expiry_date: g.document_expiry_date ?? null,
+    address_street: g.address_street ?? null,
+    address_zip: g.address_zip ?? null,
+    address_city: g.address_city ?? null,
+    address_province: g.address_province ?? null,
+    address_country: g.address_country ?? null,
+    privacy_consent: !!g.privacy_consent,
+    submitted_at: g.submitted_at ?? null,
+    // Stato di compilazione, utile al frontend per mostrare cosa manca
+    is_ready: v.errors.length === 0,
+    field_errors: v.errors,
+    warnings: v.warnings,
+  };
+}
+
 // GET /api/checkin/session?t=<JWT>
-// Restituisce dati della session: property, booking, guests (slot vuoti o parzialmente compilati)
+// Restituisce property, booking e ospiti con lo stato di compilazione di ciascuno
 app.get('/api/checkin/session', requireGuestAuth, async (req, res) => {
   const s = req.checkinSession;
   res.json({
@@ -1904,380 +2084,152 @@ app.get('/api/checkin/session', requireGuestAuth, async (req, res) => {
       property: s.property,
       booking: s.booking,
       status: s.status,
-      guests: s.guests.map(g => ({
-        slot: g.slot,
-        first_name: g.first_name,
-        last_name: g.last_name,
-        date_of_birth: g.date_of_birth,
-        place_of_birth: g.place_of_birth,
-        country_of_residence: g.country_of_residence,
-        nationality: g.nationality,
-        document_type: g.document_type,
-        document_number: g.document_number,
-        document_issue_country: g.document_issue_country,
-        document_issue_date: g.document_issue_date,
-        document_expiry_date: g.document_expiry_date,
-        is_minor: g.is_minor,
-        has_front_photo: !!g.r2_front_key,
-        has_back_photo: !!g.r2_back_key,
-        submitted_at: g.submitted_at,
-        privacy_consent: g.privacy_consent,
-      })),
+      editable: CHECKIN_EDITABLE_STATUSES.includes(s.status),
+      document_types: CHECKIN_DOCUMENT_TYPES,
+      guests: s.guests.map(g => publicGuestView(g, s)),
     },
   });
 });
 
 // POST /api/checkin/guest/save
-// Body: { token, slot, data: { first_name, last_name, date_of_birth, ... } }
+// Body: { token, slot, data: { first_name, last_name, sex, date_of_birth, birth_country,
+//         birth_city, birth_province, nationality, tax_code, document_type, document_number,
+//         document_issue_country, document_issue_city, document_expiry_date,
+//         address_street, address_zip, address_city, address_province, address_country,
+//         privacy_consent } }
+// Salvataggio parziale: controlla solo il formato dei campi presenti.
+// Se c'è anche un solo errore non salva nulla e risponde 400 con field_errors.
+// Se l'ospite era già confermato, la modifica annulla la conferma (va riconfermato).
 app.post('/api/checkin/guest/save', requireGuestAuth, async (req, res) => {
   try {
     const s = req.checkinSession;
-    const { slot, data } = req.body;
-    if (!slot || !data) return res.status(400).json({ ok: false, error: 'missing_fields' });
+    if (!CHECKIN_EDITABLE_STATUSES.includes(s.status)) {
+      return res.status(409).json({ ok: false, error: 'session_not_editable', status: s.status });
+    }
+    const { slot, data } = req.body || {};
+    const slotNum = parseInt(slot);
+    if (!slotNum || !data || typeof data !== 'object') {
+      return res.status(400).json({ ok: false, error: 'missing_fields' });
+    }
+    const guest = s.guests.find(g => g.slot === slotNum);
+    if (!guest) return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
 
-    const allowed = ['first_name', 'last_name', 'date_of_birth', 'place_of_birth',
-      'country_of_residence', 'nationality', 'document_type', 'document_number',
-      'document_issue_country', 'document_issue_date', 'document_expiry_date', 'is_minor', 'privacy_consent'];
+    const input = normalizeGuestInput(data);
+    if (Object.keys(input).length === 0) {
+      return res.status(400).json({ ok: false, error: 'no_valid_fields' });
+    }
 
+    const merged = { ...guest, ...input };
+    const v = validateCheckinGuest(merged, { isPrimary: slotNum === 1, arrival: s.booking?.arrival, full: false });
+    if (v.errors.length > 0) {
+      return res.status(400).json({ ok: false, error: 'validation_failed', field_errors: v.errors, warnings: v.warnings });
+    }
+
+    const now = new Date().toISOString();
     const updates = {};
-    for (const k of allowed) { if (k in data) updates[`guests.$.${k}`] = data[k]; }
-    if (data.privacy_consent === true) updates['guests.$.privacy_consent_at'] = new Date().toISOString();
+    for (const [k, val] of Object.entries(input)) updates[`guests.$.${k}`] = val;
+    updates['guests.$.is_minor'] = v.isMinor;
+    updates['guests.$.tax_code_verified'] = v.taxCodeVerified;
+    updates['guests.$.tax_code_warnings'] = v.warnings.filter(w => w.field === 'tax_code').map(w => w.code);
+    if (input.privacy_consent === true && !guest.privacy_consent) updates['guests.$.privacy_consent_at'] = now;
+    if (input.privacy_consent === false) updates['guests.$.privacy_consent_at'] = null;
+    if (guest.submitted_at) updates['guests.$.submitted_at'] = null;
 
     const sessionsCol = await getCollection('checkin_sessions');
     await sessionsCol.updateOne(
-      { _id: s._id, 'guests.slot': parseInt(slot) },
-      { $set: { ...updates, updated_at: new Date().toISOString() } }
+      { _id: s._id, 'guests.slot': slotNum },
+      { $set: { ...updates, updated_at: now } }
     );
 
     await recalculateSessionStatus(s._id);
     const updated = await sessionsCol.findOne({ _id: s._id });
-    res.json({ ok: true, status: updated.status });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// POST /api/checkin/guest/upload
-// Body: { token, slot, side: 'front'|'back', imageBase64, mimeType }
-// Carica foto documento su R2 Cloudflare e salva la key in MongoDB
-app.post('/api/checkin/guest/upload', requireGuestAuth, async (req, res) => {
-  try {
-    const s = req.checkinSession;
-    const { slot, side, imageBase64, mimeType } = req.body;
-    if (!slot || !side || !imageBase64) return res.status(400).json({ ok: false, error: 'missing_fields' });
-    if (!['front', 'back'].includes(side)) return res.status(400).json({ ok: false, error: 'invalid_side' });
-
-    const buffer = Buffer.from(imageBase64, 'base64');
-    if (buffer.length > 5 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'file_too_large' });
-
-    const ext = (mimeType || 'image/jpeg').split('/')[1] || 'jpg';
-    const key = `${s._id}/guest_${slot}/${side}.${ext}`;
-    await r2Upload(key, buffer, mimeType || 'image/jpeg');
-
-    const fieldName = side === 'front' ? 'r2_front_key' : 'r2_back_key';
-    const sessionsCol = await getCollection('checkin_sessions');
-    await sessionsCol.updateOne(
-      { _id: s._id, 'guests.slot': parseInt(slot) },
-      { $set: { [`guests.$.${fieldName}`]: key, updated_at: new Date().toISOString() } }
-    );
-
-    res.json({ ok: true, key });
+    const fresh = updated.guests.find(g => g.slot === slotNum);
+    res.json({ ok: true, status: updated.status, guest: publicGuestView(fresh, updated) });
   } catch (e) {
-    console.error('[checkin/guest/upload]', e.message);
+    console.error('[checkin/guest/save]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// ── Check-in: OCR via Claude Vision (Sprint 1B.1-C.2) ─────────────
-// ══════════════════════════════════════════════════════════════════
-//
-// POST /api/checkin/guest/ocr
-// Body: {
-//   token,                      // JWT guest (oppure header X-Checkin-Token)
-//   slot,                       // 1..N (numero ospite)
-//   documentType,               // 'CIE' | 'PAPER_ID' | 'DRIVING_LICENSE' | 'PASSPORT'
-//   frontImageBase64,           // sempre obbligatorio (no prefisso data:image/...)
-//   frontMimeType,              // 'image/jpeg' | 'image/png' (default jpeg)
-//   backImageBase64?,           // obbligatorio per CIE/PAPER_ID, vietato per gli altri
-//   backMimeType?,
-// }
-//
-// Comportamento:
-// 1. Valida JWT + slot + documentType
-// 2. Verifica che r2_front_key del guest sia ancora null (errore se già caricato)
-// 3. CIE/PAPER_ID: 1 chiamata OCR con front+back insieme
-//    DRIVING_LICENSE/PASSPORT: 1 chiamata OCR con sola front
-// 4. Se OCR fallisce → 422, niente salvato su R2, niente scritto su MongoDB
-// 5. Se OCR ok → upload R2 + scrive in guests[] SOLO i campi attualmente null
-//    (non sovrascrive eventuale input manuale del guest)
-// 6. validateTaxCode: log warning ma accetta comunque (tax_code_verified flag)
-// 7. Ritorna extracted (dati grezzi OCR) + written (campi effettivamente scritti) +
-//    skipped (campi che erano già pieni) per UX di conferma frontend
-app.post('/api/checkin/guest/ocr', requireGuestAuth, async (req, res) => {
-  const s = req.checkinSession;
-  const { slot, documentType, frontImageBase64, frontMimeType,
-          backImageBase64, backMimeType } = req.body || {};
-
-  // ── 1. Validazione input ──────────────────────────────────────
-  if (!slot || !documentType || !frontImageBase64) {
-    return res.status(400).json({ ok: false, error: 'missing_fields',
-      detail: 'slot, documentType, frontImageBase64 obbligatori' });
-  }
-
-  const validTypes = ['CIE', 'PAPER_ID', 'DRIVING_LICENSE', 'PASSPORT'];
-  if (!validTypes.includes(documentType)) {
-    return res.status(400).json({ ok: false, error: 'invalid_document_type',
-      detail: `documentType deve essere uno di: ${validTypes.join(', ')}` });
-  }
-
-  const twoSided = (documentType === 'CIE' || documentType === 'PAPER_ID');
-  if (twoSided && !backImageBase64) {
-    return res.status(400).json({ ok: false, error: 'missing_back_image',
-      detail: 'CIE e PAPER_ID richiedono anche backImageBase64' });
-  }
-  if (!twoSided && backImageBase64) {
-    return res.status(400).json({ ok: false, error: 'unexpected_back_image',
-      detail: 'DRIVING_LICENSE e PASSPORT richiedono solo frontImageBase64' });
-  }
-
-  // ── 2. Verifica slot esiste e non ha già foto ─────────────────
-  const slotNum = parseInt(slot);
-  const guest = s.guests.find(g => g.slot === slotNum);
-  if (!guest) {
-    return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
-  }
-  if (guest.r2_front_key) {
-    return res.status(409).json({ ok: false, error: 'document_already_uploaded',
-      detail: 'Documento già caricato per questo ospite. Usa /api/checkin/guest/reset prima di ricaricarlo (TODO).' });
-  }
-
-  // ── 3. Decodifica base64 + check dimensione ───────────────────
-  let frontBuf, backBuf;
-  try {
-    frontBuf = Buffer.from(frontImageBase64, 'base64');
-    if (twoSided) backBuf = Buffer.from(backImageBase64, 'base64');
-  } catch (e) {
-    return res.status(400).json({ ok: false, error: 'invalid_base64' });
-  }
-
-  const MAX_SIZE = 5 * 1024 * 1024; // 5MB per immagine
-  if (frontBuf.length > MAX_SIZE) {
-    return res.status(413).json({ ok: false, error: 'front_image_too_large',
-      detail: `Front max ${MAX_SIZE} bytes, ricevuti ${frontBuf.length}` });
-  }
-  if (twoSided && backBuf.length > MAX_SIZE) {
-    return res.status(413).json({ ok: false, error: 'back_image_too_large' });
-  }
-
-  // ── 4. Chiamata OCR a Claude Sonnet 4.6 ───────────────────────
-  const frontMime = (frontMimeType || 'image/jpeg').toLowerCase();
-  const backMime  = (backMimeType  || 'image/jpeg').toLowerCase();
-  const validMimes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!validMimes.includes(frontMime) || (twoSided && !validMimes.includes(backMime))) {
-    return res.status(400).json({ ok: false, error: 'invalid_mime_type',
-      detail: `Mime types ammessi: ${validMimes.join(', ')}` });
-  }
-
-  const promptText = buildOcrPrompt(documentType);
-  const userContent = [
-    { type: 'text', text: promptText },
-    { type: 'image', source: { type: 'base64', media_type: frontMime, data: frontImageBase64 } },
-  ];
-  if (twoSided) {
-    userContent.push({ type: 'image', source: { type: 'base64', media_type: backMime, data: backImageBase64 } });
-  }
-
-  let extracted = null;
-  let rawOcrResponse = null;
-  try {
-    const ocrResp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
-      messages: [{ role: 'user', content: userContent }],
-    });
-    // La risposta è un array di content blocks; prendiamo il primo text block
-    rawOcrResponse = (ocrResp.content || []).map(c => c.text || '').join('').trim();
-
-    // Strip eventuali markdown fences ```json ... ```
-    let jsonText = rawOcrResponse
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```$/i, '')
-      .trim();
-
-    extracted = JSON.parse(jsonText);
-  } catch (ocrErr) {
-    console.error('[checkin/guest/ocr] OCR failed:', ocrErr.message, '| raw:', rawOcrResponse?.slice(0, 300));
-    return res.status(422).json({ ok: false, error: 'ocr_failed',
-      detail: 'Claude non è riuscito a leggere il documento. Riprovare con foto più nitida.',
-      raw_preview: rawOcrResponse?.slice(0, 200) || null });
-  }
-
-  // ── 5. Validazione struttura JSON estratto ────────────────────
-  if (!extracted || typeof extracted !== 'object') {
-    return res.status(422).json({ ok: false, error: 'ocr_invalid_response' });
-  }
-
-  // ── 6. Upload immagini su R2 (solo ORA che OCR è andato bene) ─
-  const frontExt = frontMime.split('/')[1] || 'jpg';
-  const frontKey = `${s._id}/guest_${slotNum}/front.${frontExt}`;
-  let backKey = null;
-
-  try {
-    await r2Upload(frontKey, frontBuf, frontMime);
-    if (twoSided) {
-      const backExt = backMime.split('/')[1] || 'jpg';
-      backKey = `${s._id}/guest_${slotNum}/back.${backExt}`;
-      await r2Upload(backKey, backBuf, backMime);
-    }
-  } catch (r2Err) {
-    console.error('[checkin/guest/ocr] R2 upload failed:', r2Err.message);
-    return res.status(500).json({ ok: false, error: 'r2_upload_failed', detail: r2Err.message });
-  }
-
-  // ── 7. Mappatura OCR → schema guests[] ────────────────────────
-  // Mappa: nome campo nello schema guest ← nome campo nel JSON OCR
-  const fieldMap = {
-    first_name:            extracted.first_name,
-    last_name:             extracted.last_name,
-    sex:                   extracted.sex,
-    date_of_birth:         extracted.date_of_birth,
-    place_of_birth:        extracted.place_of_birth,
-    nationality:           extracted.nationality,
-    document_number:       extracted.document_number,
-    document_issue_date:   extracted.document_issue_date,
-    document_expiry_date:  extracted.document_expiry_date,
-    document_issue_country:extracted.document_issue_country,
-    address_street:        extracted.address_street,
-    address_zip:           extracted.address_zip,
-    address_city:          extracted.address_city,
-    address_province:      extracted.address_province,
-    address_country:       extracted.address_country,
-  };
-
-  // Tax code: validazione + flag (solo se estratto e formato CF italiano)
-  let taxCodeVerified = false;
-  if (extracted.tax_code) {
-    taxCodeVerified = validateTaxCode(extracted.tax_code);
-    if (!taxCodeVerified) {
-      console.warn(`[checkin/guest/ocr] CF non valido per session ${s._id} guest ${slotNum}: "${extracted.tax_code}"`);
-    }
-  }
-
-  // ── 8. Update MongoDB: scrive SOLO campi attualmente null ─────
-  const writeUpdates = {};
-  const written = [];
-  const skipped = [];
-
-  for (const [field, value] of Object.entries(fieldMap)) {
-    if (value === null || value === undefined || value === '') continue;
-    if (guest[field] === null || guest[field] === undefined || guest[field] === '') {
-      writeUpdates[`guests.$.${field}`] = value;
-      written.push(field);
-    } else {
-      skipped.push(field);
-    }
-  }
-
-  // Tax code: campo speciale, scrive tax_code + source + verified
-  if (extracted.tax_code) {
-    if (guest.tax_code === null || guest.tax_code === undefined || guest.tax_code === '') {
-      writeUpdates['guests.$.tax_code'] = extracted.tax_code.toUpperCase().trim();
-      writeUpdates['guests.$.tax_code_source'] = 'ocr';
-      writeUpdates['guests.$.tax_code_verified'] = taxCodeVerified;
-      written.push('tax_code');
-    } else {
-      skipped.push('tax_code');
-    }
-  }
-
-  // Address source (se almeno un campo address scritto)
-  const addrFields = ['address_street','address_zip','address_city','address_province','address_country'];
-  if (addrFields.some(f => written.includes(f))) {
-    writeUpdates['guests.$.address_source'] = 'ocr';
-  }
-
-  // Document type + R2 keys + metadata OCR (sempre scritti, sono di sistema)
-  writeUpdates['guests.$.document_type'] = documentType;
-  writeUpdates['guests.$.r2_front_key']  = frontKey;
-  if (backKey) writeUpdates['guests.$.r2_back_key'] = backKey;
-  writeUpdates['guests.$.ocr_confidence_overall'] = typeof extracted.confidence === 'number'
-    ? extracted.confidence : null;
-  writeUpdates['guests.$.ocr_warnings'] = Array.isArray(extracted.warnings)
-    ? extracted.warnings : [];
-
-  const sessionsCol = await getCollection('checkin_sessions');
-  try {
-    await sessionsCol.updateOne(
-      { _id: s._id, 'guests.slot': slotNum },
-      { $set: { ...writeUpdates, updated_at: new Date().toISOString() } }
-    );
-  } catch (dbErr) {
-    console.error('[checkin/guest/ocr] MongoDB update failed:', dbErr.message);
-    // Foto già su R2 → meglio non rollback (compliance > storage cost)
-    return res.status(500).json({ ok: false, error: 'db_update_failed', detail: dbErr.message });
-  }
-
-  // ── 9. Risposta al frontend ───────────────────────────────────
-  console.log(`[checkin/guest/ocr] ${s._id} guest ${slotNum} ${documentType} ok | written: ${written.join(',')} | CF verified: ${taxCodeVerified}`);
-
-  res.json({
-    ok: true,
-    extracted,                                    // dati grezzi OCR (per UX conferma)
-    written,                                      // campi effettivamente scritti
-    skipped,                                      // campi non sovrascritti (input manuale)
-    tax_code_verified: taxCodeVerified,
-    ocr_confidence: extracted.confidence || null,
-    ocr_warnings: extracted.warnings || [],
-  });
-});
-
 // POST /api/checkin/guest/submit
-// Body: { token, slot }
-// Marca il guest come "submitted" (validato dall'ospite)
+// Body: { token, slot? }
+//   con slot    → conferma solo quell'ospite
+//   senza slot  → conferma tutti gli ospiti in un colpo (bottone finale del form)
+// Controllo completo: campi obbligatori + formati + coerenza codice fiscale.
+// In modalità "tutti" non conferma nessuno se anche un solo ospite ha errori.
 app.post('/api/checkin/guest/submit', requireGuestAuth, async (req, res) => {
   try {
     const s = req.checkinSession;
-    const { slot } = req.body;
+    if (!CHECKIN_EDITABLE_STATUSES.includes(s.status)) {
+      return res.status(409).json({ ok: false, error: 'session_not_editable', status: s.status });
+    }
+    const { slot } = req.body || {};
+    let targets;
+    if (slot !== undefined && slot !== null && slot !== '') {
+      const g = s.guests.find(x => x.slot === parseInt(slot));
+      if (!g) return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
+      targets = [g];
+    } else {
+      targets = s.guests;
+    }
+
+    const results = targets.map(g => ({
+      g, v: validateCheckinGuest(g, { isPrimary: g.slot === 1, arrival: s.booking?.arrival, full: true }),
+    }));
+    const failed = results.filter(r => r.v.errors.length > 0);
+    if (failed.length > 0) {
+      return res.status(400).json({
+        ok: false, error: 'validation_failed',
+        guests: failed.map(r => ({ slot: r.g.slot, field_errors: r.v.errors })),
+      });
+    }
+
+    const now = new Date().toISOString();
     const sessionsCol = await getCollection('checkin_sessions');
-
-    const guest = s.guests.find(g => g.slot === parseInt(slot));
-    if (!guest) return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
-
-    const required = ['first_name', 'last_name', 'date_of_birth', 'place_of_birth',
-      'nationality', 'document_type', 'document_number'];
-    const missing = required.filter(k => !guest[k]);
-    if (missing.length > 0) return res.status(400).json({ ok: false, error: 'missing_required_fields', missing });
-    if (!guest.r2_front_key) return res.status(400).json({ ok: false, error: 'missing_document_photo' });
-    if (!guest.privacy_consent) return res.status(400).json({ ok: false, error: 'missing_privacy_consent' });
-
-    await sessionsCol.updateOne(
-      { _id: s._id, 'guests.slot': parseInt(slot) },
-      { $set: { 'guests.$.submitted_at': new Date().toISOString(), updated_at: new Date().toISOString() } }
-    );
+    for (const { g, v } of results) {
+      await sessionsCol.updateOne(
+        { _id: s._id, 'guests.slot': g.slot },
+        { $set: {
+          'guests.$.submitted_at': g.submitted_at || now,
+          'guests.$.is_minor': v.isMinor,
+          'guests.$.tax_code_verified': v.taxCodeVerified,
+          'guests.$.tax_code_warnings': v.warnings.filter(w => w.field === 'tax_code').map(w => w.code),
+          updated_at: now,
+        } }
+      );
+    }
 
     await recalculateSessionStatus(s._id);
     const updated = await sessionsCol.findOne({ _id: s._id });
-    res.json({ ok: true, status: updated.status });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    res.json({ ok: true, status: updated.status, submitted: results.map(r => r.g.slot) });
+  } catch (e) {
+    console.error('[checkin/guest/submit]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // Helper: ricalcola lo status della session in base allo stato dei guest
-// Chiamato dopo save/submit per aggiornare pending→partial→complete
+// Chiamato dopo save/submit: pending → partial → complete.
+// Una session manual_required (arrivo oggi) passa a complete se l'ospite
+// finisce online, altrimenti resta manual_required.
 async function recalculateSessionStatus(sessionId) {
   const sessionsCol = await getCollection('checkin_sessions');
   const session = await sessionsCol.findOne({ _id: sessionId });
   if (!session) return;
-  if (!['pending', 'partial', 'complete'].includes(session.status)) return;
+  if (!['pending', 'partial', 'complete', 'manual_required'].includes(session.status)) return;
 
-  const allSubmitted = session.guests.every(g => !!g.submitted_at);
-  const someSubmitted = session.guests.some(g => !!g.submitted_at || !!g.first_name);
+  const allSubmitted = session.guests.length > 0 && session.guests.every(g => !!g.submitted_at);
+  const someStarted = session.guests.some(g => !!g.submitted_at || !!g.date_of_birth || !!g.document_number);
 
-  let newStatus = session.status;
+  let newStatus;
   if (allSubmitted) newStatus = 'complete';
-  else if (someSubmitted) newStatus = 'partial';
+  else if (session.status === 'manual_required') newStatus = 'manual_required';
+  else if (someStarted) newStatus = 'partial';
   else newStatus = 'pending';
 
   const updates = { status: newStatus, updated_at: new Date().toISOString() };
   if (newStatus === 'complete' && !session.completed_at) updates.completed_at = new Date().toISOString();
+  if (newStatus !== 'complete') updates.completed_at = null;
   await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
 }
 // ══════════════════════════════════════════════════════════════════
@@ -2305,23 +2257,20 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
 });
 
 // GET /api/checkin/sessions/:id
-// Restituisce dettaglio completo di una session.
-// Aggiunge signed URL temporanei (1h) per foto documenti su R2.
+// Restituisce dettaglio completo di una session, con lo stato di
+// validazione di ogni ospite (utile alla dashboard per vedere cosa manca).
 app.get('/api/checkin/sessions/:id', requireAdminAuth, async (req, res) => {
   try {
     const col = await getCollection('checkin_sessions');
     const session = await col.findOne({ _id: req.params.id });
     if (!session) return res.status(404).json({ ok: false, error: 'not_found' });
 
-    // Genera signed URL per ogni foto caricata (validità 1 ora)
-    const guestsWithUrls = await Promise.all(session.guests.map(async g => {
-      const urls = {};
-      if (g.r2_front_key) urls.front_url = await r2GetSignedUrl(g.r2_front_key, 3600);
-      if (g.r2_back_key) urls.back_url = await r2GetSignedUrl(g.r2_back_key, 3600);
-      return { ...g, ...urls };
-    }));
+    const guests = session.guests.map(g => {
+      const v = validateCheckinGuest(g, { isPrimary: g.slot === 1, arrival: session.booking?.arrival, full: true });
+      return { ...g, is_ready: v.errors.length === 0, field_errors: v.errors, warnings: v.warnings };
+    });
 
-    res.json({ ok: true, session: { ...session, guests: guestsWithUrls } });
+    res.json({ ok: true, session: { ...session, guests } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -2467,7 +2416,9 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
 
 // POST /api/cron/checkin/cleanup
 // Cleanup notturno:
-// - Cancella foto R2 con checkout > 7 giorni fa (privacy GDPR + costi storage)
+// - LEGACY: cancella eventuali foto R2 rimaste dalle session di test create
+//   quando il check-in raccoglieva le foto (da settembre 2026 non ne arrivano
+//   più; il blocco non trova nulla e si può eliminare in futuro)
 // - Archivia session con checkout > 30 giorni fa (status=archived)
 app.post('/api/cron/checkin/cleanup', requireCronSecret, async (req, res) => {
   try {
