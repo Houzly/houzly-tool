@@ -2295,6 +2295,85 @@ app.get('/api/checkin/sessions/:id', requireAdminAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── Sessioni di PROVA (test del form ospite) ──────────────────────
+// GET o POST /api/checkin/admin/test-session?pin=XXXX
+// Parametri facoltativi (query o body):
+//   guests  → numero ospiti (1-10, default 2)
+//   arrival → data arrivo YYYY-MM-DD (default: tra 10 giorni)
+//   nights  → notti (1-30, default 3)
+//   name    → nome ospite principale (default "Ospite Prova")
+//   property→ nome struttura da mostrare (default "Struttura di prova")
+//   lang    → it | en (default it)
+// Crea una scheda marcata is_test: nessun messaggio viene inviato, i cron la
+// ignorano. Restituisce il link da aprire sul telefono.
+app.all('/api/checkin/admin/test-session', requireAdminAuth, async (req, res) => {
+  try {
+    const q = { ...req.query, ...(req.body || {}) };
+    const guests = Math.min(Math.max(parseInt(q.guests) || 2, 1), 10);
+    const nights = Math.min(Math.max(parseInt(q.nights) || 3, 1), 30);
+    const arrival = isValidIsoDate(q.arrival) ? q.arrival
+      : new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const departure = new Date(new Date(arrival + 'T12:00:00Z').getTime() + nights * 86400000).toISOString().slice(0, 10);
+    const fullName = String(q.name || 'Ospite Prova').trim().slice(0, 80);
+    const [firstName, ...rest] = fullName.split(' ');
+    const lastName = rest.join(' ') || null;
+
+    const ts = Date.now();
+    const bookingId = `test_${ts}`;
+    const tokenData = generateCheckinToken(bookingId, departure);
+    const now = new Date().toISOString();
+
+    const session = {
+      _id: `booking_${bookingId}`,
+      smoobu_booking_id: bookingId,
+      is_test: true,
+      property: {
+        smoobu_id: null,
+        name: String(q.property || 'Struttura di prova').slice(0, 80),
+        prop_code: null, region: null, city: null,
+      },
+      booking: {
+        channel_id: null, channel_name: 'TEST',
+        primary_guest_name: fullName, primary_guest_email: null,
+        language: q.lang === 'en' ? 'en' : 'it',
+        arrival, departure, nights,
+        adults: guests, children: 0, total_guests_expected: guests,
+        price_total: 0, notice: '[TEST]',
+      },
+      status: 'pending',
+      exclusion_reason: null,
+      access_token: tokenData.token,
+      token_expires_at: tokenData.expiresAt,
+      guests: Array.from({ length: guests }, (_, i) => buildEmptyGuest(i + 1,
+        i === 0 ? firstName : null, i === 0 ? lastName : null)),
+      messages_sent: [],
+      initial_message_due_at: null,
+      initial_message_sent_at: null,
+      initial_message_attempts: 0,
+      initial_dispatch_claimed_at: null,
+      created_at: now, updated_at: now, completed_at: null, archived_at: null,
+    };
+
+    const col = await getCollection('checkin_sessions');
+    await col.insertOne(session);
+    const link = `${APP_BASE_URL}/checkin.html?t=${tokenData.token}`;
+    res.json({ ok: true, session_id: session._id, link, arrival, departure, guests });
+  } catch (e) {
+    console.error('[checkin/admin/test-session]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET o POST /api/checkin/admin/test-sessions/delete?pin=XXXX
+// Cancella TUTTE le schede di prova (is_test: true). Le prenotazioni vere non vengono toccate.
+app.all('/api/checkin/admin/test-sessions/delete', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const r = await col.deleteMany({ is_test: true });
+    res.json({ ok: true, deleted: r.deletedCount });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // POST /api/checkin/sessions/:id/resend
 // Rigenera token JWT e reinvia il messaggio iniziale (chat Smoobu o email).
 // Utile se: token scaduto, ospite ha perso il link, vuoi forzare un reinvio.
@@ -2380,6 +2459,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     // D-3 reminders
     const d3Sessions = await col.find({
       status: { $in: ['pending', 'partial'] },
+      is_test: { $ne: true },
       'booking.arrival': d3Str,
     }).toArray();
     for (const s of d3Sessions) {
@@ -2405,6 +2485,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     // D-1 reminders (più urgenti)
     const d1Sessions = await col.find({
       status: { $in: ['pending', 'partial'] },
+      is_test: { $ne: true },
       'booking.arrival': d1Str,
     }).toArray();
     for (const s of d1Sessions) {
@@ -2429,6 +2510,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     // Arrivi oggi non ancora completi → manual_required
     const arrivingToday = await col.find({
       status: { $in: ['pending', 'partial'] },
+      is_test: { $ne: true },
       'booking.arrival': todayStr,
     }).toArray();
     for (const s of arrivingToday) {
@@ -2461,6 +2543,7 @@ app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
       const claimed = await col.findOneAndUpdate(
         {
           status: { $in: ['pending', 'partial', 'manual_required'] },
+          is_test: { $ne: true },
           initial_message_due_at: { $ne: null, $lte: nowIso },
           initial_message_sent_at: null,
           initial_message_attempts: { $lt: 3 },
