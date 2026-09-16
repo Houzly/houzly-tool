@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#170046">
+<title>Houzly · Check-in online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Palette e font di houzly.it */
+:root{
+  --deep:#170046; --ink:#1a0050; --sand:#f0f4fa; --warm:#e4edf8; --white:#f8fbff;
+  --clay:#4acbef; --terra:#4487da; --accent:#47a9e4; --mid:#4265d0; --muted:#5a7aaa;
+  --line:rgba(68,135,218,.18); --ok:#1f8a5b; --err:#c0392b; --err-bg:#fdf1ef;
+  --serif:'Cormorant Garamond',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);font-weight:300;background:var(--sand);color:var(--deep);min-height:100vh;line-height:1.6}
+button,input,select{font-family:inherit;font-size:16px;color:inherit}
+
+/* Header */
+.hd{background:var(--deep);color:#fff;padding:18px 22px 30px;position:relative;overflow:hidden}
+.hd::after{content:"✦";position:absolute;right:-10px;bottom:-40px;font-size:160px;color:rgba(74,203,239,.07);line-height:1}
+.hd-top{display:flex;justify-content:space-between;align-items:center;max-width:560px;margin:0 auto}
+.logo{height:30px;width:auto;display:block}
+.logo-txt{font-family:var(--serif);font-size:26px;letter-spacing:.04em}
+.lang{display:flex;gap:2px;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:2px}
+.lang button{background:none;border:0;color:rgba(255,255,255,.6);font-size:11px;letter-spacing:.2em;padding:5px 11px;border-radius:16px;cursor:pointer}
+.lang button.on{background:rgba(74,203,239,.18);color:#fff}
+.hd-body{max-width:560px;margin:22px auto 0;position:relative;z-index:1}
+.label{font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--clay)}
+.hd h1{font-family:var(--serif);font-weight:400;font-size:34px;line-height:1.1;margin-top:8px}
+.hd .sub{font-size:14px;color:rgba(255,255,255,.7);margin-top:6px}
+
+/* Contenuto */
+main{max-width:560px;margin:-14px auto 0;padding:0 16px 120px;position:relative;z-index:2}
+.card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:22px 20px;margin-bottom:14px}
+.card h2{font-family:var(--serif);font-weight:500;font-size:24px;line-height:1.2}
+.p{font-size:15px;color:var(--ink);margin-top:10px}
+.muted{color:var(--muted);font-size:13px}
+.sec{display:flex;align-items:center;gap:10px;margin:26px 0 4px;font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--terra)}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.sec:first-of-type{margin-top:6px}
+
+.progress{height:3px;background:var(--warm);border-radius:3px;margin:4px 0 18px;overflow:hidden}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--clay),var(--terra));transition:width .4s}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+.full{grid-column:1/-1}
+.f{margin-top:14px}
+.f label{display:block;font-size:12px;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+.f label b{color:var(--terra);font-weight:400}
+.f input,.f select{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 12px;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.f select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 17px) 20px,calc(100% - 12px) 20px;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+.f input:focus,.f select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(71,169,228,.15)}
+.f input.up{text-transform:uppercase;letter-spacing:.06em}
+.f.bad input,.f.bad select{border-color:var(--err);background:var(--err-bg)}
+.f .msg{font-size:12px;color:var(--err);margin-top:4px;display:none}
+.f.bad .msg{display:block}
+.f .hint{font-size:12px;color:var(--muted);margin-top:4px}
+.warn{font-size:12.5px;color:#8a5a00;background:#fff7e6;border-radius:8px;padding:8px 10px;margin-top:8px}
+
+/* Lista ospiti */
+.g-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.g-row:first-child{border-top:0}
+.g-n{width:30px;height:30px;border-radius:50%;background:var(--warm);color:var(--terra);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.g-name{flex:1;font-size:15px;min-width:0}
+.g-name small{display:block;color:var(--muted);font-size:12px}
+.st{font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.st.ok{color:var(--ok)} .st.tick{font-size:17px;letter-spacing:0} .st.todo{color:var(--terra)} .st.err{color:var(--err)}
+.g-row.click{cursor:pointer}
+
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:16px;font-size:14px;cursor:pointer}
+.check input{width:22px;height:22px;flex-shrink:0;accent-color:var(--deep);margin-top:1px}
+.check a{color:var(--terra)}
+
+/* Bottoni */
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(248,251,255,.96);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:10}
+.bar-in{max-width:560px;margin:0 auto;display:flex;gap:10px}
+.btn{flex:1;min-height:52px;border:0;border-radius:10px;background:var(--deep);color:#fff;font-size:12px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;transition:background .2s,opacity .2s}
+.btn:hover{background:var(--mid)}
+.btn.ghost{flex:0 0 auto;padding:0 18px;background:transparent;color:var(--deep);border:1px solid var(--line)}
+.btn[disabled]{opacity:.5;cursor:wait}
+
+.center{text-align:center;padding:40px 10px}
+.big-star{font-size:44px;color:var(--clay);line-height:1}
+.spin{width:28px;height:28px;border:2px solid var(--warm);border-top-color:var(--terra);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;top:auto;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#fff;color:var(--deep);border:1px solid var(--line);box-shadow:0 6px 24px rgba(23,0,70,.12);font-size:14px;padding:10px 16px;border-radius:10px;z-index:20;max-width:90vw;display:none}
+.fade{animation:fd .35s ease both}
+@keyframes fd{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="hd-top">
+    <img class="logo" src="https://res.cloudinary.com/dhhwuufhw/image/upload/q_auto,f_auto/v1776117858/houzly-logo-transparent_yc0p6a.png" alt="Houzly" onerror="this.outerHTML='<span class=logo-txt>Houzly</span>'">
+    <div class="lang">
+      <button data-l="it">IT</button><button data-l="en">EN</button>
+    </div>
+  </div>
+  <div class="hd-body">
+    <div class="label" id="hdLabel">✦ Check-in online</div>
+    <h1 id="hdTitle">&nbsp;</h1>
+    <div class="sub" id="hdSub">&nbsp;</div>
+  </div>
+</header>
+
+<main id="app"><div class="card center"><div class="spin"></div></div></main>
+
+<div class="bar hidden" id="bar"><div class="bar-in" id="barIn"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+// ─────────────────────────────────────────────────────────────
+// Testi IT / EN
+// ─────────────────────────────────────────────────────────────
+const T = {
+  it: {
+    welcome: n => `Benvenuto${n ? ', ' + n : ''}`,
+    intro: 'La legge italiana ci chiede di registrare tutti gli ospiti prima dell’arrivo. Servono pochi minuti.',
+    toRegister: 'Ospiti da registrare',
+    docsHint: 'Tieni a portata di mano i documenti di tutti gli ospiti, bambini compresi, e il codice fiscale per i cittadini italiani. Nessuna foto richiesta: i documenti verranno verificati al tuo arrivo.',
+    start: 'Inizia', resume: 'Continua', next: 'Avanti', back: 'Indietro', review: 'Riepilogo', confirm: 'Conferma check-in',
+    guestN: (i, n) => `Ospite ${i} di ${n}`, guest: i => `Ospite ${i}`, primary: 'Ospite principale',
+    toFill: 'da compilare', ready: 'completo', missing: 'da completare',
+    sPersonal: 'Dati personali', sBirth: 'Nascita', sDoc: 'Documento', sHome: 'Residenza',
+    first_name: 'Nome', last_name: 'Cognome', sex: 'Sesso', male: 'Maschio', female: 'Femmina',
+    date_of_birth: 'Data di nascita', nationality: 'Cittadinanza', birth_country: 'Nazione di nascita',
+    birth_city: 'Comune di nascita', birth_province: 'Provincia', tax_code: 'Codice fiscale',
+    tax_hint: 'Lo trovi sulla tessera sanitaria.',
+    document_type: 'Tipo di documento', ID_CARD: 'Carta d’identità', PASSPORT: 'Passaporto', DRIVING_LICENSE: 'Patente',
+    document_number: 'Numero documento', document_issue_country: 'Paese di rilascio',
+    document_issue_city: 'Comune di rilascio', document_expiry_date: 'Scadenza', optional: 'facoltativo',
+    kidDoc: 'Il documento è richiesto anche per i bambini e i neonati.',
+    address_street: 'Indirizzo e numero civico', address_zip: 'CAP', address_city: 'Città',
+    address_province: 'Provincia', address_country: 'Nazione di residenza',
+    select: 'Seleziona…',
+    reviewTitle: 'Controlla e conferma', reviewSub: 'Tocca un ospite per modificare i suoi dati.',
+    privacy: 'Ho letto l’<a href="https://www.houzly.it/privacy" target="_blank" rel="noopener">informativa privacy</a> e dichiaro che i dati inseriti sono corretti.',
+    doneTitle: 'Check-in completato', doneText: 'Grazie. Abbiamo ricevuto i dati di tutti gli ospiti. All’arrivo verificheremo i documenti.',
+    edit: 'Modifica dati', saved: 'Dati salvati',
+    stay: (a, d) => `${a} – ${d}`,
+    errTitle: 'Link non valido', errExpired: 'Questo link non è valido o è scaduto. Scrivici nella chat della prenotazione e te ne invieremo uno nuovo.',
+    errClosed: 'Il check-in online per questa prenotazione è chiuso. Per modifiche scrivici nella chat della prenotazione.',
+    errNet: 'Connessione non riuscita. Riprova.',
+    fixErrors: 'Controlla i campi evidenziati',
+    minorPrimary: 'L’ospite principale deve essere maggiorenne.',
+    e: {
+      required: 'Campo obbligatorio', invalid_format: 'Formato non valido', invalid_value: 'Valore non valido',
+      invalid_date: 'Data non valida', out_of_range: 'Data non plausibile',
+      primary_must_be_adult: 'L’ospite principale deve essere maggiorenne',
+      invalid_country: 'Nazione non valida', invalid_province: 'Provincia non valida',
+      invalid_tax_code: 'Codice fiscale non valido, controlla le lettere e i numeri',
+      tax_code_birth_date_or_sex_mismatch: 'Il codice fiscale non corrisponde a data di nascita o sesso',
+      invalid_document_number: 'Numero documento non valido',
+      document_expired: 'Il documento risulta scaduto alla data di arrivo',
+      invalid_zip: 'CAP non valido',
+    },
+    wNameMismatch: 'Il codice fiscale non sembra corrispondere a nome e cognome. Se è corretto puoi proseguire.',
+  },
+  en: {
+    welcome: n => `Welcome${n ? ', ' + n : ''}`,
+    intro: 'Italian law requires us to register all guests before arrival. It only takes a few minutes.',
+    toRegister: 'Guests to register',
+    docsHint: 'Have the ID documents of all guests at hand, children included. No photo upload needed: documents will be checked on arrival.',
+    start: 'Start', resume: 'Continue', next: 'Next', back: 'Back', review: 'Review', confirm: 'Confirm check-in',
+    guestN: (i, n) => `Guest ${i} of ${n}`, guest: i => `Guest ${i}`, primary: 'Main guest',
+    toFill: 'to fill in', ready: 'complete', missing: 'incomplete',
+    sPersonal: 'Personal details', sBirth: 'Birth', sDoc: 'ID document', sHome: 'Home address',
+    first_name: 'First name', last_name: 'Last name', sex: 'Sex', male: 'Male', female: 'Female',
+    date_of_birth: 'Date of birth', nationality: 'Citizenship', birth_country: 'Country of birth',
+    birth_city: 'Town of birth', birth_province: 'Province', tax_code: 'Italian tax code (codice fiscale)',
+    tax_hint: 'You can find it on the Italian health card.',
+    document_type: 'Document type', ID_CARD: 'ID card', PASSPORT: 'Passport', DRIVING_LICENSE: 'Driving licence',
+    document_number: 'Document number', document_issue_country: 'Issuing country',
+    document_issue_city: 'Issuing town', document_expiry_date: 'Expiry date', optional: 'optional',
+    kidDoc: 'An ID document is required for children and infants too.',
+    address_street: 'Street and number', address_zip: 'Postcode', address_city: 'City',
+    address_province: 'Province', address_country: 'Country of residence',
+    select: 'Select…',
+    reviewTitle: 'Review and confirm', reviewSub: 'Tap a guest to edit their details.',
+    privacy: 'I have read the <a href="https://www.houzly.it/privacy" target="_blank" rel="noopener">privacy notice</a> and confirm the details are correct.',
+    doneTitle: 'Check-in complete', doneText: 'Thank you. We have received the details of all guests. We will check the documents on arrival.',
+    edit: 'Edit details', saved: 'Saved',
+    stay: (a, d) => `${a} – ${d}`,
+    errTitle: 'Invalid link', errExpired: 'This link is invalid or has expired. Message us in the booking chat and we will send you a new one.',
+    errClosed: 'Online check-in for this booking is closed. For changes, message us in the booking chat.',
+    errNet: 'Connection failed. Please try again.',
+    fixErrors: 'Please check the highlighted fields',
+    minorPrimary: 'The main guest must be an adult.',
+    e: {
+      required: 'Required', invalid_format: 'Invalid format', invalid_value: 'Invalid value',
+      invalid_date: 'Invalid date', out_of_range: 'Date not plausible',
+      primary_must_be_adult: 'The main guest must be an adult',
+      invalid_country: 'Invalid country', invalid_province: 'Invalid province',
+      invalid_tax_code: 'Invalid tax code, please check letters and numbers',
+      tax_code_birth_date_or_sex_mismatch: 'The tax code does not match date of birth or sex',
+      invalid_document_number: 'Invalid document number',
+      document_expired: 'The document is expired on the arrival date',
+      invalid_zip: 'Invalid postcode',
+    },
+    wNameMismatch: 'The tax code does not seem to match the name. If it is correct you can continue.',
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// Dati di supporto: nazioni (ISO 3166) e province italiane
+// ─────────────────────────────────────────────────────────────
+const COUNTRIES = 'AD AE AF AG AL AM AO AR AT AU AZ BA BB BD BE BF BG BH BI BJ BN BO BR BS BT BW BY BZ CA CD CF CG CH CI CL CM CN CO CR CU CV CY CZ DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FM FR GA GB GD GE GH GM GN GQ GR GT GW GY HK HN HR HT HU ID IE IL IN IQ IR IS IT JM JO JP KE KG KH KI KM KN KP KR KW KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MG MH MK ML MM MN MO MR MT MU MV MW MX MY MZ NA NE NG NI NL NO NP NR NZ OM PA PE PG PH PK PL PS PT PW PY QA RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TW TZ UA UG US UY UZ VA VC VE VN VU WS XK YE ZA ZM ZW'.split(' ');
+const PROVINCES = 'AG AL AN AO AP AQ AR AT AV BA BG BI BL BN BO BR BS BT BZ CA CB CE CH CL CN CO CR CS CT CZ EN FC FE FG FI FM FR GE GO GR IM IS KR LC LE LI LO LT LU MB MC ME MI MN MO MS MT NA NO NU OR PA PC PD PE PG PI PN PO PR PT PU PV PZ RA RC RE RG RI RM RN RO SA SI SO SP SR SS SU SV TA TE TN TO TP TR TS TV UD VA VB VC VE VI VR VT VV'.split(' ');
+const TOP_COUNTRIES = ['IT', 'DE', 'FR', 'GB', 'US', 'NL', 'CH', 'AT', 'ES', 'BE'];
+
+// ─────────────────────────────────────────────────────────────
+// Stato
+// ─────────────────────────────────────────────────────────────
+const token = new URLSearchParams(location.search).get('t');
+const lsGet = k => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+const savedLang = lsGet('hz_lang');
+let lang = savedLang || ((navigator.language || 'it').slice(0, 2) === 'it' ? 'it' : 'en');
+let S = null;          // session dal server
+let view = 'welcome';  // welcome | guest | review | done | error
+let cur = 0;           // indice ospite corrente
+let busy = false;
+let errState = null;
+
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const t = () => T[lang];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let dn;
+function countryName(code) {
+  try { dn = dn && dn.l === lang ? dn : Object.assign(new Intl.DisplayNames([lang], { type: 'region' }), { l: lang }); return dn.of(code) || code; }
+  catch (_) { return code; }
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  try { return new Date(iso + 'T12:00:00').toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'short' }); }
+  catch (_) { return iso; }
+}
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toast.h); toast.h = setTimeout(() => (el.style.display = 'none'), 2600);
+}
+
+// ─────────────────────────────────────────────────────────────
+// API
+// ─────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opt = { method, headers: { 'Content-Type': 'application/json' } };
+  let url = path;
+  if (method === 'GET') url += (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(token);
+  else opt.body = JSON.stringify({ ...body, token });
+  const r = await fetch(url, opt);
+  let data = {};
+  try { data = await r.json(); } catch (_) {}
+  return { status: r.status, data };
+}
+
+async function load() {
+  if (!token) { errState = 'expired'; view = 'error'; return render(); }
+  try {
+    const { status, data } = await api('GET', '/api/checkin/session');
+    if (status === 401 || status === 404) { errState = 'expired'; view = 'error'; return render(); }
+    if (!data.ok) throw new Error();
+    S = data.session;
+    if (!savedLang && S.booking?.language) {
+      lang = String(S.booking.language).toLowerCase().startsWith('it') ? 'it' : 'en';
+    }
+    if (!S.editable) { errState = 'closed'; view = 'error'; }
+    else if (S.status === 'complete') view = 'done';
+    else view = 'welcome';
+    render();
+  } catch (_) {
+    app.innerHTML = `<div class="card center"><p class="p">${t().errNet}</p><div style="margin-top:16px"><button class="btn" style="max-width:200px" onclick="location.reload()">↻</button></div></div>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Rendering
+// ─────────────────────────────────────────────────────────────
+function setHeader(label, title, sub) {
+  $('#hdLabel').textContent = '✦ ' + label;
+  $('#hdTitle').textContent = title;
+  $('#hdSub').textContent = sub || '';
+}
+function setBar(html) {
+  const bar = $('#bar');
+  if (!html) { bar.classList.add('hidden'); return; }
+  $('#barIn').innerHTML = html; bar.classList.remove('hidden');
+}
+function guestLabel(g) {
+  const n = [g.first_name, g.last_name].filter(Boolean).join(' ');
+  return n || t().guest(g.slot);
+}
+
+function render() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l === lang));
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  ({ welcome: renderWelcome, guest: renderGuest, review: renderReview, done: renderDone, error: renderError })[view]();
+}
+
+function renderError() {
+  setHeader('Houzly', t().errTitle, '');
+  app.innerHTML = `<div class="card center fade"><div class="big-star">✦</div><p class="p" style="margin-top:14px">${errState === 'closed' ? t().errClosed : t().errExpired}</p></div>`;
+  setBar(null);
+}
+
+function renderWelcome() {
+  const b = S.booking || {};
+  const firstName = (S.guests[0]?.first_name || '').split(' ')[0];
+  setHeader('Check-in online', t().welcome(firstName), `${S.property?.name || ''} · ${t().stay(fmtDate(b.arrival), fmtDate(b.departure))}`);
+  const started = S.guests.some(g => g.date_of_birth || g.document_number);
+  app.innerHTML = `
+    <div class="card fade">
+      <p class="p" style="margin-top:0">${t().intro}</p>
+    </div>
+    <div class="card fade">
+      <div class="label" style="color:var(--terra)">${t().toRegister}</div>
+      <div style="margin-top:8px">${S.guests.map(g => `
+        <div class="g-row">
+          <div class="g-n">${g.slot}</div>
+          <div class="g-name">${esc(guestLabel(g))}${g.is_primary ? `<small>${t().primary}</small>` : ''}</div>
+          <div class="st ${g.is_ready ? 'ok' : 'todo'}">${g.is_ready ? t().ready : t().toFill}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <p class="muted fade" style="padding:0 6px">✦ ${t().docsHint}</p>`;
+  setBar(`<button class="btn" id="go">${started ? t().resume : t().start}</button>`);
+  $('#go').onclick = () => {
+    const firstTodo = S.guests.findIndex(g => !g.is_ready);
+    if (firstTodo === -1) { view = 'review'; }
+    else { cur = firstTodo; view = 'guest'; }
+    render();
+  };
+}
+
+// Campi del form ospite
+function opt(v, label, sel) { return `<option value="${esc(v)}"${sel === v ? ' selected' : ''}>${esc(label)}</option>`; }
+function countryOptions(sel) {
+  const rest = COUNTRIES.filter(c => !TOP_COUNTRIES.includes(c))
+    .map(c => [c, countryName(c)]).sort((a, b) => a[1].localeCompare(b[1], lang));
+  return opt('', t().select, sel || '') +
+    TOP_COUNTRIES.map(c => opt(c, countryName(c), sel)).join('') +
+    '<option disabled>──────────</option>' +
+    rest.map(([c, n]) => opt(c, n, sel)).join('');
+}
+function provinceOptions(sel) { return opt('', '—', sel || '') + PROVINCES.map(p => opt(p, p, sel)).join(''); }
+
+function field(name, value, { type = 'text', cls = '', full = false, required = true, hint = '', attrs = '' } = {}) {
+  const lbl = `${t()[name]}${required ? '' : ` <b>· ${t().optional}</b>`}`;
+  let input;
+  if (type === 'country') input = `<select name="${name}">${countryOptions(value)}</select>`;
+  else if (type === 'province') input = `<select name="${name}">${provinceOptions(value)}</select>`;
+  else if (type === 'sex') input = `<select name="${name}">${opt('', t().select, value || '')}${opt('F', t().female, value)}${opt('M', t().male, value)}</select>`;
+  else if (type === 'doctype') input = `<select name="${name}">${opt('', t().select, value || '')}${['ID_CARD', 'PASSPORT', 'DRIVING_LICENSE'].map(d => opt(d, t()[d], value)).join('')}</select>`;
+  else input = `<input name="${name}" type="${type}" value="${esc(value)}" class="${cls}" ${attrs}>`;
+  return `<div class="f ${full ? 'full' : ''}" data-f="${name}"><label>${lbl}</label>${input}<div class="msg"></div>${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+
+function renderGuest() {
+  const g = S.guests[cur];
+  const n = S.guests.length;
+  setHeader(t().guestN(cur + 1, n), guestLabel(g), g.is_primary ? t().primary : '');
+  const today = new Date().toISOString().slice(0, 10);
+
+  app.innerHTML = `
+    <div class="card fade">
+      <div class="progress"><i style="width:${Math.round(((cur + 1) / (n + 1)) * 100)}%"></i></div>
+
+      <div class="sec">${t().sPersonal}</div>
+      <div class="grid">
+        ${field('first_name', g.first_name, { attrs: 'autocomplete="given-name"' })}
+        ${field('last_name', g.last_name, { attrs: 'autocomplete="family-name"' })}
+        ${field('sex', g.sex, { type: 'sex' })}
+        ${field('date_of_birth', g.date_of_birth, { type: 'date', attrs: `max="${today}" min="1900-01-01"` })}
+        ${field('nationality', g.nationality, { type: 'country', full: true })}
+        <div class="full" data-show="it-citizen">${field('tax_code', g.tax_code, { cls: 'up', hint: t().tax_hint, attrs: 'maxlength="16" autocapitalize="characters" autocomplete="off" spellcheck="false"' })}</div>
+        <div class="full" id="cfWarn"></div>
+      </div>
+
+      <div class="sec">${t().sBirth}</div>
+      <div class="grid">
+        ${field('birth_country', g.birth_country, { type: 'country', full: true })}
+        <div data-show="it-birth" style="display:contents">
+          ${field('birth_city', g.birth_city)}
+          ${field('birth_province', g.birth_province, { type: 'province' })}
+        </div>
+      </div>
+
+      <div class="sec">${t().sDoc}</div>
+      <p class="muted" id="kidDoc" style="display:none">${t().kidDoc}</p>
+      <div class="grid">
+        ${field('document_type', g.document_type, { type: 'doctype', full: true })}
+        ${field('document_number', g.document_number, { cls: 'up', attrs: 'maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false"' })}
+        ${field('document_expiry_date', g.document_expiry_date, { type: 'date', required: false, attrs: `min="${today}"` })}
+        ${field('document_issue_country', g.document_issue_country, { type: 'country', full: true })}
+        <div class="full" data-show="it-doc">${field('document_issue_city', g.document_issue_city)}</div>
+      </div>
+
+      ${g.is_primary ? `
+      <div class="sec">${t().sHome}</div>
+      <div class="grid">
+        ${field('address_country', g.address_country, { type: 'country', full: true })}
+        ${field('address_street', g.address_street, { full: true, attrs: 'autocomplete="street-address"' })}
+        ${field('address_zip', g.address_zip, { cls: 'up', attrs: 'autocomplete="postal-code" maxlength="12"' })}
+        ${field('address_city', g.address_city, { attrs: 'autocomplete="address-level2"' })}
+        <div class="full" data-show="it-home">${field('address_province', g.address_province, { type: 'province' })}</div>
+      </div>` : ''}
+    </div>`;
+
+  // Valori predefiniti utili: nazione di rilascio = cittadinanza
+  const form = app;
+  const val = nm => form.querySelector(`[name="${nm}"]`)?.value || '';
+  const sync = () => {
+    const show = (key, on) => form.querySelectorAll(`[data-show="${key}"]`).forEach(el => {
+      el.style.display = on ? (key === 'it-birth' ? 'contents' : '') : 'none';
+    });
+    show('it-citizen', val('nationality') === 'IT');
+    show('it-birth', val('birth_country') === 'IT');
+    show('it-doc', val('document_issue_country') === 'IT');
+    if (g.is_primary) show('it-home', val('address_country') === 'IT');
+    const dob = val('date_of_birth');
+    const arrival = S.booking?.arrival || today;
+    let minor = false;
+    if (dob) { const a = new Date(arrival), b = new Date(dob); let y = a.getFullYear() - b.getFullYear(); if (a.getMonth() < b.getMonth() || (a.getMonth() === b.getMonth() && a.getDate() < b.getDate())) y--; minor = y < 18; }
+    $('#kidDoc').style.display = minor ? '' : 'none';
+  };
+  form.querySelectorAll('select,input').forEach(el => {
+    el.addEventListener('change', () => {
+      if (el.name === 'nationality' && !val('document_issue_country')) form.querySelector('[name="document_issue_country"]').value = el.value;
+      if (el.name === 'nationality' && !val('birth_country')) form.querySelector('[name="birth_country"]').value = el.value;
+      sync();
+    });
+    el.addEventListener('input', () => el.closest('.f')?.classList.remove('bad'));
+  });
+  sync();
+  showErrors(g.field_errors?.length && g._touched ? g.field_errors : [], g._warnings || []);
+
+  const hasPrev = cur > 0;
+  const isLast = cur === S.guests.length - 1;
+  setBar(`<button class="btn ghost" id="prev" aria-label="${t().back}">←</button>
+          <button class="btn" id="nxt">${isLast ? t().review : t().next}</button>`);
+  $('#prev').onclick = async () => {
+    if (!(await saveCurrent(false))) return;
+    if (hasPrev) cur--; else view = 'welcome';
+    render();
+  };
+  $('#nxt').onclick = async () => {
+    if (!(await saveCurrent(true))) return;
+    if (isLast) view = 'review'; else cur++;
+    render();
+  };
+}
+
+function collect(g) {
+  const v = nm => (app.querySelector(`[name="${nm}"]`)?.value || '').trim() || null;
+  const vis = nm => { const el = app.querySelector(`[data-f="${nm}"]`); return el && el.offsetParent !== null; };
+  const data = {};
+  const fields = ['first_name', 'last_name', 'sex', 'date_of_birth', 'nationality', 'tax_code', 'birth_country', 'birth_city',
+    'birth_province', 'document_type', 'document_number', 'document_expiry_date', 'document_issue_country', 'document_issue_city'];
+  if (g.is_primary) fields.push('address_country', 'address_street', 'address_zip', 'address_city', 'address_province');
+  // I campi nascosti (es. provincia per chi è nato all'estero) vengono azzerati
+  fields.forEach(f => (data[f] = vis(f) ? v(f) : null));
+  return data;
+}
+
+function showErrors(errors, warnings) {
+  app.querySelectorAll('.f.bad').forEach(el => el.classList.remove('bad'));
+  let first = null;
+  (errors || []).forEach(e => {
+    const box = app.querySelector(`[data-f="${e.field}"]`);
+    if (!box || box.offsetParent === null) return;
+    box.classList.add('bad');
+    box.querySelector('.msg').textContent = t().e[e.code] || t().e.invalid_value;
+    first = first || box;
+  });
+  const w = $('#cfWarn');
+  if (w) w.innerHTML = (warnings || []).some(x => x.code === 'tax_code_name_mismatch') ? `<div class="warn">${t().wNameMismatch}</div>` : '';
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Salva l'ospite corrente. strict=true: blocca se mancano campi obbligatori.
+async function saveCurrent(strict) {
+  if (busy) return false;
+  const g = S.guests[cur];
+  const data = collect(g);
+  const anyValue = Object.values(data).some(Boolean);
+  if (!strict && !anyValue) return true;
+  busy = true;
+  document.querySelectorAll('.bar .btn').forEach(b => (b.disabled = true));
+  try {
+    const { status, data: res } = await api('POST', '/api/checkin/guest/save', { slot: g.slot, data });
+    if (status === 401) { errState = 'expired'; view = 'error'; render(); return false; }
+    if (status === 409) { errState = 'closed'; view = 'error'; render(); return false; }
+    if (!res.ok) {
+      if (!strict && res.error === 'validation_failed') return true; // tornando indietro non blocchiamo
+      showErrors(res.field_errors, res.warnings);
+      toast(t().fixErrors);
+      return false;
+    }
+    S.status = res.status;
+    S.guests[cur] = res.guest;
+    if (strict) {
+      // Tutti gli errori tranne il consenso privacy (si dà nel riepilogo)
+      const errs = (res.guest.field_errors || []).filter(e => e.field !== 'privacy_consent');
+      if (errs.length) { showErrors(errs, res.guest.warnings); toast(t().fixErrors); return false; }
+    }
+    return true;
+  } catch (_) {
+    toast(t().errNet); return false;
+  } finally {
+    busy = false;
+    document.querySelectorAll('.bar .btn').forEach(b => (b.disabled = false));
+  }
+}
+
+function renderReview() {
+  setHeader(t().review, t().reviewTitle, t().reviewSub);
+  const p = S.guests[0];
+  app.innerHTML = `
+    <div class="card fade">
+      ${S.guests.map((g, i) => {
+        const errs = (g.field_errors || []).filter(e => e.field !== 'privacy_consent');
+        const doc = g.document_type ? `${t()[g.document_type]} · ${esc(g.document_number || '')}` : '';
+        return `<div class="g-row click" data-i="${i}">
+          <div class="g-n">${g.slot}</div>
+          <div class="g-name">${esc(guestLabel(g))}<small>${doc || (g.is_primary ? t().primary : '')}</small></div>
+          <div class="st ${errs.length ? 'err' : 'ok tick'}">${errs.length ? t().missing : '✓'}</div>
+        </div>`;
+      }).join('')}
+      <label class="check"><input type="checkbox" id="privacy" ${p.privacy_consent ? 'checked' : ''}><span>${t().privacy}</span></label>
+      <div class="f" data-f="privacy_consent"><div class="msg"></div></div>
+    </div>`;
+  app.querySelectorAll('.g-row.click').forEach(r => (r.onclick = () => { cur = +r.dataset.i; view = 'guest'; render(); }));
+  setBar(`<button class="btn ghost" id="prev" aria-label="${t().back}">←</button><button class="btn" id="ok">${t().confirm}</button>`);
+  $('#prev').onclick = () => { cur = S.guests.length - 1; view = 'guest'; render(); };
+  $('#ok').onclick = submitAll;
+}
+
+async function submitAll() {
+  if (busy) return;
+  const chk = $('#privacy');
+  const box = app.querySelector('[data-f="privacy_consent"]');
+  if (!chk.checked) { box.classList.add('bad'); box.querySelector('.msg').textContent = t().e.required; toast(t().fixErrors); return; }
+  busy = true;
+  document.querySelectorAll('.bar .btn').forEach(b => (b.disabled = true));
+  try {
+    const s1 = await api('POST', '/api/checkin/guest/save', { slot: S.guests[0].slot, data: { privacy_consent: true } });
+    if (s1.status === 401) { errState = 'expired'; view = 'error'; return render(); }
+    const { status, data } = await api('POST', '/api/checkin/guest/submit', {});
+    if (status === 401) { errState = 'expired'; view = 'error'; return render(); }
+    if (status === 409) { errState = 'closed'; view = 'error'; return render(); }
+    if (!data.ok && data.error === 'validation_failed') {
+      // Ricarica lo stato e porta al primo ospite con errori
+      const fresh = await api('GET', '/api/checkin/session');
+      if (fresh.data.ok) S = fresh.data.session;
+      const bad = data.guests?.[0]?.slot;
+      const idx = S.guests.findIndex(g => g.slot === bad);
+      if (idx >= 0) { cur = idx; S.guests[idx]._touched = true; view = 'guest'; render(); toast(t().fixErrors); }
+      return;
+    }
+    if (!data.ok) throw new Error();
+    S.status = data.status;
+    view = 'done';
+    render();
+  } catch (_) {
+    toast(t().errNet);
+  } finally {
+    busy = false;
+    document.querySelectorAll('.bar .btn').forEach(b => (b.disabled = false));
+  }
+}
+
+function renderDone() {
+  setHeader('Check-in online', t().doneTitle, S.property?.name || '');
+  app.innerHTML = `
+    <div class="card center fade">
+      <div class="big-star">✦</div>
+      <h2 style="margin-top:12px">${t().doneTitle}</h2>
+      <p class="p">${t().doneText}</p>
+    </div>
+    <div class="card fade">
+      ${S.guests.map(g => `<div class="g-row"><div class="g-n">${g.slot}</div><div class="g-name">${esc(guestLabel(g))}</div><div class="st ok tick">✓</div></div>`).join('')}
+    </div>`;
+  setBar(`<button class="btn ghost" style="flex:1" id="ed">${t().edit}</button>`);
+  $('#ed').onclick = () => { cur = 0; view = 'guest'; render(); };
+}
+
+// Cambio lingua
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+  if (view === 'guest') {
+    // conserva quanto digitato senza salvare
+    const g = S.guests[cur]; Object.assign(g, collect(g));
+  }
+  lang = b.dataset.l;
+  try { localStorage.setItem('hz_lang', lang); } catch (_) {}
+  render();
+}));
+
+load();
+})();
+</script>
+</body>
+</html>
