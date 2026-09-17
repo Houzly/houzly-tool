@@ -613,7 +613,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cki-form .field .err{font-size:10.5px;color:var(--red)}
 .cki-log{font-size:12px;color:var(--text-mid)}
 .cki-log div{padding:4px 0;border-bottom:1px dashed var(--border)}
-.cki-prop-row{display:grid;grid-template-columns:minmax(0,1.6fr) 190px 150px 90px;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
+.cki-prop-row{display:grid;grid-template-columns:minmax(0,1.6fr) 190px 150px 130px;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
 .cki-prop-row select,.cki-prop-row input{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:12px;width:100%}
 @media(max-width:860px){
   .cki-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -815,7 +815,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v75 · 17/09 · Check-in → Documenti</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v76 · 17/09 · Check-in import Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2292,7 +2292,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div id="cki-view-props" style="display:none">
     <div class="card" style="margin-bottom:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:12.5px;color:var(--text-mid);max-width:620px">Accendi il check-in solo sulle strutture pronte. Accendendolo, gli ospiti delle prenotazioni future già registrate ricevono il link entro circa mezz'ora. Spegnendolo, le prenotazioni non ancora compilate smettono di ricevere messaggi.</div>
+      <div style="font-size:12.5px;color:var(--text-mid);max-width:620px">Accendi il check-in solo sulle strutture pronte. Accendendolo, il tool legge da Smoobu tutte le prenotazioni future della struttura e gli ospiti ricevono il link entro circa mezz'ora. Il pulsante &#8635; riallinea le prenotazioni di una struttura già accesa. Spegnendolo, le prenotazioni non ancora compilate smettono di ricevere messaggi.</div>
       <button class="btn btn-ghost btn-sm" onclick="ckiSyncProps()">&#8595; Sincronizza strutture da Smoobu</button>
     </div>
     <div class="cki-list" id="cki-props"><div class="cki-empty">Caricamento...</div></div>
@@ -13797,7 +13797,9 @@ function ckiRenderProps() {
       + '<div class="cki-main"><b>' + ckiEsc(p.name) + '</b><small>Smoobu ' + ckiEsc(p.smoobu_apartment_id) + '</small></div>'
       + '<div class="cki-prop-reg"><select onchange="ckiSaveProp(\'' + ckiEsc(p._id) + '\',{region:this.value})"><option value="">— Regione —</option>' + reg + '</select></div>'
       + '<div class="cki-prop-city"><input placeholder="Comune" value="' + ckiEsc(p.city || '') + '" onchange="ckiSaveProp(\'' + ckiEsc(p._id) + '\',{city:this.value.trim()||null})"></div>'
-      + '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span style="font-size:11px;color:var(--text-light)">' + (p.checkin_required ? 'Attivo' : 'Spento') + '</span>'
+      + '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">'
+      + (p.checkin_required ? '<button class="btn btn-ghost btn-sm" title="Riallinea prenotazioni future da Smoobu" onclick="ckiImportProp(\'' + ckiEsc(p._id) + '\')">&#8635;</button>' : '')
+      + '<span style="font-size:11px;color:var(--text-light)">' + (p.checkin_required ? 'Attivo' : 'Spento') + '</span>'
       + '<label class="toggle"><input type="checkbox"' + (p.checkin_required ? ' checked' : '') + ' onchange="ckiToggleProp(\'' + ckiEsc(p._id) + '\',this)"><span class="toggle-slider"></span></label></div>'
       + '</div>';
   }).join('');
@@ -13817,12 +13819,20 @@ async function ckiToggleProp(id, el) {
   var p = CKI.props.find(function (x) { return x._id === id; });
   var msg;
   if (on) {
-    var n = 0;
-    try { n = (await ckiFetch('GET', '/properties/' + encodeURIComponent(id) + '/preview')).futureBookings; } catch (e) {}
     if (!p.region) { el.checked = false; toast('Imposta prima il portale regionale'); return; }
-    msg = 'Accendere il check-in su "' + p.name + '"?\n\n'
-      + (n ? n + ' prenotazion' + (n === 1 ? 'e futura riceverà' : 'i future riceveranno') + ' il link entro circa 30 minuti.'
-           : 'Non ci sono prenotazioni future in attesa: il link partirà dalle prossime prenotazioni.');
+    toast('Controllo le prenotazioni su Smoobu...');
+    var pv = {};
+    try { pv = await ckiFetch('GET', '/properties/' + encodeURIComponent(id) + '/preview'); } catch (e) {}
+    var n = pv.futureBookings;
+    if (n === null || n === undefined) {
+      msg = 'Accendere il check-in su "' + p.name + '"?\n\nNon sono riuscito a leggere le prenotazioni da Smoobu'
+        + (pv.smoobuError ? ' (' + pv.smoobuError + ')' : '') + '. Verranno comunque attivate le ' + (pv.registered || 0) + ' già registrate.';
+    } else if (n) {
+      msg = 'Accendere il check-in su "' + p.name + '"?\n\nSu Smoobu ci sono ' + n + ' prenotazion' + (n === 1 ? 'e' : 'i') + ' in corso o future.\n'
+        + 'Gli ospiti non ancora arrivati riceveranno il link entro circa 30 minuti; i soggiorni già iniziati andranno in "Da gestire".';
+    } else {
+      msg = 'Accendere il check-in su "' + p.name + '"?\n\nSu Smoobu non ci sono prenotazioni future: il link partirà dalle prossime prenotazioni.';
+    }
   } else {
     msg = 'Spegnere il check-in su "' + p.name + '"?\n\nLe prenotazioni future non ancora compilate smetteranno di ricevere link e promemoria. Quelle già iniziate o complete restano invariate.';
   }
@@ -13830,10 +13840,23 @@ async function ckiToggleProp(id, el) {
   try {
     var d = await ckiFetch('PUT', '/properties/' + encodeURIComponent(id), { checkin_required: on });
     CKI.props = CKI.props.map(function (x) { return x._id === id ? d.property : x; });
-    toast((on ? 'Check-in acceso' : 'Check-in spento') + (d.sessionsChanged ? ' · ' + d.sessionsChanged + ' prenotazioni aggiornate' : ''), 4000);
+    if (on) {
+      toast('Check-in acceso · ' + (d.sessionsChanged || 0) + ' link in partenza'
+        + (d.importError ? ' · ATTENZIONE: import da Smoobu non riuscito (' + d.importError + ')' : ''), d.importError ? 8000 : 4500);
+    } else {
+      toast('Check-in spento' + (d.sessionsChanged ? ' · ' + d.sessionsChanged + ' prenotazioni sospese' : ''), 4000);
+    }
     ckiRenderProps();
     ckiLoadProps();
   } catch (e) { el.checked = !on; if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+async function ckiImportProp(id) {
+  toast('Riallineo da Smoobu...');
+  try {
+    var d = await ckiFetch('POST', '/properties/' + encodeURIComponent(id) + '/import');
+    toast('Smoobu: ' + d.imported.found + ' prenotazioni future · ' + d.imported.created + ' nuove registrate', 4500);
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message, 6000); }
 }
 
 async function ckiSyncProps() {
