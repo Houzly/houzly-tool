@@ -567,6 +567,65 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .prop-grid{grid-template-columns:1fr !important}
 }
 
+/* ══ CHECK-IN OSPITI (v74) ══ */
+.cki-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.cki-kpi{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;cursor:pointer;transition:all .15s;text-align:left;font-family:inherit}
+.cki-kpi:hover{border-color:var(--blue-mid)}
+.cki-kpi.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(67,97,238,.12)}
+.cki-kpi-label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light)}
+.cki-kpi-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-top:2px;color:var(--text)}
+.cki-kpi-sub{font-size:11px;color:var(--text-light)}
+.cki-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.cki-filters select,.cki-filters input[type=search]{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;color:var(--text);outline:none}
+.cki-filters input[type=search]{min-width:200px;flex:1}
+.cki-filters label{font-size:12px;color:var(--text-mid);display:flex;align-items:center;gap:6px;cursor:pointer}
+.cki-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
+.cki-row{display:grid;grid-template-columns:92px minmax(0,1.3fr) minmax(0,1.2fr) 70px 140px 120px;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.cki-row:last-child{border-bottom:none}
+.cki-row:hover{background:rgba(67,97,238,.04)}
+.cki-row.head{background:#0f1535;color:#fff;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;cursor:default;padding:7px 14px}
+.cki-row.head:hover{background:#0f1535}
+.cki-date{font-weight:700;color:var(--text);font-size:12.5px}
+.cki-date small{display:block;font-weight:500;color:var(--text-light);font-size:11px}
+.cki-main{min-width:0}
+.cki-main b{display:block;color:var(--text);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cki-main small{color:var(--text-light);font-size:11px}
+.cki-prop{color:var(--text-mid);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cki-guests{font-weight:700;color:var(--text-mid)}
+.cki-link{font-size:11px;color:var(--text-light)}
+.cki-link.bad{color:var(--red);font-weight:600}
+.cki-empty{padding:36px;text-align:center;color:var(--text-light)}
+.badge-gray{background:rgba(136,146,176,.14);color:#6b7497}
+.cki-sec{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:18px 0 8px}
+.cki-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px;font-size:12.5px}
+.cki-info div span{display:block;font-size:10.5px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.cki-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.cki-guest{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+.cki-guest-hd{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);cursor:pointer}
+.cki-guest-hd b{flex:1;min-width:0;font-size:13px;color:var(--text)}
+.cki-guest-body{padding:12px;display:none}
+.cki-guest.open .cki-guest-body{display:block}
+.cki-kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;font-size:12.5px}
+.cki-kv div span{display:block;font-size:10.5px;color:var(--text-light)}
+.cki-kv div.miss{color:var(--red)}
+.cki-warn{background:rgba(245,166,35,.1);color:#9a6200;border-radius:6px;padding:7px 10px;font-size:12px;margin-top:8px}
+.cki-form .field.bad input,.cki-form .field.bad select{border-color:var(--red);background:rgba(240,64,96,.05)}
+.cki-form .field .err{font-size:10.5px;color:var(--red)}
+.cki-log{font-size:12px;color:var(--text-mid)}
+.cki-log div{padding:4px 0;border-bottom:1px dashed var(--border)}
+.cki-prop-row{display:grid;grid-template-columns:minmax(0,1.6fr) 190px 150px 90px;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
+.cki-prop-row select,.cki-prop-row input{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:12px;width:100%}
+@media(max-width:860px){
+  .cki-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cki-row{grid-template-columns:70px minmax(0,1fr) auto;gap:8px}
+  .cki-row.head{display:none}
+  .cki-row .cki-prop,.cki-row .cki-link{grid-column:2/4}
+  .cki-row .cki-guests{grid-row:1;grid-column:3}
+  .cki-row .cki-st{grid-column:2/4}
+  .cki-info,.cki-kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cki-prop-row{grid-template-columns:minmax(0,1fr) 90px}
+  .cki-prop-row .cki-prop-reg,.cki-prop-row .cki-prop-city{grid-column:1/-1}
+}
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -748,6 +807,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div class="nav-group"><div class="nav-group-label">Operations</div>
     <div class="nav-item" onclick="showPage('operations')"><span class="nav-icon">&#9989;</span> Tasks</div>
+    <div class="nav-item" onclick="showPage('checkin')"><span class="nav-icon">&#128273;</span> Check-in Ospiti</div>
     <div class="nav-item" onclick="showPage('pulizie')"><span class="nav-icon">🧹</span> Cleaning Manager</div>
     <div class="nav-item" onclick="showPage('onboarding')"><span class="nav-icon">&#128203;</span> Onboarding</div>
   </div>
@@ -755,7 +815,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v73 · 14/09 · Smoobu HMAC</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v75 · 17/09 · Check-in → Documenti</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2190,6 +2250,62 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
 
 <!-- ══════════════════════════════════════════════════════════════════
+     CHECK-IN OSPITI (v74)
+══════════════════════════════════════════════════════════════════ -->
+<div id="page-checkin" class="page">
+  <div class="onb-header">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Check-in Ospiti</div>
+      <div style="font-size:11.5px;color:var(--text-light);margin-top:2px" id="cki-sub">Caricamento...</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="ckiRefresh()">&#8635; Aggiorna</button>
+    </div>
+  </div>
+  <div class="onb-tabs">
+    <button class="onb-tab active" id="cki-tab-list" onclick="ckiSwitchTab('list')">Prenotazioni</button>
+    <button class="onb-tab" id="cki-tab-props" onclick="ckiSwitchTab('props')">Strutture</button>
+  </div>
+  <div id="cki-view-list">
+    <div class="cki-kpis" id="cki-kpis"></div>
+    <div class="cki-filters">
+      <select id="cki-f-view" onchange="ckiLoad()">
+        <option value="upcoming">In corso e in arrivo</option>
+        <option value="past">Soggiorni passati</option>
+        <option value="all">Tutti</option>
+      </select>
+      <select id="cki-f-status" onchange="ckiLoad()">
+        <option value="">Tutti gli stati</option>
+        <option value="pending">Da compilare</option>
+        <option value="partial">In corso</option>
+        <option value="complete">Completi</option>
+        <option value="attention">Da gestire</option>
+        <option value="excluded_property_disabled">Struttura spenta</option>
+        <option value="archived">Archiviati</option>
+      </select>
+      <select id="cki-f-prop" onchange="ckiLoad()"><option value="">Tutte le strutture</option></select>
+      <input type="search" id="cki-f-q" placeholder="Cerca ospite, struttura o n. prenotazione" oninput="ckiSearchDebounced()">
+      <label><input type="checkbox" id="cki-f-excl" onchange="ckiLoad()"> Mostra escluse</label>
+    </div>
+    <div class="cki-list" id="cki-list"><div class="cki-empty">Caricamento...</div></div>
+    <div id="cki-list-note" style="font-size:11px;color:var(--text-light);margin-top:8px"></div>
+  </div>
+  <div id="cki-view-props" style="display:none">
+    <div class="card" style="margin-bottom:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:12.5px;color:var(--text-mid);max-width:620px">Accendi il check-in solo sulle strutture pronte. Accendendolo, gli ospiti delle prenotazioni future già registrate ricevono il link entro circa mezz'ora. Spegnendolo, le prenotazioni non ancora compilate smettono di ricevere messaggi.</div>
+      <button class="btn btn-ghost btn-sm" onclick="ckiSyncProps()">&#8595; Sincronizza strutture da Smoobu</button>
+    </div>
+    <div class="cki-list" id="cki-props"><div class="cki-empty">Caricamento...</div></div>
+  </div>
+</div>
+<div class="modal-overlay" id="cki-modal" onclick="if(event.target===this)ckiCloseModal()">
+  <div class="modal" style="max-width:860px">
+    <button class="modal-close" onclick="ckiCloseModal()">&times;</button>
+    <div id="cki-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
      PULIZIE – Cleaning Manager
 ══════════════════════════════════════════════════════════════════ -->
 <div id="page-pulizie" class="page">
@@ -2429,7 +2545,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="modal" style="max-width:720px;position:relative">
     <button class="modal-close" onclick="closeModal('modal-destinatario')">&#10005;</button>
     <div class="modal-title">&#128101; Dati Destinatario</div>
-    <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;margin-top:-10px">
+    <div id="dest-subtitle" style="font-size:12px;color:var(--text-light);margin-bottom:16px;margin-top:-10px">
       Pre-compilato dai dati Smoobu. Modifica se il cliente è un'azienda o se vuoi dati diversi.
     </div>
     <input type="hidden" id="dest-bid">
@@ -2912,7 +3028,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
+  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -2983,7 +3099,7 @@ function renderPage(p){
   if(p==='gruppi')renderGruppi();
   if(p==='prenotazioni'){renderPrenotazioni();wireTableActions('tbody-prenotazioni');}
   if(p==='report_prop')setupReportFiltri();
-  if(p==='documenti')renderDocumenti();
+  if(p==='documenti'){renderDocumenti();if(typeof ckiSyncBilling==='function')ckiSyncBilling();}
   if(p==='adempimenti')renderAdempimenti();
   if(p==='anticipi')renderAnticipi();
   if(p==='operations'){switchOpsTab('generici');}
@@ -2991,6 +3107,7 @@ function renderPage(p){
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
+  if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
 function wireTableActions(tbodyId){
   // no-op: delegation is handled globally via document listener below
@@ -5559,7 +5676,7 @@ function renderDocumenti(){
       +tickHtml
       +'</div>'
       +'<div class="doc-row-body" data-action="open-doc" data-bid="'+b.id+'">'
-      +'<div class="doc-row-title">'+b.ospite_nome+'<span style="font-weight:400;color:var(--text-light);margin-left:8px">— '+nomeProp(b.proprieta_id)+'</span>'+meseBadgesHtmlGlobal(b)+'</div>'
+      +'<div class="doc-row-title">'+b.ospite_nome+(b.checkin_data_at?'<span class="badge badge-green" style="font-size:9.5px;margin-left:6px" title="Dati ospite dal check-in online">&#128273; check-in</span>':'')+'<span style="font-weight:400;color:var(--text-light);margin-left:8px">— '+nomeProp(b.proprieta_id)+'</span>'+meseBadgesHtmlGlobal(b)+'</div>'
       +'<div class="doc-row-meta">'
       +'<span class="badge badge-'+chCls+'" style="font-size:10px">'+chIcon(b.canale,12)+b.canale+'</span>'
       +'<span style="font-size:11.5px;color:var(--text-light)">'+dateIt(b.checkin)+' → '+dateIt(b.checkout)+' · '+b.notti+' notti</span>'
@@ -8305,6 +8422,10 @@ function openDestinatarioModal(bid, action) {
   var elDocNum=document.getElementById('dest-doc-num'); if(elDocNum)elDocNum.value=b.ospite_doc_num||'';
   var elNaz=document.getElementById('dest-nazione'); if(elNaz)elNaz.value=b.ospite_nazione||'';
   var elProv=document.getElementById('dest-prov'); if(elProv)elProv.value=b.ospite_prov||'';
+  var elSub=document.getElementById('dest-subtitle');
+  if(elSub)elSub.innerHTML=b.checkin_data_at
+    ? '&#128273; Pre-compilato con i dati inseriti dall\'ospite nel check-in online. Modifica se il cliente è un\'azienda o se vuoi dati diversi.'
+    : 'Pre-compilato dai dati Smoobu. Modifica se il cliente è un\'azienda o se vuoi dati diversi.';
   // Azienda fields: comportamento dipende dal flusso.
   //  - Per "fattura-azienda" (B2B verso il proprietario azienda) il
   //    destinatario È l'azienda proprietaria — pre-compilo dai suoi dati.
@@ -13551,6 +13672,582 @@ function ctrBuildHtml(c,owner){
   +'</div>';
 }
 
+</script>
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CHECK-IN OSPITI (v74) — lista prenotazioni, dettaglio, strutture
+// ══════════════════════════════════════════════════════════════════
+var CKI = {
+  tab: 'list',
+  status: '',
+  props: [],
+  sessions: [],
+  counts: {},
+  detail: null,
+  openGuest: null,
+  editGuest: null,
+  loaded: false,
+};
+
+var CKI_STATUS = {
+  pending:                    { label: 'Da compilare',     cls: 'badge-orange' },
+  partial:                    { label: 'In corso',         cls: 'badge-blue' },
+  complete:                   { label: 'Completo',         cls: 'badge-green' },
+  manual_required:            { label: 'Da gestire',       cls: 'badge-red' },
+  needs_review:               { label: 'Da verificare',    cls: 'badge-red' },
+  long_stay_review:           { label: 'Soggiorno lungo',  cls: 'badge-orange' },
+  excluded_property_disabled: { label: 'Struttura spenta', cls: 'badge-gray' },
+  excluded_block:             { label: 'Blocco',           cls: 'badge-gray' },
+  excluded_internal:          { label: 'Interna',          cls: 'badge-gray' },
+  excluded_long_term:         { label: 'Locazione lunga',  cls: 'badge-gray' },
+  archived:                   { label: 'Archiviata',       cls: 'badge-gray' },
+};
+var CKI_ATTENTION = ['manual_required', 'needs_review', 'long_stay_review'];
+var CKI_REGIONS = [
+  ['tuscany_motourist', 'Toscana · MOTourist'],
+  ['tuscany_turismo5', 'Toscana · Turismo5 (Firenze)'],
+  ['sardinia_ross1000', 'Sardegna · Ross1000'],
+  ['piedmont_ross1000', 'Piemonte · Ross1000'],
+];
+var CKI_DOC = { ID_CARD: "Carta d'identità", PASSPORT: 'Passaporto', DRIVING_LICENSE: 'Patente' };
+var CKI_ERR = {
+  required: 'Obbligatorio', invalid_format: 'Formato non valido', invalid_value: 'Valore non valido',
+  invalid_date: 'Data non valida', out_of_range: 'Data non plausibile',
+  primary_must_be_adult: "L'ospite principale deve essere maggiorenne",
+  invalid_country: 'Codice nazione non valido (2 lettere, es. IT)', invalid_province: 'Sigla non valida (2 lettere)',
+  invalid_tax_code: 'Codice fiscale non valido', tax_code_birth_date_or_sex_mismatch: 'CF non coerente con data di nascita o sesso',
+  invalid_document_number: 'Numero documento non valido', document_expired: 'Documento scaduto all\'arrivo',
+  invalid_zip: 'CAP non valido',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────
+function ckiEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function ckiDate(d, withYear) {
+  if (!d) return '—';
+  var p = String(d).slice(0, 10).split('-');
+  var m = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'][parseInt(p[1], 10) - 1];
+  return parseInt(p[2], 10) + ' ' + m + (withYear ? ' ' + p[0] : '');
+}
+function ckiDateTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+  catch (e) { return iso; }
+}
+function ckiBadge(status) {
+  var s = CKI_STATUS[status] || { label: status, cls: 'badge-gray' };
+  return '<span class="badge ' + s.cls + '">' + ckiEsc(s.label) + '</span>';
+}
+async function ckiFetch(method, path, body) {
+  var opts = { method: method, headers: onbHeaders() };
+  if (body) opts.body = JSON.stringify(body);
+  var res = await fetch('/api/checkin' + path, opts);
+  var data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok || data.ok === false) {
+    if (data.error === 'invalid_pin' || data.error === 'missing_pin') {
+      toast('Sessione scaduta — esci e rientra');
+      throw new Error('auth');
+    }
+    var err = new Error(data.error || ('HTTP ' + res.status));
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+// ── Init / tab ────────────────────────────────────────────────────
+function ckiInit() {
+  ckiSwitchTab(CKI.tab);
+  if (!CKI.loaded) { CKI.loaded = true; ckiLoadProps().then(ckiLoad); }
+  else ckiLoad();
+}
+function ckiRefresh() { ckiLoadProps().then(function () { CKI.tab === 'list' ? ckiLoad() : ckiRenderProps(); }); }
+function ckiSwitchTab(t) {
+  CKI.tab = t;
+  document.getElementById('cki-tab-list').classList.toggle('active', t === 'list');
+  document.getElementById('cki-tab-props').classList.toggle('active', t === 'props');
+  document.getElementById('cki-view-list').style.display = t === 'list' ? '' : 'none';
+  document.getElementById('cki-view-props').style.display = t === 'props' ? '' : 'none';
+  if (t === 'props') ckiRenderProps();
+}
+
+// ── Strutture ─────────────────────────────────────────────────────
+async function ckiLoadProps() {
+  try {
+    var d = await ckiFetch('GET', '/properties');
+    CKI.props = d.properties || [];
+  } catch (e) { if (e.message !== 'auth') toast('Errore caricamento strutture: ' + e.message); }
+  var sel = document.getElementById('cki-f-prop');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Tutte le strutture</option>' + CKI.props.map(function (p) {
+    return '<option value="' + ckiEsc(p.smoobu_apartment_id) + '">' + ckiEsc(p.name) + (p.checkin_required ? ' ✓' : '') + '</option>';
+  }).join('');
+  sel.value = cur;
+  var on = CKI.props.filter(function (p) { return p.checkin_required; }).length;
+  document.getElementById('cki-sub').textContent = 'Check-in attivo su ' + on + ' struttur' + (on === 1 ? 'a' : 'e') + ' su ' + CKI.props.length;
+}
+
+function ckiRenderProps() {
+  var box = document.getElementById('cki-props');
+  if (!CKI.props.length) { box.innerHTML = '<div class="cki-empty">Nessuna struttura. Usa "Sincronizza strutture da Smoobu".</div>'; return; }
+  var rows = CKI.props.map(function (p) {
+    var reg = CKI_REGIONS.map(function (r) { return '<option value="' + r[0] + '"' + (p.region === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('');
+    if (p.region && !CKI_REGIONS.some(function (r) { return r[0] === p.region; })) reg += '<option selected value="' + ckiEsc(p.region) + '">' + ckiEsc(p.region) + '</option>';
+    return '<div class="cki-prop-row">'
+      + '<div class="cki-main"><b>' + ckiEsc(p.name) + '</b><small>Smoobu ' + ckiEsc(p.smoobu_apartment_id) + '</small></div>'
+      + '<div class="cki-prop-reg"><select onchange="ckiSaveProp(\'' + ckiEsc(p._id) + '\',{region:this.value})"><option value="">— Regione —</option>' + reg + '</select></div>'
+      + '<div class="cki-prop-city"><input placeholder="Comune" value="' + ckiEsc(p.city || '') + '" onchange="ckiSaveProp(\'' + ckiEsc(p._id) + '\',{city:this.value.trim()||null})"></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span style="font-size:11px;color:var(--text-light)">' + (p.checkin_required ? 'Attivo' : 'Spento') + '</span>'
+      + '<label class="toggle"><input type="checkbox"' + (p.checkin_required ? ' checked' : '') + ' onchange="ckiToggleProp(\'' + ckiEsc(p._id) + '\',this)"><span class="toggle-slider"></span></label></div>'
+      + '</div>';
+  }).join('');
+  box.innerHTML = '<div class="cki-prop-row cki-row head" style="display:grid"><div>Struttura</div><div class="cki-prop-reg">Portale regionale</div><div class="cki-prop-city">Comune</div><div style="text-align:right">Check-in</div></div>' + rows;
+}
+
+async function ckiSaveProp(id, patch) {
+  try {
+    var d = await ckiFetch('PUT', '/properties/' + encodeURIComponent(id), patch);
+    CKI.props = CKI.props.map(function (p) { return p._id === id ? d.property : p; });
+    toast('Salvato');
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+async function ckiToggleProp(id, el) {
+  var on = el.checked;
+  var p = CKI.props.find(function (x) { return x._id === id; });
+  var msg;
+  if (on) {
+    var n = 0;
+    try { n = (await ckiFetch('GET', '/properties/' + encodeURIComponent(id) + '/preview')).futureBookings; } catch (e) {}
+    if (!p.region) { el.checked = false; toast('Imposta prima il portale regionale'); return; }
+    msg = 'Accendere il check-in su "' + p.name + '"?\n\n'
+      + (n ? n + ' prenotazion' + (n === 1 ? 'e futura riceverà' : 'i future riceveranno') + ' il link entro circa 30 minuti.'
+           : 'Non ci sono prenotazioni future in attesa: il link partirà dalle prossime prenotazioni.');
+  } else {
+    msg = 'Spegnere il check-in su "' + p.name + '"?\n\nLe prenotazioni future non ancora compilate smetteranno di ricevere link e promemoria. Quelle già iniziate o complete restano invariate.';
+  }
+  if (!confirm(msg)) { el.checked = !on; return; }
+  try {
+    var d = await ckiFetch('PUT', '/properties/' + encodeURIComponent(id), { checkin_required: on });
+    CKI.props = CKI.props.map(function (x) { return x._id === id ? d.property : x; });
+    toast((on ? 'Check-in acceso' : 'Check-in spento') + (d.sessionsChanged ? ' · ' + d.sessionsChanged + ' prenotazioni aggiornate' : ''), 4000);
+    ckiRenderProps();
+    ckiLoadProps();
+  } catch (e) { el.checked = !on; if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+async function ckiSyncProps() {
+  try {
+    var d = await ckiFetch('POST', '/properties/sync');
+    toast('Sincronizzate: ' + d.added + ' nuove, ' + d.existing + ' già presenti', 4000);
+    await ckiLoadProps();
+    ckiRenderProps();
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+// ── Lista prenotazioni ────────────────────────────────────────────
+var _ckiSearchT = null;
+function ckiSearchDebounced() { clearTimeout(_ckiSearchT); _ckiSearchT = setTimeout(ckiLoad, 350); }
+function ckiSetStatus(s) {
+  var sel = document.getElementById('cki-f-status');
+  sel.value = sel.value === s ? '' : s;
+  ckiLoad();
+}
+
+async function ckiLoad() {
+  var qs = new URLSearchParams();
+  qs.set('view', document.getElementById('cki-f-view').value);
+  var st = document.getElementById('cki-f-status').value;
+  if (st) qs.set('status', st);
+  var pr = document.getElementById('cki-f-prop').value;
+  if (pr) qs.set('property_id', pr);
+  var q = document.getElementById('cki-f-q').value.trim();
+  if (q) qs.set('q', q);
+  if (document.getElementById('cki-f-excl').checked) qs.set('include_excluded', '1');
+  document.getElementById('cki-list').innerHTML = '<div class="cki-empty">Caricamento...</div>';
+  try {
+    var d = await ckiFetch('GET', '/sessions?' + qs.toString());
+    CKI.sessions = d.sessions || [];
+    CKI.counts = d.counts || {};
+    CKI.status = st;
+    ckiRenderKpis();
+    ckiRenderList(d.truncated);
+  } catch (e) {
+    if (e.message !== 'auth') document.getElementById('cki-list').innerHTML = '<div class="cki-empty">Errore: ' + ckiEsc(e.message) + '</div>';
+  }
+}
+
+function ckiRenderKpis() {
+  var c = CKI.counts;
+  var att = CKI_ATTENTION.reduce(function (a, k) { return a + (c[k] || 0); }, 0);
+  var items = [
+    ['pending', 'Da compilare', c.pending || 0, 'link inviato, nessun dato'],
+    ['partial', 'In corso', c.partial || 0, 'compilazione iniziata'],
+    ['complete', 'Completi', c.complete || 0, 'pronti per Alloggiati'],
+    ['attention', 'Da gestire', att, 'serve un intervento'],
+  ];
+  document.getElementById('cki-kpis').innerHTML = items.map(function (i) {
+    var color = i[0] === 'attention' && i[2] ? 'color:var(--red)' : '';
+    return '<button class="cki-kpi' + (CKI.status === i[0] ? ' on' : '') + '" onclick="ckiSetStatus(\'' + i[0] + '\')">'
+      + '<div class="cki-kpi-label">' + i[1] + '</div><div class="cki-kpi-value" style="' + color + '">' + i[2] + '</div>'
+      + '<div class="cki-kpi-sub">' + i[3] + '</div></button>';
+  }).join('');
+}
+
+function ckiLinkInfo(s) {
+  if (s.status.indexOf('excluded_') === 0 || s.status === 'archived') return '<div class="cki-link">—</div>';
+  if (s.link_failed) return '<div class="cki-link bad">Invio link fallito</div>';
+  if (s.link_sent_at) return '<div class="cki-link">Link ' + ckiDateTime(s.link_sent_at) + (s.reminders_sent ? ' · ' + s.reminders_sent + ' prom.' : '') + '</div>';
+  if (s.link_due_at) return '<div class="cki-link">Link in partenza ' + ckiDateTime(s.link_due_at) + '</div>';
+  return '<div class="cki-link">Link non inviato</div>';
+}
+
+function ckiRenderList(truncated) {
+  var box = document.getElementById('cki-list');
+  if (!CKI.sessions.length) {
+    box.innerHTML = '<div class="cki-empty">Nessuna prenotazione con questi filtri.'
+      + (CKI.props.some(function (p) { return p.checkin_required; }) ? '' : '<br><br>Il check-in non è ancora attivo su nessuna struttura: accendilo dalla scheda <b>Strutture</b>.')
+      + '</div>';
+    document.getElementById('cki-list-note').textContent = '';
+    return;
+  }
+  var head = '<div class="cki-row head"><div>Arrivo</div><div>Ospite</div><div>Struttura</div><div>Ospiti</div><div>Stato</div><div>Link</div></div>';
+  box.innerHTML = head + CKI.sessions.map(function (s) {
+    var b = s.booking || {};
+    var warn = s.tax_code_warnings ? ' <span title="Codice fiscale da controllare" style="color:#c47a00">⚠</span>' : '';
+    return '<div class="cki-row" onclick="ckiOpen(\'' + ckiEsc(s._id) + '\')">'
+      + '<div class="cki-date">' + ckiDate(b.arrival) + '<small>→ ' + ckiDate(b.departure) + '</small></div>'
+      + '<div class="cki-main"><b>' + ckiEsc(b.primary_guest_name || '—') + warn + '</b><small>' + ckiEsc(b.channel_name || '') + (s.is_test ? ' · TEST' : '') + '</small></div>'
+      + '<div class="cki-prop">' + ckiEsc((s.property || {}).name || '—') + '</div>'
+      + '<div class="cki-guests">' + s.guests_submitted + '/' + s.guests_total + '</div>'
+      + '<div class="cki-st">' + ckiBadge(s.status) + '</div>'
+      + ckiLinkInfo(s)
+      + '</div>';
+  }).join('');
+  document.getElementById('cki-list-note').textContent = truncated
+    ? 'Mostrate le prime ' + CKI.sessions.length + ' prenotazioni: usa i filtri per restringere.'
+    : CKI.sessions.length + ' prenotazion' + (CKI.sessions.length === 1 ? 'e' : 'i');
+}
+
+// ── Dettaglio prenotazione ────────────────────────────────────────
+async function ckiOpen(id) {
+  CKI.openGuest = null; CKI.editGuest = null;
+  document.getElementById('cki-modal-body').innerHTML = '<div class="cki-empty">Caricamento...</div>';
+  document.getElementById('cki-modal').classList.add('open');
+  await ckiReloadDetail(id);
+}
+async function ckiReloadDetail(id) {
+  try {
+    var d = await ckiFetch('GET', '/sessions/' + encodeURIComponent(id));
+    CKI.detail = d.session;
+    ckiRenderDetail();
+  } catch (e) {
+    if (e.message !== 'auth') document.getElementById('cki-modal-body').innerHTML = '<div class="cki-empty">Errore: ' + ckiEsc(e.message) + '</div>';
+  }
+}
+function ckiCloseModal() {
+  document.getElementById('cki-modal').classList.remove('open');
+  if (CKI.detail) { CKI.detail = null; ckiLoad(); }
+}
+
+function ckiRenderDetail() {
+  var s = CKI.detail, b = s.booking || {};
+  var active = ['pending', 'partial', 'complete', 'manual_required'].indexOf(s.status) >= 0;
+  var statusOpts = Object.keys(CKI_STATUS).map(function (k) {
+    return '<option value="' + k + '"' + (k === s.status ? ' selected' : '') + '>' + CKI_STATUS[k].label + '</option>';
+  }).join('');
+  var msgs = (s.messages_sent || []).slice().reverse().map(function (m) {
+    var t = { initial: 'Link check-in', reminder_d3: 'Promemoria 3 giorni prima', reminder_d1: 'Promemoria giorno prima' }[m.type] || m.type;
+    return '<div>' + ckiDateTime(m.sent_at) + ' · ' + t + ' · ' + (m.channel === 'email' ? 'email' : 'chat') + ' · '
+      + (m.success ? '<span style="color:var(--green)">inviato</span>' : '<span style="color:var(--red)">errore' + (m.error ? ': ' + ckiEsc(String(m.error).slice(0, 120)) : '') + '</span>') + '</div>';
+  }).join('');
+  var due = (!s.initial_message_sent_at && s.initial_message_due_at) ? '<div>Link programmato per ' + ckiDateTime(s.initial_message_due_at) + '</div>' : '';
+
+  var html = ''
+    + '<div class="modal-title" style="margin-bottom:6px">' + ckiEsc(b.primary_guest_name || 'Prenotazione') + '</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' + ckiBadge(s.status)
+    + (s.is_test ? '<span class="badge badge-gray">TEST</span>' : '')
+    + (s.exclusion_reason ? '<span style="font-size:11.5px;color:var(--text-light)">' + ckiEsc(s.exclusion_reason) + '</span>' : '') + '</div>'
+    + '<div class="cki-info">'
+    + '<div><span>Struttura</span>' + ckiEsc((s.property || {}).name || '—') + '</div>'
+    + '<div><span>Soggiorno</span>' + ckiDate(b.arrival, true) + ' → ' + ckiDate(b.departure, true) + ' (' + (b.nights || '?') + ' notti)</div>'
+    + '<div><span>Canale</span>' + ckiEsc(b.channel_name || '—') + '</div>'
+    + '<div><span>Prenotazione</span>' + ckiEsc(s.smoobu_booking_id) + '</div>'
+    + '<div><span>Ospiti previsti</span>' + (b.adults || 0) + ' adulti' + (b.children ? ', ' + b.children + ' bambini' : '') + '</div>'
+    + '<div><span>Email</span>' + ckiEsc(b.primary_guest_email || '—') + '</div>'
+    + '</div>'
+    + '<div class="cki-actions">'
+    + (s.checkin_link ? '<button class="btn btn-ghost btn-sm" onclick="ckiCopyLink()">&#128279; Copia link ospite</button>' : '')
+    + (active ? '<button class="btn btn-ghost btn-sm" onclick="ckiResend()">&#9993; Rimanda link</button>' : '')
+    + '<button class="btn btn-ghost btn-sm" onclick="ckiAddGuest()">+ Aggiungi ospite</button>'
+    + '<span style="flex:1"></span>'
+    + '<select id="cki-status-sel" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:12px">' + statusOpts + '</select>'
+    + '<button class="btn btn-ghost btn-sm" onclick="ckiOverride()">Cambia stato</button>'
+    + '</div>'
+    + '<div class="cki-sec">Ospiti (' + (s.guests || []).filter(function (g) { return g.submitted_at; }).length + '/' + (s.guests || []).length + ' confermati)</div>'
+    + (s.guests || []).map(ckiGuestHtml).join('')
+    + '<div class="cki-sec">Messaggi</div>'
+    + '<div class="cki-log">' + (due + msgs || '<div>Nessun messaggio inviato.</div>') + '</div>';
+  document.getElementById('cki-modal-body').innerHTML = html;
+}
+
+function ckiVal(v) { return v ? ckiEsc(v) : '<span style="color:var(--text-light)">—</span>'; }
+function ckiCountry(c) {
+  if (!c) return '';
+  try { return new Intl.DisplayNames(['it'], { type: 'region' }).of(c) + ' (' + c + ')'; } catch (e) { return c; }
+}
+
+function ckiGuestHtml(g) {
+  var open = CKI.openGuest === g.slot || CKI.editGuest === g.slot;
+  var name = [g.first_name, g.last_name].filter(Boolean).join(' ') || 'Ospite ' + g.slot;
+  var state = g.submitted_at ? '<span class="badge badge-green">Confermato</span>'
+    : (g.is_ready ? '<span class="badge badge-blue">Pronto, non confermato</span>' : '<span class="badge badge-orange">Incompleto</span>');
+  var extra = (g.slot === 1 ? ' · principale' : '') + (g.is_minor ? ' · minore' : '') + (g.edited_by_admin_at ? ' · modificato da Houzly' : '');
+  var body = CKI.editGuest === g.slot ? ckiGuestForm(g) : ckiGuestView(g);
+  return '<div class="cki-guest' + (open ? ' open' : '') + '" id="cki-g-' + g.slot + '">'
+    + '<div class="cki-guest-hd" onclick="ckiToggleGuest(' + g.slot + ')"><span class="g-n" style="font-weight:700;color:var(--blue)">' + g.slot + '</span>'
+    + '<b>' + ckiEsc(name) + '<span style="font-weight:400;color:var(--text-light);font-size:11.5px">' + extra + '</span></b>' + state + '</div>'
+    + '<div class="cki-guest-body">' + body + '</div></div>';
+}
+
+function ckiGuestView(g) {
+  var missing = {};
+  (g.field_errors || []).forEach(function (e) { if (e.field !== 'privacy_consent') missing[e.field] = e.code; });
+  function kv(label, field, value) {
+    var m = missing[field];
+    return '<div class="' + (m ? 'miss' : '') + '"><span>' + label + '</span>' + (m && !value ? (CKI_ERR[m] || m) : ckiVal(value)) + (m && value ? ' <small>(' + (CKI_ERR[m] || m) + ')</small>' : '') + '</div>';
+  }
+  var birth = g.birth_country === 'IT' ? [g.birth_city, g.birth_province ? '(' + g.birth_province + ')' : ''].filter(Boolean).join(' ') : ckiCountry(g.birth_country);
+  var h = '<div class="cki-kv">'
+    + kv('Nome', 'first_name', g.first_name) + kv('Cognome', 'last_name', g.last_name)
+    + kv('Sesso', 'sex', g.sex === 'M' ? 'Maschio' : g.sex === 'F' ? 'Femmina' : '')
+    + kv('Data di nascita', 'date_of_birth', g.date_of_birth ? ckiDate(g.date_of_birth, true) : '')
+    + kv('Luogo di nascita', g.birth_country === 'IT' && missing.birth_city ? 'birth_city' : 'birth_country', birth)
+    + kv('Cittadinanza', 'nationality', ckiCountry(g.nationality))
+    + (g.nationality === 'IT' || g.tax_code ? kv('Codice fiscale', 'tax_code', g.tax_code) : '')
+    + kv('Documento', 'document_type', CKI_DOC[g.document_type] || g.document_type)
+    + kv('Numero documento', 'document_number', g.document_number)
+    + kv('Rilasciato in', 'document_issue_country', [g.document_issue_city, ckiCountry(g.document_issue_country)].filter(Boolean).join(', '))
+    + kv('Scadenza', 'document_expiry_date', g.document_expiry_date ? ckiDate(g.document_expiry_date, true) : '');
+  if (g.slot === 1) {
+    h += kv('Residenza', 'address_street', [g.address_street, [g.address_zip, g.address_city, g.address_province ? '(' + g.address_province + ')' : ''].filter(Boolean).join(' '), ckiCountry(g.address_country)].filter(Boolean).join(', '));
+  }
+  h += '</div>';
+  if ((g.warnings || []).some(function (w) { return w.code === 'tax_code_name_mismatch'; })) {
+    h += '<div class="cki-warn">⚠ Il codice fiscale non corrisponde a nome e cognome: verificalo con il documento all\'arrivo.</div>';
+  }
+  h += '<div style="font-size:11px;color:var(--text-light);margin-top:10px">'
+    + (g.submitted_at ? 'Confermato il ' + ckiDateTime(g.submitted_at) : 'Non ancora confermato')
+    + (g.privacy_consent_at ? ' · informativa accettata il ' + ckiDateTime(g.privacy_consent_at) : '') + '</div>'
+    + '<div class="cki-actions"><button class="btn btn-ghost btn-sm" onclick="ckiEditGuest(' + g.slot + ')">&#9998; Modifica / completa</button>'
+    + (g.slot !== 1 ? '<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="ckiRemoveGuest(' + g.slot + ')">Rimuovi ospite</button>' : '')
+    + '</div>';
+  return h;
+}
+
+function ckiField(name, label, value, opts) {
+  opts = opts || {};
+  var input;
+  if (opts.options) {
+    input = '<select name="' + name + '"><option value="">—</option>' + opts.options.map(function (o) {
+      return '<option value="' + o[0] + '"' + (value === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('') + '</select>';
+  } else {
+    input = '<input name="' + name + '" type="' + (opts.type || 'text') + '" value="' + ckiEsc(value || '') + '"' + (opts.ph ? ' placeholder="' + opts.ph + '"' : '') + (opts.upper ? ' style="text-transform:uppercase"' : '') + '>';
+  }
+  return '<div class="field' + (opts.full ? ' form-full' : '') + '" data-f="' + name + '"><label>' + label + '</label>' + input + '<div class="err"></div></div>';
+}
+
+function ckiGuestForm(g) {
+  var sexO = [['F', 'Femmina'], ['M', 'Maschio']];
+  var docO = [['ID_CARD', "Carta d'identità"], ['PASSPORT', 'Passaporto'], ['DRIVING_LICENSE', 'Patente']];
+  var h = '<div class="cki-form"><div class="form-grid">'
+    + ckiField('first_name', 'Nome', g.first_name) + ckiField('last_name', 'Cognome', g.last_name)
+    + ckiField('sex', 'Sesso', g.sex, { options: sexO }) + ckiField('date_of_birth', 'Data di nascita', g.date_of_birth, { type: 'date' })
+    + ckiField('nationality', 'Cittadinanza (codice, es. IT)', g.nationality, { upper: true, ph: 'IT' })
+    + ckiField('tax_code', 'Codice fiscale (obbligatorio se italiano)', g.tax_code, { upper: true })
+    + ckiField('birth_country', 'Nazione di nascita (codice)', g.birth_country, { upper: true, ph: 'IT' })
+    + ckiField('birth_city', 'Comune di nascita (se Italia)', g.birth_city)
+    + ckiField('birth_province', 'Provincia di nascita (sigla)', g.birth_province, { upper: true, ph: 'AR' })
+    + ckiField('document_type', 'Tipo documento', g.document_type, { options: docO })
+    + ckiField('document_number', 'Numero documento', g.document_number, { upper: true })
+    + ckiField('document_issue_country', 'Paese di rilascio (codice)', g.document_issue_country, { upper: true, ph: 'IT' })
+    + ckiField('document_issue_city', 'Comune di rilascio (se Italia)', g.document_issue_city)
+    + ckiField('document_expiry_date', 'Scadenza (facoltativa)', g.document_expiry_date, { type: 'date' });
+  if (g.slot === 1) {
+    h += ckiField('address_street', 'Indirizzo di residenza', g.address_street, { full: true })
+      + ckiField('address_zip', 'CAP', g.address_zip) + ckiField('address_city', 'Città', g.address_city)
+      + ckiField('address_province', 'Provincia (sigla, se Italia)', g.address_province, { upper: true })
+      + ckiField('address_country', 'Nazione di residenza (codice)', g.address_country, { upper: true, ph: 'IT' });
+  }
+  h += '</div><div class="field-hint" style="margin-top:8px">Nazioni con codice a 2 lettere: IT Italia, DE Germania, FR Francia, GB Regno Unito, US Stati Uniti, NL Paesi Bassi, CH Svizzera, ES Spagna.</div>'
+    + '<div class="cki-actions">'
+    + '<button class="btn btn-ghost btn-sm" onclick="ckiSaveGuest(' + g.slot + ',false)">Salva</button>'
+    + '<button class="btn btn-primary btn-sm" onclick="ckiSaveGuest(' + g.slot + ',true)">Salva e conferma</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="ckiCancelEdit()">Annulla</button>'
+    + '</div></div>';
+  return h;
+}
+
+function ckiToggleGuest(slot) {
+  if (CKI.editGuest === slot) return;
+  CKI.openGuest = CKI.openGuest === slot ? null : slot;
+  ckiRenderDetail();
+}
+function ckiEditGuest(slot) { CKI.editGuest = slot; CKI.openGuest = slot; ckiRenderDetail(); }
+function ckiCancelEdit() { CKI.editGuest = null; ckiRenderDetail(); }
+
+async function ckiSaveGuest(slot, confirmIt) {
+  var box = document.getElementById('cki-g-' + slot);
+  var data = {};
+  box.querySelectorAll('.cki-form [name]').forEach(function (el) { data[el.name] = el.value.trim() || null; });
+  box.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); f.querySelector('.err').textContent = ''; });
+  try {
+    await ckiFetch('PUT', '/sessions/' + encodeURIComponent(CKI.detail._id) + '/guests/' + slot, { data: data, confirm: confirmIt });
+    toast(confirmIt ? 'Ospite confermato' : 'Dati salvati');
+    CKI.editGuest = null;
+    CKI.openGuest = slot;
+    await ckiReloadDetail(CKI.detail._id);
+  } catch (e) {
+    if (e.message === 'auth') return;
+    var errs = (e.data && e.data.field_errors) || [];
+    if (!errs.length) { toast('Errore: ' + e.message); return; }
+    errs.forEach(function (er) {
+      var f = box.querySelector('[data-f="' + er.field + '"]');
+      if (f) { f.classList.add('bad'); f.querySelector('.err').textContent = CKI_ERR[er.code] || er.code; }
+    });
+    toast('Controlla i campi evidenziati');
+  }
+}
+
+async function ckiAddGuest() {
+  try {
+    var d = await ckiFetch('POST', '/sessions/' + encodeURIComponent(CKI.detail._id) + '/guests');
+    CKI.editGuest = d.slot; CKI.openGuest = d.slot;
+    await ckiReloadDetail(CKI.detail._id);
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+async function ckiRemoveGuest(slot) {
+  if (!confirm("Rimuovere l'ospite " + slot + ' e i suoi dati?')) return;
+  try {
+    await ckiFetch('DELETE', '/sessions/' + encodeURIComponent(CKI.detail._id) + '/guests/' + slot);
+    CKI.openGuest = null;
+    await ckiReloadDetail(CKI.detail._id);
+    toast('Ospite rimosso');
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+async function ckiResend() {
+  if (!confirm("Generare un nuovo link e rimandarlo all'ospite adesso?")) return;
+  try {
+    await ckiFetch('POST', '/sessions/' + encodeURIComponent(CKI.detail._id) + '/resend');
+    toast('Link inviato');
+  } catch (e) { if (e.message !== 'auth') toast('Invio non riuscito: ' + e.message, 5000); }
+  await ckiReloadDetail(CKI.detail._id);
+}
+
+function ckiCopyLink() {
+  var link = CKI.detail.checkin_link;
+  var done = function () { toast('Link copiato'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(done, function () { prompt('Copia il link:', link); });
+  } else { prompt('Copia il link:', link); }
+}
+
+async function ckiOverride() {
+  var st = document.getElementById('cki-status-sel').value;
+  if (st === CKI.detail.status) return;
+  var reason = prompt('Motivo del cambio di stato (facoltativo):', '');
+  if (reason === null) return;
+  try {
+    await ckiFetch('POST', '/sessions/' + encodeURIComponent(CKI.detail._id) + '/override-status', { status: st, reason: reason || null });
+    toast('Stato aggiornato');
+    await ckiReloadDetail(CKI.detail._id);
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
+}
+
+
+// ── Check-in → Documenti Fiscali (v75) ────────────────────────────
+// Copia nelle prenotazioni del tool i dati dell'ospite principale dei
+// check-in completati. Riempie SOLO i campi vuoti: quello che hai già
+// scritto a mano non viene mai sovrascritto.
+var _ckiBillingRunning = false;
+var CKI_DOC_TO_TOOL = { ID_CARD: "Carta d'Identità", PASSPORT: 'Passaporto', DRIVING_LICENSE: 'Patente' };
+
+function ckiCountryIt(code) {
+  if (!code) return '';
+  if (code === 'IT') return 'Italia';
+  try { return new Intl.DisplayNames(['it'], { type: 'region' }).of(code) || code; } catch (e) { return code; }
+}
+
+function ckiMatchBooking(it) {
+  var list = DB.prenotazioni || [];
+  // 1. numero prenotazione Smoobu
+  var m = list.filter(function (b) { return b.ota_num && String(b.ota_num) === String(it.smoobu_booking_id); });
+  if (m.length === 1) return m[0];
+  // 2. numero prenotazione del portale (Airbnb/Booking)
+  if (it.reference_id) {
+    m = list.filter(function (b) { return String(b.note || '') === String(it.reference_id) || String(b.ota_num || '') === String(it.reference_id); });
+    if (m.length === 1) return m[0];
+  }
+  // 3. stessa struttura e stesse date
+  var sameDates = list.filter(function (b) { return b.checkin === it.arrival && b.checkout === it.departure; });
+  var prop = typeof findPropByName === 'function' ? findPropByName(it.property_name) : null;
+  if (prop) {
+    m = sameDates.filter(function (b) { return b.proprieta_id === prop.id; });
+    if (m.length === 1) return m[0];
+  }
+  // 4. stesse date e cognome dell'ospite nel nome della prenotazione
+  var ln = (it.last_name || '').toLowerCase().trim();
+  if (ln.length >= 2) {
+    m = sameDates.filter(function (b) { return (b.ospite_nome || '').toLowerCase().indexOf(ln) >= 0; });
+    if (m.length === 1) return m[0];
+  }
+  return null;
+}
+
+async function ckiSyncBilling() {
+  if (_ckiBillingRunning || !DB || !DB.prenotazioni) return;
+  if (!sessionStorage.getItem('onbPin')) return;
+  _ckiBillingRunning = true;
+  try {
+    var res = await fetch('/api/checkin/billing-data', { headers: onbHeaders() });
+    var data = await res.json();
+    if (!res.ok || !data.ok) return;
+    var changed = 0;
+    (data.items || []).forEach(function (it) {
+      var b = ckiMatchBooking(it);
+      if (!b) return;
+      var touched = false;
+      function fill(field, val) {
+        if (!val) return;
+        if (b[field] && String(b[field]).trim()) return; // mai sovrascrivere
+        b[field] = val; touched = true;
+      }
+      fill('ospite_cf', it.tax_code);
+      fill('ospite_doc_tipo', CKI_DOC_TO_TOOL[it.document_type] || '');
+      fill('ospite_doc_num', it.document_number);
+      fill('ospite_nazione', ckiCountryIt(it.address_country));
+      fill('ospite_ind', it.address_street);
+      fill('ospite_cap', it.address_zip);
+      fill('ospite_citta', it.address_city);
+      fill('ospite_prov', it.address_province);
+      fill('ospite_email', it.email);
+      if (!b.checkin_data_at || b.checkin_data_at !== it.submitted_at) { b.checkin_data_at = it.submitted_at; touched = true; }
+      if (touched) changed++;
+    });
+    if (changed) {
+      saveDB();
+      if (document.getElementById('page-documenti').classList.contains('active')) renderDocumenti();
+      toast('Dati del check-in aggiunti a ' + changed + ' prenotazion' + (changed === 1 ? 'e' : 'i'), 3500);
+    }
+  } catch (e) {
+    console.warn('[ckiSyncBilling]', e.message);
+  } finally {
+    _ckiBillingRunning = false;
+  }
+}
 </script>
 </body>
 </html>
