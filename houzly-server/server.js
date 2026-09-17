@@ -37,6 +37,32 @@ const APP_BASE_URL = process.env.APP_BASE_URL || 'https://houzly-tool.onrender.c
 // così il messaggio arriva DOPO il primo messaggio automatico di Airbnb/Booking/Smoobu.
 // Modificabile da Render con la env var CHECKIN_INITIAL_DELAY_MINUTES.
 const CHECKIN_INITIAL_DELAY_MINUTES = parseInt(process.env.CHECKIN_INITIAL_DELAY_MINUTES || '30', 10);
+// Finestra di invio: per arrivi più lontani di questi giorni il link non parte
+// subito ma N giorni prima dell'arrivo, alle 10:00 ora italiana.
+// Modificabile da Render con la env var CHECKIN_SEND_WINDOW_DAYS.
+const CHECKIN_SEND_WINDOW_DAYS = parseInt(process.env.CHECKIN_SEND_WINDOW_DAYS || '14', 10);
+
+// Istante UTC corrispondente alle 10:00 ora di Roma del giorno indicato (YYYY-MM-DD)
+function romeTenAmIso(dateStr) {
+  for (const utcHour of [8, 9]) {
+    const d = new Date(`${dateStr}T${String(utcHour).padStart(2, '0')}:00:00Z`);
+    const h = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }).format(d);
+    if (parseInt(h, 10) === 10) return d.toISOString();
+  }
+  return new Date(`${dateStr}T08:00:00Z`).toISOString();
+}
+
+// Quando deve partire il link iniziale per un arrivo (YYYY-MM-DD):
+// il più tardi tra "adesso + ritardo" e "N giorni prima dell'arrivo alle 10:00"
+function computeInitialDueAt(arrival) {
+  const soon = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000);
+  if (!arrival || !/^\d{4}-\d{2}-\d{2}$/.test(arrival)) return soon.toISOString();
+  const d = new Date(`${arrival}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - CHECKIN_SEND_WINDOW_DAYS);
+  const windowStart = new Date(romeTenAmIso(d.toISOString().slice(0, 10)));
+  return (windowStart > soon ? windowStart : soon).toISOString();
+}
+
 // Giorni dopo il check-out in cui la scheda resta attiva prima dell'archiviazione
 const CHECKIN_ARCHIVE_AFTER_DAYS = 50;
 // Destinatari dell'avviso "check-in completato" (uno o più indirizzi separati da virgola).
@@ -1848,7 +1874,6 @@ async function activateFutureSessions(prop) {
     'booking.departure': { $gte: today },
     is_test: { $ne: true },
   }).toArray();
-  const dueAt = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString();
   let n = 0;
   for (const s of list) {
     if (!s.booking?.departure) continue;
@@ -1864,7 +1889,7 @@ async function activateFutureSessions(prop) {
       updated_at: new Date().toISOString(),
     };
     if (!s.initial_message_sent_at) {
-      set.initial_message_due_at = dueAt;
+      set.initial_message_due_at = computeInitialDueAt(s.booking.arrival);
       set.initial_message_sent_at = null;
       set.initial_message_attempts = 0;
       set.initial_dispatch_claimed_at = null;
@@ -1897,6 +1922,61 @@ async function suspendFutureSessions(prop) {
   );
   return r.modifiedCount;
 }
+
+// GET /api/checkin/debug/property?pin=XXXX&name=belvedere
+// Diagnosi: cosa restituisce Smoobu per la struttura e cosa c'è nel database.
+app.get('/api/checkin/debug/property', requireAdminAuth, async (req, res) => {
+  try {
+    const name = String(req.query.name || '').trim();
+    if (!name) return res.status(400).json({ ok: false, error: 'missing_name' });
+    const rx = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const props = await (await getCollection('checkin_properties_config')).find({ name: rx }).toArray();
+    if (!props.length) return res.json({ ok: false, error: 'struttura_non_trovata', cercato: name });
+    const out = [];
+    const col = await getCollection('checkin_sessions');
+    const today = new Date().toISOString().slice(0, 10);
+    for (const prop of props) {
+      const item = {
+        struttura: prop.name, config_id: prop._id, smoobu_apartment_id: prop.smoobu_apartment_id,
+        checkin_required: prop.checkin_required, region: prop.region,
+      };
+      // Risposta grezza di Smoobu (solo i campi utili)
+      try {
+        const r = await smoobuFetch('GET', '/api/reservations', {
+          query: { pageSize: 100, page: 1, apartmentId: String(prop.smoobu_apartment_id), departureFrom: today },
+        });
+        const text = await r.text();
+        item.smoobu_http = r.status;
+        let data = null;
+        try { data = JSON.parse(text); } catch (e) { item.smoobu_body = text.slice(0, 300); }
+        if (data) {
+          const items = (data._embedded && data._embedded.bookings) || data.bookings || data.reservations || [];
+          item.smoobu_totale_risposta = items.length;
+          item.smoobu_chiavi_prima_prenotazione = items[0] ? Object.keys(items[0]) : [];
+          item.smoobu_prenotazioni = items.slice(0, 15).map(b => ({
+            id: b.id, arrivo: b.arrival, partenza: b.departure,
+            apartment: b.apartment, canale: b.channel?.name,
+            nome_letto: getSmoobuGuestNames(b),
+            blocco: b['is-blocked-booking'], type: b.type, status: b.status,
+          }));
+        }
+      } catch (e) { item.smoobu_errore = e.message; }
+      // Database
+      const sessions = await col.find(
+        { 'property.smoobu_id': String(prop.smoobu_apartment_id), 'booking.departure': { $gte: today } },
+        { projection: { status: 1, exclusion_reason: 1, 'booking.arrival': 1, 'booking.primary_guest_name': 1, initial_message_due_at: 1, initial_message_sent_at: 1 } }
+      ).toArray();
+      item.database_future = sessions.map(x => ({
+        id: x._id, stato: x.status, motivo: x.exclusion_reason, arrivo: x.booking?.arrival,
+        nome: x.booking?.primary_guest_name, link_previsto: x.initial_message_due_at, link_inviato: x.initial_message_sent_at,
+      }));
+      out.push(item);
+    }
+    res.json({ ok: true, oggi: today, strutture: out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // POST /api/checkin/properties/:id/import → riallinea le prenotazioni future da Smoobu
 app.post('/api/checkin/properties/:id/import', requireAdminAuth, async (req, res) => {
@@ -2129,11 +2209,16 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
         updates.token_expires_at = tokenData.expiresAt;
         // Se il messaggio iniziale non è mai partito, lo programma ora
         if (!existing.initial_message_sent_at) {
-          updates.initial_message_due_at = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString();
+          updates.initial_message_due_at = computeInitialDueAt(arrival);
           updates.initial_message_attempts = 0;
           updates.initial_dispatch_claimed_at = null;
         }
       }
+    }
+    // Data di arrivo cambiata e link non ancora partito: riprogramma l'invio
+    if (!updates.initial_message_due_at && !existing.initial_message_sent_at && existing.initial_message_due_at
+        && existing.booking?.arrival !== arrival && ['pending', 'partial'].includes(existing.status)) {
+      updates.initial_message_due_at = computeInitialDueAt(arrival);
     }
     // Nome dell'ospite principale rimasto vuoto (vecchio bug di lettura): lo completa
     const g1 = (existing.guests || [])[0];
@@ -2169,7 +2254,7 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
     messages_sent: [],
     // Invio link programmato (vedi cron /api/cron/checkin/dispatch)
     initial_message_due_at: (evaluation.status === 'pending' && tokenData)
-      ? new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString()
+      ? computeInitialDueAt(arrival)
       : null,
     initial_message_sent_at: null,
     initial_message_attempts: 0,
@@ -3016,6 +3101,15 @@ app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
       // Check-out già passato: niente invio
       if (session.booking?.departure && session.booking.departure < nowIso.slice(0, 10)) {
         await col.updateOne({ _id: session._id }, { $set: { initial_message_due_at: null, initial_dispatch_claimed_at: null } });
+        continue;
+      }
+      // Arrivo troppo lontano: non inviare adesso, riprogramma nella finestra
+      const properDue = computeInitialDueAt(session.booking?.arrival);
+      if (properDue > nowIso) {
+        await col.updateOne({ _id: session._id }, {
+          $set: { initial_message_due_at: properDue, initial_dispatch_claimed_at: null },
+          $inc: { initial_message_attempts: -1 },
+        });
         continue;
       }
       // Ospite già arrivato (es. soggiorno in corso importato all'accensione):
