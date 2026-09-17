@@ -26,8 +26,9 @@ button,input,select{font-family:inherit;font-size:16px;color:inherit}
 .hd{background:var(--deep);color:#fff;padding:18px 22px 30px;position:relative;overflow:hidden}
 .hd::after{content:"✦";position:absolute;right:-10px;bottom:-40px;font-size:160px;color:rgba(74,203,239,.07);line-height:1}
 .hd-top{display:flex;justify-content:space-between;align-items:center;max-width:560px;margin:0 auto}
-.logo{height:30px;width:auto;display:block}
-.logo-txt{font-family:var(--serif);font-size:26px;letter-spacing:.04em}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+.logo{width:30px;height:30px;object-fit:contain;display:block}
+.logo-txt{font-family:var(--serif);font-size:26px;letter-spacing:.04em;line-height:1}
 .lang{display:flex;gap:2px;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:2px}
 .lang button{background:none;border:0;color:rgba(255,255,255,.6);font-size:11px;letter-spacing:.2em;padding:5px 11px;border-radius:16px;cursor:pointer}
 .lang button.on{background:rgba(74,203,239,.18);color:#fff}
@@ -94,13 +95,26 @@ main{max-width:560px;margin:-14px auto 0;padding:0 16px 120px;position:relative;
 .fade{animation:fd .35s ease both}
 @keyframes fd{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .hidden{display:none!important}
+.pv{position:fixed;inset:0;z-index:30;background:rgba(23,0,70,.45);display:flex;align-items:flex-end;justify-content:center}
+.pv-box{background:var(--white);width:100%;max-width:640px;max-height:88vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;animation:fd .3s ease both}
+.pv-hd{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.pv-hd b{font-family:var(--serif);font-weight:500;font-size:21px;line-height:1.2}
+.pv-x{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0}
+.pv-body{overflow-y:auto;padding:6px 20px calc(24px + env(safe-area-inset-bottom));font-size:14px;color:var(--ink)}
+.pv-body h3{font-family:var(--serif);font-weight:500;font-size:18px;margin:18px 0 4px;color:var(--deep)}
+.pv-body p{margin-top:6px}
+.pv-body a{color:var(--terra)}
+@media(min-width:680px){.pv{align-items:center}.pv-box{border-radius:16px}}
 </style>
 </head>
 <body>
 
 <header class="hd">
   <div class="hd-top">
-    <img class="logo" src="https://res.cloudinary.com/dhhwuufhw/image/upload/q_auto,f_auto/v1776117858/houzly-logo-transparent_yc0p6a.png" alt="Houzly" onerror="this.outerHTML='<span class=logo-txt>Houzly</span>'">
+    <a class="brand" href="https://www.houzly.it" target="_blank" rel="noopener">
+      <img class="logo" src="https://res.cloudinary.com/dhhwuufhw/image/upload/q_auto,f_auto/v1776117858/houzly-logo-transparent_yc0p6a.png" alt="" onerror="this.remove()">
+      <span class="logo-txt">Houzly</span>
+    </a>
     <div class="lang">
       <button data-l="it">IT</button><button data-l="en">EN</button>
     </div>
@@ -146,7 +160,29 @@ const T = {
     address_province: 'Provincia', address_country: 'Nazione di residenza',
     select: 'Seleziona…',
     reviewTitle: 'Controlla e conferma', reviewSub: 'Tocca un ospite per modificare i suoi dati.',
-    privacy: 'Ho letto l’<a href="https://www.houzly.it/privacy" target="_blank" rel="noopener">informativa privacy</a> e dichiaro che i dati inseriti sono corretti.',
+    privacy: 'Ho letto l’<a href="#" data-privacy>informativa privacy</a> e dichiaro che i dati inseriti sono corretti.',
+    privacyTitle: 'Informativa privacy · Check-in online', close: 'Chiudi',
+    privacyDoc: `
+<p><b>Ultimo aggiornamento:</b> settembre 2026</p>
+<h3>1. Titolare del trattamento</h3>
+<p>Houzly Snc, Terranuova Bracciolini (AR), P.IVA 02499920516, email <a href="mailto:info@houzly.it">info@houzly.it</a>.</p>
+<h3>2. Quali dati raccogliamo</h3>
+<p>Per ciascun ospite, compresi minori e neonati: nome, cognome, sesso, data e luogo di nascita, cittadinanza, codice fiscale (solo cittadini italiani), tipo, numero, luogo di rilascio ed eventuale scadenza del documento d’identità. Per l’ospite principale anche l’indirizzo di residenza. Non raccogliamo foto o copie dei documenti.</p>
+<h3>3. Perché li trattiamo</h3>
+<p>a) Comunicare le generalità degli ospiti alla Questura tramite il portale Alloggiati Web, come richiesto dall’art. 109 del TULPS (base giuridica: obbligo di legge, art. 6.1.c GDPR).<br>
+b) Inviare i dati statistici previsti agli uffici regionali del turismo e gestire l’imposta di soggiorno dove prevista (obbligo di legge, art. 6.1.c GDPR).<br>
+c) Emettere i documenti fiscali relativi al soggiorno (esecuzione del contratto e obbligo di legge, art. 6.1.b e 6.1.c GDPR).</p>
+<p>Il conferimento dei dati è obbligatorio: senza di essi non è possibile effettuare la registrazione e quindi il soggiorno. I dati dei minori sono forniti da chi esercita la responsabilità genitoriale o dall’ospite principale che li accompagna.</p>
+<h3>4. Verifica all’arrivo</h3>
+<p>All’arrivo i documenti vengono mostrati, di persona o in videochiamata, solo per verificare la corrispondenza con i dati inseriti. Non ne conserviamo copie.</p>
+<h3>5. A chi comunichiamo i dati</h3>
+<p>Polizia di Stato (Alloggiati Web); uffici regionali del turismo per le statistiche; Comune per l’imposta di soggiorno, dove prevista. I dati sono inoltre trattati, per nostro conto e come responsabili del trattamento, da: Smoobu GmbH (Germania, gestione prenotazioni), Render Services Inc. (USA, hosting), MongoDB Inc. (archiviazione dati), Resend Inc. (USA, invio email). I trasferimenti extra UE avvengono con le garanzie previste dagli artt. 44-49 GDPR (Clausole Contrattuali Standard o EU-U.S. Data Privacy Framework). I dati non vengono venduti né usati per marketing.</p>
+<h3>6. Per quanto tempo</h3>
+<p>I dati di registrazione sono conservati per il tempo necessario agli adempimenti sopra indicati e alle relative verifiche, e comunque per almeno 50 giorni dalla partenza. I dati necessari ai documenti fiscali sono conservati per 10 anni, come previsto dalla normativa fiscale.</p>
+<h3>7. I tuoi diritti</h3>
+<p>Puoi chiedere accesso, rettifica, cancellazione o limitazione dei tuoi dati e opporti al trattamento (artt. 15-22 GDPR), nei limiti degli obblighi di legge, scrivendo a <a href="mailto:info@houzly.it">info@houzly.it</a>. Rispondiamo entro 30 giorni. Puoi anche proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).</p>
+<h3>8. Sicurezza</h3>
+<p>Il link di check-in è personale e scade dopo il soggiorno. I dati viaggiano cifrati (HTTPS) e sono accessibili solo al personale autorizzato di Houzly.</p>`,
     doneTitle: 'Check-in completato', doneText: 'Grazie. Abbiamo ricevuto i dati di tutti gli ospiti. All’arrivo verificheremo i documenti.',
     edit: 'Modifica dati', saved: 'Dati salvati',
     stay: (a, d) => `${a} – ${d}`,
@@ -189,7 +225,29 @@ const T = {
     address_province: 'Province', address_country: 'Country of residence',
     select: 'Select…',
     reviewTitle: 'Review and confirm', reviewSub: 'Tap a guest to edit their details.',
-    privacy: 'I have read the <a href="https://www.houzly.it/privacy" target="_blank" rel="noopener">privacy notice</a> and confirm the details are correct.',
+    privacy: 'I have read the <a href="#" data-privacy>privacy notice</a> and confirm the details are correct.',
+    privacyTitle: 'Privacy notice · Online check-in', close: 'Close',
+    privacyDoc: `
+<p><b>Last updated:</b> September 2026</p>
+<h3>1. Data controller</h3>
+<p>Houzly Snc, Terranuova Bracciolini (AR), Italy, VAT 02499920516, email <a href="mailto:info@houzly.it">info@houzly.it</a>.</p>
+<h3>2. What data we collect</h3>
+<p>For each guest, including children and infants: first and last name, sex, date and place of birth, citizenship, Italian tax code (Italian citizens only), type, number, place of issue and optional expiry date of the ID document. For the main guest, also the home address. We do not collect photos or copies of documents.</p>
+<h3>3. Why we process it</h3>
+<p>a) To report guest details to the Police through the Alloggiati Web portal, as required by Italian law (art. 109 TULPS; legal basis: legal obligation, art. 6.1.c GDPR).<br>
+b) To send the required statistical data to regional tourism offices and to handle the tourist tax where applicable (legal obligation, art. 6.1.c GDPR).<br>
+c) To issue tax documents for the stay (performance of contract and legal obligation, art. 6.1.b and 6.1.c GDPR).</p>
+<p>Providing this data is mandatory: without it we cannot register guests and the stay cannot take place. Children’s data is provided by the person with parental responsibility or by the main guest travelling with them.</p>
+<h3>4. Check on arrival</h3>
+<p>On arrival, documents are shown in person or by video call only to check they match the details entered. We do not keep copies.</p>
+<h3>5. Who receives the data</h3>
+<p>Italian Police (Alloggiati Web); regional tourism offices for statistics; the Municipality for the tourist tax where applicable. The data is also processed on our behalf, as data processors, by: Smoobu GmbH (Germany, booking management), Render Services Inc. (USA, hosting), MongoDB Inc. (data storage), Resend Inc. (USA, email delivery). Transfers outside the EU rely on the safeguards of arts. 44-49 GDPR (Standard Contractual Clauses or the EU-U.S. Data Privacy Framework). Data is never sold or used for marketing.</p>
+<h3>6. How long we keep it</h3>
+<p>Registration data is kept for as long as needed for the obligations above and related checks, and in any case for at least 50 days after departure. Data needed for tax documents is kept for 10 years, as required by Italian tax law.</p>
+<h3>7. Your rights</h3>
+<p>You can request access, correction, erasure or restriction of your data and object to processing (arts. 15-22 GDPR), within the limits of legal obligations, by writing to <a href="mailto:info@houzly.it">info@houzly.it</a>. We reply within 30 days. You can also lodge a complaint with the Italian Data Protection Authority (garanteprivacy.it).</p>
+<h3>8. Security</h3>
+<p>The check-in link is personal and expires after the stay. Data is encrypted in transit (HTTPS) and accessible only to authorised Houzly staff.</p>`,
     doneTitle: 'Check-in complete', doneText: 'Thank you. We have received the details of all guests. We will check the documents on arrival.',
     edit: 'Edit details', saved: 'Saved',
     stay: (a, d) => `${a} – ${d}`,
@@ -544,6 +602,7 @@ function renderReview() {
       <div class="f" data-f="privacy_consent"><div class="msg"></div></div>
     </div>`;
   app.querySelectorAll('.g-row.click').forEach(r => (r.onclick = () => { cur = +r.dataset.i; view = 'guest'; render(); }));
+  app.querySelectorAll('[data-privacy]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPrivacy(); }));
   setBar(`<button class="btn ghost" id="prev" aria-label="${t().back}">←</button><button class="btn" id="ok">${t().confirm}</button>`);
   $('#prev').onclick = () => { cur = S.guests.length - 1; view = 'guest'; render(); };
   $('#ok').onclick = submitAll;
@@ -581,6 +640,19 @@ async function submitAll() {
     busy = false;
     document.querySelectorAll('.bar .btn').forEach(b => (b.disabled = false));
   }
+}
+
+function openPrivacy() {
+  const el = document.createElement('div');
+  el.className = 'pv';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<div class="pv-box"><div class="pv-hd"><b>${t().privacyTitle}</b><button class="pv-x" type="button">${t().close}</button></div><div class="pv-body">${t().privacyDoc}</div></div>`;
+  const close = () => { el.remove(); document.body.style.overflow = ''; };
+  el.querySelector('.pv-x').onclick = close;
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
 }
 
 function renderDone() {
