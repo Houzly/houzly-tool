@@ -54,13 +54,38 @@ function romeTenAmIso(dateStr) {
 
 // Quando deve partire il link iniziale per un arrivo (YYYY-MM-DD):
 // il più tardi tra "adesso + ritardo" e "N giorni prima dell'arrivo alle 10:00"
-function computeInitialDueAt(arrival) {
-  const soon = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000);
-  if (!arrival || !/^\d{4}-\d{2}-\d{2}$/.test(arrival)) return soon.toISOString();
+// Primo momento in cui il link può partire: N giorni prima dell'arrivo alle 10:00
+function computeWindowStartIso(arrival) {
+  if (!arrival || !/^\d{4}-\d{2}-\d{2}$/.test(arrival)) return null;
   const d = new Date(`${arrival}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() - CHECKIN_SEND_WINDOW_DAYS);
-  const windowStart = new Date(romeTenAmIso(d.toISOString().slice(0, 10)));
-  return (windowStart > soon ? windowStart : soon).toISOString();
+  return romeTenAmIso(d.toISOString().slice(0, 10));
+}
+function computeInitialDueAt(arrival) {
+  const soon = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString();
+  const windowStart = computeWindowStartIso(arrival);
+  return windowStart && windowStart > soon ? windowStart : soon;
+}
+
+// Riprogramma i link non ancora partiti di una struttura che risultano
+// in anticipo rispetto alla finestra (es. programmati prima di questa regola)
+async function rescheduleEarlyLinks(prop) {
+  const col = await getCollection('checkin_sessions');
+  const list = await col.find({
+    'property.smoobu_id': String(prop.smoobu_apartment_id),
+    status: { $in: ['pending', 'partial'] },
+    initial_message_sent_at: null,
+    initial_message_due_at: { $ne: null },
+  }, { projection: { 'booking.arrival': 1, initial_message_due_at: 1 } }).toArray();
+  let n = 0;
+  for (const s of list) {
+    const ws = computeWindowStartIso(s.booking?.arrival);
+    if (ws && s.initial_message_due_at < ws) {
+      await col.updateOne({ _id: s._id }, { $set: { initial_message_due_at: ws } });
+      n++;
+    }
+  }
+  return n;
 }
 
 // Giorni dopo il check-out in cui la scheda resta attiva prima dell'archiviazione
@@ -485,44 +510,63 @@ async function sendEmailFallback(toEmail, subject, html) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// ── Testi dei messaggi agli ospiti (IT/EN) ────────────────────────
+// Data leggibile: "20 settembre" / "20 September" (anno solo se diverso da quello corrente)
+function formatStayDate(iso, isItalian) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso || '';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const it = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const yearPart = y !== new Date().getFullYear() ? ` ${y}` : '';
+  return `${d} ${(isItalian ? it : en)[m - 1]}${yearPart}`;
+}
+function cleanFirstName(n) {
+  const v = String(n || '').trim();
+  return v && v.toLowerCase() !== 'guest' ? v : '';
+}
+
 function buildInitialMessage({ guestFirstName, propertyName, checkinDate, checkoutDate, checkinLink, guestLang }) {
   const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  const name = cleanFirstName(guestFirstName);
+  const from = formatStayDate(checkinDate, isItalian);
+  const to = formatStayDate(checkoutDate, isItalian);
   if (isItalian) {
-    return `Buongiorno ${guestFirstName}, benvenuto in Houzly!
+    return `Buongiorno${name ? ' ' + name : ''},
 
-Grazie per aver prenotato ${propertyName}. Non vediamo l'ora di ospitarla dal ${checkinDate} al ${checkoutDate}.
+la aspettiamo a ${propertyName} dal ${from} al ${to}.
 
-La legge italiana ci obbliga a registrare tutti gli ospiti presso le autorità locali prima dell'arrivo. Per rendere la procedura semplice e veloce, può completare il check-in online qui:
+Come richiesto dalla legge italiana, prima dell'arrivo dobbiamo registrare tutti gli ospiti presso le autorità. Può farlo in pochi minuti qui:
 
 → ${checkinLink}
 
-Richiede pochi minuti: tenga a portata di mano i documenti d'identità di tutti gli ospiti (e il codice fiscale per i cittadini italiani). Non serve caricare foto: i documenti verranno verificati al suo arrivo. Tutti i dati vengono trasmessi in modo sicuro e utilizzati esclusivamente per la registrazione prevista dalla legge.
+Tenga a portata di mano i documenti d'identità di tutti gli ospiti, bambini compresi, e il codice fiscale per i cittadini italiani. Non serve caricare foto: i documenti verranno verificati al suo arrivo.
 
-Per qualsiasi domanda, risponda pure a questo messaggio.
+Per qualsiasi domanda può rispondere a questo messaggio.
 
-A presto in Toscana,
+A presto,
 Il Team Houzly`;
   }
-  return `Hello ${guestFirstName}, and welcome to Houzly!
+  return `Hello${name ? ' ' + name : ''},
 
-Thank you for booking ${propertyName}. We're looking forward to hosting you from ${checkinDate} to ${checkoutDate}.
+we look forward to welcoming you at ${propertyName} from ${from} to ${to}.
 
-Italian law requires us to register all guests with local authorities before arrival. To make this quick and easy, please complete your online check-in here:
+As required by Italian law, we need to register all guests with the authorities before arrival. You can do it in a few minutes here:
 
 → ${checkinLink}
 
-It only takes a few minutes: just have each guest's ID card or passport at hand. No photo upload is needed, documents will be checked on arrival. All data is transmitted securely and used only for the legally required registration.
+Please have the ID documents of all guests at hand, children included. No photo upload is needed: documents will be checked on arrival.
 
 If you have any questions, just reply to this message.
 
-See you soon in Tuscany,
+See you soon,
 The Houzly Team`;
 }
 
 function buildReminderD3({ guestFirstName, propertyName, checkinLink, guestLang }) {
   const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  const name = cleanFirstName(guestFirstName);
   if (isItalian) {
-    return `Salve ${guestFirstName}, un piccolo promemoria: il suo soggiorno a ${propertyName} inizia tra 3 giorni.
+    return `Salve${name ? ' ' + name : ''}, un piccolo promemoria: il suo soggiorno a ${propertyName} inizia tra 3 giorni.
 
 Se non l'ha ancora fatto, può completare il check-in online qui: ${checkinLink}
 
@@ -530,27 +574,30 @@ Se non l'ha ancora fatto, può completare il check-in online qui: ${checkinLink}
 
 Grazie!`;
   }
-  return `Hi ${guestFirstName}, just a friendly reminder that your stay at ${propertyName} begins in 3 days.
+  return `Hi${name ? ' ' + name : ''}, just a friendly reminder that your stay at ${propertyName} begins in 3 days.
 
 If you haven't yet, please complete the online check-in here: ${checkinLink}
 
-This is required by Italian law and helps us welcome you smoothly on arrival day. It only takes a few minutes.
+It is required by Italian law and helps us welcome you smoothly on arrival. It only takes a few minutes.
 
 Thank you!`;
 }
 
-function buildReminderD1({ guestFirstName, checkinLink, guestLang }) {
+function buildReminderD1({ guestFirstName, propertyName, checkinLink, guestLang }) {
   const isItalian = (guestLang || '').toLowerCase().startsWith('it');
+  const name = cleanFirstName(guestFirstName);
+  const place = propertyName ? ` a ${propertyName}` : '';
+  const placeEn = propertyName ? ` at ${propertyName}` : '';
   if (isItalian) {
-    return `Salve ${guestFirstName}, domani la aspettiamo!
+    return `Salve${name ? ' ' + name : ''}, domani la aspettiamo${place}!
 
-Per cortesia completi il check-in online prima dell'arrivo, altrimenti dovremo raccogliere i documenti di persona e questo potrebbe rallentare la sua sistemazione: ${checkinLink}
+Non abbiamo ancora ricevuto i dati per la registrazione obbligatoria degli ospiti. Può completarli qui in pochi minuti, così al suo arrivo resterà solo la verifica dei documenti: ${checkinLink}
 
 Grazie e buon viaggio!`;
   }
-  return `Hi ${guestFirstName}, we're almost ready to welcome you tomorrow!
+  return `Hi${name ? ' ' + name : ''}, we look forward to welcoming you tomorrow${placeEn}!
 
-Please complete your online check-in before arrival, otherwise we'll need to collect documents in person which can slow down your arrival: ${checkinLink}
+We haven't received the details for the mandatory guest registration yet. You can complete them here in a few minutes, so on arrival we'll only need to check your documents: ${checkinLink}
 
 Thank you, and safe travels!`;
 }
@@ -1806,6 +1853,7 @@ app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
         catch (e) { importError = e.message; console.error('[checkin/import]', e.message); }
         // 2. riattiva quelle già registrate come "struttura spenta"
         await activateFutureSessions(updated);
+        await rescheduleEarlyLinks(updated);
         // prenotazioni che riceveranno il link (nuove o riattivate adesso)
         sessionsChanged = await (await getCollection('checkin_sessions')).countDocuments({
           'property.smoobu_id': String(updated.smoobu_apartment_id),
@@ -1985,7 +2033,8 @@ app.post('/api/checkin/properties/:id/import', requireAdminAuth, async (req, res
     if (!prop) return res.status(404).json({ ok: false, error: 'property_not_found' });
     const imported = await importFutureSessionsFromSmoobu(prop);
     const activated = prop.checkin_required ? await activateFutureSessions(prop) : 0;
-    res.json({ ok: true, imported, activated });
+    const rescheduled = await rescheduleEarlyLinks(prop);
+    res.json({ ok: true, imported, activated, rescheduled });
   } catch (e) {
     console.error('[checkin/properties/import]', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -3037,6 +3086,7 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
       const link = `${APP_BASE_URL}/checkin.html?t=${s.access_token}`;
       const msg = buildReminderD1({
         guestFirstName: s.booking.primary_guest_name?.split(' ')[0] || 'guest',
+        propertyName: s.property.name,
         checkinLink: link,
         guestLang: s.booking.language,
       });
@@ -3104,10 +3154,10 @@ app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
         continue;
       }
       // Arrivo troppo lontano: non inviare adesso, riprogramma nella finestra
-      const properDue = computeInitialDueAt(session.booking?.arrival);
-      if (properDue > nowIso) {
+      const windowStart = computeWindowStartIso(session.booking?.arrival);
+      if (windowStart && windowStart > nowIso) {
         await col.updateOne({ _id: session._id }, {
-          $set: { initial_message_due_at: properDue, initial_dispatch_claimed_at: null },
+          $set: { initial_message_due_at: windowStart, initial_dispatch_claimed_at: null },
           $inc: { initial_message_attempts: -1 },
         });
         continue;
