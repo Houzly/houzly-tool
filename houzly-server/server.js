@@ -1771,15 +1771,70 @@ app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
     const updated = await col.findOne({ _id: id });
 
     // Accensione/spegnimento del check-in: allinea le prenotazioni future
-    let sessionsChanged = 0;
+    let sessionsChanged = 0, imported = null, importError = null;
     if ('checkin_required' in toSet && toSet.checkin_required !== before.checkin_required) {
-      sessionsChanged = toSet.checkin_required
-        ? await activateFutureSessions(updated)
-        : await suspendFutureSessions(updated);
+      if (toSet.checkin_required) {
+        const startIso = new Date().toISOString();
+        // 1. scarica da Smoobu le prenotazioni future (anche quelle mai arrivate via webhook)
+        try { imported = await importFutureSessionsFromSmoobu(updated); }
+        catch (e) { importError = e.message; console.error('[checkin/import]', e.message); }
+        // 2. riattiva quelle già registrate come "struttura spenta"
+        await activateFutureSessions(updated);
+        // prenotazioni che riceveranno il link (nuove o riattivate adesso)
+        sessionsChanged = await (await getCollection('checkin_sessions')).countDocuments({
+          'property.smoobu_id': String(updated.smoobu_apartment_id),
+          status: 'pending',
+          initial_message_sent_at: null,
+          initial_message_due_at: { $gte: startIso },
+        });
+      } else {
+        sessionsChanged = await suspendFutureSessions(updated);
+      }
     }
-    res.json({ ok: true, property: updated, sessionsChanged });
+    res.json({ ok: true, property: updated, sessionsChanged, imported, importError });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
+// Scarica da Smoobu le prenotazioni future di un appartamento (no blocchi, no cancellate)
+async function fetchFutureSmoobuReservations(apartmentId) {
+  const today = new Date().toISOString().slice(0, 10);
+  let all = [];
+  for (let page = 1; page <= 10; page++) {
+    const r = await smoobuFetch('GET', '/api/reservations', {
+      query: { pageSize: 100, page: page, apartmentId: String(apartmentId), departureFrom: today },
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      throw new Error(`Smoobu ${r.status}: ${text.slice(0, 200)}`);
+    }
+    const data = await r.json();
+    const items = (data._embedded && data._embedded.bookings) || data.bookings || data.reservations || [];
+    if (!items.length) break;
+    all = all.concat(items);
+    const totalPages = data.page_count || data.total_pages || data.pages || 1;
+    if (page >= totalPages) break;
+  }
+  return all.filter(b =>
+    b['is-blocked-booking'] !== true &&
+    String(b.apartment?.id || '') === String(apartmentId) &&
+    (b.departure || '').slice(0, 10) >= today &&
+    b.type !== 'cancellation' &&
+    String(b.status || '').toLowerCase() !== 'cancelled'
+  );
+}
+
+// Registra nel check-in le prenotazioni future di una struttura prese da Smoobu.
+// Usa la stessa logica del webhook: le nuove vengono create, le esistenti aggiornate.
+async function importFutureSessionsFromSmoobu(prop) {
+  const list = await fetchFutureSmoobuReservations(prop.smoobu_apartment_id);
+  let created = 0, updated = 0;
+  for (const b of list) {
+    const r = await upsertCheckinSession(b, 'import');
+    if (r?.action === 'created') created++;
+    else if (r?.action === 'updated') updated++;
+  }
+  return { found: list.length, created, updated };
+}
 
 // ── Check-in: allineamento prenotazioni quando si accende/spegne una struttura ──
 // Accensione: le prenotazioni future già registrate come "struttura disattivata"
@@ -1843,19 +1898,35 @@ async function suspendFutureSessions(prop) {
   return r.modifiedCount;
 }
 
+// POST /api/checkin/properties/:id/import → riallinea le prenotazioni future da Smoobu
+app.post('/api/checkin/properties/:id/import', requireAdminAuth, async (req, res) => {
+  try {
+    const prop = await (await getCollection('checkin_properties_config')).findOne({ _id: req.params.id });
+    if (!prop) return res.status(404).json({ ok: false, error: 'property_not_found' });
+    const imported = await importFutureSessionsFromSmoobu(prop);
+    const activated = prop.checkin_required ? await activateFutureSessions(prop) : 0;
+    res.json({ ok: true, imported, activated });
+  } catch (e) {
+    console.error('[checkin/properties/import]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Quante prenotazioni future verrebbero attivate accendendo la struttura
 app.get('/api/checkin/properties/:id/preview', requireAdminAuth, async (req, res) => {
   try {
     const prop = await (await getCollection('checkin_properties_config')).findOne({ _id: req.params.id });
     if (!prop) return res.status(404).json({ ok: false, error: 'property_not_found' });
     const today = new Date().toISOString().slice(0, 10);
-    const count = await (await getCollection('checkin_sessions')).countDocuments({
+    const registered = await (await getCollection('checkin_sessions')).countDocuments({
       'property.smoobu_id': String(prop.smoobu_apartment_id),
-      status: 'excluded_property_disabled',
       'booking.departure': { $gte: today },
       is_test: { $ne: true },
     });
-    res.json({ ok: true, futureBookings: count });
+    let futureBookings = null, smoobuError = null;
+    try { futureBookings = (await fetchFutureSmoobuReservations(prop.smoobu_apartment_id)).length; }
+    catch (e) { smoobuError = e.message; }
+    res.json({ ok: true, futureBookings, registered, smoobuError });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -2915,6 +2986,16 @@ app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
       // Check-out già passato: niente invio
       if (session.booking?.departure && session.booking.departure < nowIso.slice(0, 10)) {
         await col.updateOne({ _id: session._id }, { $set: { initial_message_due_at: null, initial_dispatch_claimed_at: null } });
+        continue;
+      }
+      // Ospite già arrivato (es. soggiorno in corso importato all'accensione):
+      // niente link, la registrazione va fatta a mano
+      if (session.booking?.arrival && session.booking.arrival < nowIso.slice(0, 10)) {
+        await col.updateOne({ _id: session._id }, { $set: {
+          initial_message_due_at: null, initial_dispatch_claimed_at: null,
+          status: session.status === 'pending' ? 'manual_required' : session.status,
+          exclusion_reason: 'Soggiorno già iniziato quando il check-in è stato attivato',
+        } });
         continue;
       }
 
