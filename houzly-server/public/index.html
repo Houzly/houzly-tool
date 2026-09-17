@@ -11798,6 +11798,22 @@ function adempViewCU(ownerId){
   });
   html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td>'+t.nPren+'</td><td class="num">'+eur(t.lordo)+'</td><td class="num">'+eur(t.base_cedolare)+'</td><td class="num"><strong>'+eur(t.ritenuta)+'</strong></td></tr>';
   html+='</tbody></table>';
+  // ── Ripartizione ritenuta fra co-proprietari (se presenti e in regime ritenuta) ──
+  if(owner&&owner.coprops&&owner.coprops.length&&fiscRitenutaAttiva(owner)){
+    var quoteSomma=owner.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+    var quotaPrinc=Math.max(0,1-quoteSomma);
+    var nomePrinc=((owner.nome||'')+' '+(owner.cognome||'')).trim()||nomeMandante;
+    html+='<div class="rpt-coprop" style="margin-top:16px;padding:12px 14px;background:var(--surface2);border-radius:10px">'
+      +'<h5 style="margin:0 0 8px;color:var(--navy)">Ripartizione ritenuta fra comproprietari</h5>'
+      +'<div style="font-size:11.5px;color:var(--text-light);margin-bottom:8px">La certificazione va emessa a ciascun comproprietario per la propria quota. Importi calcolati sulla ritenuta totale di € '+eur(t.ritenuta)+'.</div>'
+      +'<table class="adem-quarter-table"><thead><tr><th>Comproprietario</th><th>Codice Fiscale</th><th class="num">Quota</th><th class="num">Base imponibile</th><th class="num">Ritenuta 21%</th></tr></thead><tbody>'
+      +'<tr><td><strong>'+escHtml(nomePrinc)+'</strong> (intestatario)</td><td>'+escHtml(owner.cf||'')+'</td><td class="num">'+(quotaPrinc*100).toFixed(2)+'%</td><td class="num">'+eur(r2(t.base_cedolare*quotaPrinc))+'</td><td class="num"><strong>'+eur(r2(t.ritenuta*quotaPrinc))+'</strong></td></tr>'
+      +owner.coprops.map(function(cp){
+        var nm=((cp.nome||'')+' '+(cp.cognome||'')).trim();
+        return '<tr><td>'+escHtml(nm)+'</td><td>'+escHtml(cp.cf||'')+'</td><td class="num">'+((+cp.perc||0)*100).toFixed(2)+'%</td><td class="num">'+eur(r2(t.base_cedolare*(+cp.perc||0)))+'</td><td class="num"><strong>'+eur(r2(t.ritenuta*(+cp.perc||0)))+'</strong></td></tr>';
+      }).join('')
+      +'</tbody></table></div>';
+  }
   html+='<div class="doc-note" style="margin-top:14px">📌 <strong>Metodo base imponibile:</strong> '+methodLabel+'.<br>📌 <strong>Ritenuta a titolo di acconto</strong> (LdB 2024). Il mandante calcola l\'imposta definitiva (cedolare o IRPEF) in dichiarazione dei redditi.';
   if(d.nFiscalEntities>=2)html+='<br>⚠ <strong>Avviso 2+ immobili:</strong> il Mandante deve designare in dichiarazione il "primo" immobile (21%) e versare la differenza 5% sul secondo (aliquota 26%).';
   if(d.nFiscalEntities>=3)html+='<br>🚨 <strong>LdB 2026 — 3+ immobili:</strong> dal 1/1/2026 cedolare secca solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale.';
@@ -12315,6 +12331,15 @@ function adempExportCUMandante(ownerId){
   var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   monthly.forEach(function(r,i){if(r.nPren>0)rows.push([mesi[i],r.nPren,r2(r.lordo),r2(r.base),r2(r.ritenuta)]);});
   rows.push(['TOTALE',d.totals.nPren,d.totals.lordo,d.totals.base_cedolare,d.totals.ritenuta]);
+  var _own=d.owner;
+  if(_own&&_own.coprops&&_own.coprops.length&&fiscRitenutaAttiva(_own)){
+    var _qs=_own.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+    var _qp=Math.max(0,1-_qs);
+    rows.push([]); rows.push(['RIPARTIZIONE FRA COMPROPRIETARI']);
+    rows.push(['Comproprietario','CF','Quota %','Base Imponibile','Ritenuta 21%']);
+    rows.push([((_own.nome||'')+' '+(_own.cognome||'')).trim()+' (intestatario)',_own.cf||'',(_qp*100).toFixed(2),r2(d.totals.base_cedolare*_qp),r2(d.totals.ritenuta*_qp)]);
+    _own.coprops.forEach(function(cp){rows.push([((cp.nome||'')+' '+(cp.cognome||'')).trim(),cp.cf||'',((+cp.perc||0)*100).toFixed(2),r2(d.totals.base_cedolare*(+cp.perc||0)),r2(d.totals.ritenuta*(+cp.perc||0))]);});
+  }
   ademDownloadCSV('CU_'+nomeOwner(d.owner.id).replace(/[^a-zA-Z0-9]/g,'_')+'_'+anno+'.csv', rows);
   toast('CSV scaricato ✓');
 }
