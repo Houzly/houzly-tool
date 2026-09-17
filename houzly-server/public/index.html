@@ -1890,7 +1890,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div class="field" style="margin:0"><label style="font-size:11px">Interno</label><input type="text" id="prop-interno" placeholder="—"></div>
         </div>
       </div>
-      <div class="field"><label>Payment Charge Booking % <span style="font-weight:400;color:var(--text-light)">(aggiunto alla commissione)</span></label><input type="number" id="prop-booking-fee" step="0.1" value="1.5" min="0" max="10"><div class="field-hint">Booking addebita una quota per pagamento (~1.5%). Viene sommata alla commissione OTA all'import.</div></div>
+      <!-- Booking Payment Charge: gestita globalmente in Impostazioni Pulizie → card "Commissioni Piattaforme" (DB.config.booking_fee). Rimossa dal form immobile per evitare duplicazione. -->
       <!-- Commissione Houzly override per proprietà (v42) -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128176; Commissione Houzly <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(opzionale — se vuota usa quella del Proprietario)</span></div>
@@ -2334,6 +2334,18 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <button class="btn btn-ghost btn-sm" onclick="showPage('pulizie')">← Torna a Pulizie</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="card">
+      <div class="card-title">Commissioni Piattaforme</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;color:var(--text)">Booking Payment Charge</div>
+            <div style="font-size:11.5px;color:var(--text-light);max-width:340px">Quota che Booking addebita per la transazione, <strong>aggiunta</strong> alla commissione di ogni prenotazione Booking (Smoobu trasmette la commissione al netto di questa fee). Vale per tutti gli immobili.</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="editBookingFee()" style="white-space:nowrap"><span id="cfg-booking-fee-val">1,5</span>% &nbsp;✏</button>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Connessione Smoobu</div>
       <!-- v73 (08/09/2026): campo API Key rimosso per la migrazione HMAC.
@@ -3118,7 +3130,7 @@ function renderPage(p){
   if(p==='operations'){switchOpsTab('generici');}
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
-  if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
+  if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
   if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
@@ -3690,6 +3702,21 @@ function clearPostImportFilter(){
   renderPrenotazioni();
 }
 
+// Modifica la Booking Payment Charge globale (DB.config.booking_fee)
+function editBookingFee(){
+  var cur = (DB.config && DB.config.booking_fee!=null) ? DB.config.booking_fee : 1.5;
+  var input = prompt('Booking Payment Charge (%)\n\nQuota che Booking addebita per la transazione, aggiunta alla commissione di ogni prenotazione Booking.\nSmoobu trasmette la commissione al netto di questa fee, quindi il tool la aggiunge in fase di calcolo.\n\nValore attuale: '+cur+'%', String(cur));
+  if(input===null) return;
+  input = input.trim().replace(',','.');
+  var v = parseFloat(input);
+  if(isNaN(v) || v<0 || v>10){ toast('Valore non valido. Inserisci una percentuale fra 0 e 10.'); return; }
+  if(!DB.config)DB.config={};
+  DB.config.booking_fee = v;
+  saveDB();
+  var el=document.getElementById('cfg-booking-fee-val'); if(el)el.textContent=String(v).replace('.',',');
+  toast('Booking Payment Charge aggiornata: '+String(v).replace('.',',')+'%');
+}
+
 // v54: modifica la data di taglio per il check Booking-senza-tassa
 function editBookingCutoff(){
   var cur = DB.booking_tax_cutoff || '2026-06-01';
@@ -3735,6 +3762,10 @@ function isogLabelPeriodo(meseDash, anno){
   return meseDash ? (mesiNomi[meseDash]+' '+anno) : ('Anno '+anno);
 }
 
+function syncBookingFeeLabel(){
+  var el=document.getElementById('cfg-booking-fee-val');
+  if(el){var v=(DB.config&&DB.config.booking_fee!=null)?DB.config.booking_fee:1.5;el.textContent=String(v).replace('.',',');}
+}
 function renderImpostaSoggiorno(){
   var container=document.getElementById('imposta-soggiorno-container');
   if(!container) return;
@@ -4575,7 +4606,6 @@ function openModalProprieta(){
   // Reset toggle (v65: incluso il nuovo flag imposta di soggiorno)
   var elPO=document.getElementById('prop-pulizie-owner');if(elPO)elPO.checked=false;
   var elTT2=document.getElementById('prop-tassa-trattenuta');if(elTT2)elTT2.checked=false;
-  var elBF=document.getElementById('prop-booking-fee');if(elBF)elBF.value=1.5;
   openModal('modal-proprieta');
 }
 function saveProprieta(){
@@ -4592,7 +4622,6 @@ function saveProprieta(){
     indirizzo:document.getElementById('prop-indirizzo').value,
     proprietario_id:oid,
     cin:document.getElementById('prop-cin').value.trim().toUpperCase(),
-    booking_fee_perc:parseFloat(document.getElementById('prop-booking-fee').value)||1.5,
     pulizie_owner:document.getElementById('prop-pulizie-owner').checked,
     tassa_trattenuta:!!(document.getElementById('prop-tassa-trattenuta')&&document.getElementById('prop-tassa-trattenuta').checked),
     // Dati catastali per DAC7/CU
@@ -4628,7 +4657,6 @@ function editProp(id){
     document.getElementById('prop-nome').value=p.nome||'';
     document.getElementById('prop-indirizzo').value=p.indirizzo||'';
     document.getElementById('prop-cin').value=p.cin||'';
-    document.getElementById('prop-booking-fee').value=p.booking_fee_perc!=null?p.booking_fee_perc:1.5;
     document.getElementById('prop-pulizie-owner').checked=!!p.pulizie_owner;
     var elTT=document.getElementById('prop-tassa-trattenuta');if(elTT)elTT.checked=!!p.tassa_trattenuta;
     document.getElementById('prop-owner-sel').value=p.proprietario_id||'';
