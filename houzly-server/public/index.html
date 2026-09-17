@@ -815,7 +815,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v76 · 17/09 · Check-in import Smoobu</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v77 · 17/09 · Check-in finestra 14gg</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2292,7 +2292,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div id="cki-view-props" style="display:none">
     <div class="card" style="margin-bottom:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:12.5px;color:var(--text-mid);max-width:620px">Accendi il check-in solo sulle strutture pronte. Accendendolo, il tool legge da Smoobu tutte le prenotazioni future della struttura e gli ospiti ricevono il link entro circa mezz'ora. Il pulsante &#8635; riallinea le prenotazioni di una struttura già accesa. Spegnendolo, le prenotazioni non ancora compilate smettono di ricevere messaggi.</div>
+      <div style="font-size:12.5px;color:var(--text-mid);max-width:620px">Accendi il check-in solo sulle strutture pronte. Accendendolo, il tool legge da Smoobu tutte le prenotazioni future della struttura. Il link parte circa mezz'ora dopo la prenotazione, oppure 14 giorni prima dell'arrivo se la prenotazione è lontana. Il pulsante &#8635; riallinea le prenotazioni di una struttura già accesa. Spegnendolo, le prenotazioni non ancora compilate smettono di ricevere messaggi.</div>
       <button class="btn btn-ghost btn-sm" onclick="ckiSyncProps()">&#8595; Sincronizza strutture da Smoobu</button>
     </div>
     <div class="cki-list" id="cki-props"><div class="cki-empty">Caricamento...</div></div>
@@ -13829,7 +13829,7 @@ async function ckiToggleProp(id, el) {
         + (pv.smoobuError ? ' (' + pv.smoobuError + ')' : '') + '. Verranno comunque attivate le ' + (pv.registered || 0) + ' già registrate.';
     } else if (n) {
       msg = 'Accendere il check-in su "' + p.name + '"?\n\nSu Smoobu ci sono ' + n + ' prenotazion' + (n === 1 ? 'e' : 'i') + ' in corso o future.\n'
-        + 'Gli ospiti non ancora arrivati riceveranno il link entro circa 30 minuti; i soggiorni già iniziati andranno in "Da gestire".';
+        + 'Chi arriva entro 14 giorni riceve il link entro circa 30 minuti; per gli arrivi più lontani il link parte 14 giorni prima dell\'arrivo. I soggiorni già iniziati vanno in "Da gestire".';
     } else {
       msg = 'Accendere il check-in su "' + p.name + '"?\n\nSu Smoobu non ci sono prenotazioni future: il link partirà dalle prossime prenotazioni.';
     }
@@ -13841,7 +13841,7 @@ async function ckiToggleProp(id, el) {
     var d = await ckiFetch('PUT', '/properties/' + encodeURIComponent(id), { checkin_required: on });
     CKI.props = CKI.props.map(function (x) { return x._id === id ? d.property : x; });
     if (on) {
-      toast('Check-in acceso · ' + (d.sessionsChanged || 0) + ' link in partenza'
+      toast('Check-in acceso · ' + (d.sessionsChanged || 0) + ' link programmati'
         + (d.importError ? ' · ATTENZIONE: import da Smoobu non riuscito (' + d.importError + ')' : ''), d.importError ? 8000 : 4500);
     } else {
       toast('Check-in spento' + (d.sessionsChanged ? ' · ' + d.sessionsChanged + ' prenotazioni sospese' : ''), 4000);
@@ -13921,7 +13921,7 @@ function ckiLinkInfo(s) {
   if (s.status.indexOf('excluded_') === 0 || s.status === 'archived') return '<div class="cki-link">—</div>';
   if (s.link_failed) return '<div class="cki-link bad">Invio link fallito</div>';
   if (s.link_sent_at) return '<div class="cki-link">Link ' + ckiDateTime(s.link_sent_at) + (s.reminders_sent ? ' · ' + s.reminders_sent + ' prom.' : '') + '</div>';
-  if (s.link_due_at) return '<div class="cki-link">Link in partenza ' + ckiDateTime(s.link_due_at) + '</div>';
+  if (s.link_due_at) return '<div class="cki-link">Link programmato ' + ckiDateTime(s.link_due_at) + '</div>';
   return '<div class="cki-link">Link non inviato</div>';
 }
 
