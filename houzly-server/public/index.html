@@ -818,7 +818,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v80 · 17/09 · CU comproprietari per-immobile</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v81 · 17/09 · compenso/IVA solo da contratto</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1820,7 +1820,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Provincia</label><input type="text" id="pf-prov" maxlength="2" style="text-transform:uppercase"></div>
         <div class="field"><label>Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="text" id="pf-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
         <div class="field"><label>Email</label><input type="email" id="pf-email"></div>
-        <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="pf-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
         <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="pf-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
       <div id="form-az" class="form-grid" style="display:none">
@@ -1834,16 +1833,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Codice SDI / PEC</label><input type="text" id="az-sdi"></div>
         <div class="field"><label>Email Azienda</label><input type="email" id="az-email"></div>
         <div class="field"><label>Email Commercialista (per XML)</label><input type="email" id="az-email-comm"></div>
-        <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="az-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
         <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="az-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
     </div>
     <div id="ptab-fiscale" style="display:none">
-      <div class="alert alert-info">Le impostazioni fiscali dipendono dal contratto firmato con il proprietario.</div>
-      <div class="toggle-row"><div><div class="toggle-label">IVA 22% sul Compenso Houzly</div><div class="toggle-sub">Attiva se previsto dal contratto</div></div><label class="toggle"><input type="checkbox" id="fisc-iva22"><span class="toggle-slider"></span></label></div>
+      <div class="alert alert-info">Compenso e IVA si impostano nel <strong>contratto</strong> e si vedono in sola lettura nella scheda Dati Base. Qui resta solo il regime di ritenuta.</div>
       <div class="toggle-row" id="fisc-cedolare-row"><div><div class="toggle-label">Ritenuta d'Acconto 21%</div><div class="toggle-sub">Houzly trattiene il 21% sul canone come sostituto d'imposta (LdB 2024 — a titolo di acconto)</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
       <div id="fisc-azienda-note" style="display:none;background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--blue);margin-top:4px">&#127970; Proprietario azienda: nessuna ritenuta d'acconto viene applicata (l'azienda gestisce le imposte in proprio con fatturazione).</div>
-      <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
       <div class="alert alert-info" style="margin-bottom:12px"><strong>Dichiarazioni separate</strong> — Se l'immobile è cointestato, ogni intestatario riceve una propria CU/DAC7 per la sua quota. Compila i dati anagrafici di ciascun co-proprietario (CF obbligatorio, IBAN richiesto per DAC7). La somma delle quote % deve essere 100% (incluso il proprietario principale, conteggiato implicitamente).</div>
@@ -1898,8 +1894,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128176; Commissione Houzly <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(opzionale — se vuota usa quella del Proprietario)</span></div>
         <div class="prop-grid prop-grid-2">
-          <div class="field" style="margin:0"><label style="font-size:11px">% Compenso Houzly</label><input type="number" id="prop-houzly-perc" step="0.1" min="0" max="50" placeholder="es. 30" oninput="updatePropCommPreview()"><div class="field-hint" style="font-size:10px">Vuoto = eredita dal Proprietario</div></div>
-          <div class="field" style="margin:0"><label style="font-size:11px">IVA 22%</label><select id="prop-iva22-override" onchange="updatePropCommPreview()"><option value="">Eredita dal Proprietario</option><option value="1">Sì — fattura con IVA</option><option value="0">No — IVA inclusa (no scorporo)</option></select></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">% Compenso Houzly <span style="font-weight:400;color:var(--text-light)">(da contratto)</span></label><input type="number" id="prop-houzly-perc" step="0.1" min="0" max="50" placeholder="—" readonly style="background:var(--surface2);color:var(--text-mid);cursor:not-allowed"><div class="field-hint" style="font-size:10px">Si imposta nel contratto dell'immobile</div></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">IVA 22% <span style="font-weight:400;color:var(--text-light)">(da contratto)</span></label><select id="prop-iva22-override" disabled style="background:var(--surface2);color:var(--text-mid);cursor:not-allowed"><option value="">—</option><option value="1">Sì — fattura con IVA</option><option value="0">No — IVA inclusa</option></select></div>
         </div>
         <div id="prop-comm-preview" style="margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:11.5px;color:var(--text-mid);display:none"></div>
       </div>
@@ -4161,13 +4157,11 @@ function openModalProprietario(){
   if(btnS){btnS.removeAttribute('data-edit-id');btnS.textContent='Salva Proprietario';}
   document.getElementById('mprop-title').textContent='Nuovo Proprietario';
   setTipo('persona_fisica');
-  ['pf-nome','pf-cognome','pf-cf','pf-via','pf-cap','pf-comune','pf-prov','pf-email','pf-cin','pf-iban',
+  ['pf-nome','pf-cognome','pf-cf','pf-via','pf-cap','pf-comune','pf-prov','pf-email','pf-iban',
    'pf-sesso','pf-data-nascita','pf-comune-nascita','pf-prov-nascita','pf-codice-comune',
-   'az-rs','az-piva','az-cf','az-via','az-cap','az-comune','az-prov','az-sdi','az-email','az-email-comm','az-cin','az-iban']
+   'az-rs','az-piva','az-cf','az-via','az-cap','az-comune','az-prov','az-sdi','az-email','az-email-comm','az-iban']
     .forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
-  document.getElementById('fisc-iva22').checked=false;
-  document.getElementById('fisc-cedolare').checked=true;
-  document.getElementById('fisc-houzly-perc').value=20;
+  var _fc=document.getElementById('fisc-cedolare');if(_fc)_fc.checked=true;
   showPropTab('base');renderCoprops();
   openModal('modal-proprietario');
 }
@@ -4278,10 +4272,13 @@ function saveProprietario(){
   var copropsClean=copropsTemp.filter(function(c){
     return (c.nome && c.nome.trim()) || (c.cognome && c.cognome.trim());
   });
+  var _prev=(editId?DB.proprietari.find(function(o){return o.id===editId;}):null)||{};
+  var _cedEl=document.getElementById('fisc-cedolare');
   var obj={id:editId||uid(),tipo:editingTipo,
-    fisc_iva22:document.getElementById('fisc-iva22').checked,
-    fisc_cedolare:document.getElementById('fisc-cedolare').checked,
-    houzly_perc:+document.getElementById('fisc-houzly-perc').value||20,
+    // compenso/IVA di default non si impostano più qui: si conservano se già presenti (fallback storico)
+    fisc_iva22:_prev.fisc_iva22||false,
+    fisc_cedolare:_cedEl?_cedEl.checked:(_prev.fisc_cedolare!==false),
+    houzly_perc:_prev.houzly_perc!=null?_prev.houzly_perc:20,
     coprops:copropsClean
   };
   var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
@@ -4292,7 +4289,6 @@ function saveProprietario(){
       nome:nome,cognome:cognome,cf:cf.toUpperCase(),
       via:g('pf-via'),cap:g('pf-cap'),comune:g('pf-comune'),provincia:g('pf-prov').toUpperCase(),
       email:g('pf-email'),email_comm:'',
-      cin:g('pf-cin').toUpperCase(),
       iban:g('pf-iban').toUpperCase().replace(/\s+/g,''),
       // Campi CU
       sesso:g('pf-sesso'),
@@ -4304,7 +4300,7 @@ function saveProprietario(){
   } else {
     var rs=g('az-rs'),piva=g('az-piva');
     if(!rs||!piva){toast('Compila Ragione Sociale e P.IVA');return;}
-    Object.assign(obj,{ragione_sociale:rs,piva:piva,cf_az:g('az-cf'),via:g('az-via'),cap:g('az-cap'),comune:g('az-comune'),provincia:g('az-prov'),sdi:g('az-sdi'),email:g('az-email'),email_comm:g('az-email-comm'),cin:g('az-cin').toUpperCase(),iban:g('az-iban').toUpperCase().replace(/\s+/g,'')});
+    Object.assign(obj,{ragione_sociale:rs,piva:piva,cf_az:g('az-cf'),via:g('az-via'),cap:g('az-cap'),comune:g('az-comune'),provincia:g('az-prov'),sdi:g('az-sdi'),email:g('az-email'),email_comm:g('az-email-comm'),iban:g('az-iban').toUpperCase().replace(/\s+/g,'')});
   }
   if(editId){
     var idx=DB.proprietari.findIndex(function(x){return x.id===editId;});
@@ -4351,7 +4347,7 @@ function editOwner(id){
   if(p.tipo==='persona_fisica'){
     setVal('pf-nome',p.nome);setVal('pf-cognome',p.cognome);setVal('pf-cf',p.cf);
     setVal('pf-via',p.via);setVal('pf-cap',p.cap);setVal('pf-comune',p.comune);
-    setVal('pf-prov',p.provincia);setVal('pf-email',p.email);setVal('pf-cin',p.cin);
+    setVal('pf-prov',p.provincia);setVal('pf-email',p.email);
     setVal('pf-iban',p.iban);
     // Nuovi campi CU
     setVal('pf-sesso',p.sesso);
@@ -4363,12 +4359,10 @@ function editOwner(id){
     setVal('az-rs',p.ragione_sociale);setVal('az-piva',p.piva);setVal('az-cf',p.cf_az);
     setVal('az-via',p.via);setVal('az-cap',p.cap);setVal('az-comune',p.comune);
     setVal('az-prov',p.provincia);setVal('az-sdi',p.sdi);setVal('az-email',p.email);
-    setVal('az-email-comm',p.email_comm);setVal('az-cin',p.cin);
+    setVal('az-email-comm',p.email_comm);
     setVal('az-iban',p.iban);
   }
-  var fisc22=document.getElementById('fisc-iva22');if(fisc22)fisc22.checked=!!p.fisc_iva22;
   var fiscCed=document.getElementById('fisc-cedolare');if(fiscCed)fiscCed.checked=p.fisc_cedolare!==false;
-  var hPerc=document.getElementById('fisc-houzly-perc');if(hPerc)hPerc.value=p.houzly_perc||20;
   showPropTab('base');renderCoprops();
   document.getElementById('mprop-title').textContent='Modifica Proprietario';
   var btnS=document.getElementById('btn-save-prop');
@@ -4538,8 +4532,11 @@ function saveProprieta(){
   if(!nome||!oid){toast('Compila tutti i campi');return;}
   var editId2=document.getElementById('btn-save-prop2')?document.getElementById('btn-save-prop2').getAttribute('data-edit-id'):null;
   // Commissione override (v42): vuoto/null = eredita dal proprietario
-  var houzlyPercRaw=(document.getElementById('prop-houzly-perc')||{value:''}).value.trim();
-  var ivaRaw=(document.getElementById('prop-iva22-override')||{value:''}).value;
+  // v81: compenso/IVA sono in sola lettura (si impostano dal contratto). Al salvataggio
+  // della proprietà NON li tocco: conservo i valori già presenti sul record.
+  var _prevProp=(editId2?DB.proprieta.find(function(x){return x.id===editId2;}):null)||{};
+  var houzlyPercRaw=(_prevProp.houzly_perc!=null?String(_prevProp.houzly_perc):'');
+  var ivaRaw=(_prevProp.iva22_override===true?'1':(_prevProp.iva22_override===false?'0':''));
   var obj2={
     id:editId2||uid(),
     nome:nome,
