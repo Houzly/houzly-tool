@@ -2706,6 +2706,8 @@ function dbDefaults(){
   if(DB.spese_pulizie_glservizi===undefined)DB.spese_pulizie_glservizi=0;
   if(DB.booking_tax_cutoff===undefined)DB.booking_tax_cutoff='2026-06-01';
   if(DB.spese_biancheria===undefined)DB.spese_biancheria=0;
+  if(!DB.config)DB.config={};
+  if(DB.config.booking_fee===undefined||DB.config.booking_fee===null)DB.config.booking_fee=1.5;
 }
 
 // ─── BACKFILL ONE-TIME: ricostruisce comm_ota_abs sulle Booking esistenti ─
@@ -2723,7 +2725,7 @@ function backfillCommBookingV19(){
     var tot=+b.tot||0;
     if(tot<=0)return;
     var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
+    var bfee=getBookingFee(prop);
     var oldPerc=+b.comm_ota_perc||0;
     var oldCommTot=r2(tot*oldPerc/100);  // es. 92,07 (commissione gonfiata)
     var bookingFeeAbs=r2(tot*bfee/100);  // es. 7,43
@@ -2803,7 +2805,7 @@ function migCalaSetaAbacoV70(){
   prop.proprietario_id=abaco.id;
   prop.houzly_perc=MIG_CALASETA_PERC;
   prop.iva22_override=false;              // il 50% è IVA inclusa
-  var bfee=(prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5);
+  var bfee=getBookingFee(prop);
 
   // 2) Riallineamento e ricalcolo delle prenotazioni
   var n=0,totNetto=0,totH=0,totAb=0;
@@ -2937,7 +2939,7 @@ function doCalc(b){
     }
     if(b.canale==='Booking.com'){
       var _prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-      var _bfee=_prop&&_prop.booking_fee_perc!=null?_prop.booking_fee_perc:1.5;
+      var _bfee=getBookingFee(_prop);
       comm_ota=r2(comm_ota+r2(tot*_bfee/100));
     }
   }
@@ -3000,6 +3002,17 @@ function ownerOfGroup(grp){
 
 // v42: legge configurazione commissione effettiva per una proprietà
 // Override su Proprietà prevale, altrimenti eredita dal Proprietario
+// ── Booking payment charge (fee di sistema, uguale per tutti gli immobili) ──
+// Fonte unica: DB.config.booking_fee (default 1,5%). Un immobile può ancora avere
+// un override storico in prop.booking_fee_perc, che ha la precedenza se presente.
+function getBookingFee(prop){
+  if(prop && prop.booking_fee_perc!=null && prop.booking_fee_perc!=='' && !isNaN(+prop.booking_fee_perc))
+    return +prop.booking_fee_perc;
+  if(DB.config && DB.config.booking_fee!=null && !isNaN(+DB.config.booking_fee))
+    return +DB.config.booking_fee;
+  return 1.5;
+}
+
 // Ritorna {houzly_perc:number, iva22:boolean, source:'property'|'owner'|'mixed'}
 function getEffectiveHouzlyConfig(propId){
   var prop=DB.proprieta.find(function(x){return x.id===propId;});
@@ -5244,7 +5257,7 @@ function calcScorporo(){
   var commHint='';
   if(canale==='Booking.com' && b.comm_ota_abs>0){
     var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
+    var bfee=getBookingFee(prop);
     var bookingFeeAbs=r2(b.tot*bfee/100);
     commHint='<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:-4px;margin-bottom:4px;padding-left:2px">&nbsp;&nbsp;&nbsp;&nbsp;Smoobu '+eur(b.comm_ota_abs)+' + '+bfee+'% bancaria '+eur(bookingFeeAbs)+'</div>';
   }
