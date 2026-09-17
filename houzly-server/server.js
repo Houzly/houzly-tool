@@ -490,11 +490,15 @@ async function smoobuFetch(method, pathOnly, opts) {
 
 async function sendSmoobuChatMessage(reservationId, messageText) {
   try {
-    const r = await smoobuFetch('POST', `/api/reservations/${reservationId}/messages`, {
-      body: { subject: 'Online Check-in', message: messageText, emailAddress: null }
+    // Endpoint ufficiale Smoobu: send-message-to-guest, campi subject + messageBody.
+    // Per le prenotazioni Airbnb/Booking Smoobu consegna il messaggio nella chat del portale.
+    const r = await smoobuFetch('POST', `/api/reservations/${reservationId}/messages/send-message-to-guest`, {
+      body: { subject: 'Online Check-in', messageBody: messageText }
     });
-    if (!r.ok) { const text = await r.text(); return { success: false, error: `Smoobu ${r.status}: ${text}` }; }
-    return { success: true };
+    const text = await r.text();
+    if (!r.ok) return { success: false, error: `Smoobu ${r.status}: ${text.slice(0, 300)}` };
+    console.log('[Smoobu message]', reservationId, r.status, text.slice(0, 200));
+    return { success: true, status: r.status };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
