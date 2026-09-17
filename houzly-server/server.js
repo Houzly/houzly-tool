@@ -2097,10 +2097,8 @@ async function evaluateBooking(booking) {
     return { status: 'excluded_long_term', reason: `Duration ${nights} nights exceeds 540`, nights };
   }
 
-  // Regola 2: durata > 30 giorni → locazione transitoria, decisione manuale
-  if (nights > 30) {
-    return { status: 'long_stay_review', reason: `Duration ${nights} nights > 30 (non-tourist lease)`, nights };
-  }
+  // (Regola 2 rimossa a settembre 2026: anche i soggiorni oltre 30 notti
+  //  ricevono il link — Houzly vuole sempre i documenti degli ospiti)
 
   // Regola 3: nome ospite vuoto → blocco manutenzione/chiusura
   const { firstName, lastName } = getSmoobuGuestNames(booking);
@@ -2249,8 +2247,13 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
       booking: bookingSnapshot,
       updated_at: new Date().toISOString(),
     };
+    // Vecchio stato "soggiorno lungo" (regola rimossa): prende lo stato della nuova valutazione
+    if (existing.status === 'long_stay_review' && evaluation.status !== 'pending') {
+      updates.status = evaluation.status;
+      updates.exclusion_reason = evaluation.reason;
+    }
     // Se lo status attuale era excluded/review e la ri-valutazione dà pending, riattiva
-    if (existing.status.startsWith('excluded_') && evaluation.status === 'pending') {
+    if ((existing.status.startsWith('excluded_') || existing.status === 'long_stay_review') && evaluation.status === 'pending') {
       updates.status = 'pending';
       updates.exclusion_reason = null;
       if (tokenData) {
@@ -3118,6 +3121,44 @@ app.post('/api/cron/checkin/reminders', requireCronSecret, async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// Rivaluta le prenotazioni future rimaste in "soggiorno lungo" (regola rimossa)
+// usando i dati già salvati, senza chiamare Smoobu.
+async function reevaluateLongStays() {
+  const col = await getCollection('checkin_sessions');
+  const today = new Date().toISOString().slice(0, 10);
+  const list = await col.find({ status: 'long_stay_review', 'booking.departure': { $gte: today } }).toArray();
+  let n = 0;
+  for (const s of list) {
+    const b = s.booking || {};
+    const [first, ...rest] = String(b.primary_guest_name || '').split(' ');
+    const fake = {
+      id: s.smoobu_booking_id,
+      arrival: b.arrival, departure: b.departure,
+      apartment: { id: s.property?.smoobu_id, name: s.property?.name },
+      firstname: first || '', lastname: rest.join(' '),
+      notice: b.notice || '', email: b.primary_guest_email || '',
+    };
+    const ev = await evaluateBooking(fake);
+    const set = { status: ev.status, exclusion_reason: ev.reason || null, updated_at: new Date().toISOString() };
+    if (ev.status === 'pending' && b.departure) {
+      const tokenData = generateCheckinToken(s.smoobu_booking_id, b.departure);
+      set.access_token = tokenData.token;
+      set.token_expires_at = tokenData.expiresAt;
+      if (!s.initial_message_sent_at) {
+        set.initial_message_due_at = computeInitialDueAt(b.arrival);
+        set.initial_message_attempts = 0;
+        set.initial_dispatch_claimed_at = null;
+      }
+    }
+    await col.updateOne({ _id: s._id }, { $set: set });
+    n++;
+  }
+  if (n) console.log(`[checkin] rivalutati ${n} soggiorni lunghi`);
+  return n;
+}
+// Una volta all'avvio del server (i soggiorni lunghi esistenti si sistemano subito)
+setTimeout(() => { reevaluateLongStays().catch(e => console.error('[checkin/longstay]', e.message)); }, 15000);
 
 // POST /api/cron/checkin/dispatch
 // Invia i link di check-in programmati (initial_message_due_at scaduto).
