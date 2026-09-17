@@ -1765,10 +1765,97 @@ app.put('/api/checkin/properties/:id', requireAdminAuth, async (req, res) => {
     toSet.updated_at = new Date().toISOString();
 
     const col = await getCollection('checkin_properties_config');
-    const result = await col.updateOne({ _id: id }, { $set: toSet });
-    if (result.matchedCount === 0) return res.status(404).json({ ok: false, error: 'property_not_found' });
+    const before = await col.findOne({ _id: id });
+    if (!before) return res.status(404).json({ ok: false, error: 'property_not_found' });
+    await col.updateOne({ _id: id }, { $set: toSet });
     const updated = await col.findOne({ _id: id });
-    res.json({ ok: true, property: updated });
+
+    // Accensione/spegnimento del check-in: allinea le prenotazioni future
+    let sessionsChanged = 0;
+    if ('checkin_required' in toSet && toSet.checkin_required !== before.checkin_required) {
+      sessionsChanged = toSet.checkin_required
+        ? await activateFutureSessions(updated)
+        : await suspendFutureSessions(updated);
+    }
+    res.json({ ok: true, property: updated, sessionsChanged });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Check-in: allineamento prenotazioni quando si accende/spegne una struttura ──
+// Accensione: le prenotazioni future già registrate come "struttura disattivata"
+// diventano "da compilare" e il link parte col solito ritardo (cron dispatch).
+async function activateFutureSessions(prop) {
+  const col = await getCollection('checkin_sessions');
+  const today = new Date().toISOString().slice(0, 10);
+  const list = await col.find({
+    'property.smoobu_id': String(prop.smoobu_apartment_id),
+    status: 'excluded_property_disabled',
+    'booking.departure': { $gte: today },
+    is_test: { $ne: true },
+  }).toArray();
+  const dueAt = new Date(Date.now() + CHECKIN_INITIAL_DELAY_MINUTES * 60000).toISOString();
+  let n = 0;
+  for (const s of list) {
+    if (!s.booking?.departure) continue;
+    const tokenData = generateCheckinToken(s.smoobu_booking_id, s.booking.departure);
+    const set = {
+      status: 'pending',
+      exclusion_reason: null,
+      access_token: tokenData.token,
+      token_expires_at: tokenData.expiresAt,
+      'property.prop_code': prop.prop_code || null,
+      'property.region': prop.region || null,
+      'property.city': prop.city || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (!s.initial_message_sent_at) {
+      set.initial_message_due_at = dueAt;
+      set.initial_message_sent_at = null;
+      set.initial_message_attempts = 0;
+      set.initial_dispatch_claimed_at = null;
+    }
+    await col.updateOne({ _id: s._id }, { $set: set });
+    n++;
+  }
+  return n;
+}
+
+// Spegnimento: le prenotazioni future ancora "da compilare" (nessun dato
+// inserito) tornano "struttura disattivata": niente link né promemoria.
+// Quelle già iniziate o complete restano come sono.
+async function suspendFutureSessions(prop) {
+  const col = await getCollection('checkin_sessions');
+  const today = new Date().toISOString().slice(0, 10);
+  const r = await col.updateMany(
+    {
+      'property.smoobu_id': String(prop.smoobu_apartment_id),
+      status: 'pending',
+      'booking.departure': { $gte: today },
+      is_test: { $ne: true },
+    },
+    { $set: {
+      status: 'excluded_property_disabled',
+      exclusion_reason: 'Property has checkin_required=false',
+      initial_message_due_at: null,
+      updated_at: new Date().toISOString(),
+    } }
+  );
+  return r.modifiedCount;
+}
+
+// Quante prenotazioni future verrebbero attivate accendendo la struttura
+app.get('/api/checkin/properties/:id/preview', requireAdminAuth, async (req, res) => {
+  try {
+    const prop = await (await getCollection('checkin_properties_config')).findOne({ _id: req.params.id });
+    if (!prop) return res.status(404).json({ ok: false, error: 'property_not_found' });
+    const today = new Date().toISOString().slice(0, 10);
+    const count = await (await getCollection('checkin_sessions')).countDocuments({
+      'property.smoobu_id': String(prop.smoobu_apartment_id),
+      status: 'excluded_property_disabled',
+      'booking.departure': { $gte: today },
+      is_test: { $ne: true },
+    });
+    res.json({ ok: true, futureBookings: count });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -1903,6 +1990,7 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
   const bookingSnapshot = {
     channel_id: booking.channel?.id || null,
     channel_name: booking.channel?.name || null,
+    reference_id: booking['reference-id'] || null,
     primary_guest_name: `${firstName} ${lastName}`.trim() || null,
     primary_guest_email: booking.email || null,
     language: booking.language || null,
@@ -2326,23 +2414,138 @@ async function recalculateSessionStatus(sessionId) {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /api/checkin/sessions
-// Query opzionali: ?status=pending&from=2026-05-01&to=2026-12-31&property_id=2846008
-// Restituisce lista delle session ordinate per data di arrivo (max 500)
+// Query opzionali:
+//   view=upcoming (default: soggiorni non ancora finiti) | past (finiti) | all
+//   status=<stato> | attention (manual_required + needs_review + long_stay_review)
+//   property_id=<id Smoobu>   q=<testo: nome ospite, struttura o n. prenotazione>
+//   include_excluded=1 (mostra anche escluse e archiviate)   limit (default 200, max 500)
+// Restituisce una lista "leggera" (senza i dati dei documenti) + conteggi per stato.
+const CHECKIN_ATTENTION_STATUSES = ['manual_required', 'needs_review', 'long_stay_review'];
+let _checkinIndexesReady = false;
 app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
   try {
-    const { status, from, to, property_id } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-    if (property_id) filter['property.smoobu_id'] = property_id;
-    if (from || to) {
-      filter['booking.arrival'] = {};
-      if (from) filter['booking.arrival'].$gte = from;
-      if (to) filter['booking.arrival'].$lte = to;
-    }
     const col = await getCollection('checkin_sessions');
-    const list = await col.find(filter).sort({ 'booking.arrival': 1 }).limit(500).toArray();
-    res.json({ ok: true, sessions: list });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    if (!_checkinIndexesReady) {
+      _checkinIndexesReady = true;
+      col.createIndex({ 'booking.departure': 1 }).catch(() => {});
+      col.createIndex({ status: 1, 'booking.arrival': 1 }).catch(() => {});
+      col.createIndex({ 'property.smoobu_id': 1 }).catch(() => {});
+    }
+    const { view = 'upcoming', status, property_id, q, include_excluded } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 200, 1), 500);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const base = {};
+    if (view === 'upcoming') base['booking.departure'] = { $gte: today };
+    else if (view === 'past') base['booking.departure'] = { $lt: today };
+    if (property_id) base['property.smoobu_id'] = String(property_id);
+    if (q && String(q).trim()) {
+      const rx = new RegExp(String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      base.$or = [
+        { 'booking.primary_guest_name': rx },
+        { 'property.name': rx },
+        { smoobu_booking_id: rx },
+        { 'guests.last_name': rx },
+      ];
+    }
+    const showExcluded = include_excluded === '1' || include_excluded === 'true';
+    const visibleStatuses = { $not: /^(excluded_|archived$)/ };
+
+    const filter = { ...base };
+    if (status === 'attention') filter.status = { $in: CHECKIN_ATTENTION_STATUSES };
+    else if (status) filter.status = status;
+    else if (!showExcluded) filter.status = visibleStatuses;
+
+    const projection = {
+      smoobu_booking_id: 1, is_test: 1, status: 1, exclusion_reason: 1,
+      'property.name': 1, 'property.smoobu_id': 1,
+      'booking.arrival': 1, 'booking.departure': 1, 'booking.nights': 1,
+      'booking.primary_guest_name': 1, 'booking.channel_name': 1, 'booking.total_guests_expected': 1,
+      initial_message_due_at: 1, initial_message_sent_at: 1, completed_at: 1,
+      'guests.slot': 1, 'guests.submitted_at': 1, 'guests.tax_code': 1, 'guests.tax_code_verified': 1,
+      'messages_sent.type': 1, 'messages_sent.success': 1,
+    };
+    const sortDir = view === 'past' ? -1 : 1;
+    const docs = await col.find(filter, { projection })
+      .sort({ 'booking.arrival': sortDir }).limit(limit).toArray();
+
+    const sessions = docs.map(d => {
+      const guests = d.guests || [];
+      return {
+        _id: d._id,
+        smoobu_booking_id: d.smoobu_booking_id,
+        is_test: !!d.is_test,
+        status: d.status,
+        exclusion_reason: d.exclusion_reason || null,
+        property: d.property,
+        booking: d.booking,
+        guests_total: guests.length,
+        guests_submitted: guests.filter(g => g.submitted_at).length,
+        tax_code_warnings: guests.filter(g => g.tax_code && !g.tax_code_verified).length,
+        link_sent_at: d.initial_message_sent_at || null,
+        link_due_at: d.initial_message_due_at || null,
+        link_failed: !d.initial_message_sent_at && (d.messages_sent || []).some(m => m.type === 'initial' && !m.success),
+        reminders_sent: (d.messages_sent || []).filter(m => m.type && m.type.startsWith('reminder') && m.success).length,
+        completed_at: d.completed_at || null,
+      };
+    });
+
+    // Conteggi per stato sulla stessa vista (senza filtro stato)
+    const agg = await col.aggregate([
+      { $match: base },
+      { $group: { _id: '$status', n: { $sum: 1 } } },
+    ]).toArray();
+    const counts = {};
+    for (const a of agg) counts[a._id] = a.n;
+
+    res.json({ ok: true, sessions, counts, truncated: docs.length === limit });
+  } catch (e) {
+    console.error('[checkin/sessions]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/checkin/billing-data
+// Dati dell'ospite principale dei check-in completati, per precompilare
+// Documenti Fiscali nella dashboard (solo slot 1, niente altri ospiti).
+// Query: ?since=YYYY-MM-DD (default: 400 giorni fa, per data di arrivo)
+app.get('/api/checkin/billing-data', requireAdminAuth, async (req, res) => {
+  try {
+    const since = isValidIsoDate(req.query.since) ? req.query.since
+      : new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
+    const col = await getCollection('checkin_sessions');
+    const docs = await col.find(
+      { 'booking.arrival': { $gte: since }, is_test: { $ne: true }, 'guests.0.submitted_at': { $ne: null } },
+      { projection: {
+        smoobu_booking_id: 1, 'property.name': 1, 'property.smoobu_id': 1,
+        'booking.arrival': 1, 'booking.departure': 1, 'booking.reference_id': 1,
+        'booking.primary_guest_name': 1, 'booking.primary_guest_email': 1,
+        guests: { $slice: 1 },
+      } }
+    ).limit(2000).toArray();
+    const items = docs.map(d => {
+      const g = (d.guests || [])[0] || {};
+      return {
+        smoobu_booking_id: d.smoobu_booking_id,
+        reference_id: d.booking?.reference_id || null,
+        property_name: d.property?.name || null,
+        arrival: d.booking?.arrival, departure: d.booking?.departure,
+        email: d.booking?.primary_guest_email || null,
+        submitted_at: g.submitted_at,
+        first_name: g.first_name || null, last_name: g.last_name || null,
+        nationality: g.nationality || null,
+        tax_code: g.tax_code || null,
+        document_type: g.document_type || null, document_number: g.document_number || null,
+        address_street: g.address_street || null, address_zip: g.address_zip || null,
+        address_city: g.address_city || null, address_province: g.address_province || null,
+        address_country: g.address_country || null,
+      };
+    });
+    res.json({ ok: true, items });
+  } catch (e) {
+    console.error('[checkin/billing-data]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // GET /api/checkin/sessions/:id
@@ -2359,7 +2562,8 @@ app.get('/api/checkin/sessions/:id', requireAdminAuth, async (req, res) => {
       return { ...g, is_ready: v.errors.length === 0, field_errors: v.errors, warnings: v.warnings };
     });
 
-    res.json({ ok: true, session: { ...session, guests } });
+    const checkin_link = session.access_token ? `${APP_BASE_URL}/checkin.html?t=${session.access_token}` : null;
+    res.json({ ok: true, session: { ...session, guests, checkin_link } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -2442,6 +2646,88 @@ app.all('/api/checkin/admin/test-sessions/delete', requireAdminAuth, async (req,
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// PUT /api/checkin/sessions/:id/guests/:slot
+// Body: { data: {...campi ospite...}, confirm?: true }
+// Compilazione/correzione dati da parte di Houzly (es. ospite arrivato senza
+// aver compilato). Controlla il formato; con confirm=true richiede anche tutti
+// i campi obbligatori e segna l'ospite come confermato.
+app.put('/api/checkin/sessions/:id/guests/:slot', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const session = await col.findOne({ _id: req.params.id });
+    if (!session) return res.status(404).json({ ok: false, error: 'not_found' });
+    const slotNum = parseInt(req.params.slot);
+    const guest = (session.guests || []).find(g => g.slot === slotNum);
+    if (!guest) return res.status(404).json({ ok: false, error: 'guest_slot_not_found' });
+
+    const { data, confirm } = req.body || {};
+    const input = normalizeGuestInput(data && typeof data === 'object' ? data : {});
+    const merged = { ...guest, ...input };
+    // L'informativa la accetta l'ospite: se compila Houzly non la richiediamo
+    const v = validateCheckinGuest(
+      { ...merged, privacy_consent: true },
+      { isPrimary: slotNum === 1, arrival: session.booking?.arrival, full: !!confirm }
+    );
+    if (v.errors.length > 0) {
+      return res.status(400).json({ ok: false, error: 'validation_failed', field_errors: v.errors, warnings: v.warnings });
+    }
+
+    const now = new Date().toISOString();
+    const set = { updated_at: now };
+    for (const [k, val] of Object.entries(input)) {
+      if (k === 'privacy_consent') continue;
+      set[`guests.$.${k}`] = val;
+    }
+    set['guests.$.is_minor'] = v.isMinor;
+    set['guests.$.tax_code_verified'] = v.taxCodeVerified;
+    set['guests.$.tax_code_warnings'] = v.warnings.filter(w => w.field === 'tax_code').map(w => w.code);
+    set['guests.$.edited_by_admin_at'] = now;
+    if (confirm) set['guests.$.submitted_at'] = guest.submitted_at || now;
+    else if (guest.submitted_at && Object.keys(input).length) set['guests.$.submitted_at'] = null;
+
+    await col.updateOne({ _id: session._id, 'guests.slot': slotNum }, { $set: set });
+    await recalculateSessionStatus(session._id);
+    const fresh = await col.findOne({ _id: session._id });
+    const g = fresh.guests.find(x => x.slot === slotNum);
+    const fv = validateCheckinGuest({ ...g, privacy_consent: true }, { isPrimary: slotNum === 1, arrival: fresh.booking?.arrival, full: true });
+    res.json({ ok: true, status: fresh.status, guest: { ...g, is_ready: fv.errors.length === 0, field_errors: fv.errors, warnings: fv.warnings } });
+  } catch (e) {
+    console.error('[checkin/admin/guest]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/checkin/sessions/:id/guests  → aggiunge uno slot ospite vuoto
+app.post('/api/checkin/sessions/:id/guests', requireAdminAuth, async (req, res) => {
+  try {
+    const col = await getCollection('checkin_sessions');
+    const session = await col.findOne({ _id: req.params.id });
+    if (!session) return res.status(404).json({ ok: false, error: 'not_found' });
+    const next = Math.max(0, ...(session.guests || []).map(g => g.slot)) + 1;
+    await col.updateOne({ _id: session._id }, {
+      $push: { guests: buildEmptyGuest(next, null, null) },
+      $set: { updated_at: new Date().toISOString(), ...(session.status === 'complete' ? { status: 'partial', completed_at: null } : {}) },
+    });
+    res.json({ ok: true, slot: next });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// DELETE /api/checkin/sessions/:id/guests/:slot  → rimuove uno slot (non l'ospite principale)
+app.delete('/api/checkin/sessions/:id/guests/:slot', requireAdminAuth, async (req, res) => {
+  try {
+    const slotNum = parseInt(req.params.slot);
+    if (slotNum === 1) return res.status(400).json({ ok: false, error: 'cannot_remove_primary' });
+    const col = await getCollection('checkin_sessions');
+    const r = await col.updateOne({ _id: req.params.id }, {
+      $pull: { guests: { slot: slotNum } },
+      $set: { updated_at: new Date().toISOString() },
+    });
+    if (r.matchedCount === 0) return res.status(404).json({ ok: false, error: 'not_found' });
+    await recalculateSessionStatus(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // POST /api/checkin/sessions/:id/resend
 // Rigenera token JWT e reinvia il messaggio iniziale (chat Smoobu o email).
 // Utile se: token scaduto, ospite ha perso il link, vuoi forzare un reinvio.
@@ -2458,7 +2744,10 @@ app.post('/api/checkin/sessions/:id/resend', requireAdminAuth, async (req, res) 
     );
 
     const fresh = await col.findOne({ _id: session._id });
-    await dispatchInitialMessage(fresh);
+    const result = await dispatchInitialMessage(fresh);
+    if (result && result.success === false) {
+      return res.status(502).json({ ok: false, error: result.error || 'send_failed' });
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
