@@ -39,6 +39,10 @@ const APP_BASE_URL = process.env.APP_BASE_URL || 'https://houzly-tool.onrender.c
 const CHECKIN_INITIAL_DELAY_MINUTES = parseInt(process.env.CHECKIN_INITIAL_DELAY_MINUTES || '30', 10);
 // Giorni dopo il check-out in cui la scheda resta attiva prima dell'archiviazione
 const CHECKIN_ARCHIVE_AFTER_DAYS = 50;
+// Destinatari dell'avviso "check-in completato" (uno o più indirizzi separati da virgola).
+// Si imposta su Render con la env var CHECKIN_NOTIFY_EMAIL. Se vuota, nessun avviso.
+const CHECKIN_NOTIFY_EMAILS = (process.env.CHECKIN_NOTIFY_EMAIL || '')
+  .split(',').map(x => x.trim()).filter(Boolean);
 
 // Smoobu channel IDs
 const SMOOBU_CHANNEL_DIRECT = 4090393;  // "Direct booking" — houzly.it booking engine
@@ -449,6 +453,8 @@ async function sendEmailFallback(toEmail, subject, html) {
       from: 'Houzly Check-in <checkin@houzly.it>',
       to: toEmail, subject, html,
     });
+    // Resend v4 non lancia eccezioni: gli errori arrivano in result.error
+    if (result?.error) return { success: false, error: result.error.message || String(result.error) };
     return { success: true, id: result.data?.id };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -2229,6 +2235,58 @@ app.post('/api/checkin/guest/submit', requireGuestAuth, async (req, res) => {
   }
 });
 
+// Avviso interno quando tutti gli ospiti di una prenotazione hanno confermato.
+// Contiene solo i dati essenziali: i dati dei documenti restano nel database
+// e si consultano dalla dashboard.
+async function sendCheckinCompletedNotice(session, isUpdate) {
+  if (CHECKIN_NOTIFY_EMAILS.length === 0) return { success: false, error: 'no_recipients' };
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = d => {
+    if (!d) return '';
+    const [y, m, g] = d.split('-');
+    return `${g}/${m}/${y}`;
+  };
+  const b = session.booking || {};
+  const prop = session.property?.name || 'Struttura';
+  const guests = session.guests || [];
+  const unverified = guests.filter(g => g.tax_code && !g.tax_code_verified).length;
+  const minors = guests.filter(g => g.is_minor).length;
+  const testTag = session.is_test ? '[TEST] ' : '';
+  const verb = isUpdate ? 'aggiornato' : 'completato';
+  const subject = `${testTag}Check-in ${verb} · ${prop} · ${fmt(b.arrival)}`;
+
+  const row = (k, v) => `<tr><td style="padding:6px 0;color:#5a7aaa;font-size:13px;width:150px;vertical-align:top">${k}</td><td style="padding:6px 0;font-size:14px;color:#170046">${v}</td></tr>`;
+  const notes = [];
+  if (isUpdate) notes.push('L’ospite ha modificato i dati dopo la prima conferma.');
+  if (unverified > 0) notes.push(`${unverified} codic${unverified === 1 ? 'e fiscale' : 'i fiscali'} da controllare (non corrisponde a nome o cognome).`);
+
+  const html = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f0f4fa;padding:24px">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e4edf8">
+    <div style="background:#170046;color:#fff;padding:18px 22px">
+      <div style="font-size:11px;letter-spacing:3px;color:#4acbef;text-transform:uppercase">✦ Houzly Check-in</div>
+      <div style="font-size:20px;margin-top:6px">${testTag}Check-in ${verb}</div>
+    </div>
+    <div style="padding:18px 22px">
+      <table style="width:100%;border-collapse:collapse">
+        ${row('Struttura', esc(prop))}
+        ${row('Soggiorno', `${fmt(b.arrival)} → ${fmt(b.departure)} (${b.nights || '?'} notti)`)}
+        ${row('Ospite principale', esc(b.primary_guest_name || ''))}
+        ${row('Ospiti registrati', `${guests.length}${minors ? ` (di cui ${minors} minor${minors === 1 ? 'e' : 'i'})` : ''}`)}
+        ${row('Canale', esc(b.channel_name || '—'))}
+        ${row('Prenotazione', esc(session.smoobu_booking_id))}
+      </table>
+      ${notes.length ? `<div style="margin-top:14px;background:#fff7e6;color:#8a5a00;border-radius:8px;padding:10px 12px;font-size:13px">${notes.map(esc).join('<br>')}</div>` : ''}
+      <p style="margin-top:16px;font-size:12px;color:#5a7aaa">I dati degli ospiti sono salvati nel database e consultabili dalla dashboard di Houzly Tool.</p>
+    </div>
+  </div>
+</div>`;
+
+  const result = await sendEmailFallback(CHECKIN_NOTIFY_EMAILS, subject, html);
+  if (!result.success) console.error('[checkin/notify]', session._id, result.error);
+  return result;
+}
+
 // Helper: ricalcola lo status della session in base allo stato dei guest
 // Chiamato dopo save/submit: pending → partial → complete.
 // Una session manual_required (arrivo oggi) passa a complete se l'ospite
@@ -2252,6 +2310,16 @@ async function recalculateSessionStatus(sessionId) {
   if (newStatus === 'complete' && !session.completed_at) updates.completed_at = new Date().toISOString();
   if (newStatus !== 'complete') updates.completed_at = null;
   await sessionsCol.updateOne({ _id: sessionId }, { $set: updates });
+
+  // Avviso interno solo nel passaggio a "complete" (prima volta o dopo una modifica)
+  if (newStatus === 'complete' && session.status !== 'complete') {
+    const fresh = await sessionsCol.findOne({ _id: sessionId });
+    const isUpdate = !!session.completion_notified_at;
+    const r = await sendCheckinCompletedNotice(fresh, isUpdate);
+    if (r.success) {
+      await sessionsCol.updateOne({ _id: sessionId }, { $set: { completion_notified_at: new Date().toISOString() } });
+    }
+  }
 }
 // ══════════════════════════════════════════════════════════════════
 // ── Check-in: Admin routes (PIN-protected) ────────────────────────
