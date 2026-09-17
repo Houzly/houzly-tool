@@ -815,7 +815,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v77 · 17/09 · Check-in finestra 14gg</span></div>
+  <div class="nav-group"><div class="nav-group-label">Sistema</div>
+    <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
+  </div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v78 · 17/09 · Booking fee globale + Impostazioni</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2328,24 +2331,33 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 </div>
 
 <!-- ── Cleaning Settings page ───────────────────────────────────── -->
+<div id="page-impostazioni" class="page">
+  <div class="section-header">
+    <div class="section-title">&#9881; Impostazioni</div>
+  </div>
+  <div style="font-size:12.5px;color:var(--text-light);margin-bottom:16px;max-width:640px">Parametri di sistema validi per tutto il gestionale. Le condizioni economiche del singolo immobile (compenso, IVA, pulizie) si impostano invece nel contratto/immobile.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px">
+    <div class="card">
+      <div class="card-title">Commissioni Piattaforme</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0">
+          <div>
+            <div style="font-weight:600;color:var(--text)">Booking Payment Charge</div>
+            <div style="font-size:11.5px;color:var(--text-light)">Quota che Booking addebita per la transazione, <strong>aggiunta</strong> alla commissione di ogni prenotazione Booking. Smoobu trasmette la commissione al netto di questa fee, quindi il tool la somma in fase di calcolo. Vale per tutti gli immobili.</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="editBookingFee()" style="white-space:nowrap"><span id="cfg-booking-fee-val">1,5</span>% &nbsp;&#9998;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-cl-settings" class="page">
   <div class="section-header">
     <div class="section-title">⚙ Impostazioni Pulizie</div>
     <button class="btn btn-ghost btn-sm" onclick="showPage('pulizie')">← Torna a Pulizie</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div class="card">
-      <div class="card-title">Commissioni Piattaforme</div>
-      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-weight:600;color:var(--text)">Booking Payment Charge</div>
-            <div style="font-size:11.5px;color:var(--text-light);max-width:340px">Quota che Booking addebita per la transazione, <strong>aggiunta</strong> alla commissione di ogni prenotazione Booking (Smoobu trasmette la commissione al netto di questa fee). Vale per tutti gli immobili.</div>
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="editBookingFee()" style="white-space:nowrap"><span id="cfg-booking-fee-val">1,5</span>% &nbsp;✏</button>
-        </div>
-      </div>
-    </div>
     <div class="card">
       <div class="card-title">Connessione Smoobu</div>
       <!-- v73 (08/09/2026): campo API Key rimosso per la migrazione HMAC.
@@ -3053,7 +3065,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
+  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',impostazioni:'⚙ Impostazioni',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -3130,7 +3142,8 @@ function renderPage(p){
   if(p==='operations'){switchOpsTab('generici');}
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
-  if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();}
+  if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
+  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
   if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
