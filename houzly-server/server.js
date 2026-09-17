@@ -1934,6 +1934,30 @@ app.get('/api/checkin/properties/:id/preview', requireAdminAuth, async (req, res
 // ── Check-in: Booking evaluation ──────────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
+// Nome e cognome dell'ospite da una prenotazione Smoobu.
+// Smoobu usa "firstname"/"lastname" e "guest-name" (API e webhook);
+// "first-name"/"last-name" sono tenuti per compatibilità.
+function getSmoobuGuestNames(booking) {
+  const pick = (...keys) => {
+    for (const k of keys) {
+      const v = booking[k];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return '';
+  };
+  let first = pick('firstname', 'first-name', 'firstName', 'first_name');
+  let last = pick('lastname', 'last-name', 'lastName', 'last_name');
+  if (!first && !last) {
+    const full = pick('guest-name', 'guestName', 'guest_name', 'name');
+    if (full) {
+      const parts = full.split(/\s+/);
+      first = parts.shift() || '';
+      last = parts.join(' ');
+    }
+  }
+  return { firstName: first, lastName: last };
+}
+
 async function evaluateBooking(booking) {
   const arrival = (booking.arrival || '').split('T')[0];
   const departure = (booking.departure || '').split('T')[0];
@@ -1950,8 +1974,7 @@ async function evaluateBooking(booking) {
   }
 
   // Regola 3: nome ospite vuoto → blocco manutenzione/chiusura
-  const firstName = (booking['first-name'] || '').trim();
-  const lastName = (booking['last-name'] || '').trim();
+  const { firstName, lastName } = getSmoobuGuestNames(booking);
   if (!firstName && !lastName) {
     return { status: 'excluded_block', reason: 'No guest name (maintenance/closure block)', nights };
   }
@@ -1981,7 +2004,9 @@ async function evaluateBooking(booking) {
   const fullName = `${firstName} ${lastName}`.toLowerCase();
   const suspiciousKeywords = ['maintenance', 'manutenzione', 'blocco', 'chiusura', 'owner stay', 'test', 'houzly', 'carella', 'ruberti'];
   const internalEmails = []; // aggiungi qui tue email personali se vuoi protezione
-  const hasSuspiciousName = suspiciousKeywords.some(k => fullName.includes(k));
+  const nameWords = fullName.split(/[^a-zà-ÿ]+/).filter(Boolean);
+  const hasSuspiciousName = suspiciousKeywords.some(k =>
+    k.includes(' ') ? fullName.includes(k) : nameWords.includes(k));
   const hasInternalEmail = internalEmails.includes(guestEmail);
   if (hasSuspiciousName || hasInternalEmail) {
     return { status: 'needs_review', reason: 'Suspicious name or internal email (possible forgotten [INTERNAL] marker)', nights };
@@ -2049,8 +2074,7 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
   // Costruisci snapshot booking
   const arrival = (booking.arrival || '').split('T')[0];
   const departure = (booking.departure || '').split('T')[0];
-  const firstName = (booking['first-name'] || '').trim();
-  const lastName = (booking['last-name'] || '').trim();
+  const { firstName, lastName } = getSmoobuGuestNames(booking);
   const adults = parseInt(booking.adults) || 1;
   const children = parseInt(booking.children) || 0;
   const totalGuests = adults + children;
@@ -2110,6 +2134,12 @@ async function upsertCheckinSession(booking, action = 'newReservation') {
           updates.initial_dispatch_claimed_at = null;
         }
       }
+    }
+    // Nome dell'ospite principale rimasto vuoto (vecchio bug di lettura): lo completa
+    const g1 = (existing.guests || [])[0];
+    if (g1 && !g1.first_name && !g1.last_name && (firstName || lastName)) {
+      updates['guests.0.first_name'] = firstName || null;
+      updates['guests.0.last_name'] = lastName || null;
     }
     // Se la prenotazione ora prevede più ospiti, aggiunge gli slot mancanti
     // (non rimuove mai slot esistenti: potrebbero contenere dati già inseriti)
