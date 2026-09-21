@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v88 · 22/09 · Nome su Smoobu</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v89 · 22/09 · Strutture Smoobu da ignorare</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2382,6 +2382,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         </div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">Sincronizzazione Smoobu</div>
+      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.6;margin-top:6px">
+        Le prenotazioni con check-in dal <strong>1° settembre 2026</strong> arrivano da Smoobu in automatico.
+        <div style="font-weight:600;color:var(--text);margin-top:12px">Strutture Smoobu da ignorare</div>
+        <div style="font-size:11.5px;color:var(--text-light)">Schede Smoobu che non sono prenotazioni reali (es. la struttura madre di un gruppo, che si occupa quando si prenota un'unit&agrave;). Un nome per riga, esattamente come su Smoobu.</div>
+        <textarea id="cfg-sync-ignore" rows="3" style="width:100%;margin-top:8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-family:inherit;font-size:12.5px;box-sizing:border-box" placeholder="Bioagriturismo Il Pino"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="saveSyncIgnore()">Salva</button></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3204,7 +3214,7 @@ function renderPage(p){
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
-  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();}
+  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();if(typeof loadSyncIgnoreField==='function')loadSyncIgnoreField();}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
   if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
@@ -14654,6 +14664,25 @@ function syncDerive(item){
   };
 }
 
+// Strutture Smoobu da ignorare (Impostazioni → Sincronizzazione Smoobu)
+function syncIgnoreList(){ return ((DB.config&&DB.config.sync_ignore)||[]).map(function(x){return String(x).toLowerCase().trim();}).filter(Boolean); }
+function syncIsIgnored(item){
+  var n=(item.res&&item.res.apartment&&item.res.apartment.name||'').toLowerCase().trim();
+  return !!n && syncIgnoreList().indexOf(n)>=0;
+}
+function loadSyncIgnoreField(){
+  var el=document.getElementById('cfg-sync-ignore');
+  if(el) el.value=((DB.config&&DB.config.sync_ignore)||[]).join('\n');
+}
+function saveSyncIgnore(){
+  var el=document.getElementById('cfg-sync-ignore'); if(!el) return;
+  if(!DB.config) DB.config={};
+  DB.config.sync_ignore=el.value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
+  saveDB();
+  toast('Salvato ✓ — '+DB.config.sync_ignore.length+' struttur'+(DB.config.sync_ignore.length===1?'a ignorata':'e ignorate'));
+  syncFromSmoobu(true,false);
+}
+
 function syncFindBooking(item){
   var id=String(item.id);
   var b=DB.prenotazioni.find(function(x){return String(x.ota_num)===id;});
@@ -14677,6 +14706,7 @@ function syncApply(items){
   var out={nuove:0,aggiornate:0,cancellate:0,conflitti:0,segnalate:0,recuperate:0,noProp:[]};
   var now=new Date().toISOString();
   items.forEach(function(item){
+    if(syncIsIgnored(item)) return;
     var arrival=(item.res&&item.res.arrival||'').slice(0,10);
     // ── Cancellazioni ──
     if(item.cancelled){
