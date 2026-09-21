@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v85 · 22/09 · Accessi protetti</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v86 · 22/09 · Sync live Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1015,6 +1015,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </select>
       <input type="number" id="pren-filter-anno" placeholder="Anno" oninput="renderPrenotazioni()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer;width:80px;cursor:text">
       <label id="pren-filter-conferma-wrap" title="Mostra solo prenotazioni lunghe a cavallo di due mesi non ancora confermate" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-mid);cursor:pointer;padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface2);user-select:none"><input type="checkbox" id="pren-filter-daconfermare" onchange="renderPrenotazioni()" style="width:14px;height:14px;cursor:pointer"><span>&#9888; Da confermare</span></label>
+      <button class="btn btn-outline" id="sync-now-btn" onclick="syncNow()" title="Allinea subito il tool con Smoobu">🔄 Sincronizza ora</button>
+      <span id="sync-last" style="font-size:11px;color:var(--text-light);align-self:center"></span>
       <button class="btn btn-primary" onclick="openNewModal()">+ Nuova Prenotazione</button>
     </div>
   </div>
@@ -2846,6 +2848,7 @@ function loadDB(){
       _dbFromServer=true;
       dbDefaults();
       bkSnapshotAll();
+      if(typeof syncStartLoop==='function')syncStartLoop();
       backfillCommBookingV19();
       if(DB.proprietari.length===0)seedDemo();
     } else {
@@ -3617,7 +3620,12 @@ function renderPostImportCheck(){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2
       && (b.checkin||'') >= bkCutoff && !isCheckVerified(b,'booking_no_tax');
   });
-  var totIssues = airbnbNoPul.length + direttaNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length;
+  // v86: segnalazioni della sincronizzazione Smoobu
+  var syncConflict = allBks.filter(function(b){ return matchesPostImportCheck(b,'sync_conflict'); });
+  var syncCancelDoc = allBks.filter(function(b){ return matchesPostImportCheck(b,'sync_cancel_doc'); });
+  var direttaPulSmoobu = allBks.filter(function(b){ return matchesPostImportCheck(b,'diretta_pul_smoobu'); });
+  var totIssues = airbnbNoPul.length + direttaNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length
+    + syncConflict.length + syncCancelDoc.length + direttaPulSmoobu.length;
   if(totIssues === 0){
     // Card verde — tutto ok
     container.innerHTML = '<div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac;border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:12px">'
@@ -3644,6 +3652,15 @@ function renderPostImportCheck(){
       +'</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:8px">';
+  if(syncCancelDoc.length){
+    html += chip(syncCancelDoc.length, 'Cancellate su Smoobu <strong>con documento già emesso</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'sync_cancel_doc\')');
+  }
+  if(syncConflict.length){
+    html += chip(syncConflict.length, 'Smoobu <strong>diverso dalle tue modifiche</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'sync_conflict\')');
+  }
+  if(direttaPulSmoobu.length){
+    html += chip(direttaPulSmoobu.length, 'Dirette con <strong>pulizia da Smoobu</strong> da confermare', 'Vai a Prenotazioni', 'goToPostImportCheck(\'diretta_pul_smoobu\')');
+  }
   if(airbnbNoPul.length){
     html += chip(airbnbNoPul.length, 'Prenotazioni Airbnb <strong>senza pulizia</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'airbnb_no_pul\')');
   }
@@ -3688,6 +3705,10 @@ function matchesPostImportCheck(b, type){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2 && (b.checkin||'') >= bkCutoff;
   }
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
+  // v86: sincronizzazione Smoobu
+  if(type==='sync_conflict') return Array.isArray(b._sync_conflict) && b._sync_conflict.length>0;
+  if(type==='sync_cancel_doc') return !!b._sync_cancelled;
+  if(type==='diretta_pul_smoobu') return b.canale==='Diretta' && !!b._pul_da_confermare && +b.pulizia>0;
   return false;
 }
 
@@ -3718,7 +3739,7 @@ function unmarkCheckVerified(bookingId, type){
 }
 // Etichette leggibili per i tipi di check
 function checkTypeLabel(type){
-  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_pul:'Pulizia mancante (Diretta)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare'};
+  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_pul:'Pulizia mancante (Diretta)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare',sync_conflict:'Smoobu diverso da una tua modifica',sync_cancel_doc:'Cancellata su Smoobu con documento emesso',diretta_pul_smoobu:'Pulizia Diretta da Smoobu da confermare'};
   return m[type]||type;
 }
 
@@ -3727,7 +3748,10 @@ var _postImportLabels = {
   diretta_no_pul: 'Diretta senza pulizia',
   diretta_no_tot: 'Diretta senza importo totale',
   booking_no_tax: 'Booking senza tassa di soggiorno',
-  cavallo_no_mese: 'Soggiorni a cavallo senza mese confermato'
+  cavallo_no_mese: 'Soggiorni a cavallo senza mese confermato',
+  sync_conflict: 'Smoobu diverso dalle tue modifiche',
+  sync_cancel_doc: 'Cancellate su Smoobu con documento emesso',
+  diretta_pul_smoobu: 'Diretta con pulizia da Smoobu da confermare'
 };
 
 // v53: click su un check → vai a Prenotazioni con filtro applicato (rispetta periodo Dashboard)
@@ -5427,7 +5451,10 @@ function savePren(){
   if(editIdP){
     b.id=editIdP;
     var idxP=DB.prenotazioni.findIndex(function(x){return x.id===editIdP;});
-    if(idxP>=0)DB.prenotazioni[idxP]=b;else DB.prenotazioni.push(b);
+    // v86: conserva i campi che il modulo non mostra (anomalie verificate, dati
+    // del check-in, collegamento Smoobu, versione, flag vari) e aggiorna il resto
+    if(idxP>=0){ var _oldP=DB.prenotazioni[idxP]; b=Object.assign({},_oldP,b); b.calc=doCalc(b); DB.prenotazioni[idxP]=b; }
+    else DB.prenotazioni.push(b);
     eBtnS.removeAttribute('data-edit-id');eBtnS.textContent='✓ Salva Prenotazione';
     toast('Prenotazione aggiornata ✓');
   } else {
@@ -14544,6 +14571,252 @@ async function ckiSyncBilling() {
   }
   if(document.body)start(); else document.addEventListener('DOMContentLoaded',start);
 })();
+
+// ══════════════════════════════════════════════════════════════════
+// SINCRONIZZAZIONE LIVE CON SMOOBU (v86)
+// ══════════════════════════════════════════════════════════════════
+// Il server tiene uno "specchio" dei dati grezzi di Smoobu. Qui li trasformiamo
+// in prenotazioni del tool con le STESSE regole dell'import CSV.
+// Unione campo per campo: ogni prenotazione ricorda in b._smoobu.v i valori
+// messi da Smoobu l'ultima volta. Se un campo è ancora uguale a quel valore
+// (non l'hai toccato) si aggiorna; se l'hai cambiato tu, resta il tuo e la
+// prenotazione viene segnalata come "da verificare".
+var SYNC_FIELDS = ['proprieta_id','canale','checkin','checkout','notti','n_ospiti','ospite_nome','ospite_email',
+                   'tot','comm_ota_abs','comm_ota_perc','pulizia','tassa_tot','note'];
+var _syncState = { running:false, lastSince:null, timer:null, lastSummary:null, syncFrom:'2026-09-01' };
+
+function syncNum(v){ var n=parseFloat(v); return isNaN(n)?0:r2(n); }
+function syncSame(a,b){
+  if(typeof a==='number'||typeof b==='number') return Math.abs((+a||0)-(+b||0))<0.005;
+  return String(a==null?'':a)===String(b==null?'':b);
+}
+
+// Dai dati Smoobu ai campi della prenotazione (stessa logica di processSmoobu)
+function syncDerive(item){
+  var r=item.res||{}, pe=item.priceElements||[];
+  // "Direct booking" (canale 13) contiene la parola "booking": va riconosciuto prima
+  var chName=(r.channel&&r.channel.name)||'';
+  var portale=(/direct|diretta/i.test(chName)||(r.channel&&r.channel.channel_id===13))?'Diretta':smoobuPortale(chName);
+  var isDiretta=portale==='Diretta', isAirbnb=portale==='Airbnb', isBooking=portale==='Booking.com';
+  var propObj=findPropByName(r.apartment&&r.apartment.name);
+  var checkin=(r.arrival||'').slice(0,10), checkout=(r.departure||'').slice(0,10);
+  var notti=0;
+  if(checkin&&checkout){ notti=Math.round((new Date(checkout+'T12:00:00Z')-new Date(checkin+'T12:00:00Z'))/86400000); }
+  var tot=syncNum(r.price);
+  var commAbs=syncNum(r['commission-included']);
+  var detail=r['price-details']||'';
+  // Pulizia: Booking dai Dettagli (come il CSV); Airbnb e Diretta dal dettaglio prezzi Smoobu (cleaningFee)
+  var pulizia=0;
+  if(isBooking) pulizia=parseSmoobuDetail(detail,'costo pulizia');
+  if(!pulizia){
+    var cf=pe.find(function(p){return p.type==='cleaningFee';})
+        || pe.find(function(p){return p.type==='channelCustom'&&/pulizi|cleaning/i.test(p.name||'');});
+    if(cf) pulizia=syncNum(cf.amount);
+  }
+  // Tassa di soggiorno: come il CSV
+  var tassaTot=0;
+  if(isBooking) tassaTot=parseSmoobuDetail(detail,'tassa di soggiorno')||syncNum(r['city-tax']);
+  else if(isAirbnb) tassaTot=parseSmoobuDetail(detail,'Other Fees');
+  var adulti=+r.adults||1, bambini=+r.children||0;
+  var email=r.email||'';
+  if(email.indexOf('@guest.booking.com')>=0) email='';
+  var nome=r['guest-name']||[r.firstname,r.lastname].filter(Boolean).join(' ');
+  return {
+    prop:propObj, portale:portale, isDiretta:isDiretta,
+    fields:{
+      proprieta_id: propObj?propObj.id:null,
+      canale: portale,
+      checkin: checkin, checkout: checkout, notti: notti,
+      n_ospiti: adulti+bambini||1,
+      ospite_nome: nome, ospite_email: email,
+      tot: tot,
+      comm_ota_abs: isDiretta?0:r2(commAbs),
+      comm_ota_perc: isDiretta?0:(tot>0?r2(commAbs/tot*100):0),
+      pulizia: r2(pulizia),
+      tassa_tot: tassaTot>0?r2(tassaTot):null,
+      note: r['reference-id']||extractOtaNum(r.notice)||String(r.id)
+    }
+  };
+}
+
+function syncFindBooking(item){
+  var id=String(item.id);
+  var b=DB.prenotazioni.find(function(x){return String(x.ota_num)===id;});
+  if(b) return b;
+  var ref=item.res&&item.res['reference-id'];
+  if(ref){
+    var m=DB.prenotazioni.filter(function(x){return String(x.note||'')===String(ref);});
+    if(m.length===1) return m[0];
+  }
+  return null;
+}
+
+// Una prenotazione ha documenti emessi (ricevuta/fattura)?
+function syncHasDocs(b){
+  if(DB.docDone&&DB.docDone[b.id]) return true;
+  if(b.doc_num||b.ricevuta_num||b.fattura_num) return true;
+  return false;
+}
+
+function syncApply(items){
+  var out={nuove:0,aggiornate:0,cancellate:0,conflitti:0,segnalate:0,noProp:[]};
+  var now=new Date().toISOString();
+  items.forEach(function(item){
+    var arrival=(item.res&&item.res.arrival||'').slice(0,10);
+    // ── Cancellazioni ──
+    if(item.cancelled){
+      var bc=syncFindBooking(item);
+      if(!bc||(bc.checkin||'')<_syncState.syncFrom) return;
+      if(syncHasDocs(bc)){
+        if(!bc._sync_cancelled){
+          bc._sync_cancelled=now;
+          if(Array.isArray(bc.verified_checks)) bc.verified_checks=bc.verified_checks.filter(function(t){return t!=='sync_cancel_doc';});
+          out.segnalate++;
+        }
+      } else {
+        DB.prenotazioni=DB.prenotazioni.filter(function(x){return x!==bc;});
+        out.cancellate++;
+      }
+      return;
+    }
+    if(!item.res||arrival<_syncState.syncFrom) return;
+    var d=syncDerive(item);
+    if(!d.prop){
+      var pn=item.res.apartment&&item.res.apartment.name;
+      if(pn&&out.noProp.indexOf(pn)<0) out.noProp.push(pn);
+      return;
+    }
+    var b=syncFindBooking(item);
+    // ── Nuova prenotazione ──
+    if(!b){
+      var own=ownerOfProp(d.prop.id);
+      var cfg=getEffectiveHouzlyConfig(d.prop.id);
+      b={id:uid(),ota_num:String(item.id),ospite_cf:'',ospite_ind:'',tassa_pn:0,
+         houzly_perc:cfg.houzly_perc,iva22:(own&&own.tipo==='azienda')?false:cfg.iva22,calc:{}};
+      SYNC_FIELDS.forEach(function(f){ b[f]=d.fields[f]; });
+      if(d.isDiretta&&b.pulizia) b._pul_da_confermare=true;
+      b._smoobu={v:d.fields,mod:item.modifiedAt,at:now,created:true};
+      b.calc=doCalc(b);
+      DB.prenotazioni.push(b);
+      out.nuove++;
+      return;
+    }
+    // ── Prenotazione esistente: unione campo per campo ──
+    if(b._sync_cancelled){ delete b._sync_cancelled; }  // tornata attiva su Smoobu
+    var prev=b._smoobu&&b._smoobu.v;
+    var changed=false, conflicts=[];
+    SYNC_FIELDS.forEach(function(f){
+      var nv=d.fields[f], cur=b[f];
+      if(prev){
+        var pv=prev[f];
+        if(syncSame(cur,pv)){                       // non toccato da te → segue Smoobu
+          if(!syncSame(cur,nv)){ b[f]=nv; changed=true; }
+        } else if(!syncSame(nv,pv) && !syncSame(cur,nv)){ // l'hai cambiato tu E Smoobu è cambiato
+          conflicts.push(f);
+        }
+      } else {
+        // prima volta (prenotazione importata da CSV o inserita a mano):
+        // riempie solo i campi vuoti, segnala le differenze importanti
+        var empty=(cur===undefined||cur===null||cur===''||(typeof cur==='number'&&cur===0));
+        if(empty&&!(nv===undefined||nv===null||nv===''||nv===0)){ b[f]=nv; changed=true; }
+        else if(['tot','checkin','checkout','proprieta_id','pulizia'].indexOf(f)>=0&&!empty&&!syncSame(cur,nv)&&!(nv===0||nv===null)){ conflicts.push(f); }
+      }
+    });
+    if(d.isDiretta&&!prev&&b.pulizia&&changed) b._pul_da_confermare=true;
+    if(conflicts.length){
+      var old=(b._sync_conflict||[]).join(',');
+      b._sync_conflict=conflicts;
+      if(old!==conflicts.join(',')){
+        if(Array.isArray(b.verified_checks)) b.verified_checks=b.verified_checks.filter(function(t){return t!=='sync_conflict';});
+        out.conflitti++;
+      }
+    }
+    var firstLink=!b._smoobu;
+    b._smoobu={v:d.fields,mod:item.modifiedAt,at:now};
+    if(changed){ b.calc=doCalc(b); out.aggiornate++; }
+    else if(firstLink){ b.calc=doCalc(b); }
+  });
+  return out;
+}
+
+function syncSummaryText(o){
+  var parts=[];
+  if(o.nuove)parts.push('+'+o.nuove+' nuov'+(o.nuove===1?'a':'e'));
+  if(o.aggiornate)parts.push(o.aggiornate+' aggiornat'+(o.aggiornate===1?'a':'e'));
+  if(o.cancellate)parts.push(o.cancellate+' cancellat'+(o.cancellate===1?'a':'e'));
+  if(o.conflitti)parts.push(o.conflitti+' da verificare');
+  if(o.segnalate)parts.push(o.segnalate+' cancellat'+(o.segnalate===1?'a':'e')+' con documento');
+  return parts.join(' · ');
+}
+
+// Legge lo specchio e applica. full=true: tutte le voci (all'apertura); altrimenti solo le novità
+async function syncFromSmoobu(full, silent){
+  if(_syncState.running||!_dbFromServer||!DB._bookings_live) return;
+  _syncState.running=true;
+  try{
+    var url='/api/bookings/mirror'+(!full&&_syncState.lastSince?('?since='+encodeURIComponent(_syncState.lastSince)):'');
+    var r=await fetch(url,{headers:onbHeaders()});
+    if(r.status===401){ return; }
+    var data=await r.json();
+    if(!data.ok) throw new Error(data.error||'errore');
+    _syncState.syncFrom=data.sync_from||_syncState.syncFrom;
+    _syncState.lastSince=data.server_time;
+    var o=syncApply(data.items||[]);
+    _syncState.lastSummary={at:new Date().toISOString(),o:o,n:(data.items||[]).length};
+    var txt=syncSummaryText(o);
+    if(txt){
+      saveDB();
+      try{ var act=document.querySelector('.page.active'); if(act&&typeof renderPage==='function') renderPage(act.id.replace('page-','')); }catch(e){}
+      if(!silent||o.nuove||o.cancellate||o.conflitti||o.segnalate) toast('🔄 Sync Smoobu: '+txt, 5000);
+    } else if(!silent){ toast('🔄 Sync Smoobu: tutto già allineato'); }
+    if(o.noProp.length&&!silent){ toast('⚠ Strutture Smoobu non in anagrafica: '+o.noProp.join(', '), 7000); }
+    syncRenderBadge();
+  }catch(e){
+    console.warn('[syncFromSmoobu]', e.message);
+    if(!silent) toast('Sync Smoobu non riuscita: '+e.message, 5000);
+  }finally{
+    _syncState.running=false;
+  }
+}
+
+// Pulsante "Sincronizza ora": chiede al server di riallinearsi con Smoobu, poi applica
+async function syncNow(){
+  var btn=document.getElementById('sync-now-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ Sincronizzo…';}
+  try{
+    await fetch('/api/bookings/sync-now',{method:'POST',headers:onbHeaders()});
+    // attende la fine del riallineamento (max ~3 minuti)
+    for(var i=0;i<60;i++){
+      await new Promise(function(res){setTimeout(res,3000);});
+      var st=await (await fetch('/api/bookings/sync-status',{headers:onbHeaders()})).json();
+      if(st.ok&&!st.running&&!(st.status&&st.status.running)){
+        if(st.status&&st.status.last_ok===false) toast('Smoobu: '+(st.status.last_error||'errore'),6000);
+        break;
+      }
+    }
+    await syncFromSmoobu(true,false);
+  }catch(e){ toast('Sync non riuscita: '+e.message,5000); }
+  finally{ if(btn){btn.disabled=false;btn.innerHTML='🔄 Sincronizza ora';} }
+}
+
+function syncRenderBadge(){
+  var el=document.getElementById('sync-last');
+  if(!el||!_syncState.lastSummary) return;
+  var t=new Date(_syncState.lastSummary.at);
+  el.textContent='Sync Smoobu: '+t.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+
+// Avvio: prima sincronizzazione completa dopo il caricamento dati, poi ogni 2 minuti
+// (in pausa se una finestra di modifica è aperta o la scheda non è visibile)
+function syncStartLoop(){
+  if(_syncState.timer) return;
+  setTimeout(function(){ syncFromSmoobu(true,true); }, 1500);
+  _syncState.timer=setInterval(function(){
+    if(document.hidden) return;
+    if(document.querySelector('.modal-overlay.open')) return;
+    syncFromSmoobu(false,true);
+  }, 120000);
+}
 </script>
 </body>
 </html>
