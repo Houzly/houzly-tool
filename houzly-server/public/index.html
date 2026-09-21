@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v89 · 22/09 · Strutture Smoobu da ignorare</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v90 · 22/09 · % contratto su prenotazioni</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -13052,10 +13052,38 @@ function ctrSave(andPreview){
       DB.contratti[idx]=obj;
     } else DB.contratti.push(obj);
   } else DB.contratti.push(obj);
+  // v90: prenotazioni già nel tool con una % o IVA diversa da quella del contratto
+  // (es. arrivate dalla sync prima che il contratto esistesse). Solo dal periodo
+  // sincronizzato e senza documenti emessi: lo storico non si tocca.
+  var _fromC=(typeof _syncState!=='undefined'&&_syncState.syncFrom)||'2026-09-01';
+  var _toFix=(DB.prenotazioni||[]).filter(function(b){
+    if((propIds||[]).indexOf(b.proprieta_id)<0) return false;
+    if((b.checkin||'')<_fromC) return false;
+    if(typeof syncHasDocs==='function'&&syncHasDocs(b)) return false;
+    var cfg=getEffectiveHouzlyConfig(b.proprieta_id);
+    var ow=ownerOfProp(b.proprieta_id);
+    var ivaT=(ow&&ow.tipo==='azienda')?false:cfg.iva22;
+    return +b.houzly_perc!==+cfg.houzly_perc || (!!b.iva22)!==(!!ivaT);
+  });
   saveDB();
   closeModal('modal-contratto');
   renderContratti();
   toast(oid==='__new__'?'Mandante creato e contratto salvato \u2713':'Contratto salvato \u2713 (anagrafiche aggiornate)');
+  if(_toFix.length){
+    var _cfg0=getEffectiveHouzlyConfig(_toFix[0].proprieta_id);
+    if(confirm(_toFix.length+' prenotazion'+(_toFix.length===1?'e':'i')+' di questi immobili (check-in dal '+_fromC.split('-').reverse().join('/')+', senza documenti emessi) '
+      +(_toFix.length===1?'ha':'hanno')+' una % o IVA diversa dal contratto.\n\nAggiornarle a '+_cfg0.houzly_perc+'%'+(_cfg0.iva22?' + IVA 22%':'')+'?')){
+      _toFix.forEach(function(b){
+        var cfg=getEffectiveHouzlyConfig(b.proprieta_id);
+        var ow=ownerOfProp(b.proprieta_id);
+        b.houzly_perc=cfg.houzly_perc;
+        b.iva22=(ow&&ow.tipo==='azienda')?false:cfg.iva22;
+        b.calc=doCalc(b);
+      });
+      saveDB();
+      toast('\u2713 '+_toFix.length+' prenotazioni aggiornate alla % del contratto');
+    }
+  }
   if(andPreview)ctrPreviewById(obj.id);
 }
 
