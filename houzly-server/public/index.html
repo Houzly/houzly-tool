@@ -568,7 +568,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 }
 
 /* ══ CHECK-IN OSPITI (v74) ══ */
-.cki-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.cki-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .cki-kpi{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;cursor:pointer;transition:all .15s;text-align:left;font-family:inherit}
 .cki-kpi:hover{border-color:var(--blue-mid)}
 .cki-kpi.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(67,97,238,.12)}
@@ -580,7 +580,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cki-filters input[type=search]{min-width:200px;flex:1}
 .cki-filters label{font-size:12px;color:var(--text-mid);display:flex;align-items:center;gap:6px;cursor:pointer}
 .cki-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
-.cki-row{display:grid;grid-template-columns:92px minmax(0,1.3fr) minmax(0,1.2fr) 70px 140px 120px;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.cki-row{display:grid;grid-template-columns:86px minmax(0,1.3fr) minmax(0,1.1fr) 52px 124px 112px max-content;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer}
 .cki-row:last-child{border-bottom:none}
 .cki-row:hover{background:rgba(67,97,238,.04)}
 .cki-row.head{background:#0f1535;color:#fff;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;cursor:default;padding:7px 14px}
@@ -596,6 +596,15 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cki-link.bad{color:var(--red);font-weight:600}
 .cki-empty{padding:36px;text-align:center;color:var(--text-light)}
 .badge-gray{background:rgba(136,146,176,.14);color:#6b7497}
+.cki-reg{display:flex;gap:6px}
+.cki-pill{border:1.5px solid var(--border);background:var(--surface);color:var(--text-light);border-radius:14px;padding:3px 8px;font-size:10.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all .15s}
+.cki-pill:hover{border-color:var(--blue-mid)}
+.cki-pill.on{background:rgba(0,196,140,.12);border-color:rgba(0,196,140,.5);color:#079a6e}
+.cki-regbox{display:flex;flex-wrap:wrap;gap:10px}
+.cki-regbox label{display:flex;align-items:center;gap:10px;border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;cursor:pointer;font-size:13px;flex:1;min-width:220px}
+.cki-regbox label.on{border-color:rgba(0,196,140,.5);background:rgba(0,196,140,.06)}
+.cki-regbox input{width:18px;height:18px;accent-color:#00c48c}
+.cki-regbox small{display:block;color:var(--text-light);font-size:11px}
 .cki-sec{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:18px 0 8px}
 .cki-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px;font-size:12.5px}
 .cki-info div span{display:block;font-size:10.5px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
@@ -617,6 +626,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cki-prop-row select,.cki-prop-row input{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:12px;width:100%}
 @media(max-width:860px){
   .cki-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cki-kpis .cki-kpi:last-child{grid-column:1/-1}
+  .cki-row .cki-reg{grid-column:2/4}
   .cki-row{grid-template-columns:70px minmax(0,1fr) auto;gap:8px}
   .cki-row.head{display:none}
   .cki-row .cki-prop,.cki-row .cki-link{grid-column:2/4}
@@ -815,10 +826,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">&#8595;</span> Import Smoobu</div>
     <div class="nav-item" onclick="showPage('import-tasks')"><span class="nav-icon">&#128229;</span> Import Tasks</div>
   </div>
-  <div class="nav-group"><div class="nav-group-label">Sistema</div>
-    <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
-  </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v81 · 17/09 · compenso/IVA solo da contratto</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v78 · 21/09 · Check-in registrazioni</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1820,6 +1828,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Provincia</label><input type="text" id="pf-prov" maxlength="2" style="text-transform:uppercase"></div>
         <div class="field"><label>Codice Comune catastale <span style="font-weight:400;color:var(--text-light);font-size:11px">(CU)</span></label><input type="text" id="pf-codice-comune" placeholder="L123" maxlength="4" style="text-transform:uppercase"></div>
         <div class="field"><label>Email</label><input type="email" id="pf-email"></div>
+        <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="pf-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
         <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="pf-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
       <div id="form-az" class="form-grid" style="display:none">
@@ -1833,13 +1842,16 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Codice SDI / PEC</label><input type="text" id="az-sdi"></div>
         <div class="field"><label>Email Azienda</label><input type="email" id="az-email"></div>
         <div class="field"><label>Email Commercialista (per XML)</label><input type="email" id="az-email-comm"></div>
+        <div class="field form-full"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="az-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">Codice struttura ricettiva assegnato dal Ministero del Turismo</div></div>
         <div class="field form-full"><label>IBAN <span style="font-weight:400;color:var(--text-light);font-size:11px">— per accredito netto mensile (richiesto per DAC7)</span></label><input type="text" id="az-iban" placeholder="IT00 X000 0000 0000 0000 0000 000" style="text-transform:uppercase;letter-spacing:0.5px;font-family:monospace;font-size:12.5px"></div>
       </div>
     </div>
     <div id="ptab-fiscale" style="display:none">
-      <div class="alert alert-info">Compenso e IVA si impostano nel <strong>contratto</strong> e si vedono in sola lettura nella scheda Dati Base. Qui resta solo il regime di ritenuta.</div>
+      <div class="alert alert-info">Le impostazioni fiscali dipendono dal contratto firmato con il proprietario.</div>
+      <div class="toggle-row"><div><div class="toggle-label">IVA 22% sul Compenso Houzly</div><div class="toggle-sub">Attiva se previsto dal contratto</div></div><label class="toggle"><input type="checkbox" id="fisc-iva22"><span class="toggle-slider"></span></label></div>
       <div class="toggle-row" id="fisc-cedolare-row"><div><div class="toggle-label">Ritenuta d'Acconto 21%</div><div class="toggle-sub">Houzly trattiene il 21% sul canone come sostituto d'imposta (LdB 2024 — a titolo di acconto)</div></div><label class="toggle"><input type="checkbox" id="fisc-cedolare" checked><span class="toggle-slider"></span></label></div>
       <div id="fisc-azienda-note" style="display:none;background:rgba(67,97,238,0.08);border:1px solid rgba(67,97,238,0.25);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--blue);margin-top:4px">&#127970; Proprietario azienda: nessuna ritenuta d'acconto viene applicata (l'azienda gestisce le imposte in proprio con fatturazione).</div>
+      <div class="field" style="margin-top:16px"><label>% Commissione Houzly (default)</label><input type="number" id="fisc-houzly-perc" value="20" min="0" max="100" step="0.1"><div class="field-hint">Precompilata su ogni nuova prenotazione</div></div>
     </div>
     <div id="ptab-coprop" style="display:none">
       <div class="alert alert-info" style="margin-bottom:12px"><strong>Dichiarazioni separate</strong> — Se l'immobile è cointestato, ogni intestatario riceve una propria CU/DAC7 per la sua quota. Compila i dati anagrafici di ciascun co-proprietario (CF obbligatorio, IBAN richiesto per DAC7). La somma delle quote % deve essere 100% (incluso il proprietario principale, conteggiato implicitamente).</div>
@@ -1889,13 +1901,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div class="field" style="margin:0"><label style="font-size:11px">Interno</label><input type="text" id="prop-interno" placeholder="—"></div>
         </div>
       </div>
-      <!-- Booking Payment Charge: gestita globalmente in Impostazioni Pulizie → card "Commissioni Piattaforme" (DB.config.booking_fee). Rimossa dal form immobile per evitare duplicazione. -->
+      <div class="field"><label>Payment Charge Booking % <span style="font-weight:400;color:var(--text-light)">(aggiunto alla commissione)</span></label><input type="number" id="prop-booking-fee" step="0.1" value="1.5" min="0" max="10"><div class="field-hint">Booking addebita una quota per pagamento (~1.5%). Viene sommata alla commissione OTA all'import.</div></div>
       <!-- Commissione Houzly override per proprietà (v42) -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#128176; Commissione Houzly <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(opzionale — se vuota usa quella del Proprietario)</span></div>
         <div class="prop-grid prop-grid-2">
-          <div class="field" style="margin:0"><label style="font-size:11px">% Compenso Houzly <span style="font-weight:400;color:var(--text-light)">(da contratto)</span></label><input type="number" id="prop-houzly-perc" step="0.1" min="0" max="50" placeholder="—" readonly style="background:var(--surface2);color:var(--text-mid);cursor:not-allowed"><div class="field-hint" style="font-size:10px">Si imposta nel contratto dell'immobile</div></div>
-          <div class="field" style="margin:0"><label style="font-size:11px">IVA 22% <span style="font-weight:400;color:var(--text-light)">(da contratto)</span></label><select id="prop-iva22-override" disabled style="background:var(--surface2);color:var(--text-mid);cursor:not-allowed"><option value="">—</option><option value="1">Sì — fattura con IVA</option><option value="0">No — IVA inclusa</option></select></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">% Compenso Houzly</label><input type="number" id="prop-houzly-perc" step="0.1" min="0" max="50" placeholder="es. 30" oninput="updatePropCommPreview()"><div class="field-hint" style="font-size:10px">Vuoto = eredita dal Proprietario</div></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">IVA 22%</label><select id="prop-iva22-override" onchange="updatePropCommPreview()"><option value="">Eredita dal Proprietario</option><option value="1">Sì — fattura con IVA</option><option value="0">No — IVA inclusa (no scorporo)</option></select></div>
         </div>
         <div id="prop-comm-preview" style="margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:11.5px;color:var(--text-mid);display:none"></div>
       </div>
@@ -2283,6 +2295,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <option value="archived">Archiviati</option>
       </select>
       <select id="cki-f-prop" onchange="ckiLoad()"><option value="">Tutte le strutture</option></select>
+      <select id="cki-f-reg" onchange="ckiLoad()">
+        <option value="">Registrazione: tutte</option>
+        <option value="todo">Da registrare (già arrivati)</option>
+        <option value="done">Registrati su entrambi</option>
+      </select>
       <input type="search" id="cki-f-q" placeholder="Cerca ospite, struttura o n. prenotazione" oninput="ckiSearchDebounced()">
       <label><input type="checkbox" id="cki-f-excl" onchange="ckiLoad()"> Mostra escluse</label>
     </div>
@@ -2327,27 +2344,6 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 </div>
 
 <!-- ── Cleaning Settings page ───────────────────────────────────── -->
-<div id="page-impostazioni" class="page">
-  <div class="section-header">
-    <div class="section-title">&#9881; Impostazioni</div>
-  </div>
-  <div style="font-size:12.5px;color:var(--text-light);margin-bottom:16px;max-width:640px">Parametri di sistema validi per tutto il gestionale. Le condizioni economiche del singolo immobile (compenso, IVA, pulizie) si impostano invece nel contratto/immobile.</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px">
-    <div class="card">
-      <div class="card-title">Commissioni Piattaforme</div>
-      <div style="font-size:12.5px;color:var(--text-mid);line-height:1.7;margin-top:6px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0">
-          <div>
-            <div style="font-weight:600;color:var(--text)">Booking Payment Charge</div>
-            <div style="font-size:11.5px;color:var(--text-light)">Quota che Booking addebita per la transazione, <strong>aggiunta</strong> alla commissione di ogni prenotazione Booking. Smoobu trasmette la commissione al netto di questa fee, quindi il tool la somma in fase di calcolo. Vale per tutti gli immobili.</div>
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="editBookingFee()" style="white-space:nowrap"><span id="cfg-booking-fee-val">1,5</span>% &nbsp;&#9998;</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div id="page-cl-settings" class="page">
   <div class="section-header">
     <div class="section-title">⚙ Impostazioni Pulizie</div>
@@ -2640,7 +2636,38 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <script>
 // ─── AUTH ──────────────────────────────────────────────────────────────
 var AUTH_KEY='houzly_auth'; // kept for compat
+var PIN_KEY='houzly_pin';
 function authCheck(){return!!localStorage.getItem(AUTH_KEY);}
+// PIN per le API protette: resta salvato sul dispositivo finché non si preme "Esci"
+function getAdminPin(){
+  var p=null;
+  try{p=sessionStorage.getItem('onbPin');}catch(e){}
+  if(!p){try{p=localStorage.getItem(PIN_KEY);}catch(e){}}
+  return p||'';
+}
+function saveAdminPin(pin){
+  try{sessionStorage.setItem('onbPin',pin);}catch(e){}
+  try{localStorage.setItem(PIN_KEY,pin);}catch(e){}
+}
+// Password non valida (es. cambiata da un altro dispositivo): la richiede senza uscire
+var _appInited=false;
+function authRequirePin(msg){
+  try{localStorage.removeItem(PIN_KEY);sessionStorage.removeItem('onbPin');}catch(e){}
+  document.getElementById('auth-pin').value='';
+  document.getElementById('auth-err').textContent=msg||'Reinserisci la password';
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  setTimeout(function(){var el=document.getElementById('auth-pin');if(el)el.focus();},50);
+}
+function authAfterLogin(){
+  document.getElementById('auth-overlay').classList.add('hidden');
+  if(!_appInited){_appInited=true;appInit();}
+  else{
+    var active=document.querySelector('.page.active');
+    var id=active?active.id.replace('page-',''):'';
+    if(id==='checkin'&&typeof ckiRefresh==='function')ckiRefresh();
+    if(id==='onboarding'&&typeof onbInit==='function')onbInit();
+  }
+}
 
 async function authLogin(){
   var pin=document.getElementById('auth-pin').value;
@@ -2656,9 +2683,8 @@ async function authLogin(){
       var setData = await setRes.json();
       if(setData.ok){
         localStorage.setItem(AUTH_KEY,'1');
-        sessionStorage.setItem('onbPin', pin);
-        document.getElementById('auth-overlay').classList.add('hidden');
-        appInit();toast('Password impostata ✓');
+        saveAdminPin(pin);
+        authAfterLogin();toast('Password impostata ✓');
       }
       return;
     }
@@ -2667,9 +2693,8 @@ async function authLogin(){
     var data = await res.json();
     if(data.ok){
       localStorage.setItem(AUTH_KEY,'1');
-      sessionStorage.setItem('onbPin', pin);
-      document.getElementById('auth-overlay').classList.add('hidden');
-      appInit();
+      saveAdminPin(pin);
+      authAfterLogin();
     } else {
       document.getElementById('auth-err').textContent='Password errata';
       document.getElementById('auth-pin').value='';
@@ -2692,9 +2717,10 @@ async function authSetup(){
   if(np!==np2){alert('Le password non coincidono');return;}
   var res=await fetch('/api/auth/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:np})});
   var data=await res.json();
-  if(data.ok){toast('Password aggiornata ✓');}else{alert('Errore aggiornamento password');}
+  if(data.ok){saveAdminPin(np);toast('Password aggiornata ✓');}else{alert('Errore aggiornamento password');}
 }
 function authLogout(){
+  try{localStorage.removeItem(AUTH_KEY);localStorage.removeItem(PIN_KEY);sessionStorage.removeItem('onbPin');}catch(e){}
   document.getElementById('auth-pin').value='';
   document.getElementById('auth-err').textContent='';
   document.getElementById('auth-overlay').classList.remove('hidden');
@@ -2726,8 +2752,6 @@ function dbDefaults(){
   if(DB.spese_pulizie_glservizi===undefined)DB.spese_pulizie_glservizi=0;
   if(DB.booking_tax_cutoff===undefined)DB.booking_tax_cutoff='2026-06-01';
   if(DB.spese_biancheria===undefined)DB.spese_biancheria=0;
-  if(!DB.config)DB.config={};
-  if(DB.config.booking_fee===undefined||DB.config.booking_fee===null)DB.config.booking_fee=1.5;
 }
 
 // ─── BACKFILL ONE-TIME: ricostruisce comm_ota_abs sulle Booking esistenti ─
@@ -2745,7 +2769,7 @@ function backfillCommBookingV19(){
     var tot=+b.tot||0;
     if(tot<=0)return;
     var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-    var bfee=getBookingFee(prop);
+    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
     var oldPerc=+b.comm_ota_perc||0;
     var oldCommTot=r2(tot*oldPerc/100);  // es. 92,07 (commissione gonfiata)
     var bookingFeeAbs=r2(tot*bfee/100);  // es. 7,43
@@ -2764,7 +2788,103 @@ function backfillCommBookingV19(){
   }
   return changed>0;
 }
-// [migrazione v70 Cala Di Seta → Abaco: eseguita e rimossa — dato ora stabile in anagrafica]
+// ─── MIGRAZIONE ONE-TIME v70: Cala Di Seta → Abaco Immobiliare ───────────
+// La proprietà passa dal proprietario persona fisica ad Abaco (tipo azienda)
+// con divisione compensi 50/50 IVA INCLUSA, con decorrenza da maggio 2026.
+// Conseguenze automatiche (nessun intervento manuale necessario):
+//   · la ritenuta d'acconto 21% sparisce — fiscRitenutaAttiva() esclude le aziende
+//   · la struttura esce da CU, 770 e DAC7 per tutto il 2026
+//   · nel DAC7 il venditore diventa EntitySeller con la P.IVA di Abaco
+// I dati di ogni prenotazione vengono riallineati al report Excel ufficiale.
+// Si esegue UNA SOLA VOLTA, marcato da DB.migCalaSetaAbacoV70=true.
+//
+// NOTA TASSE DI SOGGIORNO — i valori qui sotto sono quelli dell'Excel, che per
+// giugno riporta zero. Applicando la regola di luglio/agosto (1 €/persona/notte)
+// giugno varrebbe 42 € in totale: Nicolodi 8, Menechyan 2, Perrone 10,
+// Micucci 8, Leonida 14. Per reintrodurle basta sostituire gli zeri nella
+// colonna "tassa" delle prime cinque righe della tabella MIG_DATI.
+var MIG_CALASETA_PROP  = 'Cala Di Seta';   // nome esatto in DB.proprieta
+var MIG_CALASETA_PERC  = 50;               // % Houzly, IVA inclusa
+var MIG_CALASETA_OWNER = 'abaco';          // match sulla ragione sociale
+// ospite | tot | comm.OTA | tassa sogg. | pulizia | notti | n.ospiti
+var MIG_DATI = [
+  ['Roberta Nicolodi',        192.00,  29.76,  0, 80,  2, 4],
+  ['Armen Menechyan',         155.48,  15.59,  0, 80,  1, 2],
+  ['Nicola Perrone',          364.32,  58.46,  0, 80,  2, 5],
+  ['Fabrizio Micucci',        348.87,  56.24,  0, 80,  2, 4],
+  ['Leonida',                 860.00,   0.00,  0, 80,  7, 2],
+  ['Alessio Pintore',         525.51,  83.74, 18, 80,  3, 6],
+  ['Kristin Harris',         2089.60, 323.89, 20, 80, 10, 4],
+  ['Sebastian Memmesheimer', 1106.00, 171.43, 20, 80,  5, 4],
+  ['Albert Sarr',            1500.00,   0.00, 44, 80, 11, 4],
+  ['Filippo Grossi',         1065.50, 175.80, 30, 80,  6, 5]
+];
+function migCalaSetaAbacoV70(){
+  if(DB.migCalaSetaAbacoV70)return false;
+  if(!DB.proprieta||!DB.prenotazioni)return false;
+
+  var prop=DB.proprieta.find(function(p){return p.nome===MIG_CALASETA_PROP;});
+  if(!prop){console.warn('[mig v70] Proprietà "'+MIG_CALASETA_PROP+'" non trovata — migrazione rinviata');return false;}
+
+  var abaco=DB.proprietari.find(function(o){
+    return o.tipo==='azienda' &&
+           (o.ragione_sociale||'').toLowerCase().indexOf(MIG_CALASETA_OWNER)>=0;});
+  if(!abaco){console.warn('[mig v70] Proprietario Abaco non ancora presente — migrazione rinviata al prossimo caricamento');return false;}
+
+  // Verifica preliminare: tutte le prenotazioni devono essere presenti.
+  // Se anche una sola manca non tocco nulla, per non lasciare il DB a metà.
+  var mancanti=[];
+  MIG_DATI.forEach(function(f){
+    var b=DB.prenotazioni.find(function(x){
+      return x.proprieta_id===prop.id &&
+             (x.ospite_nome||'').trim().toLowerCase()===f[0].toLowerCase();});
+    if(!b)mancanti.push(f[0]);
+  });
+  if(mancanti.length){
+    console.error('[mig v70] ANNULLATA — prenotazioni non trovate: '+mancanti.join(', '));
+    return false;
+  }
+
+  // 1) Associazione proprietà → Abaco + override commissione
+  prop.proprietario_id=abaco.id;
+  prop.houzly_perc=MIG_CALASETA_PERC;
+  prop.iva22_override=false;              // il 50% è IVA inclusa
+  var bfee=(prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5);
+
+  // 2) Riallineamento e ricalcolo delle prenotazioni
+  var n=0,totNetto=0,totH=0,totAb=0;
+  MIG_DATI.forEach(function(f){
+    var b=DB.prenotazioni.find(function(x){
+      return x.proprieta_id===prop.id &&
+             (x.ospite_nome||'').trim().toLowerCase()===f[0].toLowerCase();});
+    b.tot=f[1];
+    // doCalc riaggiunge la fee bancaria Booking: la scorporo qui perché il
+    // valore dell'Excel è la commissione finale già comprensiva di fee.
+    b.comm_ota_abs=(b.canale==='Booking.com')?r2(f[2]-r2(f[1]*bfee/100)):f[2];
+    if(b.comm_ota_abs<0)b.comm_ota_abs=0;
+    b.comm_ota_perc=f[1]>0?r2(b.comm_ota_abs/f[1]*100):0;
+    b.tassa_tot=f[3];
+    b.tassa_pn=0;
+    b.pulizia=f[4];
+    b.notti=f[5];
+    b.n_ospiti=f[6];
+    b.houzly_perc=MIG_CALASETA_PERC;
+    b.iva22=false;
+    b.calc=doCalc(b);
+    totNetto+=b.calc.netto;totH+=b.calc.houzly;totAb+=b.calc.canone;
+    n++;
+  });
+
+  DB.migCalaSetaAbacoV70=true;
+  console.log('[mig v70] Cala Di Seta → '+abaco.ragione_sociale+' · '+n+' prenotazioni · '
+    +'netto '+r2(totNetto).toFixed(2)+' · Houzly '+r2(totH).toFixed(2)
+    +' (imponibile '+r2(r2(totH)/1.22).toFixed(2)+' + IVA '+r2(r2(totH)-r2(r2(totH)/1.22)).toFixed(2)+')'
+    +' · Abaco '+r2(totAb).toFixed(2));
+  saveDB(function(){console.log('[mig v70] DB salvato ✓');},
+         function(e){console.error('[mig v70] ERRORE salvataggio: '+e);});
+  if(typeof toast==='function')toast('✅ Cala Di Seta migrata su Abaco — '+n+' prenotazioni ricalcolate');
+  return true;
+}
 function saveDocDoneLocal(){
   // Manteniamo anche localStorage come cache locale rapida
   try{ localStorage.setItem('houzly_docdone', JSON.stringify(DB.docDone||{})); }catch(e){}
@@ -2777,12 +2897,14 @@ function loadDB(){
       DB=data.db;
       dbDefaults();
       backfillCommBookingV19();
+      migCalaSetaAbacoV70();
       if(DB.proprietari.length===0)seedDemo();
     } else {
       // No data on server yet
       try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
       dbDefaults();
       backfillCommBookingV19();
+      migCalaSetaAbacoV70();
       if(DB.proprietari.length===0)seedDemo();
     }
     // Refresh all UI after data loaded
@@ -2861,7 +2983,7 @@ function doCalc(b){
     }
     if(b.canale==='Booking.com'){
       var _prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-      var _bfee=getBookingFee(_prop);
+      var _bfee=_prop&&_prop.booking_fee_perc!=null?_prop.booking_fee_perc:1.5;
       comm_ota=r2(comm_ota+r2(tot*_bfee/100));
     }
   }
@@ -2924,26 +3046,6 @@ function ownerOfGroup(grp){
 
 // v42: legge configurazione commissione effettiva per una proprietà
 // Override su Proprietà prevale, altrimenti eredita dal Proprietario
-// ── Booking payment charge (fee di sistema, uguale per tutti gli immobili) ──
-// Fonte unica: DB.config.booking_fee (default 1,5%). Un immobile può ancora avere
-// un override storico in prop.booking_fee_perc, che ha la precedenza se presente.
-function getBookingFee(prop){
-  if(prop && prop.booking_fee_perc!=null && prop.booking_fee_perc!=='' && !isNaN(+prop.booking_fee_perc))
-    return +prop.booking_fee_perc;
-  if(DB.config && DB.config.booking_fee!=null && !isNaN(+DB.config.booking_fee))
-    return +DB.config.booking_fee;
-  return 1.5;
-}
-
-// Comproprietari di un immobile: letti dal contratto che lo contiene (non dal
-// proprietario), perché un comproprietario può riguardare solo alcuni immobili.
-// Fallback su owner.coprops per compatibilità con dati vecchi.
-function getPropertyCoprops(propId, owner){
-  var c=DB.contratti.find(function(k){return (k.prop_ids||[]).indexOf(propId)>=0 && (k.coprops&&k.coprops.length);});
-  if(c && c.coprops && c.coprops.length) return c.coprops;
-  return (owner && owner.coprops && owner.coprops.length) ? owner.coprops : [];
-}
-
 // Ritorna {houzly_perc:number, iva22:boolean, source:'property'|'owner'|'mixed'}
 function getEffectiveHouzlyConfig(propId){
   var prop=DB.proprieta.find(function(x){return x.id===propId;});
@@ -2972,7 +3074,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',impostazioni:'⚙ Impostazioni',onboarding:'Onboarding'};
+  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -3050,7 +3152,6 @@ function renderPage(p){
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
-  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
   if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
@@ -3622,21 +3723,6 @@ function clearPostImportFilter(){
   renderPrenotazioni();
 }
 
-// Modifica la Booking Payment Charge globale (DB.config.booking_fee)
-function editBookingFee(){
-  var cur = (DB.config && DB.config.booking_fee!=null) ? DB.config.booking_fee : 1.5;
-  var input = prompt('Booking Payment Charge (%)\n\nQuota che Booking addebita per la transazione, aggiunta alla commissione di ogni prenotazione Booking.\nSmoobu trasmette la commissione al netto di questa fee, quindi il tool la aggiunge in fase di calcolo.\n\nValore attuale: '+cur+'%', String(cur));
-  if(input===null) return;
-  input = input.trim().replace(',','.');
-  var v = parseFloat(input);
-  if(isNaN(v) || v<0 || v>10){ toast('Valore non valido. Inserisci una percentuale fra 0 e 10.'); return; }
-  if(!DB.config)DB.config={};
-  DB.config.booking_fee = v;
-  saveDB();
-  var el=document.getElementById('cfg-booking-fee-val'); if(el)el.textContent=String(v).replace('.',',');
-  toast('Booking Payment Charge aggiornata: '+String(v).replace('.',',')+'%');
-}
-
 // v54: modifica la data di taglio per il check Booking-senza-tassa
 function editBookingCutoff(){
   var cur = DB.booking_tax_cutoff || '2026-06-01';
@@ -3682,10 +3768,6 @@ function isogLabelPeriodo(meseDash, anno){
   return meseDash ? (mesiNomi[meseDash]+' '+anno) : ('Anno '+anno);
 }
 
-function syncBookingFeeLabel(){
-  var el=document.getElementById('cfg-booking-fee-val');
-  if(el){var v=(DB.config&&DB.config.booking_fee!=null)?DB.config.booking_fee:1.5;el.textContent=String(v).replace('.',',');}
-}
 function renderImpostaSoggiorno(){
   var container=document.getElementById('imposta-soggiorno-container');
   if(!container) return;
@@ -4157,11 +4239,13 @@ function openModalProprietario(){
   if(btnS){btnS.removeAttribute('data-edit-id');btnS.textContent='Salva Proprietario';}
   document.getElementById('mprop-title').textContent='Nuovo Proprietario';
   setTipo('persona_fisica');
-  ['pf-nome','pf-cognome','pf-cf','pf-via','pf-cap','pf-comune','pf-prov','pf-email','pf-iban',
+  ['pf-nome','pf-cognome','pf-cf','pf-via','pf-cap','pf-comune','pf-prov','pf-email','pf-cin','pf-iban',
    'pf-sesso','pf-data-nascita','pf-comune-nascita','pf-prov-nascita','pf-codice-comune',
-   'az-rs','az-piva','az-cf','az-via','az-cap','az-comune','az-prov','az-sdi','az-email','az-email-comm','az-iban']
+   'az-rs','az-piva','az-cf','az-via','az-cap','az-comune','az-prov','az-sdi','az-email','az-email-comm','az-cin','az-iban']
     .forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
-  var _fc=document.getElementById('fisc-cedolare');if(_fc)_fc.checked=true;
+  document.getElementById('fisc-iva22').checked=false;
+  document.getElementById('fisc-cedolare').checked=true;
+  document.getElementById('fisc-houzly-perc').value=20;
   showPropTab('base');renderCoprops();
   openModal('modal-proprietario');
 }
@@ -4272,13 +4356,10 @@ function saveProprietario(){
   var copropsClean=copropsTemp.filter(function(c){
     return (c.nome && c.nome.trim()) || (c.cognome && c.cognome.trim());
   });
-  var _prev=(editId?DB.proprietari.find(function(o){return o.id===editId;}):null)||{};
-  var _cedEl=document.getElementById('fisc-cedolare');
   var obj={id:editId||uid(),tipo:editingTipo,
-    // compenso/IVA di default non si impostano più qui: si conservano se già presenti (fallback storico)
-    fisc_iva22:_prev.fisc_iva22||false,
-    fisc_cedolare:_cedEl?_cedEl.checked:(_prev.fisc_cedolare!==false),
-    houzly_perc:_prev.houzly_perc!=null?_prev.houzly_perc:20,
+    fisc_iva22:document.getElementById('fisc-iva22').checked,
+    fisc_cedolare:document.getElementById('fisc-cedolare').checked,
+    houzly_perc:+document.getElementById('fisc-houzly-perc').value||20,
     coprops:copropsClean
   };
   var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
@@ -4289,6 +4370,7 @@ function saveProprietario(){
       nome:nome,cognome:cognome,cf:cf.toUpperCase(),
       via:g('pf-via'),cap:g('pf-cap'),comune:g('pf-comune'),provincia:g('pf-prov').toUpperCase(),
       email:g('pf-email'),email_comm:'',
+      cin:g('pf-cin').toUpperCase(),
       iban:g('pf-iban').toUpperCase().replace(/\s+/g,''),
       // Campi CU
       sesso:g('pf-sesso'),
@@ -4300,7 +4382,7 @@ function saveProprietario(){
   } else {
     var rs=g('az-rs'),piva=g('az-piva');
     if(!rs||!piva){toast('Compila Ragione Sociale e P.IVA');return;}
-    Object.assign(obj,{ragione_sociale:rs,piva:piva,cf_az:g('az-cf'),via:g('az-via'),cap:g('az-cap'),comune:g('az-comune'),provincia:g('az-prov'),sdi:g('az-sdi'),email:g('az-email'),email_comm:g('az-email-comm'),iban:g('az-iban').toUpperCase().replace(/\s+/g,'')});
+    Object.assign(obj,{ragione_sociale:rs,piva:piva,cf_az:g('az-cf'),via:g('az-via'),cap:g('az-cap'),comune:g('az-comune'),provincia:g('az-prov'),sdi:g('az-sdi'),email:g('az-email'),email_comm:g('az-email-comm'),cin:g('az-cin').toUpperCase(),iban:g('az-iban').toUpperCase().replace(/\s+/g,'')});
   }
   if(editId){
     var idx=DB.proprietari.findIndex(function(x){return x.id===editId;});
@@ -4347,7 +4429,7 @@ function editOwner(id){
   if(p.tipo==='persona_fisica'){
     setVal('pf-nome',p.nome);setVal('pf-cognome',p.cognome);setVal('pf-cf',p.cf);
     setVal('pf-via',p.via);setVal('pf-cap',p.cap);setVal('pf-comune',p.comune);
-    setVal('pf-prov',p.provincia);setVal('pf-email',p.email);
+    setVal('pf-prov',p.provincia);setVal('pf-email',p.email);setVal('pf-cin',p.cin);
     setVal('pf-iban',p.iban);
     // Nuovi campi CU
     setVal('pf-sesso',p.sesso);
@@ -4359,10 +4441,12 @@ function editOwner(id){
     setVal('az-rs',p.ragione_sociale);setVal('az-piva',p.piva);setVal('az-cf',p.cf_az);
     setVal('az-via',p.via);setVal('az-cap',p.cap);setVal('az-comune',p.comune);
     setVal('az-prov',p.provincia);setVal('az-sdi',p.sdi);setVal('az-email',p.email);
-    setVal('az-email-comm',p.email_comm);
+    setVal('az-email-comm',p.email_comm);setVal('az-cin',p.cin);
     setVal('az-iban',p.iban);
   }
+  var fisc22=document.getElementById('fisc-iva22');if(fisc22)fisc22.checked=!!p.fisc_iva22;
   var fiscCed=document.getElementById('fisc-cedolare');if(fiscCed)fiscCed.checked=p.fisc_cedolare!==false;
+  var hPerc=document.getElementById('fisc-houzly-perc');if(hPerc)hPerc.value=p.houzly_perc||20;
   showPropTab('base');renderCoprops();
   document.getElementById('mprop-title').textContent='Modifica Proprietario';
   var btnS=document.getElementById('btn-save-prop');
@@ -4524,6 +4608,7 @@ function openModalProprieta(){
   // Reset toggle (v65: incluso il nuovo flag imposta di soggiorno)
   var elPO=document.getElementById('prop-pulizie-owner');if(elPO)elPO.checked=false;
   var elTT2=document.getElementById('prop-tassa-trattenuta');if(elTT2)elTT2.checked=false;
+  var elBF=document.getElementById('prop-booking-fee');if(elBF)elBF.value=1.5;
   openModal('modal-proprieta');
 }
 function saveProprieta(){
@@ -4532,17 +4617,15 @@ function saveProprieta(){
   if(!nome||!oid){toast('Compila tutti i campi');return;}
   var editId2=document.getElementById('btn-save-prop2')?document.getElementById('btn-save-prop2').getAttribute('data-edit-id'):null;
   // Commissione override (v42): vuoto/null = eredita dal proprietario
-  // v81: compenso/IVA sono in sola lettura (si impostano dal contratto). Al salvataggio
-  // della proprietà NON li tocco: conservo i valori già presenti sul record.
-  var _prevProp=(editId2?DB.proprieta.find(function(x){return x.id===editId2;}):null)||{};
-  var houzlyPercRaw=(_prevProp.houzly_perc!=null?String(_prevProp.houzly_perc):'');
-  var ivaRaw=(_prevProp.iva22_override===true?'1':(_prevProp.iva22_override===false?'0':''));
+  var houzlyPercRaw=(document.getElementById('prop-houzly-perc')||{value:''}).value.trim();
+  var ivaRaw=(document.getElementById('prop-iva22-override')||{value:''}).value;
   var obj2={
     id:editId2||uid(),
     nome:nome,
     indirizzo:document.getElementById('prop-indirizzo').value,
     proprietario_id:oid,
     cin:document.getElementById('prop-cin').value.trim().toUpperCase(),
+    booking_fee_perc:parseFloat(document.getElementById('prop-booking-fee').value)||1.5,
     pulizie_owner:document.getElementById('prop-pulizie-owner').checked,
     tassa_trattenuta:!!(document.getElementById('prop-tassa-trattenuta')&&document.getElementById('prop-tassa-trattenuta').checked),
     // Dati catastali per DAC7/CU
@@ -4578,6 +4661,7 @@ function editProp(id){
     document.getElementById('prop-nome').value=p.nome||'';
     document.getElementById('prop-indirizzo').value=p.indirizzo||'';
     document.getElementById('prop-cin').value=p.cin||'';
+    document.getElementById('prop-booking-fee').value=p.booking_fee_perc!=null?p.booking_fee_perc:1.5;
     document.getElementById('prop-pulizie-owner').checked=!!p.pulizie_owner;
     var elTT=document.getElementById('prop-tassa-trattenuta');if(elTT)elTT.checked=!!p.tassa_trattenuta;
     document.getElementById('prop-owner-sel').value=p.proprietario_id||'';
@@ -5206,7 +5290,7 @@ function calcScorporo(){
   var commHint='';
   if(canale==='Booking.com' && b.comm_ota_abs>0){
     var prop=DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
-    var bfee=getBookingFee(prop);
+    var bfee=prop&&prop.booking_fee_perc!=null?prop.booking_fee_perc:1.5;
     var bookingFeeAbs=r2(b.tot*bfee/100);
     commHint='<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:-4px;margin-bottom:4px;padding-left:2px">&nbsp;&nbsp;&nbsp;&nbsp;Smoobu '+eur(b.comm_ota_abs)+' + '+bfee+'% bancaria '+eur(bookingFeeAbs)+'</div>';
   }
@@ -7182,9 +7266,9 @@ function appInit(){
     if(!exData.exists){
       document.getElementById('auth-overlay').classList.remove('hidden');
       document.getElementById('auth-change-link').textContent='Prima configurazione — imposta la tua password';
-    } else if(localStorage.getItem('houzly_auth')){
+    } else if(localStorage.getItem('houzly_auth') && getAdminPin()){
       document.getElementById('auth-overlay').classList.add('hidden');
-      appInit();
+      _appInited=true;appInit();
     } else {
       document.getElementById('auth-overlay').classList.remove('hidden');
     }
@@ -7192,7 +7276,7 @@ function appInit(){
     // Server unreachable - fall back to local auth
     if(localStorage.getItem('houzly_auth')){
       document.getElementById('auth-overlay').classList.add('hidden');
-      appInit();
+      _appInited=true;appInit();
     } else {
       document.getElementById('auth-overlay').classList.remove('hidden');
     }
@@ -9689,8 +9773,7 @@ var ONB = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 function onbHeaders() {
-  var pin = sessionStorage.getItem('onbPin') || '';
-  return { 'Content-Type': 'application/json', 'x-admin-pin': pin };
+  return { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin() };
 }
 
 async function onbFetch(method, path, body) {
@@ -9701,7 +9784,7 @@ async function onbFetch(method, path, body) {
   if (!res.ok) {
     var err = data.error || ('HTTP ' + res.status);
     if (data.error === 'invalid_pin' || data.error === 'missing_pin') {
-      toast('Sessione scaduta — esci e rientra');
+      authRequirePin('Reinserisci la password per continuare');
       throw new Error('auth');
     }
     throw new Error(err);
@@ -11760,42 +11843,6 @@ function adempViewCU(ownerId){
   });
   html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td>'+t.nPren+'</td><td class="num">'+eur(t.lordo)+'</td><td class="num">'+eur(t.base_cedolare)+'</td><td class="num"><strong>'+eur(t.ritenuta)+'</strong></td></tr>';
   html+='</tbody></table>';
-  // ── Ripartizione ritenuta fra comproprietari, PER IMMOBILE ──
-  // I comproprietari possono differire da un immobile all'altro, quindi la
-  // ripartizione è calcolata sul singolo immobile leggendo dal suo contratto.
-  if(fiscRitenutaAttiva(owner)){
-    // base+ritenuta per singolo immobile (dalle prenotazioni dell'anno)
-    var perProp={};
-    (d.properties||[]).forEach(function(p){perProp[p.id]={base:0,rit:0,nome:p.nome};});
-    DB.prenotazioni.forEach(function(b){
-      if(!perProp[b.proprieta_id])return;
-      if(ademAnnoEffettivo(b)!==anno)return;
-      if(!b.calc)return;
-      var base=d.method==='ade'?(+b.calc.tot||0):((b.calc.pulizie_owner&&b.calc.canone_totale!=null)?+b.calc.canone_totale:+b.calc.canone||0);
-      perProp[b.proprieta_id].base+=base;
-      perProp[b.proprieta_id].rit+=base*0.21;
-    });
-    var blocchi='';
-    (d.properties||[]).forEach(function(p){
-      var cps=getPropertyCoprops(p.id, owner);
-      if(!cps.length)return; // immobile senza comproprietari: niente ripartizione
-      var pp=perProp[p.id]; if(!pp||pp.rit<=0)return;
-      var quoteSomma=cps.reduce(function(s,cp){return s+(+cp.perc||0);},0);
-      var quotaPrinc=Math.max(0,1-quoteSomma);
-      var nomePrinc=((owner.nome||'')+' '+(owner.cognome||'')).trim()||nomeMandante;
-      blocchi+='<div style="margin-top:14px;padding:12px 14px;background:var(--surface2);border-radius:10px">'
-        +'<h5 style="margin:0 0 4px;color:var(--navy)">Ripartizione comproprietari — '+escHtml(pp.nome)+'</h5>'
-        +'<div style="font-size:11.5px;color:var(--text-light);margin-bottom:8px">Ritenuta dell\'immobile: € '+eur(r2(pp.rit))+'. La CU va emessa a ciascun comproprietario per la propria quota.</div>'
-        +'<table class="adem-quarter-table"><thead><tr><th>Comproprietario</th><th>Codice Fiscale</th><th class="num">Quota</th><th class="num">Base imponibile</th><th class="num">Ritenuta 21%</th></tr></thead><tbody>'
-        +'<tr><td><strong>'+escHtml(nomePrinc)+'</strong> (intestatario)</td><td>'+escHtml(owner.cf||'')+'</td><td class="num">'+(quotaPrinc*100).toFixed(2)+'%</td><td class="num">'+eur(r2(pp.base*quotaPrinc))+'</td><td class="num"><strong>'+eur(r2(pp.rit*quotaPrinc))+'</strong></td></tr>'
-        +cps.map(function(cp){
-          var nm=((cp.nome||'')+' '+(cp.cognome||'')).trim();
-          return '<tr><td>'+escHtml(nm)+'</td><td>'+escHtml(cp.cf||'')+'</td><td class="num">'+((+cp.perc||0)*100).toFixed(2)+'%</td><td class="num">'+eur(r2(pp.base*(+cp.perc||0)))+'</td><td class="num"><strong>'+eur(r2(pp.rit*(+cp.perc||0)))+'</strong></td></tr>';
-        }).join('')
-        +'</tbody></table></div>';
-    });
-    html+=blocchi;
-  }
   html+='<div class="doc-note" style="margin-top:14px">📌 <strong>Metodo base imponibile:</strong> '+methodLabel+'.<br>📌 <strong>Ritenuta a titolo di acconto</strong> (LdB 2024). Il mandante calcola l\'imposta definitiva (cedolare o IRPEF) in dichiarazione dei redditi.';
   if(d.nFiscalEntities>=2)html+='<br>⚠ <strong>Avviso 2+ immobili:</strong> il Mandante deve designare in dichiarazione il "primo" immobile (21%) e versare la differenza 5% sul secondo (aliquota 26%).';
   if(d.nFiscalEntities>=3)html+='<br>🚨 <strong>LdB 2026 — 3+ immobili:</strong> dal 1/1/2026 cedolare secca solo fino a 2 appartamenti. Dal 3° immobile l\'attività si presume imprenditoriale.';
@@ -12313,27 +12360,6 @@ function adempExportCUMandante(ownerId){
   var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   monthly.forEach(function(r,i){if(r.nPren>0)rows.push([mesi[i],r.nPren,r2(r.lordo),r2(r.base),r2(r.ritenuta)]);});
   rows.push(['TOTALE',d.totals.nPren,d.totals.lordo,d.totals.base_cedolare,d.totals.ritenuta]);
-  var _own=d.owner;
-  if(fiscRitenutaAttiva(_own)){
-    var _perProp={};
-    (d.properties||[]).forEach(function(p){_perProp[p.id]={base:0,rit:0,nome:p.nome};});
-    DB.prenotazioni.forEach(function(b){
-      if(!_perProp[b.proprieta_id])return;
-      if(ademAnnoEffettivo(b)!==anno)return; if(!b.calc)return;
-      var _bs=d.method==='ade'?(+b.calc.tot||0):((b.calc.pulizie_owner&&b.calc.canone_totale!=null)?+b.calc.canone_totale:+b.calc.canone||0);
-      _perProp[b.proprieta_id].base+=_bs; _perProp[b.proprieta_id].rit+=_bs*0.21;
-    });
-    (d.properties||[]).forEach(function(p){
-      var _cps=getPropertyCoprops(p.id,_own); if(!_cps.length)return;
-      var _pp=_perProp[p.id]; if(!_pp||_pp.rit<=0)return;
-      var _qs=_cps.reduce(function(s,cp){return s+(+cp.perc||0);},0);
-      var _qp=Math.max(0,1-_qs);
-      rows.push([]); rows.push(['RIPARTIZIONE COMPROPRIETARI — '+_pp.nome]);
-      rows.push(['Comproprietario','CF','Quota %','Base Imponibile','Ritenuta 21%']);
-      rows.push([((_own.nome||'')+' '+(_own.cognome||'')).trim()+' (intestatario)',_own.cf||'',(_qp*100).toFixed(2),r2(_pp.base*_qp),r2(_pp.rit*_qp)]);
-      _cps.forEach(function(cp){rows.push([((cp.nome||'')+' '+(cp.cognome||'')).trim(),cp.cf||'',((+cp.perc||0)*100).toFixed(2),r2(_pp.base*(+cp.perc||0)),r2(_pp.rit*(+cp.perc||0))]);});
-    });
-  }
   ademDownloadCSV('CU_'+nomeOwner(d.owner.id).replace(/[^a-zA-Z0-9]/g,'_')+'_'+anno+'.csv', rows);
   toast('CSV scaricato ✓');
 }
@@ -12790,9 +12816,6 @@ function ctrSave(andPreview){
     propIds.forEach(function(pid){
       var p=DB.proprieta.find(function(x){return x.id===pid;});
       if(!p)return;
-      // v79: la % compenso e l'IVA pattuite nel contratto si scrivono sull'IMMOBILE (fonte primaria).
-      p.houzly_perc=perc;
-      p.iva22_override=(document.getElementById('ctr-iva').value==='esclusa');
       var v=function(pref){return g('ctrp-'+pref+'-'+pid);};
       if(v('ind')!==null)p.indirizzo=v('ind');
       if(v('cin')!==null)p.cin=(v('cin')||'').toUpperCase();
@@ -12804,7 +12827,7 @@ function ctrSave(andPreview){
       if(v('in')!==null)p.interno=v('in');
     });
 
-    // Il proprietario conserva la % come DEFAULT ereditabile (fallback). Fonte primaria = immobile.
+    // Aggiorno anche il profilo fiscale del proprietario per coerenza col contratto
     owner.houzly_perc=perc;
     owner.fisc_iva22=document.getElementById('ctr-iva').value==='esclusa';
     if(owner.tipo==='persona_fisica')owner.fisc_cedolare=document.getElementById('ctr-ritenuta').value==='1';
@@ -13086,13 +13109,6 @@ function ctrImportExcel(ev){
           return;
         }
         var now=new Date().toISOString();
-        // v79: scrivo % e IVA pattuite anche sugli IMMOBILI del contratto (fonte primaria)
-        var _perc=B.cond.perc||(+B.owner.houzly_perc)||30;
-        var _ivaEsc=(B.cond.iva||(B.owner.fisc_iva22?'esclusa':'inclusa'))==='esclusa';
-        B.propIds.forEach(function(pid){
-          var _p=DB.proprieta.find(function(x){return x.id===pid;});
-          if(_p){_p.houzly_perc=_perc;_p.iva22_override=_ivaEsc;}
-        });
         DB.contratti.push({
           id:uid(),owner_id:B.owner.id,prop_ids:B.propIds,
           perc:B.cond.perc||(+B.owner.houzly_perc)||30,
@@ -13774,7 +13790,7 @@ async function ckiFetch(method, path, body) {
   try { data = await res.json(); } catch (e) {}
   if (!res.ok || data.ok === false) {
     if (data.error === 'invalid_pin' || data.error === 'missing_pin') {
-      toast('Sessione scaduta — esci e rientra');
+      authRequirePin('Reinserisci la password per continuare');
       throw new Error('auth');
     }
     var err = new Error(data.error || ('HTTP ' + res.status));
@@ -13901,6 +13917,13 @@ async function ckiSyncProps() {
 var _ckiSearchT = null;
 function ckiSearchDebounced() { clearTimeout(_ckiSearchT); _ckiSearchT = setTimeout(ckiLoad, 350); }
 function ckiSetStatus(s) {
+  if (s === 'reg') {
+    var r = document.getElementById('cki-f-reg');
+    r.value = r.value === 'todo' ? '' : 'todo';
+    document.getElementById('cki-f-status').value = '';
+    ckiLoad();
+    return;
+  }
   var sel = document.getElementById('cki-f-status');
   sel.value = sel.value === s ? '' : s;
   ckiLoad();
@@ -13916,6 +13939,8 @@ async function ckiLoad() {
   var q = document.getElementById('cki-f-q').value.trim();
   if (q) qs.set('q', q);
   if (document.getElementById('cki-f-excl').checked) qs.set('include_excluded', '1');
+  var rg = document.getElementById('cki-f-reg').value;
+  if (rg) qs.set('reg', rg);
   document.getElementById('cki-list').innerHTML = '<div class="cki-empty">Caricamento...</div>';
   try {
     var d = await ckiFetch('GET', '/sessions?' + qs.toString());
@@ -13937,10 +13962,13 @@ function ckiRenderKpis() {
     ['partial', 'In corso', c.partial || 0, 'compilazione iniziata'],
     ['complete', 'Completi', c.complete || 0, 'pronti per Alloggiati'],
     ['attention', 'Da gestire', att, 'serve un intervento'],
+    ['reg', 'Da registrare', c.reg_todo || 0, 'arrivati, manca Alloggiati'],
   ];
+  var regOn = document.getElementById('cki-f-reg').value === 'todo';
   document.getElementById('cki-kpis').innerHTML = items.map(function (i) {
-    var color = i[0] === 'attention' && i[2] ? 'color:var(--red)' : '';
-    return '<button class="cki-kpi' + (CKI.status === i[0] ? ' on' : '') + '" onclick="ckiSetStatus(\'' + i[0] + '\')">'
+    var color = (i[0] === 'attention' || i[0] === 'reg') && i[2] ? 'color:var(--red)' : '';
+    var on = i[0] === 'reg' ? regOn : CKI.status === i[0];
+    return '<button class="cki-kpi' + (on ? ' on' : '') + '" onclick="ckiSetStatus(\'' + i[0] + '\')">'
       + '<div class="cki-kpi-label">' + i[1] + '</div><div class="cki-kpi-value" style="' + color + '">' + i[2] + '</div>'
       + '<div class="cki-kpi-sub">' + i[3] + '</div></button>';
   }).join('');
@@ -13963,7 +13991,7 @@ function ckiRenderList(truncated) {
     document.getElementById('cki-list-note').textContent = '';
     return;
   }
-  var head = '<div class="cki-row head"><div>Arrivo</div><div>Ospite</div><div>Struttura</div><div>Ospiti</div><div>Stato</div><div>Link</div></div>';
+  var head = '<div class="cki-row head"><div>Arrivo</div><div>Ospite</div><div>Struttura</div><div>Ospiti</div><div>Stato</div><div>Link</div><div>Registrato su</div></div>';
   box.innerHTML = head + CKI.sessions.map(function (s) {
     var b = s.booking || {};
     var warn = s.tax_code_warnings ? ' <span title="Codice fiscale da controllare" style="color:#c47a00">⚠</span>' : '';
@@ -13974,11 +14002,42 @@ function ckiRenderList(truncated) {
       + '<div class="cki-guests">' + s.guests_submitted + '/' + s.guests_total + '</div>'
       + '<div class="cki-st">' + ckiBadge(s.status) + '</div>'
       + ckiLinkInfo(s)
+      + ckiRegPills(s)
       + '</div>';
   }).join('');
   document.getElementById('cki-list-note').textContent = truncated
     ? 'Mostrate le prime ' + CKI.sessions.length + ' prenotazioni: usa i filtri per restringere.'
     : CKI.sessions.length + ' prenotazion' + (CKI.sessions.length === 1 ? 'e' : 'i');
+}
+
+// ── Registrazioni Alloggiati / ISTAT ──────────────────────────────
+function ckiRegPills(s) {
+  if (s.status.indexOf('excluded_') === 0 || s.status === 'archived') return '<div class="cki-reg"></div>';
+  function pill(kind, label, on, title) {
+    return '<button class="cki-pill' + (on ? ' on' : '') + '" title="' + title + (on ? ' · fatto il ' + ckiDateTime(on) : ' · da fare') + '"'
+      + ' onclick="event.stopPropagation();ckiToggleReg(\'' + ckiEsc(s._id) + '\',\'' + kind + '\',' + (on ? 'false' : 'true') + ')">'
+      + (on ? '✓ ' : '') + label + '</button>';
+  }
+  return '<div class="cki-reg">' + pill('alloggiati', 'Alloggiati', s.alloggiati_done_at, 'Alloggiati Web')
+    + pill('istat', 'ISTAT', s.istat_done_at, 'Portale ISTAT regionale') + '</div>';
+}
+
+async function ckiToggleReg(id, kind, value) {
+  var body = {}; body[kind] = value;
+  try {
+    var d = await ckiFetch('PATCH', '/sessions/' + encodeURIComponent(id) + '/registrations', body);
+    CKI.sessions.forEach(function (s) {
+      if (s._id === id) { s.alloggiati_done_at = d.alloggiati_done_at; s.istat_done_at = d.istat_done_at; }
+    });
+    if (CKI.detail && CKI.detail._id === id) {
+      CKI.detail.alloggiati_done_at = d.alloggiati_done_at; CKI.detail.istat_done_at = d.istat_done_at;
+      ckiRenderDetail();
+    }
+    // Se la lista è filtrata per registrazione, ricarica; altrimenti aggiorna solo la vista
+    if (document.getElementById('cki-f-reg').value) ckiLoad();
+    else { ckiRenderList(false); }
+    toast((kind === 'alloggiati' ? 'Alloggiati' : 'ISTAT') + (value ? ' segnato come fatto' : ' segnato come da fare'));
+  } catch (e) { if (e.message !== 'auth') toast('Errore: ' + e.message); }
 }
 
 // ── Dettaglio prenotazione ────────────────────────────────────────
@@ -14035,6 +14094,11 @@ function ckiRenderDetail() {
     + '<span style="flex:1"></span>'
     + '<select id="cki-status-sel" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:12px">' + statusOpts + '</select>'
     + '<button class="btn btn-ghost btn-sm" onclick="ckiOverride()">Cambia stato</button>'
+    + '</div>'
+    + '<div class="cki-sec">Registrazione ospiti</div>'
+    + '<div class="cki-regbox">'
+    + '<label class="' + (s.alloggiati_done_at ? 'on' : '') + '"><input type="checkbox"' + (s.alloggiati_done_at ? ' checked' : '') + ' onchange="ckiToggleReg(\'' + ckiEsc(s._id) + '\',\'alloggiati\',this.checked)"><span><b>Alloggiati Web</b><small>' + (s.alloggiati_done_at ? 'Fatto il ' + ckiDateTime(s.alloggiati_done_at) : 'Da fare entro 24 ore dall\'arrivo') + '</small></span></label>'
+    + '<label class="' + (s.istat_done_at ? 'on' : '') + '"><input type="checkbox"' + (s.istat_done_at ? ' checked' : '') + ' onchange="ckiToggleReg(\'' + ckiEsc(s._id) + '\',\'istat\',this.checked)"><span><b>ISTAT</b><small>' + (s.istat_done_at ? 'Fatto il ' + ckiDateTime(s.istat_done_at) : 'Portale regionale (MOTourist, Turismo5, Ross1000)') + '</small></span></label>'
     + '</div>'
     + '<div class="cki-sec">Ospiti (' + (s.guests || []).filter(function (g) { return g.submitted_at; }).length + '/' + (s.guests || []).length + ' confermati)</div>'
     + (s.guests || []).map(ckiGuestHtml).join('')
@@ -14261,7 +14325,7 @@ function ckiMatchBooking(it) {
 
 async function ckiSyncBilling() {
   if (_ckiBillingRunning || !DB || !DB.prenotazioni) return;
-  if (!sessionStorage.getItem('onbPin')) return;
+  if (!getAdminPin()) return;
   _ckiBillingRunning = true;
   try {
     var res = await fetch('/api/checkin/billing-data', { headers: onbHeaders() });
