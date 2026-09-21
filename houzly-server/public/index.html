@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v90 · 22/09 · % contratto su prenotazioni</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v91 · 22/09 · Verifica copertura Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2334,6 +2334,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="cki-list" id="cki-props"><div class="cki-empty">Caricamento...</div></div>
   </div>
 </div>
+<div class="modal-overlay" id="cov-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:980px">
+    <button class="modal-close" onclick="document.getElementById('cov-modal').classList.remove('open')">&times;</button>
+    <div id="cov-body"></div>
+  </div>
+</div>
 <div class="modal-overlay" id="cki-modal" onclick="if(event.target===this)ckiCloseModal()">
   <div class="modal" style="max-width:860px">
     <button class="modal-close" onclick="ckiCloseModal()">&times;</button>
@@ -2390,6 +2396,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div style="font-size:11.5px;color:var(--text-light)">Schede Smoobu che non sono prenotazioni reali (es. la struttura madre di un gruppo, che si occupa quando si prenota un'unit&agrave;). Un nome per riga, esattamente come su Smoobu.</div>
         <textarea id="cfg-sync-ignore" rows="3" style="width:100%;margin-top:8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-family:inherit;font-size:12.5px;box-sizing:border-box" placeholder="Bioagriturismo Il Pino"></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="saveSyncIgnore()">Salva</button></div>
+        <div style="font-weight:600;color:var(--text);margin-top:16px">Verifica copertura</div>
+        <div style="font-size:11.5px;color:var(--text-light)">Confronta Smoobu con il tool nel periodo scelto ed elenca cosa manca. Sola lettura: non crea e non modifica nulla.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <label style="font-size:11.5px">Dal <input type="date" id="cov-from" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-family:inherit"></label>
+          <label style="font-size:11.5px">al <input type="date" id="cov-to" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-family:inherit"></label>
+          <button class="btn btn-outline btn-sm" id="cov-btn" onclick="runCoverageCheck()">&#128270; Verifica</button>
+        </div>
       </div>
     </div>
   </div>
@@ -14701,6 +14714,95 @@ function syncIsIgnored(item){
 function loadSyncIgnoreField(){
   var el=document.getElementById('cfg-sync-ignore');
   if(el) el.value=((DB.config&&DB.config.sync_ignore)||[]).join('\n');
+  var f=document.getElementById('cov-from'), t=document.getElementById('cov-to');
+  if(f&&!f.value) f.value='2026-06-01';
+  if(t&&!t.value) t.value=new Date().toISOString().slice(0,10);
+}
+
+// ── Verifica copertura Smoobu ↔ tool (v91, sola lettura) ──────────
+async function runCoverageCheck(){
+  var from=document.getElementById('cov-from').value, to=document.getElementById('cov-to').value;
+  if(!from||!to){toast('Scegli le date');return;}
+  var btn=document.getElementById('cov-btn'); btn.disabled=true; btn.innerHTML='⏳ Verifico…';
+  try{
+    var r=await fetch('/api/bookings/coverage?from='+from+'&to='+to,{headers:onbHeaders()});
+    if(r.status===401){authRequirePin('Reinserisci la password');return;}
+    var d=await r.json();
+    if(!d.ok) throw new Error(d.error||'errore');
+    showCoverageResult(d, from, to);
+  }catch(e){ toast('Verifica non riuscita: '+e.message,6000); }
+  finally{ btn.disabled=false; btn.innerHTML='&#128270; Verifica'; }
+}
+
+function showCoverageResult(d, from, to){
+  var ignore=syncIgnoreList();
+  var smoobuIds={}, smoobuRefs={};
+  var missing=[], noProp={}, ok=0, ignored=0;
+  d.items.forEach(function(it){
+    smoobuIds[it.id]=true; if(it.ref) smoobuRefs[String(it.ref)]=true;
+    if(ignore.indexOf((it.apartment||'').toLowerCase().trim())>=0){ ignored++; return; }
+    var b=DB.prenotazioni.find(function(x){return String(x.ota_num)===it.id;})
+       || (it.ref?DB.prenotazioni.find(function(x){return String(x.note||'')===String(it.ref)||String(x.ota_num||'')===String(it.ref);}):null);
+    if(b){ ok++; return; }
+    var prop=findPropByName(it.apartment);
+    if(!prop){ noProp[it.apartment]=(noProp[it.apartment]||0)+1; }
+    missing.push({it:it, prop:prop});
+  });
+  // Nel tool ma non su Smoobu (stesso periodo)
+  var extra=DB.prenotazioni.filter(function(b){
+    if(!b.checkin||!b.checkout) return false;
+    if(b.checkin>to||b.checkout<from) return false;
+    if(smoobuIds[String(b.ota_num)]) return false;
+    if(b.note&&smoobuRefs[String(b.note)]) return false;
+    if(b.ota_num&&smoobuRefs[String(b.ota_num)]) return false;
+    return true;
+  });
+  var dt=function(x){return x?x.split('-').reverse().join('/'):'';};
+  var th='style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;white-space:nowrap"';
+  var td='style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px"';
+  var html='<div class="modal-title">Verifica copertura Smoobu ↔ tool</div>'
+    +'<div style="font-size:12.5px;color:var(--text-mid);margin:-4px 0 14px">Periodo '+dt(from)+' – '+dt(to)+' · soggiorni che toccano il periodo</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px">'
+    +covBox('Su Smoobu',d.items.length,'prenotazioni vere','var(--blue)')
+    +covBox('Presenti nel tool',ok,'abbinate','var(--green)')
+    +covBox('Mancanti nel tool',missing.length,'da controllare',missing.length?'var(--red)':'var(--green)')
+    +covBox('Nel tool, non su Smoobu',extra.length,'cancellate o manuali',extra.length?'#c47a00':'var(--green)')
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text-light);margin-bottom:12px">Esclusi: '+d.blocked+' blocchi di calendario'+(ignored?' · '+ignored+' da strutture ignorate':'')+'.</div>';
+  var np=Object.keys(noProp);
+  if(np.length){
+    html+='<div class="alert alert-warning" style="margin-bottom:12px">&#9888; <strong>Strutture Smoobu non abbinate:</strong> '+np.map(function(n){return esc(n)+' ('+noProp[n]+')';}).join(', ')
+      +'<br><span style="font-size:11.5px">Compila "Nome su Smoobu" nella proprietà giusta, oppure aggiungile alle strutture da ignorare.</span></div>';
+  }
+  if(missing.length){
+    missing.sort(function(a,b){return a.it.arrival<b.it.arrival?-1:1;});
+    html+='<div class="card-title" style="margin:6px 0">Su Smoobu ma NON nel tool ('+missing.length+')</div>'
+      +'<div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2)">'
+      +'<th '+th+'>Arrivo</th><th '+th+'>Partenza</th><th '+th+'>Struttura Smoobu</th><th '+th+'>Ospite</th><th '+th+'>Canale</th><th '+th+'>Prezzo</th><th '+th+'>ID Smoobu</th></tr></thead><tbody>'
+      +missing.map(function(m){var it=m.it;return '<tr><td '+td+'>'+dt(it.arrival)+'</td><td '+td+'>'+dt(it.departure)+'</td><td '+td+'>'+esc(it.apartment)+(m.prop?'':' <span style="color:var(--red);font-size:10.5px">non abbinata</span>')+'</td><td '+td+'>'+esc(it.guest||'')+'</td><td '+td+'>'+esc(it.channel||'')+'</td><td '+td+'>'+eur(+it.price||0)+'</td><td '+td+' style="font-family:monospace;font-size:11px">'+esc(it.id)+'</td></tr>';}).join('')
+      +'</tbody></table></div>'
+      +'<div style="font-size:11.5px;color:var(--text-light);margin-top:6px">Quelle con arrivo dal 1° settembre 2026 entrano da sole con la sincronizzazione (una volta abbinata la struttura). Per i mesi precedenti vanno inserite a mano o con un import CSV del periodo.</div>';
+  }
+  if(extra.length){
+    extra.sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+    html+='<div class="card-title" style="margin:16px 0 6px">Nel tool ma NON su Smoobu ('+extra.length+')</div>'
+      +'<div style="font-size:11.5px;color:var(--text-light);margin-bottom:6px">Possono essere prenotazioni cancellate su Smoobu dopo l\'import, inserite a mano nel tool, o prenotazioni aggiuntive. Da controllare una per una.</div>'
+      +'<div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2)">'
+      +'<th '+th+'>Check-in</th><th '+th+'>Check-out</th><th '+th+'>Proprietà</th><th '+th+'>Ospite</th><th '+th+'>Canale</th><th '+th+'>Totale</th><th '+th+'>N° pren.</th></tr></thead><tbody>'
+      +extra.map(function(b){var pr=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});return '<tr style="cursor:pointer" onclick="document.getElementById(\'cov-modal\').classList.remove(\'open\');viewPren(\''+b.id+'\')"><td '+td+'>'+dt(b.checkin)+'</td><td '+td+'>'+dt(b.checkout)+'</td><td '+td+'>'+esc(pr?pr.nome:'?')+'</td><td '+td+'>'+esc(b.ospite_nome||'')+(b.black?' <span class="badge badge-gray">aggiuntiva</span>':'')+'</td><td '+td+'>'+esc(b.canale||'')+'</td><td '+td+'>'+eur(+b.tot||0)+'</td><td '+td+' style="font-family:monospace;font-size:11px">'+esc(b.ota_num||'—')+'</td></tr>';}).join('')
+      +'</tbody></table></div>';
+  }
+  if(!missing.length&&!extra.length&&!np.length){
+    html+='<div class="alert alert-success">&#10003; Copertura completa: ogni prenotazione Smoobu del periodo è nel tool, e nel tool non ci sono prenotazioni che su Smoobu non esistono.</div>';
+  }
+  document.getElementById('cov-body').innerHTML=html;
+  document.getElementById('cov-modal').classList.add('open');
+}
+function covBox(label,n,sub,color){
+  return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">'
+    +'<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-light)">'+label+'</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800;color:'+color+'">'+n+'</div>'
+    +'<div style="font-size:11px;color:var(--text-light)">'+sub+'</div></div>';
 }
 function saveSyncIgnore(){
   var el=document.getElementById('cfg-sync-ignore'); if(!el) return;
