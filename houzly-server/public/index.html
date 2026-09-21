@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v87 · 22/09 · Sync recupero prenotazioni a cavallo</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v88 · 22/09 · Nome su Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1895,6 +1895,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field"><label>Indirizzo</label><input type="text" id="prop-indirizzo"></div>
       <div class="field"><label>Proprietario *</label><select id="prop-owner-sel" onchange="updatePropCommPreview()"><option value="">-- Seleziona --</option></select></div>
       <div class="field"><label>CIN (Codice Identificativo Nazionale)</label><input type="text" id="prop-cin" placeholder="IT000XXXXXXXXXX" style="text-transform:uppercase"><div class="field-hint">CIN specifico di questa propriet&agrave;</div></div>
+      <div class="field"><label>Nome su Smoobu</label><input type="text" id="prop-smoobu-nome" placeholder="es. La Poggetta - Villa"><div class="field-hint">Solo se su Smoobu la struttura ha un nome diverso da quello qui sopra: scrivilo esattamente com'&egrave; su Smoobu. Pi&ugrave; nomi separati da <strong>;</strong></div></div>
       <!-- Dati catastali per DAC7 -->
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">&#127960; Dati Catastali <span style="color:var(--text-light);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px">(richiesti per DAC7 — opzionali)</span></div>
@@ -4696,6 +4697,7 @@ function openModalProprieta(){
   document.getElementById('prop-nome').value='';
   document.getElementById('prop-indirizzo').value='';
   document.getElementById('prop-cin').value='';
+  var _psn=document.getElementById('prop-smoobu-nome');if(_psn)_psn.value='';
   // Reset campi catastali + indirizzo strutturato + codice comune + commissione override
   ['prop-cat-comune','prop-cat-foglio','prop-cat-part','prop-cat-sub','prop-cat-cat','prop-codice-comune','prop-tipo-via','prop-via-nome','prop-n-civico','prop-scala','prop-interno','prop-houzly-perc','prop-iva22-override'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
@@ -4723,6 +4725,7 @@ function saveProprieta(){
     indirizzo:document.getElementById('prop-indirizzo').value,
     proprietario_id:oid,
     cin:document.getElementById('prop-cin').value.trim().toUpperCase(),
+    smoobu_nome:(document.getElementById('prop-smoobu-nome')||{value:''}).value.trim(),
     pulizie_owner:document.getElementById('prop-pulizie-owner').checked,
     tassa_trattenuta:!!(document.getElementById('prop-tassa-trattenuta')&&document.getElementById('prop-tassa-trattenuta').checked),
     // Dati catastali per DAC7/CU
@@ -4743,7 +4746,7 @@ function saveProprieta(){
     houzly_perc:houzlyPercRaw===''?null:parseFloat(houzlyPercRaw),
     iva22_override:ivaRaw===''?null:(ivaRaw==='1')
   };
-  if(editId2){var i2=DB.proprieta.findIndex(function(x){return x.id===editId2;});if(i2>=0)DB.proprieta[i2]=obj2;else DB.proprieta.push(obj2);toast('Proprietà aggiornata ✓');}
+  if(editId2){var i2=DB.proprieta.findIndex(function(x){return x.id===editId2;});if(i2>=0)DB.proprieta[i2]=Object.assign({},DB.proprieta[i2],obj2);else DB.proprieta.push(obj2);toast('Proprietà aggiornata ✓');}
   else{DB.proprieta.push(obj2);toast('Proprietà salvata ✓');}
   saveDB();
   var btnS2=document.getElementById('btn-save-prop2');if(btnS2){btnS2.removeAttribute('data-edit-id');btnS2.textContent='Salva';}
@@ -4758,6 +4761,7 @@ function editProp(id){
     document.getElementById('prop-nome').value=p.nome||'';
     document.getElementById('prop-indirizzo').value=p.indirizzo||'';
     document.getElementById('prop-cin').value=p.cin||'';
+    var _psn2=document.getElementById('prop-smoobu-nome');if(_psn2)_psn2.value=p.smoobu_nome||'';
     document.getElementById('prop-pulizie-owner').checked=!!p.pulizie_owner;
     var elTT=document.getElementById('prop-tassa-trattenuta');if(elTT)elTT.checked=!!p.tassa_trattenuta;
     document.getElementById('prop-owner-sel').value=p.proprietario_id||'';
@@ -7013,6 +7017,11 @@ function extractOtaNum(note){
 function findPropByName(name){
   if(!name)return null;
   var nm=name.toLowerCase().trim();
+  // 0. v88: "Nome su Smoobu" impostato nella scheda Proprietà (anche più nomi separati da ;)
+  var alias=DB.proprieta.find(function(p){
+    return (p.smoobu_nome||'').split(';').some(function(a){return a.toLowerCase().trim()===nm;});
+  });
+  if(alias)return alias;
   // 1. Exact match
   var exact=DB.proprieta.find(function(p){return p.nome.toLowerCase().trim()===nm;});
   if(exact)return exact;
