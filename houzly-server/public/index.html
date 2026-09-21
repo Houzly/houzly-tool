@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v83 · 21/09 · Mobile</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v84 · 21/09 · Prenotazioni in archivio dedicato</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1500,7 +1500,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="card">
       <div class="card-title">💾 Backup DB</div>
       <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px">Scarica una copia completa del database (proprietari, proprietà, prenotazioni, pulizie, ricevute).</p>
-      <a id="backup-link" class="btn btn-primary" href="/api/backup" download>⬇ Scarica Backup</a>
+      <a id="backup-link" class="btn btn-primary" href="#" onclick="event.preventDefault();window.location.href='/api/backup?pin='+encodeURIComponent(getAdminPin());">⬇ Scarica Backup</a>
     </div>
     <div class="card">
       <div class="card-title">♻️ Restore da Backup</div>
@@ -2699,6 +2699,7 @@ function authRequirePin(msg){
 function authAfterLogin(){
   document.getElementById('auth-overlay').classList.add('hidden');
   if(!_appInited){_appInited=true;appInit();}
+  else if(typeof _dbReloadAfterLogin!=='undefined'&&_dbReloadAfterLogin){_dbReloadAfterLogin=false;loadDB();}
   else{
     var active=document.querySelector('.page.active');
     var id=active?active.id.replace('page-',''):'';
@@ -2835,15 +2836,21 @@ function saveDocDoneLocal(){
 }
 function loadDB(){
   dbDefaults();
-  // Fetch from server — source of truth
-  fetch('/api/db').then(function(r){return r.json();}).then(function(data){
+  // Fetch from server — source of truth (v84: prenotazioni dall'archivio dedicato, con password)
+  fetch('/api/db?bookings=1',{headers:onbHeaders()}).then(function(r){
+    if(r.status===401){_dbReloadAfterLogin=true;authRequirePin('Reinserisci la password per caricare i dati');throw new Error('auth');}
+    return r.json();
+  }).then(function(data){
     if(data.ok && data.db){
       DB=data.db;
+      _dbFromServer=true;
       dbDefaults();
+      bkSnapshotAll();
       backfillCommBookingV19();
       if(DB.proprietari.length===0)seedDemo();
     } else {
       // No data on server yet
+      if(data.ok&&!data.db){ _dbFromServer=true; }
       try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
       dbDefaults();
       backfillCommBookingV19();
@@ -2854,14 +2861,16 @@ function loadDB(){
     populateDashFilter();
     if(typeof renderArchivioRicevute==='function')renderArchivioRicevute();
     if(typeof updateRicStats==='function')updateRicStats();
-  }).catch(function(){
-    // Server unreachable - use localStorage
+  }).catch(function(e){
+    if(e&&e.message==='auth')return; // dopo il login i dati vengono ricaricati
+    // Server unreachable - use localStorage (sola consultazione: non scriviamo sul server)
     try{const s=localStorage.getItem('houzly_v4');if(s)DB=JSON.parse(s);}catch(e){}
     dbDefaults();
-    if(DB.proprietari.length===0)seedDemo();
     renderDash();
+    toast('⚠ Server non raggiungibile: dati locali in sola lettura, ricarica la pagina',6000);
   });
 }
+var _dbFromServer=false,_dbReloadAfterLogin=false;
 function manualSave(){
   var btn = document.querySelector('[onclick="manualSave()"]');
   if(btn){ btn.innerHTML = '⏳ Salvo...'; btn.disabled = true; }
@@ -2876,23 +2885,100 @@ function manualSave(){
     }
   );
 }
+// ─── PRENOTAZIONI: salvataggio incrementale (v84) ─────────────────────────
+// Le prenotazioni vivono in un archivio dedicato sul server. Il tool tiene
+// una "fotografia" dell'ultima versione salvata di ciascuna e, a ogni saveDB,
+// invia solo quelle nuove, cambiate o cancellate.
+var _bkSnap={};           // id -> JSON dell'ultima versione salvata
+var _bkSnapReady=false;   // true solo se le prenotazioni arrivano dall'archivio dedicato
+function bkKey(b){ var c={}; for(var k in b){ if(k!=='_rev'&&k!=='_updated_at') c[k]=b[k]; } return JSON.stringify(c); }
+function bkSnapshotAll(){
+  _bkSnap={};
+  _bkSnapReady=!!DB._bookings_live;
+  (DB.prenotazioni||[]).forEach(function(b){ if(b&&b.id)_bkSnap[b.id]=bkKey(b); });
+}
+function bkCollectChanges(){
+  var upsert=[],del=[],seen={};
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(!b||!b.id)return;
+    seen[b.id]=true;
+    var k=bkKey(b);
+    if(_bkSnap[b.id]!==k){ upsert.push(b); }
+  });
+  Object.keys(_bkSnap).forEach(function(id){ if(!seen[id])del.push(id); });
+  return {upsert:upsert,delete:del};
+}
+var _saveInFlight=false,_saveQueued=null;
 function saveDB(onSuccess, onError){
-  localStorage.setItem('houzly_v4', JSON.stringify(DB)); // fallback locale
-  fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB})})
+  try{localStorage.setItem('houzly_v4', JSON.stringify(DB));}catch(e){} // fallback locale
+  if(!_dbFromServer){
+    // dati non caricati dal server (errore di rete o password): non sovrascriviamo il server
+    console.warn('[saveDB] dati non caricati dal server: salvataggio solo locale');
+    if(onError) try{onError('offline');}catch(e){}
+    return;
+  }
+  if(_saveInFlight){ _saveQueued={ok:onSuccess,err:onError}; return; }
+  _saveInFlight=true;
+  // Server vecchio (prenotazioni ancora nel blocco): salvataggio completo come prima
+  if(!DB._bookings_live){
+    fetch('/api/db',{method:'POST',headers:onbHeaders(),body:JSON.stringify({db:DB})})
+      .then(function(r){ if(r.ok){ if(onSuccess)try{onSuccess();}catch(e){} } else if(onError){ try{onError('HTTP '+r.status);}catch(e){} } })
+      .catch(function(e){ if(onError)try{onError(e.message||'Errore rete');}catch(e2){} })
+      .then(function(){ _saveInFlight=false; if(_saveQueued){ var q=_saveQueued; _saveQueued=null; saveDB(q.ok,q.err); } });
+    return;
+  }
+  var rest={}; for(var k in DB){ if(k!=='prenotazioni') rest[k]=DB[k]; }
+  var changes=_bkSnapReady?bkCollectChanges():{upsert:[],delete:[]};
+  // fotografia "ottimistica": se il salvataggio fallisce la ripristiniamo
+  var prevSnap={};
+  changes.upsert.forEach(function(b){ prevSnap[b.id]=_bkSnap[b.id]; _bkSnap[b.id]=bkKey(b); });
+  changes.delete.forEach(function(id){ prevSnap[id]=_bkSnap[id]; delete _bkSnap[id]; });
+  function rollback(){ Object.keys(prevSnap).forEach(function(id){ if(prevSnap[id]===undefined)delete _bkSnap[id]; else _bkSnap[id]=prevSnap[id]; }); }
+  function done(){
+    _saveInFlight=false;
+    if(_saveQueued){ var q=_saveQueued; _saveQueued=null; saveDB(q.ok,q.err); }
+  }
+  fetch('/api/db',{method:'POST',headers:onbHeaders(),body:JSON.stringify({db:rest,bookingChanges:changes})})
     .then(function(r){
-      if(r.ok){
-        if(onSuccess) try{onSuccess();}catch(e){}
-      } else {
-        var errMsg='HTTP '+r.status;
+      return r.json().catch(function(){return {};}).then(function(data){ return {r:r,data:data}; });
+    })
+    .then(function(x){
+      var r=x.r,data=x.data||{};
+      if(r.status===401){ rollback(); authRequirePin('Reinserisci la password per salvare'); if(onError)try{onError('auth');}catch(e){} return; }
+      if(!r.ok||data.ok===false){
+        rollback();
+        var errMsg=data.error||('HTTP '+r.status);
         if(onError) try{onError(errMsg);}catch(e){}
         console.warn('[saveDB] error:', errMsg);
+        return;
       }
+      var bk=data.bookings;
+      if(bk){
+        // aggiorna i numeri di versione
+        Object.keys(bk.revs||{}).forEach(function(id){
+          var b=DB.prenotazioni.find(function(x){return String(x.id)===String(id);});
+          if(b){ b._rev=bk.revs[id]; }
+        });
+        // conflitti: qualcun altro (es. sincronizzazione Smoobu) l'ha cambiata prima
+        if(bk.conflicts&&bk.conflicts.length){
+          bk.conflicts.forEach(function(fresh){
+            var i=DB.prenotazioni.findIndex(function(x){return String(x.id)===String(fresh.id);});
+            if(i>=0){ fresh.calc=doCalc(fresh); DB.prenotazioni[i]=fresh; }
+            _bkSnap[fresh.id]=bkKey(fresh);
+          });
+          toast('⚠ '+bk.conflicts.length+' prenotazion'+(bk.conflicts.length===1?'e era stata aggiornata':'i erano state aggiornate')+' nel frattempo: mostro la versione più recente, ricontrolla le tue modifiche',6000);
+          try{ var act=document.querySelector('.page.active'); if(act&&typeof renderPage==='function')renderPage(act.id.replace('page-','')); }catch(e){}
+        }
+      }
+      if(onSuccess) try{onSuccess();}catch(e){}
     })
     .catch(function(e){
+      rollback();
       var errMsg=e.message||'Errore rete';
-      if(onError) try{onError(errMsg);}catch(e){}
+      if(onError) try{onError(errMsg);}catch(e2){}
       console.warn('[saveDB] catch:', errMsg);
-    });
+    })
+    .then(done);
 }
 
 function seedDemo(){
@@ -7173,7 +7259,7 @@ function processSmoobu(file){
 
 // ─── BACKUP / RESTORE ──────────────────────────────────────────────────────────────
 function exportBackup(){
-  window.location.href='/api/backup';
+  window.location.href='/api/backup?pin='+encodeURIComponent(getAdminPin());
   toast('Download backup in corso...');
 }
 function importBackup(input){
@@ -7188,14 +7274,13 @@ function importBackup(input){
       DB=data.db;
       if(!DB.counters)DB.counters={rnf:1,fto:1,faz:1,xml:1};
       // Save to server first, then update UI
-      fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({backup:DB})})
+      fetch('/api/restore',{method:'POST',headers:onbHeaders(),body:JSON.stringify({backup:DB})})
         .then(function(r){return r.json();})
         .then(function(res){
           if(res.ok){
-            saveDB();
-            renderDash();
-            toast('✓ Ripristinato: '+DB.proprietari.length+' proprietari, '+DB.proprieta.length+' proprietà, '+DB.prenotazioni.length+' prenotazioni');
-          } else { toast('Errore salvataggio server ✗'); }
+            toast('✓ Ripristinato: '+DB.proprietari.length+' proprietari, '+DB.proprieta.length+' proprietà, '+(DB.prenotazioni||[]).length+' prenotazioni — ricarico…');
+            setTimeout(function(){location.reload();},1200);
+          } else { toast('Errore ripristino: '+(res.error||'server')+' ✗'); }
         })
         .catch(function(){ toast('Errore connessione server ✗'); });
     }catch(err){alert('Errore: '+err.message);}
@@ -9189,7 +9274,11 @@ async function clSyncSmoobu() {
     // Ricarica DB aggiornato dal server
     var dbResp = await fetch('/api/db');
     var dbData = await dbResp.json();
-    if (dbData.ok && dbData.db) { DB = dbData.db; dbDefaults(); }
+    if (dbData.ok && dbData.db) {
+      // v84: /api/db senza password non contiene le prenotazioni → le conserviamo
+      var _keepBk = DB.prenotazioni, _keepLive = DB._bookings_live;
+      DB = dbData.db; DB.prenotazioni = _keepBk; DB._bookings_live = _keepLive; dbDefaults();
+    }
 
     if (statusEl) {
       statusEl.textContent = '✓ Sincronizzato (+' + result.added + ' nuovi, ' + result.removed + ' rimossi)';
@@ -9708,7 +9797,7 @@ async function restoreFromBackup(input) {
 
     var resp = await fetch('/api/restore', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: onbHeaders(),
       body: JSON.stringify({ backup: dbToRestore })
     });
     var data = await resp.json();
@@ -9721,8 +9810,8 @@ async function restoreFromBackup(input) {
         (dbToRestore.proprietari||[]).length + ', Prenotazioni: ' +
         (dbToRestore.prenotazioni||[]).length + ', Cleaning tasks: ' +
         ((dbToRestore.cleaning||{}).tasks||[]).length + '</div>';
-      toast('Restore completato ✓');
-      renderDash();
+      toast('Restore completato ✓ — ricarico…');
+      setTimeout(function(){ location.reload(); }, 1200);
     } else {
       resultEl.innerHTML = '<div class="alert" style="background:rgba(240,64,96,0.08);border-color:rgba(240,64,96,0.3);color:var(--red)">✗ Errore server: ' + (data.error||'unknown') + '</div>';
     }
