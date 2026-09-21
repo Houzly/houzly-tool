@@ -683,57 +683,191 @@ app.post('/api/auth/change', async (req, res) => {
 });
 
 // ── DB ────────────────────────────────────────────────────────────
+// Da settembre 2026 le prenotazioni NON stanno più nel blocco db.main ma
+// nella collection dedicata "bookings" (un documento per prenotazione, con
+// numero di versione _rev). Motivi: il blocco veniva riscritto per intero da
+// dashboard e Cleaning Manager (rischio di sovrascritture), e la sincronizzazione
+// live con Smoobu deve poter aggiornare una prenotazione senza toccare il resto.
+const BOOKINGS_COL = 'bookings';
+
+// Verifica la password admin senza bloccare la richiesta
+async function hasAdminPin(req) {
+  const pin = req.headers['x-admin-pin'] || req.query.pin;
+  if (!pin) return false;
+  try {
+    const auth = await (await getCollection('auth')).findOne({ _id: 'auth' });
+    if (!auth || !auth.hash) return false;
+    return crypto.createHash('sha256').update(String(pin)).digest('hex') === auth.hash;
+  } catch (e) { return false; }
+}
+
+// Migrazione una tantum: sposta db.main.prenotazioni nella collection bookings.
+// Prima salva un backup completo del blocco in "backups".
+let _bookingsMigrationPromise = null;
+function ensureBookingsMigrated() {
+  if (!_bookingsMigrationPromise) {
+    _bookingsMigrationPromise = (async () => {
+      const main = await getCollection('db');
+      const doc = await main.findOne({ _id: 'main' });
+      if (!doc || !Array.isArray(doc.prenotazioni) || doc.prenotazioni.length === 0) return;
+      const now = new Date().toISOString();
+      await (await getCollection('backups')).insertOne({
+        _id: 'pre_bookings_migration_' + Date.now(), created_at: now, reason: 'prenotazioni → collection bookings', db: doc,
+      });
+      const col = await getCollection(BOOKINGS_COL);
+      const list = doc.prenotazioni.filter(b => b && b.id);
+      for (let i = 0; i < list.length; i += 500) {
+        const ops = list.slice(i, i + 500).map(b => {
+          const { _id, ...clean } = b;
+          return { replaceOne: { filter: { _id: String(b.id) }, replacement: { ...clean, _id: String(b.id), _rev: 1, _updated_at: now }, upsert: true } };
+        });
+        await col.bulkWrite(ops, { ordered: false });
+      }
+      await col.createIndex({ checkin: 1 }).catch(() => {});
+      await col.createIndex({ ota_num: 1 }).catch(() => {});
+      await main.updateOne({ _id: 'main' }, { $unset: { prenotazioni: '' }, $set: { _bookings_migrated_at: now } });
+      console.log(`[bookings] migrate ${list.length} prenotazioni nella collection dedicata`);
+    })().catch(e => { _bookingsMigrationPromise = null; throw e; });
+  }
+  return _bookingsMigrationPromise;
+}
+
+// Migrazione anche all'avvio, così è fatta prima di qualunque altra scrittura
+setTimeout(() => { ensureBookingsMigrated().catch(e => console.error('[bookings/migrate]', e.message)); }, 3000);
+
+async function loadAllBookings() {
+  const docs = await (await getCollection(BOOKINGS_COL)).find({}).toArray();
+  return docs.map(({ _id, ...b }) => b);
+}
+
+// Applica le modifiche alle prenotazioni inviate dalla dashboard.
+// upsert: [prenotazione con _rev]  delete: [id]
+// Se una prenotazione è stata cambiata nel frattempo da altri (es. sync Smoobu)
+// non la sovrascrive: la restituisce in "conflicts" con la versione attuale.
+async function applyBookingChanges(changes) {
+  const col = await getCollection(BOOKINGS_COL);
+  const now = new Date().toISOString();
+  const revs = {}, conflicts = [];
+  for (const b of (changes.upsert || [])) {
+    if (!b || !b.id) continue;
+    const id = String(b.id);
+    const { _id, _rev, _updated_at, ...clean } = b;
+    const current = await col.findOne({ _id: id }, { projection: { _rev: 1 } });
+    if (current && _rev != null && current._rev !== _rev) {
+      const fresh = await col.findOne({ _id: id });
+      const { _id: x, ...f } = fresh;
+      conflicts.push(f);
+      continue;
+    }
+    const nextRev = (current ? (current._rev || 0) : 0) + 1;
+    const filter = current ? { _id: id, _rev: current._rev } : { _id: id };
+    const r = await col.replaceOne(filter, { ...clean, _id: id, _rev: nextRev, _updated_at: now }, { upsert: !current });
+    if (current && r.matchedCount === 0) {
+      const fresh = await col.findOne({ _id: id });
+      if (fresh) { const { _id: x, ...f } = fresh; conflicts.push(f); }
+      continue;
+    }
+    revs[id] = nextRev;
+  }
+  let deleted = 0;
+  for (const id of (changes.delete || [])) {
+    const r = await col.deleteOne({ _id: String(id) });
+    deleted += r.deletedCount;
+  }
+  return { revs, conflicts, deleted };
+}
+
+// GET /api/db            → blocco dati SENZA prenotazioni (usato anche dal Cleaning Manager)
+// GET /api/db?bookings=1 → blocco + prenotazioni (solo con password admin)
 app.get('/api/db', async (req, res) => {
   try {
+    await ensureBookingsMigrated();
     const col = await getCollection('db');
-    const doc = await col.findOne({ _id: 'main' });
-    if (doc) {
-      const { _id, ...db } = doc;
-      res.json({ ok: true, db });
-    } else {
-      res.json({ ok: true, db: null });
+    const doc = await col.findOne({ _id: 'main' }, { projection: { prenotazioni: 0 } });
+    if (!doc) return res.json({ ok: true, db: null });
+    const { _id, ...db } = doc;
+    if (req.query.bookings === '1') {
+      if (!(await hasAdminPin(req))) return res.status(401).json({ ok: false, error: 'invalid_pin' });
+      db.prenotazioni = await loadAllBookings();
+      db._bookings_live = true;
     }
+    res.json({ ok: true, db });
   } catch (e) {
+    console.error('[GET /api/db]', e.message);
     res.json({ ok: false, db: null, error: e.message });
   }
 });
 
+// POST /api/db  body: { db, bookingChanges? }
+// Il campo db.prenotazioni viene SEMPRE ignorato (le prenotazioni si salvano
+// solo tramite bookingChanges, con password admin).
 app.post('/api/db', async (req, res) => {
   try {
-    const { db } = req.body;
+    const { db, bookingChanges } = req.body || {};
     if (!db) return res.status(400).json({ ok: false });
-    const { _id, ...cleanDb } = db;
+    await ensureBookingsMigrated();
+    const { _id, prenotazioni, _bookings_live, ...cleanDb } = db;
     const col = await getCollection('db');
+    const prev = await col.findOne({ _id: 'main' }, { projection: { _bookings_migrated_at: 1 } });
+    if (prev && prev._bookings_migrated_at) cleanDb._bookings_migrated_at = prev._bookings_migrated_at;
     await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanDb }, { upsert: true });
-    res.json({ ok: true });
+    let bookings = null;
+    if (bookingChanges && ((bookingChanges.upsert || []).length || (bookingChanges.delete || []).length)) {
+      if (!(await hasAdminPin(req))) return res.status(401).json({ ok: false, error: 'invalid_pin' });
+      bookings = await applyBookingChanges(bookingChanges);
+    }
+    res.json({ ok: true, bookings });
   } catch (e) {
     console.error('[POST /api/db]', e.message);
     res.json({ ok: false, error: e.message });
   }
 });
 
-// ── Backup ────────────────────────────────────────────────────────
-app.get('/api/backup', async (req, res) => {
+// ── Backup (con password: contiene tutti i dati, prenotazioni comprese) ──
+app.get('/api/backup', requireAdminAuth, async (req, res) => {
   try {
+    await ensureBookingsMigrated();
     const col = await getCollection('db');
     const doc = await col.findOne({ _id: 'main' });
     const { _id, ...db } = doc || {};
+    db.prenotazioni = await loadAllBookings();
     const filename = `houzly-backup-${new Date().toISOString().slice(0,10)}.json`;
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ version: 3, date: new Date().toISOString(), db }, null, 2));
+    res.send(JSON.stringify({ version: 4, date: new Date().toISOString(), db }, null, 2));
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
-app.post('/api/restore', async (req, res) => {
+// ── Ripristino (con password): blocco dati + sostituzione completa delle prenotazioni ──
+app.post('/api/restore', requireAdminAuth, async (req, res) => {
   try {
     const { backup } = req.body;
     if (!backup) return res.status(400).json({ ok: false });
-    const col = await getCollection('db');
-    const { _id: _rid, ...cleanBackup } = backup;
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanBackup }, { upsert: true });
+    await ensureBookingsMigrated();
+    const { _id: _rid, prenotazioni, _bookings_live, ...cleanBackup } = backup;
+    const now = new Date().toISOString();
+    // backup di sicurezza dello stato attuale prima di sovrascrivere
+    const curMain = await (await getCollection('db')).findOne({ _id: 'main' });
+    const curBookings = await loadAllBookings();
+    await (await getCollection('backups')).insertOne({
+      _id: 'pre_restore_' + Date.now(), created_at: now, reason: 'prima di un ripristino',
+      db: { ...(curMain || {}), prenotazioni: curBookings },
+    });
+    cleanBackup._bookings_migrated_at = cleanBackup._bookings_migrated_at || now;
+    await (await getCollection('db')).replaceOne({ _id: 'main' }, { _id: 'main', ...cleanBackup }, { upsert: true });
+    if (Array.isArray(prenotazioni)) {
+      const col = await getCollection(BOOKINGS_COL);
+      await col.deleteMany({});
+      const list = prenotazioni.filter(b => b && b.id);
+      for (let i = 0; i < list.length; i += 500) {
+        await col.insertMany(list.slice(i, i + 500).map(b => {
+          const { _id, _rev, ...clean } = b;
+          return { ...clean, _id: String(b.id), _rev: 1, _updated_at: now };
+        }), { ordered: false });
+      }
+    }
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });
