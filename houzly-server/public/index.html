@@ -847,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v84 · 21/09 · Prenotazioni in archivio dedicato</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v85 · 22/09 · Accessi protetti</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2397,7 +2397,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         Le credenziali Smoobu sono gestite sul server e non passano pi&ugrave; da questa pagina.<br><br>
         Per cambiarle: Render &rarr; Environment &rarr; <code>SMOOBU_API_KEY</code> e <code>SMOOBU_API_SECRET</code>.<br><br>
         Per verificare che la firma funzioni, apri
-        <a href="/api/smoobu-hmac-test" target="_blank" rel="noopener">/api/smoobu-hmac-test</a>.
+        <a href="#" onclick="event.preventDefault();window.open('/api/smoobu-hmac-test?pin='+encodeURIComponent(getAdminPin()),'_blank');">/api/smoobu-hmac-test</a>.
       </div>
     </div>
     <div class="card">
@@ -9264,7 +9264,7 @@ async function clSyncSmoobu() {
     // Chiama il sync server-side: merge + rimozione cancellati + paginazione completa
     var resp = await fetch('/api/smoobu/sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: onbHeaders(),
       body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -9272,7 +9272,7 @@ async function clSyncSmoobu() {
     if (!result.ok) throw new Error(result.error || 'Errore sconosciuto');
 
     // Ricarica DB aggiornato dal server
-    var dbResp = await fetch('/api/db');
+    var dbResp = await fetch('/api/db', { headers: onbHeaders() });
     var dbData = await dbResp.json();
     if (dbData.ok && dbData.db) {
       // v84: /api/db senza password non contiene le prenotazioni → le conserviamo
