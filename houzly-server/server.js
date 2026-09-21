@@ -2400,6 +2400,30 @@ app.get('/api/debug/smoobu-sample', requireAdminAuth, async (req, res) => {
       return { prenotazione: b, price_elements: pe.data || { http: pe.status, raw: pe.raw } };
     };
 
+    // Ricerca per codice del portale (es. HM3XHFPRK8), CANCELLATE COMPRESE
+    // ?ref=HM3XHFPRK8&from=2026-07-01  (from = partenza da; default 120 giorni fa)
+    if (req.query.ref) {
+      const ref = String(req.query.ref).trim().toUpperCase();
+      const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from
+        : new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+      const found = [];
+      let pagesRead = 0;
+      for (let page = 1; page <= 40; page++) {
+        const l = await getJson('/api/reservations', { pageSize: 100, page, departureFrom: from, showCancellation: 'true' });
+        if (!l.data) return res.json({ ok: false, http: l.status, raw: l.raw });
+        const list = (l.data._embedded && l.data._embedded.bookings) || l.data.bookings || [];
+        pagesRead = page;
+        for (const b of list) {
+          const hay = [b['reference-id'], b.notice, b.id].map(x => String(x || '').toUpperCase()).join(' ');
+          if (hay.indexOf(ref) >= 0) found.push(b);
+        }
+        if (page >= (l.data.page_count || 1) || !list.length) break;
+      }
+      const out = [];
+      for (const b of found) out.push(await withPrices(b));
+      return res.json({ ok: true, cercato: ref, partenza_da: from, pagine_lette: pagesRead, trovate: out.length, risultati: out });
+    }
+
     if (req.query.id) {
       const one = await getJson(`/api/reservations/${encodeURIComponent(req.query.id)}`);
       if (!one.data) return res.json({ ok: false, http: one.status, raw: one.raw });
