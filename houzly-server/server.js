@@ -1434,6 +1434,44 @@ app.post('/api/bookings/sync-now', requireAdminAuth, (req, res) => {
   res.json({ ok: true, started: true });
 });
 
+// GET /api/bookings/coverage?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Verifica di copertura (SOLA LETTURA): elenco delle prenotazioni Smoobu con
+// soggiorno nel periodo (arrivo <= to, partenza >= from). Il confronto con le
+// prenotazioni del tool lo fa la dashboard.
+app.get('/api/bookings/coverage', requireAdminAuth, async (req, res) => {
+  try {
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const from = iso.test(req.query.from || '') ? req.query.from : null;
+    const to = iso.test(req.query.to || '') ? req.query.to : new Date().toISOString().slice(0, 10);
+    if (!from) return res.status(400).json({ ok: false, error: 'missing_from' });
+    let items = [], blocked = 0, pages = 0, total = null;
+    for (let page = 1; page <= 50; page++) {
+      const d = await smoobuGetJson('/api/reservations', { pageSize: 100, page, departureFrom: from });
+      const list = (d._embedded && d._embedded.bookings) || d.bookings || [];
+      pages = page; total = d.total_items;
+      for (const b of list) {
+        const arr = (b.arrival || '').slice(0, 10);
+        if (arr > to) continue;
+        if (b['is-blocked-booking'] === true) { blocked++; continue; }
+        if (b.type === 'cancellation') continue;
+        items.push({
+          id: String(b.id), ref: b['reference-id'] || null,
+          arrival: arr, departure: (b.departure || '').slice(0, 10),
+          apartment: (b.apartment && b.apartment.name) || '', channel: (b.channel && b.channel.name) || '',
+          guest: b['guest-name'] || [b.firstname, b.lastname].filter(Boolean).join(' '),
+          price: b.price,
+        });
+      }
+      if (page >= (d.page_count || 1) || !list.length) break;
+      await sleep(80);
+    }
+    res.json({ ok: true, from, to, items, blocked, pages, total_items: total });
+  } catch (e) {
+    console.error('[bookings/coverage]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/bookings/sync-status
 app.get('/api/bookings/sync-status', requireAdminAuth, async (req, res) => {
   try {
