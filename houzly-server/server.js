@@ -1366,10 +1366,14 @@ async function reconcileMirror(trigger) {
     // 1. tutte le prenotazioni attive con check-in dal BOOKINGS_SYNC_FROM
     let items = [];
     for (let page = 1; page <= 30; page++) {
-      const d = await smoobuGetJson('/api/reservations', { pageSize: 100, page, arrivalFrom: BOOKINGS_SYNC_FROM });
+      // departureFrom (verificato: restituisce tutto il futuro); le prenotazioni con
+      // arrivo prima di BOOKINGS_SYNC_FROM vengono scartate subito dopo
+      const d = await smoobuGetJson('/api/reservations', { pageSize: 100, page, departureFrom: BOOKINGS_SYNC_FROM });
       const list = (d._embedded && d._embedded.bookings) || d.bookings || [];
       items = items.concat(list);
       const pages = d.page_count || 1;
+      out.pages = page;
+      out.total_items = d.total_items;
       if (page >= pages || !list.length) break;
     }
     items = items.filter(b => b && b.id && b['is-blocked-booking'] !== true && b.type !== 'cancellation'
