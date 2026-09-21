@@ -1024,6 +1024,15 @@ select.field-input {
 //  CONFIG
 // ═══════════════════════════════
 const AUTH_KEY = 'houzly_auth_v2';
+// v23: il PIN resta sul dispositivo e accompagna ogni richiesta (accesso dedicato pulizie)
+const PIN_KEY = 'houzly_clean_pin';
+function cleanPin() { try { return localStorage.getItem(PIN_KEY) || ''; } catch (e) { return ''; } }
+function cleanHeaders() { return { 'Content-Type': 'application/json', 'x-cleaning-pin': cleanPin() }; }
+// PIN non più valido (es. cambiato): torna alla schermata del PIN
+function forceRelogin() {
+  try { localStorage.removeItem(AUTH_KEY); localStorage.removeItem(PIN_KEY); } catch (e) {}
+  location.reload();
+}
 const CLEANER_KEY = 'houzly_cleaner_v1'; // null = tutti (Daniele/Romeo), string = nome pulitrice
 // CLEANERS now loaded from DB (db.cleaning.cleaners array)
 const DOW = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
@@ -1082,16 +1091,17 @@ async function doLogin() {
         body: JSON.stringify({pin: pinBuffer})
       });
       const setData = await setRes.json();
-      if (setData.ok) { onAuthOk(); }
+      if (setData.ok) { localStorage.setItem(AUTH_KEY, '1'); localStorage.setItem(PIN_KEY, pinBuffer); onAuthOk(); }
       return;
     }
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch('/api/cleaning/login', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({pin: pinBuffer})
     });
     const data = await res.json();
     if (data.ok) {
       localStorage.setItem(AUTH_KEY, '1');
+      localStorage.setItem(PIN_KEY, pinBuffer);
       onAuthOk();
     } else {
       showErr('PIN errato');
@@ -1225,7 +1235,8 @@ async function enterApp() {
 // ═══════════════════════════════
 async function loadDB() {
   try {
-    const r = await fetch('/api/db');
+    const r = await fetch('/api/cleaning/db', { headers: cleanHeaders() });
+    if (r.status === 401) { forceRelogin(); return; }
     const data = await r.json();
     if (data.ok && data.db) {
       DB = data.db;
@@ -1236,10 +1247,12 @@ async function loadDB() {
 
 async function saveDB() {
   try {
-    await fetch('/api/db', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({db: DB})
+    // v23: salva SOLO la sezione pulizie (non tocca più il resto dei dati)
+    const r = await fetch('/api/cleaning/db', {
+      method: 'POST', headers: cleanHeaders(),
+      body: JSON.stringify({db: { cleaning: DB.cleaning }})
     });
+    if (r.status === 401) { forceRelogin(); return; }
   } catch(e) { console.error('saveDB error', e); }
 }
 
@@ -1347,9 +1360,10 @@ async function syncSmoobu() {
     // v22: la chiave non viene piu' inviata dal browser — la mette il server
     const r = await fetch('/api/smoobu/sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: cleanHeaders(),
       body: JSON.stringify({ months: parseInt(db.syncMonths || 3) })
     });
+    if (r.status === 401) { forceRelogin(); return; }
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Errore sconosciuto');
 
@@ -1398,6 +1412,7 @@ function doFullLogout() {
   if (!confirm('Vuoi davvero uscire? Dovrai reinserire il PIN per rientrare.')) return;
   // Rimuove TUTTO: PIN, identità, admin reauth
   localStorage.removeItem(AUTH_KEY);
+  localStorage.removeItem(PIN_KEY);
   localStorage.removeItem(CLEANER_KEY);
   localStorage.removeItem(ADMIN_REAUTH_KEY);
   myIdentity = null;
@@ -2348,7 +2363,7 @@ function toast(msg) {
 // ═══════════════════════════════
 async function boot() {
   // Check if already logged in (PIN already validated in a previous session)
-  if (localStorage.getItem(AUTH_KEY) === '1') {
+  if (localStorage.getItem(AUTH_KEY) === '1' && cleanPin()) {
     try {
       const r = await fetch('/api/auth/exists');
       const d = await r.json();
