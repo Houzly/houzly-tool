@@ -1975,6 +1975,57 @@ async function suspendFutureSessions(prop) {
   return r.modifiedCount;
 }
 
+// GET /api/debug/smoobu-sample?pin=XXXX            → 2 prenotazioni recenti per canale
+// GET /api/debug/smoobu-sample?pin=XXXX&id=12345   → una prenotazione precisa (ID Smoobu)
+// Diagnosi SOLA LETTURA per progettare la sincronizzazione live delle prenotazioni:
+// mostra tutti i campi della prenotazione e il dettaglio prezzi (price-elements).
+app.get('/api/debug/smoobu-sample', requireAdminAuth, async (req, res) => {
+  try {
+    const getJson = async (path, query) => {
+      const r = await smoobuFetch('GET', path, query ? { query } : undefined);
+      const text = await r.text();
+      let data = null; try { data = JSON.parse(text); } catch (e) {}
+      return { status: r.status, data, raw: data ? undefined : text.slice(0, 300) };
+    };
+    const withPrices = async (b) => {
+      const pe = await getJson(`/api/reservations/${b.id}/price-elements`);
+      return { prenotazione: b, price_elements: pe.data || { http: pe.status, raw: pe.raw } };
+    };
+
+    if (req.query.id) {
+      const one = await getJson(`/api/reservations/${encodeURIComponent(req.query.id)}`);
+      if (!one.data) return res.json({ ok: false, http: one.status, raw: one.raw });
+      return res.json({ ok: true, ...(await withPrices(one.data)) });
+    }
+
+    // Prenotazioni con partenza negli ultimi 45 giorni o future
+    const from = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+    const list = await getJson('/api/reservations', { pageSize: 100, page: 1, departureFrom: from });
+    const items = (list.data && ((list.data._embedded && list.data._embedded.bookings) || list.data.bookings)) || [];
+    const byChannel = {};
+    for (const b of items) {
+      if (b['is-blocked-booking']) continue;
+      const ch = (b.channel && b.channel.name) || 'sconosciuto';
+      byChannel[ch] = byChannel[ch] || [];
+      if (byChannel[ch].length < 2) byChannel[ch].push(b);
+    }
+    const out = {};
+    for (const [ch, arr] of Object.entries(byChannel)) {
+      out[ch] = [];
+      for (const b of arr) out[ch].push(await withPrices(b));
+    }
+    res.json({
+      ok: true,
+      http_lista: list.status,
+      totale_nella_pagina: items.length,
+      paginazione: list.data ? { page_count: list.data.page_count, total_items: list.data.total_items, page_size: list.data.page_size } : null,
+      canali: out,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/checkin/debug/property?pin=XXXX&name=belvedere
 // Diagnosi: cosa restituisce Smoobu per la struttura e cosa c'è nel database.
 app.get('/api/checkin/debug/property', requireAdminAuth, async (req, res) => {
