@@ -2340,10 +2340,24 @@ async function dispatchInitialMessage(session) {
   });
 
   const isDirectBooking = session.booking.channel_id === SMOOBU_CHANNEL_DIRECT;
+  const guestEmail = session.booking.primary_guest_email;
   let result;
   let channel;
 
-  if (isDirectBooking && session.booking.primary_guest_email) {
+  // Prenotazione diretta senza email: non c'è nessun recapito, inutile provare
+  if (isDirectBooking && !guestEmail) {
+    const sessionsCol0 = await getCollection('checkin_sessions');
+    await sessionsCol0.updateOne({ _id: session._id }, {
+      $set: { initial_message_due_at: null },
+      $push: { messages_sent: {
+        type: 'initial', channel: 'none', sent_at: new Date().toISOString(),
+        success: false, error: 'Nessun recapito: prenotazione diretta senza email ospite',
+      } },
+    });
+    return { success: false, error: 'no_guest_email', noRecipient: true };
+  }
+
+  if (isDirectBooking && guestEmail) {
     // Direct booking → email via Resend
     const html = messageText.replace(/\n/g, '<br>');
     result = await sendEmailFallback(session.booking.primary_guest_email, 'Houzly Online Check-in', html);
@@ -2352,6 +2366,17 @@ async function dispatchInitialMessage(session) {
     // OTA → chat Smoobu (rimbalza su Airbnb/Booking nativi)
     result = await sendSmoobuChatMessage(session.smoobu_booking_id, messageText);
     channel = 'smoobu_chat';
+    // Smoobu non ha un destinatario per questa prenotazione (di solito manca l'email)
+    if (!result.success && /recipient/i.test(result.error || '')) {
+      if (guestEmail) {
+        const html = messageText.replace(/\n/g, '<br>');
+        result = await sendEmailFallback(guestEmail, 'Houzly Online Check-in', html);
+        channel = 'email';
+      } else {
+        result = { success: false, error: 'Nessun recapito: manca l\'email dell\'ospite su Smoobu', noRecipient: true };
+        channel = 'none';
+      }
+    }
   }
 
   const sessionsCol = await getCollection('checkin_sessions');
@@ -2663,6 +2688,8 @@ async function recalculateSessionStatus(sessionId) {
 //   include_excluded=1 (mostra anche escluse e archiviate)   limit (default 200, max 500)
 // Restituisce una lista "leggera" (senza i dati dei documenti) + conteggi per stato.
 const CHECKIN_ATTENTION_STATUSES = ['manual_required', 'needs_review', 'long_stay_review'];
+// Stati di prenotazioni con ospiti da registrare (esclude escluse e archiviate)
+const CHECKIN_REGISTRABLE_STATUSES = ['pending', 'partial', 'complete', 'manual_required', 'needs_review'];
 let _checkinIndexesReady = false;
 app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
   try {
@@ -2673,7 +2700,7 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
       col.createIndex({ status: 1, 'booking.arrival': 1 }).catch(() => {});
       col.createIndex({ 'property.smoobu_id': 1 }).catch(() => {});
     }
-    const { view = 'upcoming', status, property_id, q, include_excluded } = req.query;
+    const { view = 'upcoming', status, property_id, q, include_excluded, reg } = req.query;
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 200, 1), 500);
     const today = new Date().toISOString().slice(0, 10);
 
@@ -2697,6 +2724,15 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
     if (status === 'attention') filter.status = { $in: CHECKIN_ATTENTION_STATUSES };
     else if (status) filter.status = status;
     else if (!showExcluded) filter.status = visibleStatuses;
+    // Registrazione su Alloggiati / ISTAT
+    if (reg === 'todo') {
+      filter['booking.arrival'] = { $lte: today };
+      filter.$and = [{ $or: [{ alloggiati_done_at: null }, { istat_done_at: null }] }];
+      if (!status) filter.status = { $in: CHECKIN_REGISTRABLE_STATUSES };
+    } else if (reg === 'done') {
+      filter.alloggiati_done_at = { $ne: null };
+      filter.istat_done_at = { $ne: null };
+    }
 
     const projection = {
       smoobu_booking_id: 1, is_test: 1, status: 1, exclusion_reason: 1,
@@ -2704,6 +2740,7 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
       'booking.arrival': 1, 'booking.departure': 1, 'booking.nights': 1,
       'booking.primary_guest_name': 1, 'booking.channel_name': 1, 'booking.total_guests_expected': 1,
       initial_message_due_at: 1, initial_message_sent_at: 1, completed_at: 1,
+      alloggiati_done_at: 1, istat_done_at: 1,
       'guests.slot': 1, 'guests.submitted_at': 1, 'guests.tax_code': 1, 'guests.tax_code_verified': 1,
       'messages_sent.type': 1, 'messages_sent.success': 1,
     };
@@ -2729,6 +2766,8 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
         link_failed: !d.initial_message_sent_at && (d.messages_sent || []).some(m => m.type === 'initial' && !m.success),
         reminders_sent: (d.messages_sent || []).filter(m => m.type && m.type.startsWith('reminder') && m.success).length,
         completed_at: d.completed_at || null,
+        alloggiati_done_at: d.alloggiati_done_at || null,
+        istat_done_at: d.istat_done_at || null,
       };
     });
 
@@ -2739,6 +2778,13 @@ app.get('/api/checkin/sessions', requireAdminAuth, async (req, res) => {
     ]).toArray();
     const counts = {};
     for (const a of agg) counts[a._id] = a.n;
+    // Ospiti già arrivati non ancora registrati su Alloggiati (scadenza 24h dall'arrivo)
+    counts.reg_todo = await col.countDocuments({
+      ...base,
+      status: { $in: CHECKIN_REGISTRABLE_STATUSES },
+      'booking.arrival': { $lte: today },
+      alloggiati_done_at: null,
+    });
 
     res.json({ ok: true, sessions, counts, truncated: docs.length === limit });
   } catch (e) {
@@ -2968,6 +3014,29 @@ app.delete('/api/checkin/sessions/:id/guests/:slot', requireAdminAuth, async (re
     await recalculateSessionStatus(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// PATCH /api/checkin/sessions/:id/registrations
+// Body: { alloggiati?: true|false, istat?: true|false }
+// Segna (o toglie) l'avvenuta registrazione su Alloggiati Web e sul portale ISTAT regionale.
+app.patch('/api/checkin/sessions/:id/registrations', requireAdminAuth, async (req, res) => {
+  try {
+    const { alloggiati, istat } = req.body || {};
+    const now = new Date().toISOString();
+    const set = { updated_at: now };
+    if (typeof alloggiati === 'boolean') set.alloggiati_done_at = alloggiati ? now : null;
+    if (typeof istat === 'boolean') set.istat_done_at = istat ? now : null;
+    if (Object.keys(set).length === 1) return res.status(400).json({ ok: false, error: 'nothing_to_update' });
+    const col = await getCollection('checkin_sessions');
+    const r = await col.findOneAndUpdate({ _id: req.params.id }, { $set: set }, {
+      returnDocument: 'after', projection: { alloggiati_done_at: 1, istat_done_at: 1 },
+    });
+    const doc = r && r.value !== undefined ? r.value : r;
+    if (!doc) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true, alloggiati_done_at: doc.alloggiati_done_at || null, istat_done_at: doc.istat_done_at || null });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // POST /api/checkin/sessions/:id/resend
@@ -3222,7 +3291,17 @@ app.post('/api/cron/checkin/dispatch', requireCronSecret, async (req, res) => {
       try { result = await dispatchInitialMessage(session); }
       catch (e) { result = { success: false, error: e.message }; }
 
-      await col.updateOne({ _id: session._id }, { $set: { initial_dispatch_claimed_at: null } });
+      const noRecipient = result?.noRecipient || /recipient|no_guest_email/i.test(result?.error || '');
+      await col.updateOne({ _id: session._id }, {
+        $set: noRecipient
+          ? {
+              initial_dispatch_claimed_at: null,
+              initial_message_due_at: null,
+              status: session.status === 'pending' ? 'manual_required' : session.status,
+              exclusion_reason: "Nessun recapito per inviare il link: aggiungi l'email dell'ospite su Smoobu e usa Rimanda link",
+            }
+          : { initial_dispatch_claimed_at: null },
+      });
       if (result?.success) sent++; else failed++;
     }
 
