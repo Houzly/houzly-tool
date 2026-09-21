@@ -664,6 +664,10 @@ app.post('/api/auth/set', async (req, res) => {
     if (!pin || pin.length < 4) return res.json({ ok: false, error: 'too_short' });
     const hash = crypto.createHash('sha256').update(pin).digest('hex');
     const col  = await getCollection('auth');
+    // Sicurezza: la password si imposta solo la PRIMA volta. Per cambiarla
+    // serve quella attuale (/api/auth/change).
+    const existing = await col.findOne({ _id: 'auth' });
+    if (existing && existing.hash) return res.status(403).json({ ok: false, error: 'already_set' });
     await col.replaceOne({ _id: 'auth' }, { _id: 'auth', hash }, { upsert: true });
     res.json({ ok: true });
   } catch (e) { console.error('[auth/set]', e.message); res.json({ ok: false, error: e.message }); }
@@ -779,7 +783,7 @@ async function applyBookingChanges(changes) {
 
 // GET /api/db            → blocco dati SENZA prenotazioni (usato anche dal Cleaning Manager)
 // GET /api/db?bookings=1 → blocco + prenotazioni (solo con password admin)
-app.get('/api/db', async (req, res) => {
+app.get('/api/db', requireAdminAuth, async (req, res) => {
   try {
     await ensureBookingsMigrated();
     const col = await getCollection('db');
@@ -801,15 +805,18 @@ app.get('/api/db', async (req, res) => {
 // POST /api/db  body: { db, bookingChanges? }
 // Il campo db.prenotazioni viene SEMPRE ignorato (le prenotazioni si salvano
 // solo tramite bookingChanges, con password admin).
-app.post('/api/db', async (req, res) => {
+app.post('/api/db', requireAdminAuth, async (req, res) => {
   try {
     const { db, bookingChanges } = req.body || {};
     if (!db) return res.status(400).json({ ok: false });
     await ensureBookingsMigrated();
     const { _id, prenotazioni, _bookings_live, ...cleanDb } = db;
     const col = await getCollection('db');
-    const prev = await col.findOne({ _id: 'main' }, { projection: { _bookings_migrated_at: 1 } });
+    const prev = await col.findOne({ _id: 'main' }, { projection: { _bookings_migrated_at: 1, cleaning: 1 } });
     if (prev && prev._bookings_migrated_at) cleanDb._bookings_migrated_at = prev._bookings_migrated_at;
+    // La sezione pulizie la gestiscono Cleaning Manager, webhook e sync:
+    // il tool non la sovrascrive più con la copia caricata all'apertura.
+    if (prev && prev.cleaning) cleanDb.cleaning = prev.cleaning;
     await col.replaceOne({ _id: 'main' }, { _id: 'main', ...cleanDb }, { upsert: true });
     let bookings = null;
     if (bookingChanges && ((bookingChanges.upsert || []).length || (bookingChanges.delete || []).length)) {
@@ -821,6 +828,46 @@ app.post('/api/db', async (req, res) => {
     console.error('[POST /api/db]', e.message);
     res.json({ ok: false, error: e.message });
   }
+});
+
+// ── Cleaning Manager: accesso dedicato (solo la sezione pulizie) ──────
+// L'app delle pulizie non vede più il resto dei dati (proprietari, contratti,
+// prenotazioni). Accetta la password del tool oppure un PIN solo-pulizie
+// impostato su Render con la variabile CLEANING_PIN.
+async function isCleaningPin(pin) {
+  if (!pin) return false;
+  if (process.env.CLEANING_PIN && String(pin) === String(process.env.CLEANING_PIN)) return true;
+  try {
+    const auth = await (await getCollection('auth')).findOne({ _id: 'auth' });
+    return !!(auth && auth.hash && crypto.createHash('sha256').update(String(pin)).digest('hex') === auth.hash);
+  } catch (e) { return false; }
+}
+async function requireCleaningAuth(req, res, next) {
+  const pin = req.headers['x-cleaning-pin'] || req.headers['x-admin-pin'] || req.query.pin;
+  if (!pin) return res.status(401).json({ ok: false, error: 'missing_pin' });
+  if (!(await isCleaningPin(pin))) return res.status(401).json({ ok: false, error: 'invalid_pin' });
+  next();
+}
+
+app.post('/api/cleaning/login', async (req, res) => {
+  try { res.json({ ok: await isCleaningPin((req.body || {}).pin) }); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/cleaning/db', requireCleaningAuth, async (req, res) => {
+  try {
+    const doc = await (await getCollection('db')).findOne({ _id: 'main' }, { projection: { cleaning: 1 } });
+    res.json({ ok: true, db: { cleaning: (doc && doc.cleaning) || null } });
+  } catch (e) { res.json({ ok: false, db: null, error: e.message }); }
+});
+
+app.post('/api/cleaning/db', requireCleaningAuth, async (req, res) => {
+  try {
+    const { db } = req.body || {};
+    if (!db || !db.cleaning) return res.status(400).json({ ok: false, error: 'missing_cleaning' });
+    await (await getCollection('db')).updateOne({ _id: 'main' }, { $set: { cleaning: db.cleaning } }, { upsert: true });
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
 // ── Backup (con password: contiene tutti i dati, prenotazioni comprese) ──
@@ -879,7 +926,7 @@ app.post('/api/restore', requireAdminAuth, async (req, res) => {
 // lettura, innocua) e riporta se la firma viene accettata.
 // Da aprire nel browser PRIMA di fidarsi del resto:
 //   https://houzly-tool.onrender.com/api/smoobu-hmac-test
-app.get('/api/smoobu-hmac-test', async (req, res) => {
+app.get('/api/smoobu-hmac-test', requireAdminAuth, async (req, res) => {
   const key = process.env.SMOOBU_API_KEY || '';
   const out = {
     modalita: SMOOBU_HMAC_ON ? 'HMAC (firmata)' : 'LEGACY (header Api-Key)',
@@ -914,7 +961,7 @@ app.get('/api/smoobu-hmac-test', async (req, res) => {
 // Prova le varianti di canonicalizzazione della query su /api/rates e
 // riporta quale viene accettata da Smoobu. Serve una volta sola, per
 // scoprire il formato giusto senza rideployare a tentativi.
-app.get('/api/smoobu-hmac-probe', async (req, res) => {
+app.get('/api/smoobu-hmac-probe', requireAdminAuth, async (req, res) => {
   if (!SMOOBU_HMAC_ON) return res.status(400).json({ ok: false, errore: 'SMOOBU_API_SECRET non impostata: la sonda serve solo in modalita HMAC' });
 
   const apt   = req.query.apartmentId || '2642743';
@@ -961,7 +1008,7 @@ app.get('/api/smoobu-hmac-probe', async (req, res) => {
 });
 
 // ── Smoobu Proxy (Houzly Tool — cleaning sync) ────────────────────
-app.get('/api/smoobu/reservations', async (req, res) => {
+app.get('/api/smoobu/reservations', requireAdminAuth, async (req, res) => {
   try {
     // v53-HMAC: la chiave NON arriva piu' dal browser — solo da process.env.
     // req.query.apiKey viene ignorato (accettato per compatibilita' col frontend vecchio).
@@ -990,7 +1037,7 @@ app.get('/api/smoobu/reservations', async (req, res) => {
 //  2. Rimuove i task con smoobu_id non più presente (cancellati)
 //  3. Aggiorna/aggiunge i task esistenti (preserva cleaner/status/notes/checklist/date_override)
 //  4. Salva su MongoDB e restituisce { ok, added, updated, removed }
-app.post('/api/smoobu/sync', async (req, res) => {
+app.post('/api/smoobu/sync', requireCleaningAuth, async (req, res) => {
   try {
     const col = await getCollection('db');
     const doc = await col.findOne({ _id: 'main' });
@@ -1132,7 +1179,8 @@ app.post('/api/smoobu/sync', async (req, res) => {
     });
 
     db.cleaning.lastSync = new Date().toISOString();
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+    // Scrive SOLO la sezione pulizie (non riscrive più l'intero blocco dati)
+    await col.updateOne({ _id: 'main' }, { $set: { cleaning: db.cleaning } }, { upsert: true });
 
     console.log(`[smoobu/sync] added:${added} updated:${updated} removed:${removed}`);
     res.json({ ok: true, added, updated, removed, total: relevant.length });
@@ -1202,7 +1250,7 @@ app.post('/api/smoobu/webhook', async (req, res) => {
           }
         }
         db.cleaning.lastSync = new Date().toISOString();
-        await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+        await col.updateOne({ _id: 'main' }, { $set: { cleaning: db.cleaning } }, { upsert: true });
       }
     }
 
@@ -1845,7 +1893,7 @@ app.post('/api/cloudinary/delete-many', cloudinaryCors, requireAdminAuth, async 
 // ── Reset checklist su tutti i task (one-shot) ───────────────────
 // GET /api/cleaning/reset-checklist
 // Sostituisce la checklist su TUTTI i task con quella di default corrente
-app.get('/api/cleaning/reset-checklist', async (req, res) => {
+app.get('/api/cleaning/reset-checklist', requireCleaningAuth, async (req, res) => {
   try {
     const col = await getCollection('db');
     const doc = await col.findOne({ _id: 'main' });
@@ -1879,7 +1927,7 @@ app.get('/api/cleaning/reset-checklist', async (req, res) => {
       updated++;
     });
 
-    await col.replaceOne({ _id: 'main' }, { _id: 'main', ...db }, { upsert: true });
+    await col.updateOne({ _id: 'main' }, { $set: { cleaning: db.cleaning } }, { upsert: true });
     console.log(`[reset-checklist] updated ${updated} tasks`);
     res.json({ ok: true, updated, message: `Checklist resettata su ${updated} task` });
   } catch (e) {
