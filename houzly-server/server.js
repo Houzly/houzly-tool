@@ -1255,6 +1255,11 @@ app.post('/api/smoobu/webhook', async (req, res) => {
     }
 
     // ──────────────────────────────────────────────────────────────
+    // PARTE 1b: SPECCHIO SMOOBU per la sincronizzazione live delle prenotazioni
+    // (errori isolati: non devono mai rompere pulizie o check-in)
+    try { await mirrorFromWebhook(b, action); }
+    catch (mirrorErr) { console.error('[Mirror] error:', mirrorErr.message); }
+
     // PARTE 2: CHECK-IN (nuova logica)
     // ──────────────────────────────────────────────────────────────
     // I blocchi puri (manutenzione/chiusura) saltano completamente il check-in
@@ -1279,6 +1284,182 @@ app.post('/api/smoobu/webhook', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+// ══════════════════════════════════════════════════════════════════
+// ── SINCRONIZZAZIONE LIVE PRENOTAZIONI (specchio Smoobu) ──────────
+// ══════════════════════════════════════════════════════════════════
+// Il server conserva i dati GREZZI di Smoobu (prenotazione + dettaglio prezzi)
+// nella collection "smoobu_mirror". Non calcola nulla: la trasformazione in
+// prenotazione del tool la fa la dashboard, con le stesse regole dell'import CSV.
+// Si sincronizzano solo le prenotazioni con check-in dal BOOKINGS_SYNC_FROM.
+const BOOKINGS_SYNC_FROM = process.env.BOOKINGS_SYNC_FROM || '2026-09-01';
+const MIRROR_COL = 'smoobu_mirror';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function smoobuGetJson(path, query) {
+  const r = await smoobuFetch('GET', path, query ? { query } : undefined);
+  const text = await r.text();
+  if (!r.ok) throw new Error(`Smoobu ${r.status} ${path}: ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
+async function fetchPriceElements(id) {
+  const d = await smoobuGetJson(`/api/reservations/${id}/price-elements`);
+  return (d && d.priceElements) || [];
+}
+
+// Salva/aggiorna una prenotazione nello specchio (con il dettaglio prezzi)
+async function mirrorUpsert(res, priceElements) {
+  const col = await getCollection(MIRROR_COL);
+  const now = new Date().toISOString();
+  await col.updateOne({ _id: String(res.id) }, { $set: {
+    res,
+    priceElements: priceElements || [],
+    arrival: (res.arrival || '').slice(0, 10),
+    departure: (res.departure || '').slice(0, 10),
+    modifiedAt: res.modifiedAt || null,
+    cancelled: false,
+    cancelled_at: null,
+    synced_at: now,
+  } }, { upsert: true });
+}
+
+async function mirrorMarkCancelled(id, reason) {
+  const col = await getCollection(MIRROR_COL);
+  const now = new Date().toISOString();
+  const r = await col.updateOne({ _id: String(id), cancelled: { $ne: true } },
+    { $set: { cancelled: true, cancelled_at: now, cancel_reason: reason || null, synced_at: now } });
+  return r.modifiedCount;
+}
+
+// Dal webhook Smoobu: nuove/modificate → scarica dettaglio prezzi; cancellate → segna
+async function mirrorFromWebhook(b, action) {
+  const id = String(b.id || b.reservationId || '');
+  if (!id) return;
+  const arrival = (b.arrival || '').slice(0, 10);
+  if (action === 'cancelledReservation' || action === 'deleteReservation') {
+    await mirrorMarkCancelled(id, 'webhook:' + action);
+    return;
+  }
+  if (b['is-blocked-booking'] === true) return;
+  if (!arrival || arrival < BOOKINGS_SYNC_FROM) return;
+  // Il webhook a volte arriva con dati parziali: rileggiamo la prenotazione completa
+  let full = b;
+  try { full = await smoobuGetJson(`/api/reservations/${id}`); } catch (e) { /* usiamo i dati del webhook */ }
+  if (full.type === 'cancellation') { await mirrorMarkCancelled(id, 'type:cancellation'); return; }
+  const pe = await fetchPriceElements(id);
+  await mirrorUpsert(full, pe);
+  console.log('[Mirror] aggiornata', id, action);
+}
+
+// Riallineamento completo con Smoobu (ogni ora da cron + pulsante "Sincronizza ora").
+// Gira in background: la risposta HTTP torna subito, l'esito si legge da sync_status.
+let _reconcileRunning = false;
+async function reconcileMirror(trigger) {
+  if (_reconcileRunning) return { ok: false, error: 'already_running' };
+  _reconcileRunning = true;
+  const started = new Date().toISOString();
+  const status = await getCollection('sync_status');
+  await status.updateOne({ _id: 'bookings' }, { $set: { running: true, started_at: started, trigger } }, { upsert: true });
+  const out = { found: 0, updated: 0, unchanged: 0, cancelled: 0, errors: 0 };
+  try {
+    const col = await getCollection(MIRROR_COL);
+    // 1. tutte le prenotazioni attive con check-in dal BOOKINGS_SYNC_FROM
+    let items = [];
+    for (let page = 1; page <= 30; page++) {
+      const d = await smoobuGetJson('/api/reservations', { pageSize: 100, page, arrivalFrom: BOOKINGS_SYNC_FROM });
+      const list = (d._embedded && d._embedded.bookings) || d.bookings || [];
+      items = items.concat(list);
+      const pages = d.page_count || 1;
+      if (page >= pages || !list.length) break;
+    }
+    items = items.filter(b => b && b.id && b['is-blocked-booking'] !== true && b.type !== 'cancellation'
+      && (b.arrival || '').slice(0, 10) >= BOOKINGS_SYNC_FROM);
+    out.found = items.length;
+
+    // 2. aggiorna solo quelle nuove o modificate (il dettaglio prezzi costa una chiamata)
+    const existing = await col.find({}, { projection: { modifiedAt: 1, cancelled: 1, arrival: 1 } }).toArray();
+    const byId = {};
+    existing.forEach(m => { byId[m._id] = m; });
+    for (const b of items) {
+      const m = byId[String(b.id)];
+      if (m && !m.cancelled && m.modifiedAt === (b.modifiedAt || null)) { out.unchanged++; continue; }
+      try {
+        const pe = await fetchPriceElements(b.id);
+        await mirrorUpsert(b, pe);
+        out.updated++;
+        await sleep(120);
+      } catch (e) { out.errors++; console.error('[reconcile]', b.id, e.message); }
+    }
+
+    // 3. nello specchio ma non più su Smoobu → cancellate
+    //    Sicurezza: se Smoobu restituisce 0 prenotazioni ma lo specchio ne ha molte, non cancelliamo nulla
+    const active = new Set(items.map(b => String(b.id)));
+    const activeInMirror = existing.filter(m => !m.cancelled && (m.arrival || '') >= BOOKINGS_SYNC_FROM);
+    if (items.length === 0 && activeInMirror.length > 5) {
+      out.warning = 'Smoobu ha restituito 0 prenotazioni: cancellazioni saltate per sicurezza';
+    } else {
+      for (const m of activeInMirror) {
+        if (!active.has(m._id)) out.cancelled += await mirrorMarkCancelled(m._id, 'reconcile:not_in_smoobu');
+      }
+    }
+    await status.updateOne({ _id: 'bookings' }, { $set: { running: false, finished_at: new Date().toISOString(), last_ok: true, last_result: out, last_error: null } });
+    console.log('[reconcile] ok', JSON.stringify(out));
+    return { ok: true, ...out };
+  } catch (e) {
+    await status.updateOne({ _id: 'bookings' }, { $set: { running: false, finished_at: new Date().toISOString(), last_ok: false, last_error: e.message, last_result: out } });
+    console.error('[reconcile] error', e.message);
+    return { ok: false, error: e.message, ...out };
+  } finally {
+    _reconcileRunning = false;
+  }
+}
+
+// POST /api/cron/bookings/reconcile  → da cron-job.org ogni ora (x-cron-secret)
+app.post('/api/cron/bookings/reconcile', requireCronSecret, (req, res) => {
+  reconcileMirror('cron').catch(() => {});
+  res.json({ ok: true, started: true });
+});
+
+// POST /api/bookings/sync-now  → pulsante "Sincronizza ora" della dashboard
+app.post('/api/bookings/sync-now', requireAdminAuth, (req, res) => {
+  if (_reconcileRunning) return res.json({ ok: true, started: false, running: true });
+  reconcileMirror('manual').catch(() => {});
+  res.json({ ok: true, started: true });
+});
+
+// GET /api/bookings/sync-status
+app.get('/api/bookings/sync-status', requireAdminAuth, async (req, res) => {
+  try {
+    const st = await (await getCollection('sync_status')).findOne({ _id: 'bookings' });
+    res.json({ ok: true, sync_from: BOOKINGS_SYNC_FROM, status: st || null, running: _reconcileRunning });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/bookings/mirror?since=ISO  → voci dello specchio aggiornate dopo "since"
+// (senza since: tutte). La dashboard le trasforma in prenotazioni.
+app.get('/api/bookings/mirror', requireAdminAuth, async (req, res) => {
+  try {
+    const q = { arrival: { $gte: BOOKINGS_SYNC_FROM } };
+    if (req.query.since) q.synced_at = { $gt: String(req.query.since) };
+    const docs = await (await getCollection(MIRROR_COL)).find(q).toArray();
+    const items = docs.map(m => ({
+      id: m._id, cancelled: !!m.cancelled, synced_at: m.synced_at, modifiedAt: m.modifiedAt,
+      res: m.res ? {
+        id: m.res.id, 'reference-id': m.res['reference-id'], type: m.res.type,
+        arrival: m.res.arrival, departure: m.res.departure,
+        apartment: m.res.apartment, channel: m.res.channel,
+        'guest-name': m.res['guest-name'], firstname: m.res.firstname, lastname: m.res.lastname,
+        email: m.res.email, adults: m.res.adults, children: m.res.children,
+        notice: m.res.notice, price: m.res.price, 'price-details': m.res['price-details'],
+        'city-tax': m.res['city-tax'], 'commission-included': m.res['commission-included'],
+        language: m.res.language,
+      } : null,
+      priceElements: (m.priceElements || []).map(p => ({ type: p.type, name: p.name, amount: p.amount, priceIncludedInId: p.priceIncludedInId })),
+    }));
+    res.json({ ok: true, sync_from: BOOKINGS_SYNC_FROM, server_time: new Date().toISOString(), items });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ══════════════════════════════════════════════════════════════════
 // ── Smoobu Booking Engine (houzly.it website proxy) ──────────────
 //
