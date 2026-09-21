@@ -637,6 +637,24 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .cki-prop-row{grid-template-columns:minmax(0,1fr) 90px}
   .cki-prop-row .cki-prop-reg,.cki-prop-row .cki-prop-city{grid-column:1/-1}
 }
+
+/* ══ MOBILE (v83): correzioni generali ══ */
+.mob-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;position:relative}
+.mob-scroll>table{margin:0}
+@media(max-width:860px){
+  .mob-1col{grid-template-columns:minmax(0,1fr)!important}
+  .mob-1col>*{grid-column:auto!important}
+  /* i figli delle griglie non devono allargare la pagina */
+  .layout-filter-content>*,#rpt-preview-area,#rpt-preview-area>*{min-width:0;max-width:100%}
+  #rpt-preview-area{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* finestre: sempre dentro lo schermo */
+  .modal{max-width:calc(100vw - 16px)!important;box-sizing:border-box}
+  .modal input,.modal select,.modal textarea{max-width:100%;box-sizing:border-box}
+  [style*="grid-template-columns"]>*{min-width:0}
+  /* intestazioni con pulsanti: vanno a capo invece di uscire */
+  .section-header{flex-wrap:wrap;gap:8px}
+  .mob-scroll{box-shadow:inset -12px 0 10px -10px rgba(15,21,53,.18)}
+}
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -829,7 +847,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v82 · 21/09 · Check-in registrazioni + accesso</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v83 · 21/09 · Mobile</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -14392,6 +14410,51 @@ async function ckiSyncBilling() {
     _ckiBillingRunning = false;
   }
 }
+
+// ── MOBILE (v83): tabelle larghe scorrevoli e griglie su una colonna ──────
+(function(){
+  if(!window.matchMedia) return;
+  var mq=window.matchMedia('(max-width: 860px)');
+  function inScroller(el){
+    var p=el.parentElement;
+    while(p&&p!==document.body){
+      var ox=getComputedStyle(p).overflowX;
+      if(ox==='auto'||ox==='scroll')return true;
+      p=p.parentElement;
+    }
+    return false;
+  }
+  function fixTable(t){
+    if(!t.offsetWidth||t.closest('.mob-scroll')||t.closest('#print-zone'))return;
+    var p=t.parentElement; if(!p)return;
+    if(t.offsetWidth<=p.clientWidth+2||inScroller(t))return;
+    var w=document.createElement('div'); w.className='mob-scroll';
+    p.insertBefore(w,t); w.appendChild(t);
+  }
+  function fixGrid(el){
+    if(el.classList.contains('mob-1col')||!el.offsetWidth)return;
+    var cols=(getComputedStyle(el).gridTemplateColumns||'').trim().split(/\s+/).filter(Boolean).length;
+    // 3+ colonne su schermo stretto, oppure 2 colonne su telefono (sotto i 420px)
+    if((cols>=3&&el.clientWidth<600)||(cols===2&&el.clientWidth<420&&el.closest('.modal')))el.classList.add('mob-1col');
+  }
+  function scan(){
+    if(!mq.matches)return;
+    document.querySelectorAll('.page.active table, .modal-overlay.open table, #modal-destinatario table').forEach(fixTable);
+    document.querySelectorAll('.page.active [style*="grid-template-columns"], .modal-overlay.open [style*="grid-template-columns"], #modal-destinatario [style*="grid-template-columns"]').forEach(fixGrid);
+  }
+  var pending=false;
+  function schedule(){ if(pending)return; pending=true; requestAnimationFrame(function(){ pending=false; try{scan();}catch(e){} }); }
+  window.mobFixLayout=schedule;
+  function start(){
+    new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+    // aperture di finestre e cambi pagina che non aggiungono elementi
+    document.addEventListener('click',function(){ setTimeout(schedule,60); },true);
+    document.addEventListener('change',function(){ setTimeout(schedule,60); },true);
+    window.addEventListener('resize',schedule);
+    schedule();
+  }
+  if(document.body)start(); else document.addEventListener('DOMContentLoaded',start);
+})();
 </script>
 </body>
 </html>
