@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v93 · 23/09 · Live da Smoobu</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v94 · 23/09 · Live da Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -15167,7 +15167,7 @@ function renderLiveFeed(){
         +'<div class="lv-ch '+ch.cls+'" title="'+esc(b.canale||'')+'">'+ch.t+'</div>'
         +'<div class="lv-who"><b>'+esc(b.ospite_nome||'—')+'</b><small>'+esc(pr?pr.nome:'')+(i.detail?' · '+esc(i.detail):'')+'</small></div>'
         +'<div class="lv-dates lv-prop">'+lvShortDate(b.checkin)+' → '+lvShortDate(b.checkout)+'<small>'+(b.notti||0)+' notti · '+(b.n_ospiti||0)+' ospiti</small></div>'
-        +'<div class="lv-amt"><b>'+eur(+b.tot||0)+'</b><small>+'+eur(comp)+' Houzly</small></div>'
+        +'<div class="lv-amt"><b>'+eur(+b.tot||0)+'</b><small>Compenso '+eur(comp)+'</small></div>'
         +'<div class="lv-when">'+badge+'<br>'+lvAgo(i.when)+'</div>'
         +'</div>';
     }).join('');
