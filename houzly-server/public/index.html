@@ -655,6 +655,52 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   .section-header{flex-wrap:wrap;gap:8px}
   .mob-scroll{box-shadow:inset -12px 0 10px -10px rgba(15,21,53,.18)}
 }
+/* ══ LIVE DA SMOOBU (v93) ══ */
+.lv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.lv-hd{display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,#0f1535 0%,#1b2560 100%);color:#fff;flex-wrap:wrap}
+.lv-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.lv-dot{width:9px;height:9px;border-radius:50%;background:#00e0a0;box-shadow:0 0 0 0 rgba(0,224,160,.7);animation:lvPulse 1.8s infinite}
+@keyframes lvPulse{0%{box-shadow:0 0 0 0 rgba(0,224,160,.6)}70%{box-shadow:0 0 0 9px rgba(0,224,160,0)}100%{box-shadow:0 0 0 0 rgba(0,224,160,0)}}
+.lv-sub{font-size:11px;color:rgba(255,255,255,.6)}
+.lv-hd .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff}
+.lv-hd .btn:hover{background:rgba(255,255,255,.18)}
+.lv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border)}
+.lv-kpi{background:var(--surface);padding:12px 16px}
+.lv-kpi span{display:block;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-light)}
+.lv-kpi b{display:block;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-top:2px}
+.lv-kpi small{font-size:11px;color:var(--text-light)}
+.lv-tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.lv-tab{border:1.5px solid var(--border);background:var(--surface);border-radius:16px;padding:4px 12px;font-size:11.5px;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:inherit}
+.lv-tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.lv-list{max-height:460px;overflow-y:auto}
+.lv-row{display:grid;grid-template-columns:40px minmax(0,1.5fr) minmax(0,1.3fr) 150px 110px 110px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.lv-row:hover{background:rgba(67,97,238,.04)}
+.lv-row:last-child{border-bottom:none}
+.lv-ch{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;font-family:'Syne',sans-serif}
+.lv-ch.airbnb{background:#ff5a5f}.lv-ch.booking{background:#003580}.lv-ch.diretta{background:#00b47d}.lv-ch.altro{background:#8892b0}
+.lv-who b{display:block;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-who small{font-size:11px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.lv-dates{font-size:12px;color:var(--text-mid)}
+.lv-dates small{display:block;color:var(--text-light);font-size:11px}
+.lv-amt{text-align:right}
+.lv-amt b{display:block;font-size:13.5px;color:var(--text)}
+.lv-amt small{font-size:11px;color:#079a6e;font-weight:600}
+.lv-when{text-align:right;font-size:11px;color:var(--text-light)}
+.lv-badge{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:10px;margin-bottom:3px}
+.lv-badge.new{background:rgba(0,196,140,.14);color:#079a6e}
+.lv-badge.mod{background:rgba(67,97,238,.12);color:var(--blue)}
+.lv-badge.cancel{background:rgba(240,64,96,.12);color:var(--red)}
+.lv-badge.rec{background:rgba(245,166,35,.15);color:#9a6200}
+.lv-empty{padding:28px;text-align:center;color:var(--text-light);font-size:12.5px}
+@media(max-width:860px){
+  .lv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lv-row{grid-template-columns:36px minmax(0,1fr) auto;gap:8px}
+  .lv-row .lv-ch{grid-row:1/3}
+  .lv-row .lv-who{grid-column:2;grid-row:1}
+  .lv-row .lv-amt{grid-column:3;grid-row:1}
+  .lv-row .lv-prop{grid-column:2;grid-row:2}
+  .lv-row .lv-when{grid-column:3;grid-row:2}
+}
 </style>
 <style>
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
@@ -847,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v92 · 22/09 · Cancellate Smoobu da decidere</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v93 · 23/09 · Live da Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -901,6 +947,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- STAT GRIDS -->
   <div class="stat-grid" id="stat-grid"></div>
   <div class="stat-grid" id="stat-grid-2" style="margin-top:0"></div>
+  <!-- LIVE DA SMOOBU (v93) -->
+  <div id="live-feed-container"></div>
   <!-- CHECK POST-IMPORT (v51) -->
   <div id="post-import-check-container" style="margin-bottom:14px"></div>
   <!-- IMPOSTA DI SOGGIORNO (v65) -->
@@ -4041,6 +4089,7 @@ function renderDash(){
     statCard('👤','Proprietari Attivi',DB.proprietari.length,DB.proprietari.filter(function(p){return p.tipo==='persona_fisica';}).length+' PF · '+DB.proprietari.filter(function(p){return p.tipo==='azienda';}).length+' Aziende','var(--blue)');
   // v51: Check post-import
   renderPostImportCheck();
+  if(typeof renderLiveFeed==='function') renderLiveFeed();
   // v65: Imposta di soggiorno
   renderImpostaSoggiorno();
   // Inizializza filtri Report del Mese se non già fatto
@@ -14856,6 +14905,7 @@ function syncApply(items){
       // restano un incasso vero: decide Houzly (elimina o tieni).
       if(!bc._sync_cancelled){
         bc._sync_cancelled=now;
+        if(typeof lvLog==='function') lvLog('cancel',bc,'cancellata su Smoobu');
         if(Array.isArray(bc.verified_checks)) bc.verified_checks=bc.verified_checks.filter(function(t){return t!=='sync_cancel_doc';});
         out.segnalate++;
       }
@@ -14883,6 +14933,7 @@ function syncApply(items){
       if(d.isDiretta&&b.pulizia) b._pul_da_confermare=true;
       if(before) b._sync_recuperata=now;
       b._smoobu={v:d.fields,mod:item.modifiedAt,at:now,created:true};
+      b.prenotata_il=item.res['created-at']||now;
       b.calc=doCalc(b);
       DB.prenotazioni.push(b);
       if(before) out.recuperate++; else out.nuove++;
@@ -14891,13 +14942,13 @@ function syncApply(items){
     // ── Prenotazione esistente: unione campo per campo ──
     if(b._sync_cancelled){ delete b._sync_cancelled; }  // tornata attiva su Smoobu
     var prev=b._smoobu&&b._smoobu.v;
-    var changed=false, conflicts=[];
+    var changed=false, conflicts=[], changedFields=[];
     SYNC_FIELDS.forEach(function(f){
       var nv=d.fields[f], cur=b[f];
       if(prev){
         var pv=prev[f];
         if(syncSame(cur,pv)){                       // non toccato da te → segue Smoobu
-          if(!syncSame(cur,nv)){ b[f]=nv; changed=true; }
+          if(!syncSame(cur,nv)){ b[f]=nv; changed=true; changedFields.push(f); }
         } else if(!syncSame(nv,pv) && !syncSame(cur,nv)){ // l'hai cambiato tu E Smoobu è cambiato
           conflicts.push(f);
         }
@@ -14920,7 +14971,15 @@ function syncApply(items){
     }
     var firstLink=!b._smoobu;
     b._smoobu={v:d.fields,mod:item.modifiedAt,at:now};
-    if(changed){ b.calc=doCalc(b); out.aggiornate++; }
+    if(item.res['created-at']&&b.prenotata_il!==item.res['created-at']){ b.prenotata_il=item.res['created-at']; out.meta=(out.meta||0)+1; }
+    if(changed){
+      b.calc=doCalc(b); out.aggiornate++;
+      if(prev&&changedFields.length&&typeof lvLog==='function'){
+        var lbl={checkin:'date',checkout:'date',notti:'notti',tot:'importo',n_ospiti:'ospiti',pulizia:'pulizia',comm_ota_abs:'commissione',ospite_nome:'nome ospite',proprieta_id:'struttura',tassa_tot:'tassa'};
+        var names=[]; changedFields.forEach(function(f){var n=lbl[f]; if(n&&names.indexOf(n)<0) names.push(n);});
+        if(names.length) lvLog('mod',b,names.join(', ')+' cambiat'+(names.length===1?'o':'i'));
+      }
+    }
     else if(firstLink){ b.calc=doCalc(b); }
   });
   return out;
@@ -14952,6 +15011,7 @@ async function syncFromSmoobu(full, silent){
     var o=syncApply(data.items||[]);
     _syncState.lastSummary={at:new Date().toISOString(),o:o,n:(data.items||[]).length};
     var txt=syncSummaryText(o);
+    if(!txt&&o.meta){ saveDB(); if(typeof renderLiveFeed==='function') renderLiveFeed(); }
     if(txt){
       saveDB();
       try{ var act=document.querySelector('.page.active'); if(act&&typeof renderPage==='function') renderPage(act.id.replace('page-','')); }catch(e){}
@@ -15004,6 +15064,116 @@ function syncStartLoop(){
     if(document.querySelector('.modal-overlay.open')) return;
     syncFromSmoobu(false,true);
   }, 120000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LIVE DA SMOOBU (v93): feed delle ultime prenotazioni e variazioni
+// ══════════════════════════════════════════════════════════════════
+var _lvFilter='all';
+function lvParseDate(s){
+  if(!s) return null;
+  var d=new Date(String(s).replace(' ','T'));
+  return isNaN(d.getTime())?null:d;
+}
+function lvAgo(d){
+  if(!d) return '';
+  var m=Math.round((Date.now()-d.getTime())/60000);
+  if(m<1) return 'adesso';
+  if(m<60) return m+' min fa';
+  var h=Math.round(m/60);
+  if(h<24) return h+(h===1?' ora fa':' ore fa');
+  var g=Math.round(h/24);
+  if(g<7) return g+(g===1?' giorno fa':' giorni fa');
+  return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+}
+function lvShortDate(iso){
+  if(!iso) return '';
+  var p=iso.split('-'), m=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][+p[1]-1];
+  return (+p[2])+' '+m;
+}
+function lvChannel(c){
+  c=(c||'').toLowerCase();
+  if(c.indexOf('airbnb')>=0) return {cls:'airbnb',t:'A'};
+  if(c.indexOf('booking')>=0) return {cls:'booking',t:'B'};
+  if(c.indexOf('dirett')>=0) return {cls:'diretta',t:'D'};
+  return {cls:'altro',t:'•'};
+}
+// registro delle variazioni (modifiche e cancellazioni) arrivate dalla sync
+function lvLog(type,b,detail){
+  if(!DB.sync_events) DB.sync_events=[];
+  DB.sync_events.unshift({t:new Date().toISOString(),type:type,id:b.id,detail:detail||''});
+  if(DB.sync_events.length>300) DB.sync_events.length=300;
+}
+function lvItems(){
+  var items=[];
+  // prenotazioni arrivate dalla sync, per data in cui l'ospite ha prenotato
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(!b._smoobu) return;
+    var d=lvParseDate(b.prenotata_il)||lvParseDate(b._smoobu.created&&b._smoobu.at);
+    if(!d) return;
+    items.push({kind:b._sync_recuperata?'rec':'new',when:d,b:b});
+  });
+  // modifiche e cancellazioni
+  (DB.sync_events||[]).forEach(function(ev){
+    if(ev.type!=='mod'&&ev.type!=='cancel') return;
+    var b=(DB.prenotazioni||[]).find(function(x){return x.id===ev.id;});
+    if(b) items.push({kind:ev.type,when:new Date(ev.t),b:b,detail:ev.detail});
+  });
+  items.sort(function(a,b){return b.when-a.when;});
+  return items;
+}
+function lvSetFilter(f){ _lvFilter=f; renderLiveFeed(); }
+function renderLiveFeed(){
+  var box=document.getElementById('live-feed-container');
+  if(!box) return;
+  var all=lvItems();
+  var now=Date.now(), dayAgo=now-86400000, weekAgo=now-7*86400000;
+  var news=all.filter(function(i){return i.kind==='new';});
+  function sum(list){ return list.reduce(function(a,i){a.n++;a.tot+=(+i.b.tot||0);a.h+=((i.b.calc&&i.b.calc.houzly)||0);return a;},{n:0,tot:0,h:0}); }
+  var today=sum(news.filter(function(i){return i.when.getTime()>=dayAgo;}));
+  var week=sum(news.filter(function(i){return i.when.getTime()>=weekAgo;}));
+  var list=all.filter(function(i){
+    if(_lvFilter==='all') return true;
+    if(_lvFilter==='new') return i.kind==='new'||i.kind==='rec';
+    return i.kind===_lvFilter;
+  }).slice(0,40);
+  var last=(typeof _syncState!=='undefined'&&_syncState.lastSummary)?new Date(_syncState.lastSummary.at):null;
+  var tabs=[['all','Tutte'],['new','Nuove'],['mod','Modifiche'],['cancel','Cancellazioni']];
+  var html='<div class="lv-card">'
+    +'<div class="lv-hd"><div><div class="lv-title"><span class="lv-dot"></span>Live da Smoobu</div>'
+    +'<div class="lv-sub">'+(last?'Ultima sincronizzazione '+last.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'In attesa della prima sincronizzazione')+'</div></div>'
+    +'<span style="flex:1"></span><button class="btn btn-sm" onclick="syncNow()">🔄 Sincronizza</button></div>'
+    +'<div class="lv-kpis">'
+    +'<div class="lv-kpi"><span>Nuove ultime 24h</span><b>'+today.n+'</b><small>'+eur(today.tot)+' lordo</small></div>'
+    +'<div class="lv-kpi"><span>Compenso 24h</span><b style="color:#079a6e">'+eur(today.h)+'</b><small>Houzly</small></div>'
+    +'<div class="lv-kpi"><span>Nuove 7 giorni</span><b>'+week.n+'</b><small>'+eur(week.tot)+' lordo</small></div>'
+    +'<div class="lv-kpi"><span>Compenso 7 giorni</span><b style="color:#079a6e">'+eur(week.h)+'</b><small>Houzly</small></div>'
+    +'</div>'
+    +'<div class="lv-tabs">'+tabs.map(function(t){return '<button class="lv-tab'+(_lvFilter===t[0]?' on':'')+'" onclick="lvSetFilter(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>'
+    +'<div class="lv-list">';
+  if(!list.length){
+    html+='<div class="lv-empty">Nessuna attività da mostrare. Le prenotazioni nuove compariranno qui appena arrivano da Smoobu.</div>';
+  } else {
+    html+=list.map(function(i){
+      var b=i.b, ch=lvChannel(b.canale);
+      var pr=(DB.proprieta||[]).find(function(p){return p.id===b.proprieta_id;});
+      var badge='';
+      if(i.kind==='new'&&i.when.getTime()>=dayAgo) badge='<span class="lv-badge new">NUOVA</span>';
+      else if(i.kind==='rec') badge='<span class="lv-badge rec">RECUPERATA</span>';
+      else if(i.kind==='mod') badge='<span class="lv-badge mod">MODIFICATA</span>';
+      else if(i.kind==='cancel') badge='<span class="lv-badge cancel">CANCELLATA</span>';
+      var comp=(b.calc&&b.calc.houzly)||0;
+      return '<div class="lv-row" onclick="viewPren(\''+b.id+'\')">'
+        +'<div class="lv-ch '+ch.cls+'" title="'+esc(b.canale||'')+'">'+ch.t+'</div>'
+        +'<div class="lv-who"><b>'+esc(b.ospite_nome||'—')+'</b><small>'+esc(pr?pr.nome:'')+(i.detail?' · '+esc(i.detail):'')+'</small></div>'
+        +'<div class="lv-dates lv-prop">'+lvShortDate(b.checkin)+' → '+lvShortDate(b.checkout)+'<small>'+(b.notti||0)+' notti · '+(b.n_ospiti||0)+' ospiti</small></div>'
+        +'<div class="lv-amt"><b>'+eur(+b.tot||0)+'</b><small>+'+eur(comp)+' Houzly</small></div>'
+        +'<div class="lv-when">'+badge+'<br>'+lvAgo(i.when)+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  html+='</div></div>';
+  box.innerHTML=html;
 }
 </script>
 </body>
