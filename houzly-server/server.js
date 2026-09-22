@@ -1491,6 +1491,7 @@ app.get('/api/bookings/mirror', requireAdminAuth, async (req, res) => {
       id: m._id, cancelled: !!m.cancelled, synced_at: m.synced_at, modifiedAt: m.modifiedAt,
       res: m.res ? {
         id: m.res.id, 'reference-id': m.res['reference-id'], type: m.res.type,
+        'created-at': m.res['created-at'] || null,
         arrival: m.res.arrival, departure: m.res.departure,
         apartment: m.res.apartment, channel: m.res.channel,
         'guest-name': m.res['guest-name'], firstname: m.res.firstname, lastname: m.res.lastname,
