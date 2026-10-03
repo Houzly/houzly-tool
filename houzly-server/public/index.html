@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v95b · 03/10 · Fix suddivisione (blocco corretto)</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v96 · 03/10 · Soggiorni lunghi competenza mensile</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2051,6 +2051,32 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <span><span style="font-weight:600">&#128181; Incassato direttamente dal proprietario</span><br><span style="font-size:11px;color:var(--text-light)">L'ospite ha pagato il proprietario (es. suo Booking). La ritenuta 21% la versa la piattaforma a lui. Houzly deve <strong>ricevere</strong> compenso + pulizie anticipate.</span></span>
         </label>
       </div>
+      <div class="field" style="margin-top:4px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(67,209,238,0.06);border:1px solid rgba(67,209,238,0.28);border-radius:var(--radius)">
+          <input type="checkbox" id="p-soggiorno-lungo" onchange="onSoggiornoLungoToggle()" style="width:18px;height:18px;flex-shrink:0">
+          <span><span style="font-weight:600">&#128197; Soggiorno lungo &mdash; competenza mensile</span><br><span style="font-size:11px;color:var(--text-light)">Per soggiorni Airbnb lunghi (28+ notti) a cavallo di pi&ugrave; mesi. L'importo viene spalmato proporzionalmente sui mesi, e appare in ogni report mensile con la quota di competenza. Airbnb paga mese per mese.</span></span>
+        </label>
+      </div>
+      <div id="sl-fields" style="display:none;margin-top:8px;padding:12px;background:rgba(67,209,238,0.04);border:1px solid rgba(67,209,238,0.18);border-radius:var(--radius)">
+        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin:0">
+            <label>Base imponibile reale (&euro;) <span style="font-weight:400;color:var(--text-light);font-size:11px">(guest paid)</span></label>
+            <input type="number" id="p-sl-base" step="0.01" oninput="renderSLPreview()">
+            <div class="field-hint" style="font-size:10.5px;color:var(--orange)">&#9888; Airbnb applica sconti mensili: usa il "Total" reale pagato dall'ospite, non il lordo Smoobu.</div>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Mese spese pulizia</label>
+            <select id="p-sl-pulizia-mese" onchange="renderSLPreview()"><option value="">Ultimo mese (default)</option></select>
+            <div class="field-hint" style="font-size:10.5px;color:var(--text-light)">In quale mese conteggiare la pulizia.</div>
+          </div>
+        </div>
+        <div class="field" style="margin:10px 0 0">
+          <label>Chiuso al <span style="font-weight:400;color:var(--text-light);font-size:11px">(check-out anticipato &mdash; opzionale)</span></label>
+          <input type="date" id="p-sl-chiuso-al" oninput="renderSLPreview()">
+          <div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Se l'ospite parte prima: i mesi successivi non vengono pi&ugrave; conteggiati nei report.</div>
+        </div>
+        <div id="sl-preview" style="margin-top:10px"></div>
+      </div>
       <div class="scorporo-box" id="sc-box"><h4>&#8595; Scorporo Live</h4><div id="sc-rows"><div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci totale prenotazione</div></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:18px"><button class="btn btn-ghost" onclick="goStep(1)">&larr; Indietro</button><button class="btn btn-primary" onclick="goStep(3)">Avanti &rarr;</button></div>
     </div>
@@ -3117,6 +3143,84 @@ function doCalc(b){
 }
 function r2(n){return Math.round((+(n||0))*100)/100;}
 
+// ═══════════════════════════════════════════════════════════════════════
+//  SOGGIORNO LUNGO — competenza mensile (v96)
+//  Per i soggiorni Airbnb ≥28 notti a cavallo di più mesi, l'importo va
+//  spalmato proporzionalmente per notti sui mesi di calendario attraversati.
+//  Airbnb paga a cicli mensili e, se l'ospite parte prima, i mesi successivi
+//  non si incassano → si "chiude" il soggiorno a una data (b.sl_chiuso_al).
+//  Base imponibile reale = b.sl_base (guest paid, al netto degli sconti
+//  mensili Airbnb) invece del lordo importato da Smoobu.
+//
+//  Flag/campi sulla prenotazione:
+//   b.soggiorno_lungo   = true per attivare lo spalmamento
+//   b.sl_base           = importo lordo REALE da spalmare (guest paid)
+//   b.sl_pulizia_mese   = 'YYYY-MM' del mese in cui conteggiare la pulizia (default: ultimo)
+//   b.sl_chiuso_al      = 'YYYY-MM-DD' data di chiusura anticipata (opz.)
+// ═══════════════════════════════════════════════════════════════════════
+
+// Conta le notti di un soggiorno che cadono in un dato mese di calendario (anno, mese 1-12).
+// Una "notte" è attribuita al giorno di check-in di quella notte (notte del 30/09 = settembre).
+function nottiNelMese(checkinISO, checkoutISO, anno, mese){
+  if(!checkinISO||!checkoutISO) return 0;
+  var ci=new Date(checkinISO+'T00:00:00'), co=new Date(checkoutISO+'T00:00:00');
+  if(isNaN(ci)||isNaN(co)||co<=ci) return 0;
+  var count=0;
+  var d=new Date(ci);
+  while(d<co){
+    if(d.getFullYear()===anno && (d.getMonth()+1)===mese) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+// Notti totali effettive del soggiorno, tenendo conto dell'eventuale chiusura anticipata.
+function nottiEffettiveSL(b){
+  var ci=b.checkin||'', co=b.checkout||'';
+  if(b.sl_chiuso_al && b.sl_chiuso_al<co) co=b.sl_chiuso_al; // chiusura anticipata accorcia il soggiorno
+  if(!ci||!co) return 0;
+  var a=new Date(ci+'T00:00:00'), z=new Date(co+'T00:00:00');
+  if(isNaN(a)||isNaN(z)||z<=a) return 0;
+  return Math.round((z-a)/86400000);
+}
+
+// Ultimo mese di calendario attraversato dal soggiorno (per default pulizia), come 'YYYY-MM'.
+function slUltimoMese(b){
+  var co=b.checkout||'';
+  if(b.sl_chiuso_al && b.sl_chiuso_al<co) co=b.sl_chiuso_al;
+  if(!co) return '';
+  // il checkout è la mattina: l'ultima notte è il giorno prima
+  var d=new Date(co+'T00:00:00'); d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+// È un soggiorno lungo attivo?
+function isSoggiornoLungo(b){ return !!(b && b.soggiorno_lungo && b.checkin && b.checkout); }
+
+// Calcola la "prenotazione virtuale" di competenza di un mese (anno, mese 1-12):
+// restituisce un oggetto {notti, tot, pulizia} con la quota spalmata di quel mese,
+// oppure null se il soggiorno non tocca quel mese.
+// - tot = base reale × (notti del mese / notti totali)
+// - pulizia = full solo nel mese scelto (sl_pulizia_mese), 0 negli altri
+function slQuotaMese(b, anno, mese){
+  if(!isSoggiornoLungo(b)) return null;
+  var nottiTot=nottiEffettiveSL(b);
+  if(nottiTot<=0) return null;
+  // Se chiuso in anticipo, le notti del mese vanno limitate alla data di chiusura
+  var coEff=b.checkout||'';
+  if(b.sl_chiuso_al && b.sl_chiuso_al<coEff) coEff=b.sl_chiuso_al;
+  var nMese=nottiNelMese(b.checkin, coEff, anno, mese);
+  if(nMese<=0) return null;
+  var base=(b.sl_base!=null && b.sl_base!=='' && +b.sl_base>0) ? +b.sl_base : (+b.tot||0);
+  var valNotte=base/nottiTot;
+  var totMese=r2(valNotte*nMese);
+  // Pulizia nel mese scelto (default: ultimo mese del soggiorno)
+  var meseStr=anno+'-'+String(mese).padStart(2,'0');
+  var pulMese=(b.sl_pulizia_mese||slUltimoMese(b));
+  var pulizia=(meseStr===pulMese)?(+b.pulizia||0):0;
+  return {notti:nMese, tot:totMese, pulizia:pulizia, nottiTot:nottiTot, valNotte:valNotte};
+}
+
 // v59: la ritenuta d'acconto 21% si applica SOLO a proprietari persona fisica.
 // Alle aziende non si trattiene mai nulla (gestiscono le imposte in proprio),
 // a prescindere dal toggle fisc_cedolare.
@@ -3697,8 +3801,9 @@ function renderPostImportCheck(){
   var syncCancelDoc = allBks.filter(function(b){ return matchesPostImportCheck(b,'sync_cancel_doc'); });
   var direttaPulSmoobu = allBks.filter(function(b){ return matchesPostImportCheck(b,'diretta_pul_smoobu'); });
   var syncRecuperate = allBks.filter(function(b){ return matchesPostImportCheck(b,'sync_recuperata'); });
+  var soggiornoLungo = allBks.filter(function(b){ return matchesPostImportCheck(b,'soggiorno_lungo_payout'); });
   var totIssues = airbnbNoPul.length + direttaNoPul.length + direttaNoTot.length + cavalloDaConf.length + antIncompleti.length + bookingNoTax.length
-    + syncConflict.length + syncCancelDoc.length + direttaPulSmoobu.length + syncRecuperate.length;
+    + syncConflict.length + syncCancelDoc.length + direttaPulSmoobu.length + syncRecuperate.length + soggiornoLungo.length;
   if(totIssues === 0){
     // Card verde — tutto ok
     container.innerHTML = '<div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac;border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:12px">'
@@ -3736,6 +3841,9 @@ function renderPostImportCheck(){
   }
   if(direttaPulSmoobu.length){
     html += chip(direttaPulSmoobu.length, 'Dirette con <strong>pulizia da Smoobu</strong> da confermare', 'Vai a Prenotazioni', 'goToPostImportCheck(\'diretta_pul_smoobu\')');
+  }
+  if(soggiornoLungo.length){
+    html += chip(soggiornoLungo.length, '<strong>&#128197; Soggiorni lunghi (28+ notti)</strong>: verifica base reale (Airbnb applica sconti mensili) e imposta la competenza mensile', 'Vai a Prenotazioni', 'goToPostImportCheck(\'soggiorno_lungo_payout\')');
   }
   if(airbnbNoPul.length){
     html += chip(airbnbNoPul.length, 'Prenotazioni Airbnb <strong>senza pulizia</strong>', 'Vai a Prenotazioni', 'goToPostImportCheck(\'airbnb_no_pul\')');
@@ -3781,6 +3889,9 @@ function matchesPostImportCheck(b, type){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2 && (b.checkin||'') >= bkCutoff;
   }
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
+  // v96: soggiorno lungo (28+ notti) non ancora impostato come competenza mensile.
+  // Airbnb applica sconti mensili e paga a rate: va verificata base reale + spalmamento.
+  if(type==='soggiorno_lungo_payout') return +b.notti>=28 && !b.soggiorno_lungo && !b.black;
   // v86: sincronizzazione Smoobu
   if(type==='sync_conflict') return Array.isArray(b._sync_conflict) && b._sync_conflict.length>0;
   if(type==='sync_cancel_doc') return !!b._sync_cancelled;
@@ -3816,7 +3927,7 @@ function unmarkCheckVerified(bookingId, type){
 }
 // Etichette leggibili per i tipi di check
 function checkTypeLabel(type){
-  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_pul:'Pulizia mancante (Diretta)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare',sync_conflict:'Smoobu diverso da una tua modifica',sync_cancel_doc:'Cancellata su Smoobu: elimina o tieni',diretta_pul_smoobu:'Pulizia Diretta da Smoobu da confermare',sync_recuperata:'Recuperata da Smoobu: verifica mese del report'};
+  var m={airbnb_no_pul:'Pulizia mancante (Airbnb)',diretta_no_pul:'Pulizia mancante (Diretta)',diretta_no_tot:'Importo mancante (Diretta)',booking_no_tax:'Tassa soggiorno mancante (Booking)',cavallo_no_mese:'Mese competenza da confermare',sync_conflict:'Smoobu diverso da una tua modifica',sync_cancel_doc:'Cancellata su Smoobu: elimina o tieni',diretta_pul_smoobu:'Pulizia Diretta da Smoobu da confermare',sync_recuperata:'Recuperata da Smoobu: verifica mese del report',soggiorno_lungo_payout:'Soggiorno lungo 28+ notti: verifica payout e competenza mensile'};
   return m[type]||type;
 }
 
@@ -3829,7 +3940,8 @@ var _postImportLabels = {
   sync_conflict: 'Smoobu diverso dalle tue modifiche',
   sync_cancel_doc: 'Cancellate su Smoobu da decidere',
   diretta_pul_smoobu: 'Diretta con pulizia da Smoobu da confermare',
-  sync_recuperata: 'Recuperate da Smoobu (arrivo prima del 1° settembre)'
+  sync_recuperata: 'Recuperate da Smoobu (arrivo prima del 1° settembre)',
+  soggiorno_lungo_payout: 'Soggiorni lunghi 28+ notti da impostare'
 };
 
 // v53: click su un check → vai a Prenotazioni con filtro applicato (rispetta periodo Dashboard)
@@ -4933,6 +5045,17 @@ function editPren(id){
   if(elOvr)elOvr.value=b.meseReportOverride||'';
   var elConf=document.getElementById('p-mese-confermato');
   if(elConf)elConf.checked=!!b.meseReportConfermato;
+  // v96: campi soggiorno lungo
+  var elSL=document.getElementById('p-soggiorno-lungo');
+  if(elSL)elSL.checked=!!b.soggiorno_lungo;
+  var elSLBase=document.getElementById('p-sl-base');
+  if(elSLBase)elSLBase.value=(b.sl_base!=null?b.sl_base:'');
+  var elSLChiuso=document.getElementById('p-sl-chiuso-al');
+  if(elSLChiuso)elSLChiuso.value=b.sl_chiuso_al||'';
+  popolaSLPuliziaMesi();
+  var elSLPul=document.getElementById('p-sl-pulizia-mese');
+  if(elSLPul)elSLPul.value=b.sl_pulizia_mese||'';
+  onSoggiornoLungoToggle();
   onPropSel();calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
   var eBtnP=document.getElementById('btn-save-pren');
   if(eBtnP){eBtnP.setAttribute('data-edit-id',id);eBtnP.textContent='💾 Aggiorna Prenotazione';}
@@ -5289,6 +5412,11 @@ function openNewModal(){
   // Reset mese competenza
   var elOvr2=document.getElementById('p-mese-override');if(elOvr2)elOvr2.value='';
   var elConf2=document.getElementById('p-mese-confermato');if(elConf2)elConf2.checked=false;
+  // v96: reset soggiorno lungo
+  var elSLr=document.getElementById('p-soggiorno-lungo');if(elSLr)elSLr.checked=false;
+  var elSLbr=document.getElementById('p-sl-base');if(elSLbr)elSLbr.value='';
+  var elSLcr=document.getElementById('p-sl-chiuso-al');if(elSLcr)elSLcr.value='';
+  var slBox=document.getElementById('sl-fields');if(slBox)slBox.style.display='none';
   var sel=document.getElementById('p-prop-sel');
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
   document.getElementById('prop-fiscal-info').style.display='none';
@@ -5434,6 +5562,74 @@ function updateMeseOverrideWarning(){
   warn.innerHTML='&#8634; <strong>Override mese.</strong> Questa prenotazione verrà inclusa nel report di <strong>'+MESI_IT_FULL[ovM-1]+' '+ovY+'</strong> al posto del default. Stesso trimestre DAC7, stesso anno fiscale: nessun impatto fiscale.';
   warn.style.display='block';
 }
+// v96: toggle soggiorno lungo — mostra/nasconde i campi e precompila
+function onSoggiornoLungoToggle(){
+  var on=document.getElementById('p-soggiorno-lungo').checked;
+  var box=document.getElementById('sl-fields');
+  if(box)box.style.display=on?'block':'none';
+  if(on){
+    // precompila base reale col totale se vuota
+    var baseEl=document.getElementById('p-sl-base');
+    if(baseEl && !baseEl.value){ var t=+document.getElementById('p-tot').value||0; if(t>0)baseEl.value=t; }
+    popolaSLPuliziaMesi();
+    renderSLPreview();
+  }
+}
+// Popola il selettore "mese pulizia" coi mesi attraversati dal soggiorno
+function popolaSLPuliziaMesi(){
+  var sel=document.getElementById('p-sl-pulizia-mese');
+  if(!sel)return;
+  var ci=document.getElementById('p-checkin').value, co=document.getElementById('p-checkout').value;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">Ultimo mese (default)</option>';
+  if(!ci||!co)return;
+  var mesiNomi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var a=new Date(ci+'T00:00:00'), z=new Date(co+'T00:00:00');
+  if(isNaN(a)||isNaN(z)||z<=a)return;
+  var seen={};
+  var d=new Date(a);
+  while(d<z){
+    var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!seen[key]){ seen[key]=1; var o=document.createElement('option'); o.value=key; o.textContent=mesiNomi[d.getMonth()]+' '+d.getFullYear(); sel.appendChild(o); }
+    d.setDate(d.getDate()+1);
+  }
+  if(cur)sel.value=cur;
+}
+// Anteprima ripartizione mensile dentro il modal
+function renderSLPreview(){
+  var box=document.getElementById('sl-preview');
+  if(!box)return;
+  var b={
+    checkin:document.getElementById('p-checkin').value,
+    checkout:document.getElementById('p-checkout').value,
+    sl_base:+document.getElementById('p-sl-base').value||0,
+    pulizia:+document.getElementById('p-pulizia').value||0,
+    sl_pulizia_mese:document.getElementById('p-sl-pulizia-mese').value,
+    sl_chiuso_al:document.getElementById('p-sl-chiuso-al').value,
+    soggiorno_lungo:true
+  };
+  if(!b.checkin||!b.checkout||!b.sl_base){ box.innerHTML='<div style="font-size:11px;color:var(--text-light)">Inserisci check-in, check-out e base imponibile per vedere la ripartizione.</div>'; return; }
+  var nTot=nottiEffettiveSL(b);
+  if(nTot<=0){ box.innerHTML='<div style="font-size:11px;color:var(--orange)">Date non valide.</div>'; return; }
+  var mesiNomi=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  var a=new Date(b.checkin+'T00:00:00'), coEff=b.checkout;
+  if(b.sl_chiuso_al&&b.sl_chiuso_al<coEff)coEff=b.sl_chiuso_al;
+  var z=new Date(coEff+'T00:00:00');
+  var mesiSet=[], seen={};
+  var d=new Date(a);
+  while(d<z){ var k=d.getFullYear()+'|'+(d.getMonth()+1); if(!seen[k]){seen[k]=1;mesiSet.push([d.getFullYear(),d.getMonth()+1]);} d.setDate(d.getDate()+1); }
+  var html='<div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Ripartizione mensile ('+nTot+' notti · &euro;'+(b.sl_base/nTot).toFixed(2)+'/notte)</div>';
+  var somma=0;
+  mesiSet.forEach(function(m){
+    var q=slQuotaMese(b,m[0],m[1]);
+    if(!q)return;
+    somma+=q.tot;
+    html+='<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)"><span>'+mesiNomi[m[1]-1]+' '+m[0]+' <span style="color:var(--text-light)">· '+q.notti+' notti</span></span><span style="font-weight:600">&euro;'+q.tot.toFixed(2)+(q.pulizia?' <span style="color:var(--green);font-size:10px">+'+q.pulizia.toFixed(0)+' pul.</span>':'')+'</span></div>';
+  });
+  html+='<div style="display:flex;justify-content:space-between;padding:5px 0 0;font-size:12px;font-weight:700;color:var(--cyan)"><span>Totale spalmato</span><span>&euro;'+somma.toFixed(2)+'</span></div>';
+  if(b.sl_chiuso_al){ html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Soggiorno chiuso al '+dateIt(b.sl_chiuso_al)+' — mesi successivi esclusi.</div>'; }
+  box.innerHTML=html;
+}
 function onCanaleChange(){
   var canale=document.getElementById('p-canale').value;
   var commField=document.getElementById('p-comm-abs');
@@ -5526,7 +5722,7 @@ function savePren(){
   var newCommAbs=(canale==='Diretta')?0:(+document.getElementById('p-comm-abs').value||0);
   // comm_ota_perc tenuto per retrocompatibilità (visualizzazioni che usano %)
   var newCommPerc=newTot>0?r2(newCommAbs/newTot*100):0;
-  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),calc:{}};
+  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),soggiorno_lungo:!!(document.getElementById('p-soggiorno-lungo')&&document.getElementById('p-soggiorno-lungo').checked),sl_base:(document.getElementById('p-sl-base')&&document.getElementById('p-sl-base').value!==''?+document.getElementById('p-sl-base').value:null),sl_pulizia_mese:(document.getElementById('p-sl-pulizia-mese')?document.getElementById('p-sl-pulizia-mese').value:''),sl_chiuso_al:(document.getElementById('p-sl-chiuso-al')?document.getElementById('p-sl-chiuso-al').value:''),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -6035,6 +6231,41 @@ function onRptGroupSel(){
   setupReportFiltri();
   previewReportProp();
 }
+// v96: un soggiorno lungo "tocca" il periodo se ha notti in quel mese/anno.
+// Sostituisce bkInPeriod per questi casi (che altrimenti cadrebbero in un solo mese).
+function slToccaPeriodo(b, meseNum, annoVal){
+  if(!isSoggiornoLungo(b)) return false;
+  if(!meseNum || !annoVal) return true; // "tutti i mesi": incluso
+  return !!slQuotaMese(b, annoVal, meseNum);
+}
+// v96: applica la mensilizzazione al b.calc delle prenotazioni soggiorno-lungo,
+// SOLO quando il report è su un mese+anno specifico. Ricalcola tot/comm/pulizia/
+// netto/houzly/iva/canone sulla quota di competenza di quel mese.
+function applySoggiornoLungoCalc(bks, meseNum, annoVal){
+  if(!meseNum || !annoVal) return; // senza mese specifico lascio il totale (vista annuale)
+  bks.forEach(function(b){
+    if(!isSoggiornoLungo(b)) return;
+    var q=slQuotaMese(b, annoVal, meseNum);
+    if(!q){ b.calc=doCalc(b); return; }
+    // Costruisco una prenotazione "virtuale" con i valori del mese e rieseguo doCalc
+    var vb={};
+    for(var k in b){ if(b.hasOwnProperty(k)) vb[k]=b[k]; }
+    vb.tot=q.tot;
+    vb.notti=q.notti;
+    vb.pulizia=q.pulizia;
+    // La commissione OTA va ricalcolata in proporzione: uso la % effettiva sul totale reale.
+    // Se comm_ota_abs era assoluta sul totale pieno, la riduco in proporzione alle notti del mese.
+    if(b.comm_ota_abs!=null && +b.comm_ota_abs>0 && q.nottiTot>0){
+      vb.comm_ota_abs=r2(+b.comm_ota_abs * (q.notti/q.nottiTot));
+    }
+    // La tassa di soggiorno sui soggiorni lunghi è gestita a parte (spesso assente): azzero qui
+    vb.tassa_tot=0; vb.tassa_pn=0;
+    b.calc=doCalc(vb);
+    b.calc.notti_mese_sl=q.notti;
+    b.calc.notti_tot_sl=q.nottiTot;
+    b._slMese=true; // marca che è una quota mensilizzata (per badge nel report)
+  });
+}
 function getReportBksFull(){
   var propId=document.getElementById('rpt-prop-sel').value;
   var groupId=document.getElementById('rpt-group-sel').value;
@@ -6055,12 +6286,16 @@ function getReportBksFull(){
   // Include ALL bookings (black and non-black)
   var bks=DB.prenotazioni.filter(function(b){return propIds.indexOf(b.proprieta_id)>=0;});
   if(mese||anno){
+    var _mi=mese?mesiArr().indexOf(mese)+1:0, _y=anno||0;
     bks=bks.filter(function(b){
-      var y=anno||0,mi=mese?mesiArr().indexOf(mese)+1:0;
-      return bkInPeriod(b,mi,y);
+      // v96: un soggiorno lungo passa se TOCCA il periodo (ha notti in quel mese)
+      if(isSoggiornoLungo(b)) return slToccaPeriodo(b,_mi,_y);
+      return bkInPeriod(b,_mi,_y);
     });
   }
   bks.forEach(function(b){b.calc=doCalc(b);});
+  // v96: mensilizza le quote dei soggiorni lunghi per il mese selezionato
+  if(mese&&anno){ applySoggiornoLungoCalc(bks, mesiArr().indexOf(mese)+1, anno); }
   return bks;
 }
 function getReportBks(){
@@ -6084,13 +6319,15 @@ function getReportBks(){
   if(!propIds.length)return[];
   var bks=DB.prenotazioni.filter(function(b){return propIds.indexOf(b.proprieta_id)>=0&&!b.black;});
   if(mese||anno){
+    var _mi2=mese?mesiArr().indexOf(mese)+1:0, _y2=anno||0;
     bks=bks.filter(function(b){
-      var y=anno||0,mi=mese?mesiArr().indexOf(mese)+1:0;
-      return bkInPeriod(b,mi,y);
+      if(isSoggiornoLungo(b)) return slToccaPeriodo(b,_mi2,_y2);
+      return bkInPeriod(b,_mi2,_y2);
     });
   }
   // Always recalculate to ensure fresh values after any data changes
   bks.forEach(function(b){b.calc=doCalc(b);});
+  if(mese&&anno){ applySoggiornoLungoCalc(bks, mesiArr().indexOf(mese)+1, anno); }
   return bks;
 }
 function previewReportProp(){
@@ -6159,7 +6396,7 @@ function previewReportProp(){
         +(isGroup?'<td style="font-size:11.5px;font-weight:700;color:var(--blue-mid)">'+nomeProp(b.proprieta_id)+'</td>':'')
         +'<td>'+dateIt(b.checkin)+'</td>'
         +'<td>'+dateIt(b.checkout)+'</td>'
-        +'<td>'+b.ospite_nome+'</td>'
+        +'<td>'+b.ospite_nome+(b._slMese?' <span style="display:inline-block;font-size:9px;font-weight:700;color:var(--cyan);background:rgba(67,209,238,0.12);border:1px solid rgba(67,209,238,0.3);border-radius:4px;padding:1px 5px;white-space:nowrap">&#128197; quota '+b.calc.notti_mese_sl+'/'+b.calc.notti_tot_sl+' notti</span>':'')+'</td>'
         +'<td><span class="badge '+chCls+'" style="font-size:9px">'+b.canale+'</span></td>'
         +'<td style="text-align:center">'+b.notti+'</td>'
         +'<td style="text-align:center">'+b.n_ospiti+'</td>'
