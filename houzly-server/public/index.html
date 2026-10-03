@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v98 · 03/10 · Soggiorni lunghi: ultimo mese di competenza</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v99 · 03/10 · Soggiorni lunghi: valore notte fisso su chiusura anticipata</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3162,6 +3162,9 @@ function r2(n){return Math.round((+(n||0))*100)/100;}
 //   b.sl_base           = importo lordo REALE da spalmare (guest paid)
 //   b.sl_pulizia_mese   = 'YYYY-MM' del mese in cui conteggiare la pulizia (default: ultimo)
 //   b.sl_chiuso_al      = 'YYYY-MM-DD' data di chiusura anticipata (opz.)
+//                         v99: la chiusura NON cambia il valore per notte (sempre
+//                         base / notti prenotate): si perdono solo le notti non godute
+//                         e i mesi già rendicontati restano invariati.
 //   b.sl_ultimo_mese    = 'YYYY-MM' ultimo mese di competenza (v97, opz.): le notti
 //                         successive vengono accorpate in questo mese (es. coda di
 //                         gennaio portata a dicembre per chiudere il report a fine anno)
@@ -3227,6 +3230,16 @@ function nottiDalMeseInPoi(checkinISO, checkoutISO, meseKey){
 // È un soggiorno lungo attivo?
 function isSoggiornoLungo(b){ return !!(b && b.soggiorno_lungo && b.checkin && b.checkout); }
 
+// v99: notti PRENOTATE in origine (check-in → check-out), ignorando la chiusura anticipata.
+// È il divisore fisso del valore per notte.
+function nottiPrenotateSL(b){
+  var ci=b.checkin||'', co=b.checkout||'';
+  if(!ci||!co) return 0;
+  var a=new Date(ci+'T00:00:00'), z=new Date(co+'T00:00:00');
+  if(isNaN(a)||isNaN(z)||z<=a) return 0;
+  return Math.round((z-a)/86400000);
+}
+
 // Calcola la "prenotazione virtuale" di competenza di un mese (anno, mese 1-12):
 // restituisce un oggetto {notti, tot, pulizia} con la quota spalmata di quel mese,
 // oppure null se il soggiorno non tocca quel mese.
@@ -3234,8 +3247,9 @@ function isSoggiornoLungo(b){ return !!(b && b.soggiorno_lungo && b.checkin && b
 // - pulizia = full solo nel mese scelto (sl_pulizia_mese), 0 negli altri
 function slQuotaMese(b, anno, mese){
   if(!isSoggiornoLungo(b)) return null;
-  var nottiTot=nottiEffettiveSL(b);
-  if(nottiTot<=0) return null;
+  // v99: il valore per notte si calcola sempre sulle notti prenotate in origine
+  var nottiTot=nottiPrenotateSL(b);
+  if(nottiTot<=0 || nottiEffettiveSL(b)<=0) return null;
   // Se chiuso in anticipo, le notti del mese vanno limitate alla data di chiusura
   var coEff=b.checkout||'';
   if(b.sl_chiuso_al && b.sl_chiuso_al<coEff) coEff=b.sl_chiuso_al;
@@ -5656,8 +5670,9 @@ function renderSLPreview(){
     soggiorno_lungo:true
   };
   if(!b.checkin||!b.checkout||!b.sl_base){ box.innerHTML='<div style="font-size:11px;color:var(--text-light)">Inserisci check-in, check-out e base imponibile per vedere la ripartizione.</div>'; return; }
-  var nTot=nottiEffettiveSL(b);
-  if(nTot<=0){ box.innerHTML='<div style="font-size:11px;color:var(--orange)">Date non valide.</div>'; return; }
+  var nTot=nottiPrenotateSL(b);
+  var nEff=nottiEffettiveSL(b);
+  if(nTot<=0||nEff<=0){ box.innerHTML='<div style="font-size:11px;color:var(--orange)">Date non valide.</div>'; return; }
   var mesiNomi=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
   var a=new Date(b.checkin+'T00:00:00'), coEff=b.checkout;
   if(b.sl_chiuso_al&&b.sl_chiuso_al<coEff)coEff=b.sl_chiuso_al;
@@ -5665,7 +5680,7 @@ function renderSLPreview(){
   var mesiSet=[], seen={};
   var d=new Date(a);
   while(d<z){ var k=d.getFullYear()+'|'+(d.getMonth()+1); if(!seen[k]){seen[k]=1;mesiSet.push([d.getFullYear(),d.getMonth()+1]);} d.setDate(d.getDate()+1); }
-  var html='<div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Ripartizione mensile ('+nTot+' notti · &euro;'+(b.sl_base/nTot).toFixed(2)+'/notte)</div>';
+  var html='<div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Ripartizione mensile ('+(nEff<nTot?nEff+' di '+nTot:nTot)+' notti · &euro;'+(b.sl_base/nTot).toFixed(2)+'/notte)</div>';
   var somma=0;
   mesiSet.forEach(function(m){
     var q=slQuotaMese(b,m[0],m[1]);
@@ -5674,7 +5689,7 @@ function renderSLPreview(){
     html+='<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)"><span>'+mesiNomi[m[1]-1]+' '+m[0]+' <span style="color:var(--text-light)">· '+q.notti+' notti</span></span><span style="font-weight:600">&euro;'+q.tot.toFixed(2)+(q.pulizia?' <span style="color:var(--green);font-size:10px">+'+q.pulizia.toFixed(0)+' pul.</span>':'')+'</span></div>';
   });
   html+='<div style="display:flex;justify-content:space-between;padding:5px 0 0;font-size:12px;font-weight:700;color:var(--cyan)"><span>Totale spalmato</span><span>&euro;'+somma.toFixed(2)+'</span></div>';
-  if(b.sl_chiuso_al){ html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Soggiorno chiuso al '+dateIt(b.sl_chiuso_al)+' — mesi successivi esclusi.</div>'; }
+  if(b.sl_chiuso_al){ html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Soggiorno chiuso al '+dateIt(b.sl_chiuso_al)+' — '+(nTot-nEff)+' notti non godute escluse (&euro;'+(b.sl_base/nTot*(nTot-nEff)).toFixed(2)+'). Valore per notte invariato: i mesi precedenti non cambiano.</div>'; }
   if(slFineCompetenza(b)){ var _fc=slFineCompetenza(b); html+='<div style="font-size:10.5px;color:var(--cyan);margin-top:4px">&#8634; Competenza chiusa a '+mesiNomi[+_fc.slice(5,7)-1]+' '+_fc.slice(0,4)+': le notti successive sono accorpate in quel mese.</div>'; }
   box.innerHTML=html;
 }
