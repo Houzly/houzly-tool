@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v94 · 23/09 · Live da Smoobu</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v95 · 03/10 · Fix suddivisione intestatario</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6229,8 +6229,19 @@ function previewReportProp(){
   }
   var copropsHTML='';
   if(own&&own.coprops&&own.coprops.length&&fiscRitenutaAttiva(own)){
-    copropsHTML='<div class="rpt-coprop"><h5>Ritenuta d\'Acconto per Co-Proprietari</h5>'
-      +own.coprops.map(function(cp){return'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span>'+cp.nome+' ('+(cp.perc*100).toFixed(0)+'%)</span><strong style="color:var(--cyan)">'+eur(r2(nettoImposta*cp.perc))+'</strong></div>';}).join('')+'</div>';
+    // v95: la suddivisione mostra SEMPRE anche l'intestatario con la sua quota residua
+    // (100% - somma quote coproprietari), così come fa il CU/DAC7. Prima mostrava solo
+    // i coprops, facendo sparire l'intestatario quando non era nella lista (es. Villetta
+    // di Sara: si vedeva solo Alessio 33%, mancava Tania 67%).
+    var _quoteCop=own.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+    var _quotaPrinc=Math.max(0,1-_quoteCop);
+    var _nomePrinc=((own.nome||'')+' '+(own.cognome||'')).trim()||nomeOwner(own.id)||'Intestatario';
+    var _rows='';
+    if(_quotaPrinc>0.0001){
+      _rows+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span>'+escHtml(_nomePrinc)+' (intestatario, '+(_quotaPrinc*100).toFixed(0)+'%)</span><strong style="color:var(--cyan)">'+eur(r2(nettoImposta*_quotaPrinc))+'</strong></div>';
+    }
+    _rows+=own.coprops.map(function(cp){return'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span>'+escHtml(cp.nome)+' ('+((+cp.perc||0)*100).toFixed(0)+'%)</span><strong style="color:var(--cyan)">'+eur(r2(nettoImposta*(+cp.perc||0)))+'</strong></div>';}).join('');
+    copropsHTML='<div class="rpt-coprop"><h5>Ritenuta d\'Acconto per Proprietario</h5>'+_rows+'</div>';
   }
   var reportTitle=isGroup&&grp?grp.nome:(prop?prop.nome:'');
   var subLabel=isGroup&&grp?(grp.children.length+' unità'):(own?nomeOwner(own.id):'');
@@ -6662,10 +6673,21 @@ function printReportContinue(selectedAntIds, markRecuperati){
            +srow('Netto bonificato al proprietario',eur(nettoBonifico2),'grand')
           :'')
         +(own&&own.coprops&&own.coprops.length
-          ?own.coprops.map(function(cp){
-             var qC=r2(sommaNetti2*cp.perc*0.21);
-             return srow(cp.nome+' ('+(cp.perc*100).toFixed(0)+'%) — ritenuta di competenza','- '+eur(qC),'coprop');
-           }).join('')
+          ?(function(){
+             // v95: mostro anche l'intestatario con la quota residua (100% - somma coprops)
+             var _qCop=own.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+             var _qPrinc=Math.max(0,1-_qCop);
+             var _nmPrinc=((own.nome||'')+' '+(own.cognome||'')).trim()||nomeOwner(own.id)||'Intestatario';
+             var _out='';
+             if(_qPrinc>0.0001){
+               _out+=srow(_nmPrinc+' (intestatario, '+(_qPrinc*100).toFixed(0)+'%) — ritenuta di competenza','- '+eur(r2(sommaNetti2*_qPrinc*0.21)),'coprop');
+             }
+             _out+=own.coprops.map(function(cp){
+               var qC=r2(sommaNetti2*(+cp.perc||0)*0.21);
+               return srow(cp.nome+' ('+((+cp.perc||0)*100).toFixed(0)+'%) — ritenuta di competenza','- '+eur(qC),'coprop');
+             }).join('');
+             return _out;
+           })()
           :'')
        // v60: ramo azienda/no-ritenuta — mostro anticipi e netto bonificato senza ritenuta
        :(anticipiRecuperi2.length
