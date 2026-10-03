@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v97 · 03/10 · Fix soggiorni lunghi nei mesi successivi</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v98 · 03/10 · Soggiorni lunghi: ultimo mese di competenza</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2071,6 +2071,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           </div>
         </div>
         <div class="field" style="margin:10px 0 0">
+          <label>Ultimo mese di competenza <span style="font-weight:400;color:var(--text-light);font-size:11px">(opzionale)</span></label>
+          <select id="p-sl-ultimo-mese" onchange="renderSLPreview()"><option value="">Fino al check-out (default)</option></select>
+          <div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Le notti dei mesi successivi vengono accorpate qui (es. scegli Dicembre per chiudere tutto al 31/12).</div>
+        </div>
+        <div class="field" style="margin:10px 0 0">
           <label>Chiuso al <span style="font-weight:400;color:var(--text-light);font-size:11px">(check-out anticipato &mdash; opzionale)</span></label>
           <input type="date" id="p-sl-chiuso-al" oninput="renderSLPreview()">
           <div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Se l'ospite parte prima: i mesi successivi non vengono pi&ugrave; conteggiati nei report.</div>
@@ -3157,6 +3162,9 @@ function r2(n){return Math.round((+(n||0))*100)/100;}
 //   b.sl_base           = importo lordo REALE da spalmare (guest paid)
 //   b.sl_pulizia_mese   = 'YYYY-MM' del mese in cui conteggiare la pulizia (default: ultimo)
 //   b.sl_chiuso_al      = 'YYYY-MM-DD' data di chiusura anticipata (opz.)
+//   b.sl_ultimo_mese    = 'YYYY-MM' ultimo mese di competenza (v97, opz.): le notti
+//                         successive vengono accorpate in questo mese (es. coda di
+//                         gennaio portata a dicembre per chiudere il report a fine anno)
 // ═══════════════════════════════════════════════════════════════════════
 
 // Conta le notti di un soggiorno che cadono in un dato mese di calendario (anno, mese 1-12).
@@ -3191,7 +3199,29 @@ function slUltimoMese(b){
   if(!co) return '';
   // il checkout è la mattina: l'ultima notte è il giorno prima
   var d=new Date(co+'T00:00:00'); d.setDate(d.getDate()-1);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  var nat=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  var lim=slFineCompetenza(b);
+  return (lim && lim<nat) ? lim : nat;
+}
+
+// v97: ultimo mese di competenza impostato a mano ('YYYY-MM'), oppure '' se assente/non valido.
+function slFineCompetenza(b){
+  var v=(b&&b.sl_ultimo_mese)||'';
+  return /^\d{4}-\d{2}$/.test(v) ? v : '';
+}
+
+// v97: notti dal mese 'YYYY-MM' (incluso) in poi — servono per accorpare la coda nell'ultimo mese.
+function nottiDalMeseInPoi(checkinISO, checkoutISO, meseKey){
+  if(!checkinISO||!checkoutISO) return 0;
+  var ci=new Date(checkinISO+'T00:00:00'), co=new Date(checkoutISO+'T00:00:00');
+  if(isNaN(ci)||isNaN(co)||co<=ci) return 0;
+  var count=0, d=new Date(ci);
+  while(d<co){
+    var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(k>=meseKey) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
 }
 
 // È un soggiorno lungo attivo?
@@ -3209,14 +3239,21 @@ function slQuotaMese(b, anno, mese){
   // Se chiuso in anticipo, le notti del mese vanno limitate alla data di chiusura
   var coEff=b.checkout||'';
   if(b.sl_chiuso_al && b.sl_chiuso_al<coEff) coEff=b.sl_chiuso_al;
-  var nMese=nottiNelMese(b.checkin, coEff, anno, mese);
+  var meseKey=anno+'-'+String(mese).padStart(2,'0');
+  var nMese;
+  // v97: se c'è un ultimo mese di competenza, i mesi dopo sono vuoti e la coda va in quel mese
+  var fineComp=slFineCompetenza(b);
+  if(fineComp && meseKey>fineComp) return null;
+  if(fineComp && meseKey===fineComp) nMese=nottiDalMeseInPoi(b.checkin, coEff, meseKey);
+  else nMese=nottiNelMese(b.checkin, coEff, anno, mese);
   if(nMese<=0) return null;
   var base=(b.sl_base!=null && b.sl_base!=='' && +b.sl_base>0) ? +b.sl_base : (+b.tot||0);
   var valNotte=base/nottiTot;
   var totMese=r2(valNotte*nMese);
   // Pulizia nel mese scelto (default: ultimo mese del soggiorno)
-  var meseStr=anno+'-'+String(mese).padStart(2,'0');
+  var meseStr=meseKey;
   var pulMese=(b.sl_pulizia_mese||slUltimoMese(b));
+  if(fineComp && pulMese>fineComp) pulMese=fineComp; // pulizia mai oltre l'ultimo mese di competenza
   var pulizia=(meseStr===pulMese)?(+b.pulizia||0):0;
   return {notti:nMese, tot:totMese, pulizia:pulizia, nottiTot:nottiTot, valNotte:valNotte};
 }
@@ -5055,6 +5092,8 @@ function editPren(id){
   popolaSLPuliziaMesi();
   var elSLPul=document.getElementById('p-sl-pulizia-mese');
   if(elSLPul)elSLPul.value=b.sl_pulizia_mese||'';
+  var elSLUlt=document.getElementById('p-sl-ultimo-mese');
+  if(elSLUlt)elSLUlt.value=b.sl_ultimo_mese||'';
   onSoggiornoLungoToggle();
   onPropSel();calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
   var eBtnP=document.getElementById('btn-save-pren');
@@ -5416,6 +5455,7 @@ function openNewModal(){
   var elSLr=document.getElementById('p-soggiorno-lungo');if(elSLr)elSLr.checked=false;
   var elSLbr=document.getElementById('p-sl-base');if(elSLbr)elSLbr.value='';
   var elSLcr=document.getElementById('p-sl-chiuso-al');if(elSLcr)elSLcr.value='';
+  var elSLur=document.getElementById('p-sl-ultimo-mese');if(elSLur)elSLur.value='';
   var slBox=document.getElementById('sl-fields');if(slBox)slBox.style.display='none';
   var sel=document.getElementById('p-prop-sel');
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
@@ -5582,6 +5622,10 @@ function popolaSLPuliziaMesi(){
   var ci=document.getElementById('p-checkin').value, co=document.getElementById('p-checkout').value;
   var cur=sel.value;
   sel.innerHTML='<option value="">Ultimo mese (default)</option>';
+  // v97: stesso elenco mesi anche per "ultimo mese di competenza"
+  var selU=document.getElementById('p-sl-ultimo-mese');
+  var curU=selU?selU.value:'';
+  if(selU)selU.innerHTML='<option value="">Fino al check-out (default)</option>';
   if(!ci||!co)return;
   var mesiNomi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   var a=new Date(ci+'T00:00:00'), z=new Date(co+'T00:00:00');
@@ -5590,10 +5634,12 @@ function popolaSLPuliziaMesi(){
   var d=new Date(a);
   while(d<z){
     var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    if(!seen[key]){ seen[key]=1; var o=document.createElement('option'); o.value=key; o.textContent=mesiNomi[d.getMonth()]+' '+d.getFullYear(); sel.appendChild(o); }
+    if(!seen[key]){ seen[key]=1; var o=document.createElement('option'); o.value=key; o.textContent=mesiNomi[d.getMonth()]+' '+d.getFullYear(); sel.appendChild(o);
+      if(selU){ var oU=o.cloneNode(true); selU.appendChild(oU); } }
     d.setDate(d.getDate()+1);
   }
   if(cur)sel.value=cur;
+  if(selU&&curU)selU.value=curU;
 }
 // Anteprima ripartizione mensile dentro il modal
 function renderSLPreview(){
@@ -5606,6 +5652,7 @@ function renderSLPreview(){
     pulizia:+document.getElementById('p-pulizia').value||0,
     sl_pulizia_mese:document.getElementById('p-sl-pulizia-mese').value,
     sl_chiuso_al:document.getElementById('p-sl-chiuso-al').value,
+    sl_ultimo_mese:(document.getElementById('p-sl-ultimo-mese')?document.getElementById('p-sl-ultimo-mese').value:''),
     soggiorno_lungo:true
   };
   if(!b.checkin||!b.checkout||!b.sl_base){ box.innerHTML='<div style="font-size:11px;color:var(--text-light)">Inserisci check-in, check-out e base imponibile per vedere la ripartizione.</div>'; return; }
@@ -5628,6 +5675,7 @@ function renderSLPreview(){
   });
   html+='<div style="display:flex;justify-content:space-between;padding:5px 0 0;font-size:12px;font-weight:700;color:var(--cyan)"><span>Totale spalmato</span><span>&euro;'+somma.toFixed(2)+'</span></div>';
   if(b.sl_chiuso_al){ html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Soggiorno chiuso al '+dateIt(b.sl_chiuso_al)+' — mesi successivi esclusi.</div>'; }
+  if(slFineCompetenza(b)){ var _fc=slFineCompetenza(b); html+='<div style="font-size:10.5px;color:var(--cyan);margin-top:4px">&#8634; Competenza chiusa a '+mesiNomi[+_fc.slice(5,7)-1]+' '+_fc.slice(0,4)+': le notti successive sono accorpate in quel mese.</div>'; }
   box.innerHTML=html;
 }
 function onCanaleChange(){
@@ -5722,7 +5770,7 @@ function savePren(){
   var newCommAbs=(canale==='Diretta')?0:(+document.getElementById('p-comm-abs').value||0);
   // comm_ota_perc tenuto per retrocompatibilità (visualizzazioni che usano %)
   var newCommPerc=newTot>0?r2(newCommAbs/newTot*100):0;
-  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),soggiorno_lungo:!!(document.getElementById('p-soggiorno-lungo')&&document.getElementById('p-soggiorno-lungo').checked),sl_base:(document.getElementById('p-sl-base')&&document.getElementById('p-sl-base').value!==''?+document.getElementById('p-sl-base').value:null),sl_pulizia_mese:(document.getElementById('p-sl-pulizia-mese')?document.getElementById('p-sl-pulizia-mese').value:''),sl_chiuso_al:(document.getElementById('p-sl-chiuso-al')?document.getElementById('p-sl-chiuso-al').value:''),calc:{}};
+  var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),soggiorno_lungo:!!(document.getElementById('p-soggiorno-lungo')&&document.getElementById('p-soggiorno-lungo').checked),sl_base:(document.getElementById('p-sl-base')&&document.getElementById('p-sl-base').value!==''?+document.getElementById('p-sl-base').value:null),sl_pulizia_mese:(document.getElementById('p-sl-pulizia-mese')?document.getElementById('p-sl-pulizia-mese').value:''),sl_chiuso_al:(document.getElementById('p-sl-chiuso-al')?document.getElementById('p-sl-chiuso-al').value:''),sl_ultimo_mese:(document.getElementById('p-sl-ultimo-mese')?document.getElementById('p-sl-ultimo-mese').value:''),calc:{}};
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
