@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v96 · 03/10 · Soggiorni lunghi competenza mensile</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v97 · 03/10 · Fix soggiorni lunghi nei mesi successivi</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6178,6 +6178,8 @@ function setupReportFiltri(){
     return DB.prenotazioni.some(function(b){
       if(b.proprieta_id!==propId)return false;
       if(!meseNum&&!annoVal)return true;
+      // v97: un soggiorno lungo rende "attiva" la proprietà in ogni mese in cui ha notti
+      if(isSoggiornoLungo(b)) return slToccaPeriodo(b,meseNum,annoVal);
       return bkInPeriod(b,meseNum,annoVal);
     });
   }
@@ -6235,8 +6237,18 @@ function onRptGroupSel(){
 // Sostituisce bkInPeriod per questi casi (che altrimenti cadrebbero in un solo mese).
 function slToccaPeriodo(b, meseNum, annoVal){
   if(!isSoggiornoLungo(b)) return false;
-  if(!meseNum || !annoVal) return true; // "tutti i mesi": incluso
-  return !!slQuotaMese(b, annoVal, meseNum);
+  if(!meseNum && !annoVal) return true;
+  if(meseNum && annoVal) return !!slQuotaMese(b, annoVal, meseNum);
+  // v97: solo anno → tocca se ha notti in almeno un mese di quell'anno
+  if(annoVal){
+    for(var m=1;m<=12;m++){ if(slQuotaMese(b, annoVal, m)) return true; }
+    return false;
+  }
+  // solo mese (qualsiasi anno) → controllo gli anni attraversati dal soggiorno
+  var y0=+(b.checkin||'').slice(0,4), y1=+(b.checkout||'').slice(0,4);
+  if(!y0) return false; if(!y1||y1<y0) y1=y0;
+  for(var y=y0;y<=y1;y++){ if(slQuotaMese(b, y, meseNum)) return true; }
+  return false;
 }
 // v96: applica la mensilizzazione al b.calc delle prenotazioni soggiorno-lungo,
 // SOLO quando il report è su un mese+anno specifico. Ricalcola tot/comm/pulizia/
@@ -6427,6 +6439,7 @@ function previewReportProp(){
   else if(propId)rptPropIdsForWarn=[propId];
   var pendingOnPeriod=DB.prenotazioni.filter(function(b){
     if(b.black||!needsMeseConferma(b))return false;
+    if(isSoggiornoLungo(b))return false; // v97: già spalmato a competenza mensile
     if(rptPropIdsForWarn.indexOf(b.proprieta_id)<0)return false;
     // Tocca il periodo selezionato (overlap) ma cade in un mese diverso da quello richiesto
     var meseSel=document.getElementById('rpt-mese').value;
@@ -7089,7 +7102,7 @@ function exportReportExcel(){
     var cbks=bks.filter(function(b){return b.canale===ch;});
     data.push([ch,'','','','','','COSTI CONDIVISI','TASSA DI SOGGIORNO','GIRO DI PARTITA','TOTALI','','','']);
     data.push(['INGRESSO','USCITA','CLIENTE','NOTTE','N.ADULTI','TOT.PRENOTAZIONE','COMMISSIONE OTA','TASSA SOGGIORNO','PULIZIA','Tot.Netto','Houzly','IVA 22%','Netto Proprietario']);
-    cbks.forEach(function(b){data.push([b.checkin,b.checkout,b.ospite_nome,b.notti,b.n_ospiti,b.calc.tot,b.calc.comm_ota,b.calc.tassa,b.calc.pulizia,b.calc.netto,b.calc.houzly,b.iva22?b.calc.iva22:0,b.calc.canone]);});
+    cbks.forEach(function(b){data.push([b.checkin,b.checkout,b.ospite_nome+(b._slMese?' (quota '+b.calc.notti_mese_sl+'/'+b.calc.notti_tot_sl+' notti)':''),(b._slMese?b.calc.notti_mese_sl:b.notti),b.n_ospiti,b.calc.tot,b.calc.comm_ota,b.calc.tassa,b.calc.pulizia,b.calc.netto,b.calc.houzly,b.iva22?b.calc.iva22:0,b.calc.canone]);});
     data.push([]);
   });
   var sommaNetti=r2(bks.reduce(function(s,b){return s+b.calc.canone;},0));
