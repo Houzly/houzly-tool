@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v95 · 03/10 · Fix suddivisione intestatario</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v95b · 03/10 · Fix suddivisione (blocco corretto)</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -6296,10 +6296,21 @@ function previewReportProp(){
             ?'<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">'
              +'<div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:700">Suddivisione per proprietario</div>'
              +'<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;font-style:italic">Solo informativo — ritenuta d\'acconto versata per quota di proprietà</div>'
+             // v95b: mostro SEMPRE anche l'intestatario con la sua quota residua (100% - somma coprops)
+             +(function(){
+                var _qc=own.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+                var _qp=Math.max(0,1-_qc);
+                if(_qp<=0.0001)return'';
+                var _np=((own.nome||'')+' '+(own.cognome||'')).trim()||nomeOwner(own.id)||'Intestatario';
+                return'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'
+                  +'<span style="color:rgba(255,255,255,0.7)">'+escHtml(_np)+' <span style="color:rgba(255,255,255,0.35);font-size:11px">'+(_qp*100).toFixed(0)+'% · intestatario</span></span>'
+                  +'<span style="color:#f87096;font-weight:600">- '+eur(r2(sommaNetti*_qp*0.21))+'</span>'
+                  +'</div>';
+             })()
              +own.coprops.map(function(cp){
-               var quotaCedolare=r2(sommaNetti*cp.perc*0.21);
+               var quotaCedolare=r2(sommaNetti*(+cp.perc||0)*0.21);
                return'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'
-                 +'<span style="color:rgba(255,255,255,0.7)">'+cp.nome+' <span style="color:rgba(255,255,255,0.35);font-size:11px">'+(cp.perc*100).toFixed(0)+'%</span></span>'
+                 +'<span style="color:rgba(255,255,255,0.7)">'+escHtml(cp.nome)+' <span style="color:rgba(255,255,255,0.35);font-size:11px">'+((+cp.perc||0)*100).toFixed(0)+'%</span></span>'
                  +'<span style="color:#f87096;font-weight:600">- '+eur(quotaCedolare)+'</span>'
                  +'</div>';
              }).join('')
@@ -6851,7 +6862,14 @@ function exportReportExcel(){
   data.push(['','','','','',sommaNetti,cedolare,nettoImposta]);
   if(own.coprops&&own.coprops.length&&fiscRitenutaAttiva(own)){
     data.push([]);data.push(['','','','','','RITENUTA D\'ACCONTO PROPRIETARI','QUOTA PROPRIETARIO','TOTALE']);
-    own.coprops.forEach(function(cp){data.push(['','','','','',cp.nome,cp.perc,r2(nettoImposta*cp.perc)]);});
+    // v95b: includo anche l'intestatario con la quota residua
+    var _qcX=own.coprops.reduce(function(s,cp){return s+(+cp.perc||0);},0);
+    var _qpX=Math.max(0,1-_qcX);
+    if(_qpX>0.0001){
+      var _npX=((own.nome||'')+' '+(own.cognome||'')).trim()||nomeOwner(own.id)||'Intestatario';
+      data.push(['','','','','',_npX+' (intestatario)',_qpX,r2(nettoImposta*_qpX)]);
+    }
+    own.coprops.forEach(function(cp){data.push(['','','','','',cp.nome,(+cp.perc||0),r2(nettoImposta*(+cp.perc||0))]);});
   }
   var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=Array(13).fill({wch:16});
   XLSX.utils.book_append_sheet(wb,ws,'Report Mensile');
