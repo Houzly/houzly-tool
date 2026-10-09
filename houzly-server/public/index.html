@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v100 · 03/10 · Blocco eliminazione proprietà con prenotazioni</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v102 · 09/10 · Locazione transitoria nel DAC7</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2082,6 +2082,28 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         </div>
         <div id="sl-preview" style="margin-top:10px"></div>
       </div>
+      <div class="field" style="margin-top:4px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.28);border-radius:var(--radius)">
+          <input type="checkbox" id="p-transitorio" onchange="onTransitorioToggle()" style="width:18px;height:18px;flex-shrink:0">
+          <span><span style="font-weight:600">&#127968; Locazione transitoria &mdash; contratto registrato</span><br><span style="font-size:11px;color:var(--text-light)">Soggiorno oltre 30 giorni regolato da contratto transitorio. Nel report va in una sezione separata: niente ritenuta 21% di Houzly (niente F24 1919 / CU), payout Airbnb a blocchi di 30 notti, cedolare pagata dal proprietario in dichiarazione.</span></span>
+        </label>
+      </div>
+      <div id="tr-fields" style="display:none;margin-top:8px;padding:12px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.18);border-radius:var(--radius)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin:0"><label>Conduttori</label><input type="text" id="p-tr-conduttori" placeholder="es. Mario Rossi e Anna Bianchi"></div>
+          <div class="field" style="margin:0"><label>Tipo contratto</label><input type="text" id="p-tr-tipo" placeholder="Transitorio art. 5 c.1 L. 431/98"></div>
+          <div class="field" style="margin:0"><label>Totale Airbnb &laquo;You earn&raquo; (&euro;)</label><input type="number" id="p-tr-netto" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Total Stay Price meno la commissione host Airbnb.</div></div>
+          <div class="field" style="margin:0"><label>Notti per payout</label><input type="number" id="p-tr-blocco" step="1" min="1" value="30" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Airbnb Long Term: 30.</div></div>
+          <div class="field" style="margin:0"><label>Canone registrato (&euro;)</label><input type="number" id="p-tr-canone" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Base della cedolare, pulizia esclusa.</div></div>
+          <div class="field" style="margin:0"><label>Aliquota cedolare (%)</label><input type="number" id="p-tr-ced" step="0.5" value="21" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">10% se canone concordato.</div></div>
+          <div class="field" style="margin:0"><label>Data registrazione RLI</label><input type="date" id="p-tr-rli-data"></div>
+          <div class="field" style="margin:0"><label>Protocollo RLI</label><input type="text" id="p-tr-rli-prot"></div>
+          <div class="field" style="margin:0"><label>Imposta di registro (&euro;)</label><input type="number" id="p-tr-imposta" step="0.01" value="0"></div>
+          <div class="field" style="margin:0"><label>Risoluzione anticipata al <span style="font-weight:400;color:var(--text-light);font-size:11px">(opz.)</span></label><input type="date" id="p-tr-chiuso-al" oninput="renderTRPreview()"></div>
+        </div>
+        <div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:8px">La % del compenso Houzly si imposta nel campo <strong>% Compenso Houzly</strong> qui sopra (es. 25). Le <strong>Spese Pulizia</strong> vengono trattenute sul 1&deg; payout.</div>
+        <div id="tr-preview" style="margin-top:10px"></div>
+      </div>
       <div class="scorporo-box" id="sc-box"><h4>&#8595; Scorporo Live</h4><div id="sc-rows"><div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci totale prenotazione</div></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:18px"><button class="btn btn-ghost" onclick="goStep(1)">&larr; Indietro</button><button class="btn btn-primary" onclick="goStep(3)">Avanti &rarr;</button></div>
     </div>
@@ -3228,7 +3250,183 @@ function nottiDalMeseInPoi(checkinISO, checkoutISO, meseKey){
 }
 
 // È un soggiorno lungo attivo?
-function isSoggiornoLungo(b){ return !!(b && b.soggiorno_lungo && b.checkin && b.checkout); }
+// v101: anche la locazione transitoria è "lunga" (stessi filtri per periodo), ma con calcolo a payout
+function isSoggiornoLungo(b){ return !!(b && (b.soggiorno_lungo || b.transitorio) && b.checkin && b.checkout); }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LOCAZIONE TRANSITORIA (v101)
+//  Contratto transitorio (art. 5 c.1 L. 431/98) incassato tramite Airbnb,
+//  che paga a blocchi di 30 notti (policy Long Term). NON è locazione breve:
+//  Houzly non trattiene la ritenuta 21% (niente F24 1919, niente CU/770).
+//  La cedolare la paga il proprietario in dichiarazione sul canone registrato.
+//  Campi sulla prenotazione:
+//   b.transitorio        = true
+//   b.tr_netto_airbnb    = totale "You earn" Airbnb (già al netto della commissione host)
+//   b.tr_payout_reali    = {"1":2325.68,...} importi reali dei payout (indice 1-based)
+//   b.tr_blocco_notti    = notti per payout (default 30)
+//   b.tr_canone          = canone registrato (base della cedolare, pulizia esclusa)
+//   b.tr_cedolare_perc   = aliquota cedolare (default 21)
+//   b.tr_tipo, b.tr_conduttori, b.tr_rli_data, b.tr_rli_protocollo, b.tr_imposta_registro
+//   b.tr_chiuso_al       = risoluzione anticipata (opz.)
+//   b.houzly_perc        = % Houzly di questa locazione (es. 25)
+//   b.pulizia            = pulizia finale, trattenuta da Houzly sul 1° payout
+// ═══════════════════════════════════════════════════════════════════════
+function isTransitorio(b){ return !!(b && b.transitorio && b.checkin && b.checkout); }
+function trAddDays(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function trNettoAirbnb(b){
+  if(b.tr_netto_airbnb!=null && b.tr_netto_airbnb!=='' && +b.tr_netto_airbnb>0) return r2(+b.tr_netto_airbnb);
+  return r2((+b.tot||0)-(+b.comm_ota_abs||0));
+}
+// Piano completo dei payout: blocchi da N notti dal check-in, stima pro-rata per notti
+// (l'ultimo blocco prende il residuo), importi reali dove inseriti.
+function trPiano(b){
+  var P={blocchi:[],nottiTot:0,nottiEff:0,totale:trNettoAirbnb(b),pulizia:+b.pulizia||0,perc:+b.houzly_perc||0,
+    iva:!!b.iva22,canone:+b.tr_canone||0,cedPerc:(b.tr_cedolare_perc!=null&&b.tr_cedolare_perc!==''?+b.tr_cedolare_perc:21),chiuso:false,
+    tot:{importo:0,pulizia:0,houzly:0,iva:0,bonifico:0,cedolare:0,netto_reale:0,notti:0}};
+  var nTot=nottiPrenotateSL(b); if(nTot<=0) return P;
+  P.nottiTot=nTot;
+  var coEff=b.checkout;
+  if(b.tr_chiuso_al && b.tr_chiuso_al>b.checkin && b.tr_chiuso_al<coEff){ coEff=b.tr_chiuso_al; P.chiuso=true; }
+  var nEff=Math.round((new Date(coEff+'T00:00:00')-new Date(b.checkin+'T00:00:00'))/86400000);
+  P.nottiEff=nEff;
+  var bl=Math.max(1,parseInt(b.tr_blocco_notti,10)||30);
+  var reali=b.tr_payout_reali||{};
+  var start=0, i=0;
+  while(start<nEff){
+    i++;
+    var n=Math.min(bl, nEff-start);
+    var dal=trAddDays(b.checkin,start), al=trAddDays(b.checkin,start+n);
+    var rv=reali[String(i)];
+    var hasReal=(rv!=null && rv!=='' && !isNaN(+rv));
+    P.blocchi.push({n:i,key:dal.slice(0,7),dal:dal,al:al,notti:n,reale:hasReal,
+      importo:hasReal?r2(+rv):r2(P.totale*n/nTot),pulizia:(i===1?P.pulizia:0)});
+    start+=n;
+  }
+  var B=P.blocchi, last=B.length-1;
+  if(last<0) return P;
+  // Soggiorno completo: l'ultimo payout stimato prende il residuo (somma = totale Airbnb)
+  if(!P.chiuso && !B[last].reale){
+    var altri=0; for(var k=0;k<last;k++) altri+=B[k].importo;
+    B[last].importo=r2(P.totale-altri);
+  }
+  var sumImp=0; B.forEach(function(x){sumImp+=x.importo;});
+  var hzTot=r2((sumImp-P.pulizia)*P.perc/100);
+  var ivaTot=P.iva?r2(hzTot*0.22):0;
+  var cedTot=r2(P.canone*P.cedPerc/100);
+  var accH=0, accI=0, accC=0;
+  B.forEach(function(x,k){
+    var chiude=(k===last); // l'ultimo blocco chiude gli arrotondamenti
+    x.houzly=chiude?r2(hzTot-accH):r2((x.importo-x.pulizia)*P.perc/100);
+    x.iva=P.iva?(chiude?r2(ivaTot-accI):r2(x.houzly*0.22)):0;
+    x.bonifico=r2(x.importo-x.pulizia-x.houzly-x.iva);
+    // cedolare pro-rata notti sul canone; a soggiorno completo l'ultimo blocco chiude al totale
+    x.cedolare=(chiude&&!P.chiuso)?r2(cedTot-accC):r2(cedTot*x.notti/nTot);
+    x.netto_reale=r2(x.bonifico-x.cedolare);
+    accH=r2(accH+x.houzly); accI=r2(accI+x.iva); accC=r2(accC+x.cedolare);
+    ['importo','pulizia','houzly','iva','bonifico','cedolare','netto_reale','notti'].forEach(function(f){P.tot[f]=r2(P.tot[f]+x[f]);});
+  });
+  return P;
+}
+// Calcolo di competenza di un periodo (payout con inizio nel mese/anno). meseNum/annoVal = 0 → tutti.
+function trCalcPeriodo(b, meseNum, annoVal){
+  if(!isTransitorio(b)) return null;
+  var P=trPiano(b);
+  var sel=P.blocchi.filter(function(x){
+    return (!annoVal||+x.key.slice(0,4)===+annoVal) && (!meseNum||+x.key.slice(5,7)===+meseNum);
+  });
+  if(!sel.length) return null;
+  function S(f){ return r2(sel.reduce(function(s,x){return s+x[f];},0)); }
+  var tot=S('importo'), pul=S('pulizia'), bon=S('bonifico');
+  return {tot:tot,comm_ota:0,tassa:0,pulizia:pul,netto:r2(tot-pul),houzly:S('houzly'),iva22:S('iva'),
+    canone:bon,rimborso_pulizie:0,canone_totale:bon,pulizie_owner:false,incasso_diretto:false,saldo_houzly:0,
+    transitorio:true,tr_blocchi:sel,tr_piano:P,cedolare_accantonare:S('cedolare'),netto_reale:S('netto_reale'),
+    notti_mese_sl:S('notti'),notti_tot_sl:P.nottiTot};
+}
+function trTotali(list){
+  var t={tot:0,pulizia:0,houzly:0,iva:0,bonifico:0,cedolare:0,netto:0};
+  (list||[]).forEach(function(b){ var c=b.calc||{};
+    t.tot+=+c.tot||0; t.pulizia+=+c.pulizia||0; t.houzly+=+c.houzly||0; t.iva+=+c.iva22||0;
+    t.bonifico+=+c.canone||0; t.cedolare+=+c.cedolare_accantonare||0; t.netto+=+c.netto_reale||0; });
+  for(var k in t) t[k]=r2(t[k]);
+  return t;
+}
+// Sezione report (anteprima + PDF): stili inline, colori fissi
+function trSectionHTML(list, isGroup){
+  var MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  function e(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function pc(n){ return String(+n).replace('.',','); }
+  function th(t,r){ return '<th style="padding:6px 5px;background:#0f1535;color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;text-align:'+(r?'right':'left')+';vertical-align:bottom">'+t+'</th>'; }
+  function td(v,r,x){ return '<td style="padding:6px 5px;border-bottom:1px solid #e5eaf5;font-size:10.5px;color:#1a1a2e;text-align:'+(r?'right':'left')+';font-variant-numeric:tabular-nums;white-space:nowrap;'+(x||'')+'">'+v+'</td>'; }
+  function cell(l,v){ return '<div style="padding:8px 10px;background:#f7f9ff;border:1px solid #e5eaf5;border-radius:6px"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;font-weight:700;margin-bottom:3px">'+l+'</div><div style="font-size:11.5px;color:#1a1a2e;font-weight:600;line-height:1.35">'+v+'</div></div>'; }
+  var out='';
+  list.forEach(function(b){
+    var c=b.calc, P=c.tr_piano, sel={};
+    c.tr_blocchi.forEach(function(x){sel[x.n]=1;});
+    var cfg=(typeof getEffectiveHouzlyConfig==='function')?getEffectiveHouzlyConfig(b.proprieta_id):null;
+    var percContr=cfg?(+cfg.houzly_perc||0):0;
+    var hasIva=P.iva;
+    var head='<tr>'+th('Payout')+th('Periodo')+th('Notti',1)+th('Incasso Airbnb',1)+th('Pulizia',1)+th('Houzly '+pc(P.perc)+'%',1)
+      +(hasIva?th('IVA 22%',1):'')+th('Bonifico',1)+th('Cedolare da accant.',1)+th('Netto reale',1)+'</tr>';
+    function riga(x,evid){
+      var bg=evid?'background:#e9f7fb;font-weight:700;':'';
+      var badge=x.reale
+        ?' <span style="font-size:8.5px;font-weight:800;color:#047857;background:#d1fae5;border-radius:4px;padding:1px 5px">REALE</span>'
+        :' <span style="font-size:8.5px;font-weight:800;color:#6b7280;background:#eef0f4;border-radius:4px;padding:1px 5px">STIMA</span>';
+      return '<tr>'+td(x.n+'°'+badge,0,bg)+td(dateIt(x.dal).slice(0,6)+dateIt(x.dal).slice(8)+' – '+dateIt(x.al).slice(0,6)+dateIt(x.al).slice(8),0,bg)+td(x.notti,1,bg)
+        +td(eur(x.importo),1,bg)+td(x.pulizia?'- '+eur(x.pulizia):'—',1,bg)+td('- '+eur(x.houzly),1,bg)
+        +(hasIva?td('- '+eur(x.iva),1,bg):'')+td(eur(x.bonifico),1,bg+'color:#2d3fe0;font-weight:700;')
+        +td(eur(x.cedolare),1,bg+'color:#b45309;')+td(eur(x.netto_reale),1,bg)+'</tr>';
+    }
+    var T=P.tot;
+    var totRow='<tr>'+td('<strong>Totale contratto</strong>',0,'border-top:2px solid #0f1535')+td('',0,'border-top:2px solid #0f1535')+td(T.notti,1,'border-top:2px solid #0f1535;font-weight:700')
+      +td(eur(T.importo),1,'border-top:2px solid #0f1535;font-weight:700')+td(T.pulizia?'- '+eur(T.pulizia):'—',1,'border-top:2px solid #0f1535;font-weight:700')
+      +td('- '+eur(T.houzly),1,'border-top:2px solid #0f1535;font-weight:700')+(hasIva?td('- '+eur(T.iva),1,'border-top:2px solid #0f1535;font-weight:700'):'')
+      +td(eur(T.bonifico),1,'border-top:2px solid #0f1535;font-weight:800;color:#2d3fe0')+td(eur(T.cedolare),1,'border-top:2px solid #0f1535;font-weight:700;color:#b45309')
+      +td(eur(T.netto_reale),1,'border-top:2px solid #0f1535;font-weight:700')+'</tr>';
+    var cedTot=r2(P.canone*P.cedPerc/100);
+    var accPerc=T.bonifico>0?Math.round(cedTot/T.bonifico*100):0;
+    var risparmio=(percContr>P.perc)?r2((T.importo-T.pulizia)*(percContr-P.perc)/100):0;
+    var conduttori=b.tr_conduttori||b.ospite_nome||'—';
+    var rli=b.tr_rli_data?(dateIt(b.tr_rli_data)+(b.tr_rli_protocollo?'<br><span style="font-weight:500;font-size:10.5px">prot. '+e(b.tr_rli_protocollo)+'</span>':'')):'<span style="color:#b45309">da registrare</span>';
+    out+='<div style="margin-top:22px;border:1.5px solid #9bd7e6;border-radius:10px;overflow:hidden;background:#fff;page-break-inside:avoid">'
+      +'<div style="background:#0f1535;color:#fff;padding:12px 16px">'
+        +'<div style="font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase">&#127968; Locazione transitoria'+(isGroup?' — '+e(nomeProp(b.proprieta_id)):'')+'</div>'
+        +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:3px">'+e(conduttori)+' &middot; '+dateIt(b.checkin)+' – '+dateIt(b.checkout)+' ('+P.nottiTot+' notti)'+(b.n_ospiti?' &middot; '+b.n_ospiti+' persone':'')+' &middot; '+e(b.canale||'')+'</div>'
+      +'</div>'
+      +'<div style="padding:14px 16px">'
+        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+          +cell('Contratto',e(b.tr_tipo||'Transitorio art. 5 c.1 L. 431/98'))
+          +cell('Durata',dateIt(b.checkin)+' – '+dateIt(b.checkout)+(P.chiuso?'<br><span style="color:#b45309">risolto al '+dateIt(b.tr_chiuso_al)+'</span>':''))
+          +cell('Canone registrato',eur(P.canone))
+          +cell('Pulizia finale',eur(P.pulizia)+'<br><span style="font-weight:500;font-size:10.5px">servizio separato, trattenuta da Houzly per la ditta</span>')
+          +cell('Corrispettivo totale',eur(r2(P.canone+P.pulizia)))
+          +cell('Incasso Airbnb totale',eur(P.totale)+'<br><span style="font-weight:500;font-size:10.5px">payout a blocchi di '+(parseInt(b.tr_blocco_notti,10)||30)+' notti</span>')
+          +cell('Registrazione RLI',rli)
+          +cell('Regime fiscale','Cedolare secca '+pc(P.cedPerc)+'%<br><span style="font-weight:500;font-size:10.5px">imposta di registro '+eur(+b.tr_imposta_registro||0)+'</span>')
+          +cell('Compenso Houzly',pc(P.perc)+'%'+(percContr>P.perc?'<br><span style="font-weight:500;font-size:10.5px">anziché '+pc(percContr)+'% da mandato</span>':''))
+        +'</div>'
+        +'<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0f1535;margin:4px 0 6px">Payout del periodo</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+head+c.tr_blocchi.map(function(x){return riga(x,false);}).join('')+'</table></div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+          +'<div style="flex:1;min-width:150px;padding:9px 12px;background:#eef2ff;border-radius:8px"><div style="font-size:9.5px;color:#4b5563;text-transform:uppercase;font-weight:700;letter-spacing:.05em">Bonifico al proprietario</div><div style="font-size:17px;font-weight:800;color:#2d3fe0">'+eur(c.canone)+'</div></div>'
+          +'<div style="flex:1;min-width:150px;padding:9px 12px;background:#fff7ed;border-radius:8px"><div style="font-size:9.5px;color:#4b5563;text-transform:uppercase;font-weight:700;letter-spacing:.05em">Cedolare da accantonare</div><div style="font-size:17px;font-weight:800;color:#b45309">'+eur(c.cedolare_accantonare)+'</div></div>'
+          +'<div style="flex:1;min-width:150px;padding:9px 12px;background:#ecfdf5;border-radius:8px"><div style="font-size:9.5px;color:#4b5563;text-transform:uppercase;font-weight:700;letter-spacing:.05em">Netto reale</div><div style="font-size:17px;font-weight:800;color:#047857">'+eur(c.netto_reale)+'</div></div>'
+        +'</div>'
+        +'<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0f1535;margin:4px 0 6px">Piano completo dei payout</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+head+P.blocchi.map(function(x){return riga(x,!!sel[x.n]);}).join('')+totRow+'</table></div>'
+        +'<div style="padding:11px 14px;background:#fffaf0;border:1px solid #f5c97b;border-radius:8px;font-size:11px;color:#5a4a20;line-height:1.6">'
+          +'<div style="font-weight:800;color:#92400e;margin-bottom:4px">Note fiscali</div>'
+          +'<div>&bull; <strong>Nessuna ritenuta d\'acconto</strong>: non è una locazione breve (contratto oltre 30 giorni), quindi Houzly non trattiene il 21% e questi importi non rientrano in F24 cod. 1919 né in Certificazione Unica.</div>'
+          +'<div>&bull; La <strong>cedolare secca '+pc(P.cedPerc)+'%</strong> si calcola sul canone registrato di '+eur(P.canone)+' = <strong>'+eur(cedTot)+'</strong> e la versa la proprietaria nella dichiarazione dei redditi.</div>'
+          +'<div>&bull; Poiché la cedolare si calcola sul canone pieno e non sul netto ricevuto, conviene <strong>accantonare circa il '+accPerc+'% di ogni bonifico</strong>.</div>'
+          +(risparmio>0?'<div>&bull; Compenso Houzly ridotto dal '+pc(percContr)+'% al '+pc(P.perc)+'% per compensare in parte il maggior costo fiscale: <strong>'+eur(risparmio)+' in più</strong> per la proprietaria.</div>':'')
+          +'<div>&bull; Gli importi segnati STIMA sono previsioni pro-rata per notti: diventano definitivi quando arriva il payout Airbnb.</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  });
+  return out;
+}
 
 // v99: notti PRENOTATE in origine (check-in → check-out), ignorando la chiusura anticipata.
 // È il divisore fisso del valore per notte.
@@ -3247,6 +3445,8 @@ function nottiPrenotateSL(b){
 // - pulizia = full solo nel mese scelto (sl_pulizia_mese), 0 negli altri
 function slQuotaMese(b, anno, mese){
   if(!isSoggiornoLungo(b)) return null;
+  // v101: locazione transitoria → competenza per payout (non per notti di calendario)
+  if(isTransitorio(b)){ var _tc=trCalcPeriodo(b, mese, anno); return _tc?{notti:_tc.notti_mese_sl,tot:_tc.tot,pulizia:_tc.pulizia,nottiTot:_tc.notti_tot_sl,valNotte:0}:null; }
   // v99: il valore per notte si calcola sempre sulle notti prenotate in origine
   var nottiTot=nottiPrenotateSL(b);
   if(nottiTot<=0 || nottiEffettiveSL(b)<=0) return null;
@@ -3517,6 +3717,7 @@ function meseCompetenza(b){
 // in mesi diversi → richiede decisione esplicita su quale mese di report
 function isCavalloDecision(b){
   if(!b||!b.checkin||!b.checkout)return false;
+  if(b.transitorio)return false; // v101: competenza per payout
   if((+b.notti||0)<10)return false;
   return b.checkin.slice(0,7)!==b.checkout.slice(0,7);
 }
@@ -3942,7 +4143,7 @@ function matchesPostImportCheck(b, type){
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
   // v96: soggiorno lungo (28+ notti) non ancora impostato come competenza mensile.
   // Airbnb applica sconti mensili e paga a rate: va verificata base reale + spalmamento.
-  if(type==='soggiorno_lungo_payout') return +b.notti>=28 && !b.soggiorno_lungo && !b.black;
+  if(type==='soggiorno_lungo_payout') return +b.notti>=28 && !b.soggiorno_lungo && !b.transitorio && !b.black;
   // v86: sincronizzazione Smoobu
   if(type==='sync_conflict') return Array.isArray(b._sync_conflict) && b._sync_conflict.length>0;
   if(type==='sync_cancel_doc') return !!b._sync_cancelled;
@@ -5116,6 +5317,9 @@ function editPren(id){
   var elSLUlt=document.getElementById('p-sl-ultimo-mese');
   if(elSLUlt)elSLUlt.value=b.sl_ultimo_mese||'';
   onSoggiornoLungoToggle();
+  // v101: campi locazione transitoria
+  trFillForm(b);
+  if(b.transitorio) onTransitorioToggle();
   onPropSel();calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
   var eBtnP=document.getElementById('btn-save-pren');
   if(eBtnP){eBtnP.setAttribute('data-edit-id',id);eBtnP.textContent='💾 Aggiorna Prenotazione';}
@@ -5478,6 +5682,7 @@ function openNewModal(){
   var elSLcr=document.getElementById('p-sl-chiuso-al');if(elSLcr)elSLcr.value='';
   var elSLur=document.getElementById('p-sl-ultimo-mese');if(elSLur)elSLur.value='';
   var slBox=document.getElementById('sl-fields');if(slBox)slBox.style.display='none';
+  trFillForm(null); // v101: reset locazione transitoria
   var sel=document.getElementById('p-prop-sel');
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
   document.getElementById('prop-fiscal-info').style.display='none';
@@ -5623,12 +5828,96 @@ function updateMeseOverrideWarning(){
   warn.innerHTML='&#8634; <strong>Override mese.</strong> Questa prenotazione verrà inclusa nel report di <strong>'+MESI_IT_FULL[ovM-1]+' '+ovY+'</strong> al posto del default. Stesso trimestre DAC7, stesso anno fiscale: nessun impatto fiscale.';
   warn.style.display='block';
 }
+// ─── v101: LOCAZIONE TRANSITORIA nel modal ───
+var _trRealiForm={};
+function onTransitorioToggle(){
+  var el=document.getElementById('p-transitorio'); var on=!!(el&&el.checked);
+  var box=document.getElementById('tr-fields'); if(box)box.style.display=on?'block':'none';
+  if(!on) return;
+  // esclusivo con il soggiorno lungo a competenza mensile
+  var sl=document.getElementById('p-soggiorno-lungo');
+  if(sl&&sl.checked){ sl.checked=false; var slb=document.getElementById('sl-fields'); if(slb)slb.style.display='none'; }
+  var tp=document.getElementById('p-tr-tipo'); if(tp&&!tp.value)tp.value='Transitorio art. 5 c.1 L. 431/98';
+  var ce=document.getElementById('p-tr-ced'); if(ce&&ce.value==='')ce.value=21;
+  var bn=document.getElementById('p-tr-blocco'); if(bn&&!bn.value)bn.value=30;
+  var ne=document.getElementById('p-tr-netto');
+  if(ne&&!ne.value){ var tt=+document.getElementById('p-tot').value||0, cc=+document.getElementById('p-comm-abs').value||0; if(tt>0)ne.value=r2(tt-cc); }
+  renderTRPreview();
+}
+function trReadForm(){
+  function v(id){ var e=document.getElementById(id); return e?e.value:''; }
+  var el=document.getElementById('p-transitorio');
+  return {
+    transitorio:!!(el&&el.checked),
+    tr_conduttori:v('p-tr-conduttori').trim(),
+    tr_tipo:v('p-tr-tipo').trim(),
+    tr_netto_airbnb:v('p-tr-netto')!==''?+v('p-tr-netto'):null,
+    tr_blocco_notti:parseInt(v('p-tr-blocco'),10)||30,
+    tr_canone:+v('p-tr-canone')||0,
+    tr_cedolare_perc:v('p-tr-ced')!==''?+v('p-tr-ced'):21,
+    tr_rli_data:v('p-tr-rli-data'),
+    tr_rli_protocollo:v('p-tr-rli-prot').trim(),
+    tr_imposta_registro:+v('p-tr-imposta')||0,
+    tr_chiuso_al:v('p-tr-chiuso-al'),
+    tr_payout_reali:Object.assign({},_trRealiForm)
+  };
+}
+function trFillForm(b){
+  function s(id,val){ var e=document.getElementById(id); if(e)e.value=(val==null?'':val); }
+  var el=document.getElementById('p-transitorio'); if(el)el.checked=!!(b&&b.transitorio);
+  b=b||{};
+  s('p-tr-conduttori',b.tr_conduttori||''); s('p-tr-tipo',b.tr_tipo||'');
+  s('p-tr-netto',b.tr_netto_airbnb!=null?b.tr_netto_airbnb:''); s('p-tr-blocco',b.tr_blocco_notti||30);
+  s('p-tr-canone',b.tr_canone||''); s('p-tr-ced',b.tr_cedolare_perc!=null?b.tr_cedolare_perc:21);
+  s('p-tr-rli-data',b.tr_rli_data||''); s('p-tr-rli-prot',b.tr_rli_protocollo||'');
+  s('p-tr-imposta',b.tr_imposta_registro!=null?b.tr_imposta_registro:0); s('p-tr-chiuso-al',b.tr_chiuso_al||'');
+  _trRealiForm=Object.assign({},b.tr_payout_reali||{});
+  var box=document.getElementById('tr-fields'); if(box)box.style.display=(b.transitorio?'block':'none');
+  var pv=document.getElementById('tr-preview'); if(pv)pv.innerHTML='';
+}
+function onTRRealeChange(idx,el){
+  var v=String(el.value||'').trim().replace(',','.');
+  if(v===''||isNaN(+v)) delete _trRealiForm[String(idx)]; else _trRealiForm[String(idx)]=r2(+v);
+  renderTRPreview();
+}
+function renderTRPreview(){
+  var box=document.getElementById('tr-preview'); if(!box)return;
+  var el=document.getElementById('p-transitorio'); if(!el||!el.checked){ box.innerHTML=''; return; }
+  function v(id){ var e=document.getElementById(id); return e?e.value:''; }
+  var b=Object.assign({checkin:v('p-checkin'),checkout:v('p-checkout'),tot:+v('p-tot')||0,comm_ota_abs:+v('p-comm-abs')||0,
+    pulizia:+v('p-pulizia')||0,houzly_perc:+v('p-houzly-perc')||0,iva22:v('p-iva22')==='1'},trReadForm());
+  if(!b.checkin||!b.checkout){ box.innerHTML='<div style="font-size:11px;color:var(--text-light)">Inserisci check-in e check-out per vedere il piano dei payout.</div>'; return; }
+  var P=trPiano(b);
+  if(!P.blocchi.length){ box.innerHTML='<div style="font-size:11px;color:var(--orange)">Date non valide.</div>'; return; }
+  var mesi=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  var cell='padding:4px 6px;font-size:11.5px;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap';
+  var html='<div style="font-size:11px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Piano payout ('+P.nottiEff+(P.nottiEff<P.nottiTot?' di '+P.nottiTot:'')+' notti · Houzly '+P.perc+'%)</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tr style="font-size:10px;color:var(--text-light);text-transform:uppercase"><td style="'+cell+'">Payout</td><td style="'+cell+'">Importo reale</td><td style="'+cell+';text-align:right">Houzly</td><td style="'+cell+';text-align:right">Bonifico</td><td style="'+cell+';text-align:right">Cedolare</td></tr>';
+  P.blocchi.forEach(function(x){
+    var val=(_trRealiForm[String(x.n)]!=null)?_trRealiForm[String(x.n)]:'';
+    html+='<tr><td style="'+cell+'">'+x.n+'° '+mesi[+x.key.slice(5,7)-1]+' <span style="color:var(--text-light)">· '+dateIt(x.dal).slice(0,5)+'–'+dateIt(x.al).slice(0,5)+' · '+x.notti+' n.</span></td>'
+      +'<td style="'+cell+'"><input type="number" step="0.01" value="'+val+'" placeholder="stima '+x.importo.toFixed(2)+'" onchange="onTRRealeChange('+x.n+',this)" style="width:110px;padding:3px 6px;font-size:11.5px"></td>'
+      +'<td style="'+cell+';text-align:right">'+x.houzly.toFixed(2)+'</td>'
+      +'<td style="'+cell+';text-align:right;font-weight:700">'+x.bonifico.toFixed(2)+'</td>'
+      +'<td style="'+cell+';text-align:right;color:var(--orange)">'+x.cedolare.toFixed(2)+'</td></tr>';
+  });
+  var T=P.tot, cedTot=r2(P.canone*P.cedPerc/100);
+  html+='<tr style="font-weight:700"><td style="'+cell+'">Totale</td><td style="'+cell+'">&euro;'+T.importo.toFixed(2)+'</td><td style="'+cell+';text-align:right">'+T.houzly.toFixed(2)+'</td><td style="'+cell+';text-align:right">'+T.bonifico.toFixed(2)+'</td><td style="'+cell+';text-align:right;color:var(--orange)">'+T.cedolare.toFixed(2)+'</td></tr></table></div>';
+  if(!P.canone) html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Inserisci il canone registrato per calcolare la cedolare.</div>';
+  else html+='<div style="font-size:10.5px;color:var(--text-light);margin-top:4px">Cedolare '+P.cedPerc+'% su &euro;'+P.canone.toFixed(2)+' = &euro;'+cedTot.toFixed(2)+' &middot; da accantonare circa il '+(T.bonifico>0?Math.round(cedTot/T.bonifico*100):0)+'% di ogni bonifico.</div>';
+  if(P.chiuso) html+='<div style="font-size:10.5px;color:var(--orange);margin-top:4px">&#9888; Risoluzione anticipata al '+dateIt(b.tr_chiuso_al)+': payout successivi esclusi. Ricorda la comunicazione su RLI entro 30 giorni.</div>';
+  html+='<div style="font-size:10.5px;color:var(--text-light);margin-top:4px">Lascia vuoto l\'importo reale finché il payout non arriva: si usa la stima pro-rata, l\'ultimo payout prende il residuo.</div>';
+  box.innerHTML=html;
+}
 // v96: toggle soggiorno lungo — mostra/nasconde i campi e precompila
 function onSoggiornoLungoToggle(){
   var on=document.getElementById('p-soggiorno-lungo').checked;
   var box=document.getElementById('sl-fields');
   if(box)box.style.display=on?'block':'none';
   if(on){
+    // v101: esclusivo con la locazione transitoria
+    var _trc=document.getElementById('p-transitorio');
+    if(_trc&&_trc.checked){ _trc.checked=false; var _trb=document.getElementById('tr-fields'); if(_trb)_trb.style.display='none'; }
     // precompila base reale col totale se vuota
     var baseEl=document.getElementById('p-sl-base');
     if(baseEl && !baseEl.value){ var t=+document.getElementById('p-tot').value||0; if(t>0)baseEl.value=t; }
@@ -5719,6 +6008,9 @@ function onCanaleChange(){
   calcScorporo();
 }
 function calcScorporo(){
+  // v101: aggiorna anche il piano payout della locazione transitoria
+  var _trEl=document.getElementById('p-transitorio');
+  if(_trEl&&_trEl.checked&&typeof renderTRPreview==='function') renderTRPreview();
   var canale=document.getElementById('p-canale').value;
   var b={tot:+document.getElementById('p-tot').value||0,canale:canale,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),proprieta_id:document.getElementById('p-prop-sel').value};
   if(!b.tot){document.getElementById('sc-rows').innerHTML='<div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div>';return;}
@@ -5793,6 +6085,9 @@ function savePren(){
   // comm_ota_perc tenuto per retrocompatibilità (visualizzazioni che usano %)
   var newCommPerc=newTot>0?r2(newCommAbs/newTot*100):0;
   var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),soggiorno_lungo:!!(document.getElementById('p-soggiorno-lungo')&&document.getElementById('p-soggiorno-lungo').checked),sl_base:(document.getElementById('p-sl-base')&&document.getElementById('p-sl-base').value!==''?+document.getElementById('p-sl-base').value:null),sl_pulizia_mese:(document.getElementById('p-sl-pulizia-mese')?document.getElementById('p-sl-pulizia-mese').value:''),sl_chiuso_al:(document.getElementById('p-sl-chiuso-al')?document.getElementById('p-sl-chiuso-al').value:''),sl_ultimo_mese:(document.getElementById('p-sl-ultimo-mese')?document.getElementById('p-sl-ultimo-mese').value:''),calc:{}};
+  // v101: locazione transitoria
+  Object.assign(b, trReadForm());
+  if(b.transitorio) b.soggiorno_lungo=false;
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
   var editIdP=eBtnS?eBtnS.getAttribute('data-edit-id'):null;
@@ -6324,9 +6619,15 @@ function slToccaPeriodo(b, meseNum, annoVal){
 // SOLO quando il report è su un mese+anno specifico. Ricalcola tot/comm/pulizia/
 // netto/houzly/iva/canone sulla quota di competenza di quel mese.
 function applySoggiornoLungoCalc(bks, meseNum, annoVal){
+  // v101: locazioni transitorie → sempre per payout del periodo (anche vista annuale)
+  bks.forEach(function(b){
+    if(!isTransitorio(b)) return;
+    var _tc=trCalcPeriodo(b, meseNum, annoVal);
+    if(_tc){ b.calc=_tc; b._trMese=true; }
+  });
   if(!meseNum || !annoVal) return; // senza mese specifico lascio il totale (vista annuale)
   bks.forEach(function(b){
-    if(!isSoggiornoLungo(b)) return;
+    if(!isSoggiornoLungo(b) || isTransitorio(b)) return;
     var q=slQuotaMese(b, annoVal, meseNum);
     if(!q){ b.calc=doCalc(b); return; }
     // Costruisco una prenotazione "virtuale" con i valori del mese e rieseguo doCalc
@@ -6377,7 +6678,7 @@ function getReportBksFull(){
   }
   bks.forEach(function(b){b.calc=doCalc(b);});
   // v96: mensilizza le quote dei soggiorni lunghi per il mese selezionato
-  if(mese&&anno){ applySoggiornoLungoCalc(bks, mesiArr().indexOf(mese)+1, anno); }
+  applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
   return bks;
 }
 function getReportBks(){
@@ -6409,7 +6710,7 @@ function getReportBks(){
   }
   // Always recalculate to ensure fresh values after any data changes
   bks.forEach(function(b){b.calc=doCalc(b);});
-  if(mese&&anno){ applySoggiornoLungoCalc(bks, mesiArr().indexOf(mese)+1, anno); }
+  applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
   return bks;
 }
 function previewReportProp(){
@@ -6434,6 +6735,10 @@ function previewReportProp(){
   if(!bks.length&&!bksBlack.length){area.innerHTML='<div class="card"><div style="text-align:center;padding:40px;color:var(--text-light)"><div style="font-size:40px">&#128269;</div><p>Nessuna prenotazione nel periodo</p></div></div>';return;}
   bks.sort(function(a,b){return a.checkin<b.checkin?-1:a.checkin>b.checkin?1:0;});
   bksBlack.sort(function(a,b){return a.checkin<b.checkin?-1:a.checkin>b.checkin?1:0;});
+  // v101: locazioni transitorie in sezione separata (niente ritenuta, compenso dedicato)
+  var bksTr=bks.filter(function(b){return b.calc&&b.calc.transitorio;});
+  bks=bks.filter(function(b){return !(b.calc&&b.calc.transitorio);});
+  var trTot=trTotali(bksTr);
   // v52: separo le prenotazioni con incasso diretto (proprietario ha già i soldi)
   var bksDiretto=bks.filter(function(b){return b.calc&&b.calc.incasso_diretto;});
   var bksNormali=bks.filter(function(b){return !(b.calc&&b.calc.incasso_diretto);});
@@ -6567,7 +6872,7 @@ function previewReportProp(){
   var subLabel=isGroup&&grp?(grp.children.length+' unità'):(own?nomeOwner(own.id):'');
   area.innerHTML='<div style="margin-bottom:12px">'
     +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:var(--blue)">Report Mensile &mdash; '+reportTitle+'</div>'
-    +'<div style="font-size:12px;color:var(--text-light)">'+subLabel+' &middot; '+mese+' '+anno+' &middot; '+bks.length+' principali'+(bksBlack.length?' &middot; <span style="color:var(--text-mid)">'+bksBlack.length+' aggiuntive</span>':'')+'</div>'
+    +'<div style="font-size:12px;color:var(--text-light)">'+subLabel+' &middot; '+mese+' '+anno+' &middot; '+bks.length+' principali'+(bksTr.length?' &middot; '+bksTr.length+' locazion'+(bksTr.length===1?'e':'i')+' transitori'+(bksTr.length===1?'a':'e'):'')+(bksBlack.length?' &middot; <span style="color:var(--text-mid)">'+bksBlack.length+' aggiuntive</span>':'')+'</div>'
     +'</div>'
     +bannerHTML
     +sectionsHTML
@@ -6662,6 +6967,8 @@ function previewReportProp(){
            :'<div class="rpt-sum-row"><span>Totale da bonificare al proprietario</span><span class="rpt-sum-total">'+eur(sommaNetti)+'</span></div>'))
        +'</div>'
       :'')
+    // ── v101: LOCAZIONE TRANSITORIA ──
+    +(bksTr.length?trSectionHTML(bksTr,isGroup):'')
     // ── v52: Riepilogo INCASSO DIRETTO ──
     +(bksDiretto.length
       ?'<div style="margin-top:16px;background:#fffaf0;border:1.5px solid #f5c97b;border-radius:var(--radius-lg);padding:18px 22px">'
@@ -6682,12 +6989,13 @@ function previewReportProp(){
        +'</div>'
       :'')
     // ── v58: SALDO FINALE (combina netto + anticipi + incasso diretto) ──
-    +((bksDiretto.length || anticipiRecuperi.length)
+    +((bksDiretto.length || anticipiRecuperi.length || (bksTr.length && bks.length))
       ?(function(){
-         var saldoFinale=r2(nettoImposta - anticipiTot - saldoHouzlyTot);
+         var saldoFinale=r2(nettoImposta + trTot.bonifico - anticipiTot - saldoHouzlyTot);
          var positivo=saldoFinale>=0;
          var rows=''
-           +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Netto da bonificare (prenotazioni principali)</span><span style="font-weight:600">'+eur(nettoImposta)+'</span></div>';
+           +(bks.length||!bksTr.length?'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Netto da bonificare (prenotazioni principali)</span><span style="font-weight:600">'+eur(nettoImposta)+'</span></div>':'')
+           +(bksTr.length?'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Bonifico locazione transitoria</span><span style="font-weight:600">'+eur(trTot.bonifico)+'</span></div>':'');
          if(anticipiRecuperi.length){
            rows+='<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Recuperi anticipi spese</span><span style="color:#f87096;font-weight:600">- '+eur(anticipiTot)+'</span></div>';
          }
@@ -6908,6 +7216,10 @@ function printReportContinue(selectedAntIds, markRecuperati){
   var title='Report Mensile — '+(grp?grp.nome:(prop?prop.nome:''))+' — '+mese+' '+anno;
   // Build a clean self-contained print HTML instead of cloning screen HTML
   var bks=getReportBksFull();
+  // v101: locazioni transitorie in sezione separata
+  var bksTr2=bks.filter(function(b){return b.calc&&b.calc.transitorio;});
+  bks=bks.filter(function(b){return !(b.calc&&b.calc.transitorio);});
+  var trTot2=trTotali(bksTr2);
   var bksNorm=bks.filter(function(b){return !b.black && !(b.calc&&b.calc.incasso_diretto);});
   var bksBlk=bks.filter(function(b){return !!b.black;});
   // v52: prenotazioni con incasso diretto dal proprietario
@@ -7072,10 +7384,11 @@ function printReportContinue(selectedAntIds, markRecuperati){
     :'';
   // v58: SALDO FINALE nel PDF (combina netto − anticipi − incassi diretti)
   var sumFinal='';
-  if(bksDir.length || anticipiRecuperi2.length){
-    var saldoFinale2=r2(nettoImposta2 - anticipiTot2 - saldoHouzlyTot2);
+  if(bksDir.length || anticipiRecuperi2.length || (bksTr2.length && bksNorm.length)){
+    var saldoFinale2=r2(nettoImposta2 + trTot2.bonifico - anticipiTot2 - saldoHouzlyTot2);
     var positivo2=saldoFinale2>=0;
-    var rowsF=srow('Netto da bonificare (principali)',eur(nettoImposta2));
+    var rowsF=(bksNorm.length||!bksTr2.length)?srow('Netto da bonificare (principali)',eur(nettoImposta2)):'';
+    if(bksTr2.length) rowsF+=srow('Bonifico locazione transitoria',eur(trTot2.bonifico));
     if(anticipiRecuperi2.length) rowsF+=srow('Recuperi anticipi spese','- '+eur(anticipiTot2),'neg');
     if(bksDir.length) rowsF+=srow('Saldo a favore Houzly (incassi diretti)','- '+eur(saldoHouzlyTot2),'neg');
     sumFinal='<div class="sum-wrap"><div class="sum-box" style="background:#0d1b3e;border:2px solid #22d1ee">'
@@ -7131,7 +7444,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
     // ── Tabella ──
     +tableNorm+tableBlk+tableDir
     // ── Riepilogo ──
-    +sumNorm+sumBlk+sumDir+sumFinal;
+    +sumNorm+(bksTr2.length?trSectionHTML(bksTr2,isGroup2):'')+sumBlk+sumDir+sumFinal;
   openPrintModal(title, html);
   // v47: marca gli anticipi inclusi come "Recuperati" se richiesto dall'utente
   if(markRecuperati && anticipiRecuperi2.length){
@@ -7163,6 +7476,9 @@ function exportReportExcel(){
   if(!own&&grp)own=ownerOfGroup(grp);            // v71: report di gruppo → owner comune
   var bks=getReportBks();
   if(!bks.length){toast('Nessuna prenotazione');return;}
+  // v101: locazioni transitorie in un blocco separato (senza ritenuta)
+  var bksTrX=bks.filter(function(b){return b.calc&&b.calc.transitorio;});
+  bks=bks.filter(function(b){return !(b.calc&&b.calc.transitorio);});
   var mese=document.getElementById('rpt-mese').value||'Anno';
   var anno=document.getElementById('rpt-anno').value;
   var wb=XLSX.utils.book_new();
@@ -7190,6 +7506,17 @@ function exportReportExcel(){
       data.push(['','','','','',_npX+' (intestatario)',_qpX,r2(nettoImposta*_qpX)]);
     }
     own.coprops.forEach(function(cp){data.push(['','','','','',cp.nome,(+cp.perc||0),r2(nettoImposta*(+cp.perc||0))]);});
+  }
+  if(bksTrX.length){
+    bksTrX.forEach(function(b){
+      var c=b.calc,P=c.tr_piano;
+      data.push([]);
+      data.push(['LOCAZIONE TRANSITORIA',(b.tr_conduttori||b.ospite_nome||''),(b.tr_tipo||'Transitorio art. 5 c.1 L. 431/98'),'RLI '+(b.tr_rli_data?dateIt(b.tr_rli_data):'da registrare'),'Prot. '+(b.tr_rli_protocollo||'—'),'CANONE REGISTRATO',P.canone,'CEDOLARE '+P.cedPerc+'%',r2(P.canone*P.cedPerc/100)]);
+      data.push(['PAYOUT','DAL','AL','NOTTI','REALE/STIMA','INCASSO AIRBNB','PULIZIA','HOUZLY '+P.perc+'%','IVA 22%','BONIFICO','CEDOLARE DA ACCANTONARE','NETTO REALE']);
+      c.tr_blocchi.forEach(function(x){ data.push([x.n,x.dal,x.al,x.notti,x.reale?'Reale':'Stima',x.importo,x.pulizia,x.houzly,x.iva,x.bonifico,x.cedolare,x.netto_reale]); });
+    });
+    data.push(['','','','','','TOTALE BONIFICO LOCAZIONI TRANSITORIE',trTotali(bksTrX).bonifico]);
+    data.push(['','','','','','Nessuna ritenuta 21%: non è locazione breve (niente F24 1919 / CU)']);
   }
   var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=Array(13).fill({wch:16});
   XLSX.utils.book_append_sheet(wb,ws,'Report Mensile');
@@ -11888,12 +12215,32 @@ function ademAnno(){
 // v37: rispetta override meseReportOverride se presente (es. prenotazioni a cavallo
 // che l'utente ha deciso di rendicontare in un mese diverso)
 function ademAnnoEffettivo(b){
+  // v101: la locazione transitoria non è locazione breve → fuori da CU/770/ritenute.
+  // v102: nel DAC7 rientra comunque, per payout, tramite ademTrBlocchiAnno().
+  if(b && b.transitorio) return 0;
   if(b && /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')){
     return +b.meseReportOverride.slice(0,4);
   }
   if(!b.checkout)return 0;
   var d=new Date(b.checkout);
   return isNaN(d)?0:d.getFullYear();
+}
+// v102: payout delle locazioni transitorie che cadono nell'anno (per il DAC7).
+// Ogni payout va nel trimestre del suo mese; il contratto conta come 1 attività
+// (nel trimestre del primo payout dell'anno). Nessuna ritenuta.
+function ademTrBlocchiAnno(propIds, anno){
+  var out=[];
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(!isTransitorio(b)||b.black) return;
+    if(propIds && propIds.indexOf(b.proprieta_id)<0) return;
+    var P=trPiano(b), primo=true;
+    P.blocchi.forEach(function(x){
+      if(+x.key.slice(0,4)!==+anno) return;
+      out.push({b:b,x:x,q:Math.ceil(+x.key.slice(5,7)/3),primo:primo});
+      primo=false;
+    });
+  });
+  return out;
 }
 function ademMeseDi(b){
   if(b && /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')){
@@ -11980,6 +12327,22 @@ function ademCalcMandanteYearly(ownerId, anno){
     tot.giorniLocazione = manual.giorniLocazione!=null ? +manual.giorniLocazione : null;
     tot.note = manual.note || '';
   }
+  // ─── v102: DAC7 = locazioni brevi + locazioni transitorie (per payout) ───
+  // I campi senza prefisso restano quelli di CU/770 (solo brevi, con ritenuta).
+  quarters.forEach(function(Q){ Q.dac7_nPren=Q.nPren; Q.dac7_lordo=Q.lordo; Q.dac7_commOTA=Q.commOTA; Q.dac7_commHouzly=Q.commHouzly; });
+  tot.dac7_nPren=tot.nPren; tot.dac7_lordo=tot.lordo; tot.dac7_commOTA=tot.commOTA; tot.dac7_commHouzly=tot.commHouzly;
+  var trDac7=ademTrBlocchiAnno(propIds, anno);
+  trDac7.forEach(function(e){
+    var Q=quarters[e.q-1]; if(!Q) return;
+    // incasso Airbnb già al netto della commissione host: comm. OTA = 0
+    Q.dac7_lordo+=e.x.importo; Q.dac7_commHouzly+=e.x.houzly;
+    tot.dac7_lordo+=e.x.importo; tot.dac7_commHouzly+=e.x.houzly;
+    if(e.primo){ Q.dac7_nPren++; tot.dac7_nPren++; }
+  });
+  quarters.forEach(function(Q){ Q.dac7_lordo=r2(Q.dac7_lordo); Q.dac7_commHouzly=r2(Q.dac7_commHouzly); Q.dac7_corrisp=r2(Q.dac7_lordo-Q.dac7_commOTA-Q.dac7_commHouzly); });
+  tot.dac7_lordo=r2(tot.dac7_lordo); tot.dac7_commHouzly=r2(tot.dac7_commHouzly);
+  tot.dac7_corrispettivo=r2(tot.dac7_lordo-tot.dac7_commOTA-tot.dac7_commHouzly);
+  tot.dac7_transitorie=trDac7.filter(function(e){return e.primo;}).length;
   // ─── DEDUPLICAZIONE FISCALE: una proprietà fisica = un'entità fiscale ───
   // Aggrega proprietà con stesso CIN, oppure stesso (indirizzo + foglio + particella + sub)
   // Es. "Il Borgo intero" + "Il Borgo App. 1" + "Il Borgo App. 2" → un solo immobile per CU/DAC7
@@ -12071,6 +12434,11 @@ function ademGetActiveMandanti(anno){
       var prop=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
       if(prop && prop.proprietario_id)ids.add(prop.proprietario_id);
     }
+  });
+  // v102: anche i mandanti con payout di una locazione transitoria nell'anno (DAC7)
+  ademTrBlocchiAnno(null, anno).forEach(function(e){
+    var prop=DB.proprieta.find(function(p){return p.id===e.b.proprieta_id;});
+    if(prop && prop.proprietario_id)ids.add(prop.proprietario_id);
   });
   // Includo anche mandanti con override manuale per l'anno (caso dati 2025 pre-app)
   if(DB.adempimenti_manual && DB.adempimenti_manual[String(anno)]){
@@ -12191,14 +12559,14 @@ function renderAdempDAC7(){
         +'<div class="m-name">'+escHtml(nomeOwner(owner.id))+'</div>'
         +'<div class="m-meta">'
           +'<span>'+d.nFiscalEntities+' immobil'+(d.nFiscalEntities===1?'e':'i')+(d.nProperties>d.nFiscalEntities?' <span style="color:var(--text-light)">(da '+d.nProperties+' record)</span>':'')+'</span>'
-          +'<span>•</span><span>'+t.nPren+' prenotazion'+(t.nPren===1?'e':'i')+'</span>'
+          +'<span>•</span><span>'+t.dac7_nPren+' prenotazion'+(t.dac7_nPren===1?'e':'i')+(t.dac7_transitorie?' (di cui '+t.dac7_transitorie+' transitori'+(t.dac7_transitorie===1?'a':'e')+')':'')+'</span>'
           +'<span>•</span>'+statusChip
           +(overrideChip?'<span>•</span>'+overrideChip:'')
         +'</div>'
       +'</div>'
       +'<div class="m-stat">'
         +'<div class="m-stat-label">Corrispettivo DAC7</div>'
-        +'<div class="m-stat-value">'+eur(t.corrispettivo_dac7)+'</div>'
+        +'<div class="m-stat-value">'+eur(t.dac7_corrispettivo)+'</div>'
       +'</div>'
       +'<div class="m-actions">'
         +'<button class="btn btn-sm btn-outline" onclick="adempViewDAC7(\''+owner.id+'\')">👁 Anteprima</button>'
@@ -12271,23 +12639,24 @@ function adempViewDAC7(ownerId){
     +'</tr></thead><tbody>';
   d.quarters.forEach(function(q){
     var lbl=['T1 (gen–mar)','T2 (apr–giu)','T3 (lug–set)','T4 (ott–dic)'][q.q-1];
-    var corrisp_q=r2(q.lordo-q.commOTA-q.commHouzly);
+    var corrisp_q=q.dac7_corrisp;
     html+='<tr><td><strong>'+lbl+'</strong></td>'
-      +'<td>'+q.nPren+'</td>'
-      +'<td class="num">'+eur(q.lordo)+'</td>'
-      +'<td class="num">'+eur(q.commOTA)+'</td>'
-      +'<td class="num">'+eur(q.commHouzly)+'</td>'
+      +'<td>'+q.dac7_nPren+'</td>'
+      +'<td class="num">'+eur(q.dac7_lordo)+'</td>'
+      +'<td class="num">'+eur(q.dac7_commOTA)+'</td>'
+      +'<td class="num">'+eur(q.dac7_commHouzly)+'</td>'
       +'<td class="num"><strong>'+eur(corrisp_q)+'</strong></td>'
     +'</tr>';
   });
   html+='<tr class="tot-row"><td>TOTALE ANNO</td>'
-    +'<td>'+t.nPren+'</td>'
-    +'<td class="num">'+eur(t.lordo)+'</td>'
-    +'<td class="num">'+eur(t.commOTA)+'</td>'
-    +'<td class="num">'+eur(t.commHouzly)+'</td>'
-    +'<td class="num"><strong>'+eur(t.corrispettivo_dac7)+'</strong></td>'
+    +'<td>'+t.dac7_nPren+'</td>'
+    +'<td class="num">'+eur(t.dac7_lordo)+'</td>'
+    +'<td class="num">'+eur(t.dac7_commOTA)+'</td>'
+    +'<td class="num">'+eur(t.dac7_commHouzly)+'</td>'
+    +'<td class="num"><strong>'+eur(t.dac7_corrispettivo)+'</strong></td>'
   +'</tr>';
   html+='</tbody></table>';
+  if(t.dac7_transitorie) html+='<div class="doc-note" style="margin-top:14px">🏠 Include '+t.dac7_transitorie+' locazion'+(t.dac7_transitorie===1?'e transitoria':'i transitorie')+': importi per payout Airbnb (già al netto della commissione host, quindi comm. OTA = 0), contate una volta sola come attività, <strong>senza ritenuta</strong> (non sono locazioni brevi, restano fuori da CU e 770).</div>';
   html+='<div class="doc-note" style="margin-top:14px">📌 <strong>Definizione corrispettivo DAC7</strong> (art. 2 lett. l D.Lgs. 32/2023): "compensazione al netto di spese, commissioni o imposte trattenute dal gestore di piattaforma". L\'importo comunicato è quindi <strong>Lordo − Commissione OTA − Commissione Houzly</strong>, non coincide necessariamente con la base imponibile cedolare riportata in CU.</div>';
   html+='<div class="doc-footer">Houzly Snc · P.IVA 02499920516 · Documento generato il '+new Date().toLocaleDateString('it-IT')+' — Ad uso del commercialista per trasmissione XML Entratel</div>';
   html+='</div>';
@@ -12851,17 +13220,17 @@ function adempExportDAC7CSV(){
   ademGetActiveMandanti(anno).forEach(function(m){
     var d=ademCalcMandanteYearly(m.id, anno);if(!d)return;
     var t=d.totals;
-    var corrQ=function(q){return r2(q.lordo-q.commOTA-q.commHouzly);};
+    var corrQ=function(q){return q.dac7_corrisp;};
     rows.push([
       nomeOwner(m.id),
       m.tipo,
       m.tipo==='persona_fisica'?(m.cf||''):(m.piva||''),
       m.iban||'',
-      d.nProperties,t.nPren,t.lordo,t.commOTA,t.commHouzly,t.corrispettivo_dac7,t.ritenuta,
-      d.quarters[0].nPren,corrQ(d.quarters[0]),
-      d.quarters[1].nPren,corrQ(d.quarters[1]),
-      d.quarters[2].nPren,corrQ(d.quarters[2]),
-      d.quarters[3].nPren,corrQ(d.quarters[3])
+      d.nProperties,t.dac7_nPren,t.dac7_lordo,t.dac7_commOTA,t.dac7_commHouzly,t.dac7_corrispettivo,t.ritenuta,
+      d.quarters[0].dac7_nPren,corrQ(d.quarters[0]),
+      d.quarters[1].dac7_nPren,corrQ(d.quarters[1]),
+      d.quarters[2].dac7_nPren,corrQ(d.quarters[2]),
+      d.quarters[3].dac7_nPren,corrQ(d.quarters[3])
     ]);
   });
   ademDownloadCSV('DAC7_consolidato_'+anno+'.csv', rows);
@@ -12893,10 +13262,10 @@ function adempExportDAC7Mandante(ownerId){
   rows.push(['Dettaglio Trimestrale']);
   rows.push(['Trimestre','N.Pren','Lordo','Comm OTA','Comm Houzly','Corrispettivo DAC7']);
   d.quarters.forEach(function(q){
-    var corr=r2(q.lordo-q.commOTA-q.commHouzly);
-    rows.push(['T'+q.q,q.nPren,q.lordo,q.commOTA,q.commHouzly,corr]);
+    rows.push(['T'+q.q,q.dac7_nPren,q.dac7_lordo,q.dac7_commOTA,q.dac7_commHouzly,q.dac7_corrisp]);
   });
-  rows.push(['TOTALE',t.nPren,t.lordo,t.commOTA,t.commHouzly,t.corrispettivo_dac7]);
+  rows.push(['TOTALE',t.dac7_nPren,t.dac7_lordo,t.dac7_commOTA,t.dac7_commHouzly,t.dac7_corrispettivo]);
+  if(t.dac7_transitorie) rows.push(['Nota','Include '+t.dac7_transitorie+' locazione/i transitoria/e per payout Airbnb, senza ritenuta (fuori da CU/770)']);
   ademDownloadCSV('DAC7_'+nomeOwner(d.owner.id).replace(/[^a-zA-Z0-9]/g,'_')+'_'+anno+'.csv', rows);
   toast('CSV scaricato ✓');
 }
@@ -13481,6 +13850,7 @@ function ctrSave(andPreview){
   var _toFix=(DB.prenotazioni||[]).filter(function(b){
     if((propIds||[]).indexOf(b.proprieta_id)<0) return false;
     if((b.checkin||'')<_fromC) return false;
+    if(b.transitorio) return false; // v101: % concordata a parte per la locazione transitoria
     if(typeof syncHasDocs==='function'&&syncHasDocs(b)) return false;
     var cfg=getEffectiveHouzlyConfig(b.proprieta_id);
     var ow=ownerOfProp(b.proprieta_id);
@@ -13811,6 +14181,13 @@ function dac7QuartersFor(propIds, anno, ritenutaAttiva){
     var Q=qs[t-1];
     Q.cons+=canone_puro;Q.numb++;Q.fees+=fees;
     if(ritenutaAttiva)Q.tax+=canone_puro*0.21;
+  });
+  // v102: locazioni transitorie per payout — Consideration = bonifico al proprietario,
+  // Fees = compenso Houzly (+IVA) + pulizia trattenuta, nessuna Tax (niente ritenuta)
+  ademTrBlocchiAnno(propIds, anno).forEach(function(e){
+    var Q=qs[e.q-1]; if(!Q) return; var x=e.x;
+    Q.cons+=Math.max(0,x.bonifico); Q.fees+=x.houzly+x.iva+x.pulizia;
+    if(e.primo) Q.numb++;
   });
   return qs;
 }
