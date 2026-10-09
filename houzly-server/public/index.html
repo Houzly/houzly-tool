@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v102 · 09/10 · Locazione transitoria nel DAC7</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v103 · 09/10 · Modifica prenotazione mantiene la % salvata</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -5320,7 +5320,12 @@ function editPren(id){
   // v101: campi locazione transitoria
   trFillForm(b);
   if(b.transitorio) onTransitorioToggle();
-  onPropSel();calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
+  onPropSel();
+  // v103: onPropSel() rimette la % e l'IVA del contratto: in modifica ripristino quelle
+  // salvate sulla prenotazione (es. 25% concordato per una locazione transitoria)
+  document.getElementById('p-houzly-perc').value=(b.houzly_perc!=null&&b.houzly_perc!=='')?b.houzly_perc:20;
+  document.getElementById('p-iva22').value=b.iva22?'1':'0';
+  calcNotti();onCanaleChange();calcScorporo();updateMeseCompetenzaUI();
   var eBtnP=document.getElementById('btn-save-pren');
   if(eBtnP){eBtnP.setAttribute('data-edit-id',id);eBtnP.textContent='💾 Aggiorna Prenotazione';}
   goStep(1);openModal('modal-prenotazione');
