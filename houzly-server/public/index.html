@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v103 · 09/10 · Modifica prenotazione mantiene la % salvata</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v104 · 09/10 · Report non altera più Dashboard e totali</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -3546,6 +3546,7 @@ function nextNum(key){if(!DB.counters)DB.counters={rnf:1,fto:1,faz:1,xml:1};var 
 
 // ─── NAV ──────────────────────────────────────────────────────────────────
 function showPage(p){
+  ripristinaCalcPieni(); // v104
   // v53: se navigo a Prenotazioni NON tramite un check post-import, azzero il filtro speciale
   if(p==='prenotazioni' && !_postImportNavigating) _postImportFilter=null;
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
@@ -4394,6 +4395,7 @@ function renderImpostaSoggiorno(){
 }
 
 function renderDash(){
+  ripristinaCalcPieni(); // v104
   populateDashFilter();
   var allBks=getDashBks();
   var totOTA=allBks.reduce(function(s,b){return s+b.calc.tot;},0);
@@ -5384,6 +5386,7 @@ function debouncedRenderPren(){
   _prenSearchTimer=setTimeout(function(){renderPrenotazioni();},200);
 }
 function renderPrenotazioni(){
+  ripristinaCalcPieni(); // v104
   var tb=document.getElementById('tbody-prenotazioni');
   // v53: banner filtro post-import
   var banner=document.getElementById('post-import-filter-banner');
@@ -6623,6 +6626,14 @@ function slToccaPeriodo(b, meseNum, annoVal){
 // v96: applica la mensilizzazione al b.calc delle prenotazioni soggiorno-lungo,
 // SOLO quando il report è su un mese+anno specifico. Ricalcola tot/comm/pulizia/
 // netto/houzly/iva/canone sulla quota di competenza di quel mese.
+// v104: il report sostituisce b.calc con la quota del mese (soggiorni lunghi e
+// locazioni transitorie) direttamente sulle prenotazioni del DB. Fuori dal report
+// (Dashboard, Prenotazioni, Adempimenti) va ripristinato il calcolo pieno.
+function ripristinaCalcPieni(){
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(b._slMese||b._trMese){ b.calc=doCalc(b); delete b._slMese; delete b._trMese; }
+  });
+}
 function applySoggiornoLungoCalc(bks, meseNum, annoVal){
   // v101: locazioni transitorie → sempre per payout del periodo (anche vista annuale)
   bks.forEach(function(b){
@@ -6681,6 +6692,7 @@ function getReportBksFull(){
       return bkInPeriod(b,_mi,_y);
     });
   }
+  ripristinaCalcPieni(); // v104: azzero quote rimaste da un report precedente
   bks.forEach(function(b){b.calc=doCalc(b);});
   // v96: mensilizza le quote dei soggiorni lunghi per il mese selezionato
   applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
@@ -6714,6 +6726,7 @@ function getReportBks(){
     });
   }
   // Always recalculate to ensure fresh values after any data changes
+  ripristinaCalcPieni(); // v104
   bks.forEach(function(b){b.calc=doCalc(b);});
   applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
   return bks;
