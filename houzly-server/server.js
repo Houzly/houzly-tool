@@ -748,15 +748,48 @@ async function loadAllBookings() {
 // upsert: [prenotazione con _rev]  delete: [id]
 // Se una prenotazione è stata cambiata nel frattempo da altri (es. sync Smoobu)
 // non la sovrascrive: la restituisce in "conflicts" con la versione attuale.
+// ── REGISTRO MODIFICHE PRENOTAZIONI (v106) ─────────────────────────
+// Ogni creazione, modifica rilevante ed eliminazione di una prenotazione viene
+// scritta in "booking_log" con valori prima/dopo, effetto sul lordo e origine
+// (modifica manuale, sync Smoobu, import...). I log si cancellano da soli dopo 400 giorni.
+const BOOKING_LOG_COL = 'booking_log';
+const LOG_FIELDS = ['tot', 'comm_ota_abs', 'pulizia', 'tassa_tot', 'checkin', 'checkout', 'notti', 'n_ospiti',
+  'proprieta_id', 'ospite_nome', 'canale', 'houzly_perc', 'iva22', 'black', 'incasso_diretto', 'transitorio', '_sync_cancelled'];
+let _bookingLogIndexed = false;
+function logLordo(b) { return (!b || b.black) ? 0 : Math.round((+b.tot || 0) * 100) / 100; }
+function logSame(a, b) {
+  const e = v => (v === undefined || v === null || v === '' || v === false) ? '' : String(v);
+  return e(a) === e(b);
+}
+function logBase(b) {
+  return { id: String(b.id), ota_num: b.ota_num || '', proprieta_id: b.proprieta_id || '', ospite_nome: b.ospite_nome || '',
+    canale: b.canale || '', checkin: b.checkin || '', checkout: b.checkout || '' };
+}
+async function writeBookingLog(entries) {
+  if (!entries.length) return;
+  try {
+    const col = await getCollection(BOOKING_LOG_COL);
+    if (!_bookingLogIndexed) {
+      _bookingLogIndexed = true;
+      await col.createIndex({ at: 1 }, { expireAfterSeconds: 400 * 86400 }).catch(() => {});
+      await col.createIndex({ id: 1 }).catch(() => {});
+    }
+    await col.insertMany(entries, { ordered: false });
+  } catch (e) { console.error('[booking_log]', e.message); } // il registro non blocca mai il salvataggio
+}
+
 async function applyBookingChanges(changes) {
   const col = await getCollection(BOOKINGS_COL);
   const now = new Date().toISOString();
   const revs = {}, conflicts = [];
+  const src = (changes && changes.src) || {};
+  const logEntries = [];
+  const atDate = new Date();
   for (const b of (changes.upsert || [])) {
     if (!b || !b.id) continue;
     const id = String(b.id);
     const { _id, _rev, _updated_at, ...clean } = b;
-    const current = await col.findOne({ _id: id }, { projection: { _rev: 1 } });
+    const current = await col.findOne({ _id: id });
     if (current && _rev != null && current._rev !== _rev) {
       const fresh = await col.findOne({ _id: id });
       const { _id: x, ...f } = fresh;
@@ -772,12 +805,36 @@ async function applyBookingChanges(changes) {
       continue;
     }
     revs[id] = nextRev;
+    // registro: nuova prenotazione o modifica dei campi che contano
+    try {
+      if (!current) {
+        logEntries.push({ ...logBase(clean), at: atDate, t: now, type: 'creata', src: src[id] || 'manuale',
+          lordo_prima: 0, lordo_dopo: logLordo(clean), delta: logLordo(clean), changes: [] });
+      } else {
+        const diff = [];
+        LOG_FIELDS.forEach(f => { if (!logSame(current[f], clean[f])) diff.push({ f, da: current[f] === undefined ? null : current[f], a: clean[f] === undefined ? null : clean[f] }); });
+        if (diff.length) {
+          const lp = logLordo(current), ld = logLordo(clean);
+          logEntries.push({ ...logBase(clean), at: atDate, t: now, type: 'modificata', src: src[id] || 'manuale',
+            lordo_prima: lp, lordo_dopo: ld, delta: Math.round((ld - lp) * 100) / 100, changes: diff });
+        }
+      }
+    } catch (e) { console.error('[booking_log/diff]', e.message); }
   }
   let deleted = 0;
   for (const id of (changes.delete || [])) {
+    const prev = await col.findOne({ _id: String(id) });
     const r = await col.deleteOne({ _id: String(id) });
     deleted += r.deletedCount;
+    if (prev && r.deletedCount) {
+      const lp = logLordo(prev);
+      logEntries.push({ ...logBase(prev), at: atDate, t: now, type: 'eliminata', src: src[String(id)] || 'manuale',
+        lordo_prima: lp, lordo_dopo: 0, delta: -lp, changes: [],
+        snapshot: { tot: prev.tot, comm_ota_abs: prev.comm_ota_abs, pulizia: prev.pulizia, houzly_perc: prev.houzly_perc,
+          n_ospiti: prev.n_ospiti, black: !!prev.black, _sync_cancelled: prev._sync_cancelled || null } });
+    }
   }
+  await writeBookingLog(logEntries);
   return { revs, conflicts, deleted };
 }
 
@@ -906,6 +963,14 @@ app.post('/api/restore', requireAdminAuth, async (req, res) => {
     await (await getCollection('db')).replaceOne({ _id: 'main' }, { _id: 'main', ...cleanBackup }, { upsert: true });
     if (Array.isArray(prenotazioni)) {
       const col = await getCollection(BOOKINGS_COL);
+      // v106: registro — un evento unico per il ripristino completo
+      const lordoPrima = curBookings.reduce((s, b) => s + logLordo(b), 0);
+      const lordoDopo = prenotazioni.filter(b => b && b.id).reduce((s, b) => s + logLordo(b), 0);
+      await writeBookingLog([{ id: '', ota_num: '', proprieta_id: '', ospite_nome: '', canale: '', checkin: '', checkout: '',
+        at: new Date(), t: now, type: 'ripristino', src: 'ripristino backup',
+        lordo_prima: Math.round(lordoPrima * 100) / 100, lordo_dopo: Math.round(lordoDopo * 100) / 100,
+        delta: Math.round((lordoDopo - lordoPrima) * 100) / 100,
+        changes: [{ f: 'prenotazioni', da: curBookings.length, a: prenotazioni.length }] }]);
       await col.deleteMany({});
       const list = prenotazioni.filter(b => b && b.id);
       for (let i = 0; i < list.length; i += 500) {
@@ -919,6 +984,20 @@ app.post('/api/restore', requireAdminAuth, async (req, res) => {
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
+});
+
+// ── GET /api/booking-log  (con password) ───────────────────────────
+// ?giorni=30 (default 30, max 400)  &tipo=eliminata|modificata|creata  &solo_lordo=1
+app.get('/api/booking-log', requireAdminAuth, async (req, res) => {
+  try {
+    const giorni = Math.min(400, Math.max(1, parseInt(req.query.giorni, 10) || 30));
+    const q = { at: { $gte: new Date(Date.now() - giorni * 86400000) } };
+    if (req.query.tipo) q.type = String(req.query.tipo);
+    if (req.query.solo_lordo === '1') q.delta = { $ne: 0 };
+    const col = await getCollection(BOOKING_LOG_COL);
+    const items = await col.find(q).sort({ at: -1 }).limit(2000).toArray();
+    res.json({ ok: true, giorni, items: items.map(({ _id, at, ...x }) => x) });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
 // ── GET /api/smoobu/hmac-test ─────────────────────────────────────
