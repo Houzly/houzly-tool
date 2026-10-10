@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v104 · 09/10 · Report non altera più Dashboard e totali</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v106 · 10/10 · Registro modifiche prenotazioni</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -926,7 +926,10 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- FILTER BAR -->
   <div style="margin-bottom:18px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Dashboard</div>
+        <button class="btn btn-ghost" onclick="openRegistroModifiche()" style="font-size:12px;padding:6px 12px">&#128220; Registro modifiche</button>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:40px;padding:5px 8px 5px 14px;box-shadow:var(--shadow)">
         <select id="dash-mese-filter" onchange="renderDash()" style="background:transparent;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer">
           <option value="">📅 Tutti i mesi</option>
@@ -1028,6 +1031,27 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <button class="btn btn-ghost" onclick="closeModal('modal-gruppo')">Annulla</button>
       <button class="btn btn-primary" id="btn-save-gruppo" onclick="saveGruppo()">Salva Gruppo</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO MODIFICHE (v106) -->
+<div class="modal-overlay" id="modal-registro">
+  <div class="modal" style="max-width:980px;width:96vw">
+    <button class="modal-close" onclick="closeModal('modal-registro')">&#10005;</button>
+    <div class="modal-title">&#128220; Registro modifiche prenotazioni</div>
+    <div style="font-size:12px;color:var(--text-light);margin:-6px 0 12px">Ogni prenotazione creata, modificata o eliminata, con l'effetto sul lordo e l'origine della modifica. Registrazione attiva dalla v106: le modifiche precedenti non sono presenti.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <select id="reg-giorni" onchange="loadRegistroModifiche()" style="padding:6px 10px;font-size:13px">
+        <option value="1">Ultime 24 ore</option><option value="7">Ultimi 7 giorni</option><option value="30" selected>Ultimi 30 giorni</option><option value="90">Ultimi 90 giorni</option><option value="400">Tutto (400 giorni)</option>
+      </select>
+      <select id="reg-tipo" onchange="renderRegistroModifiche()" style="padding:6px 10px;font-size:13px">
+        <option value="">Tutti i tipi</option><option value="eliminata">Eliminate</option><option value="modificata">Modificate</option><option value="creata">Create</option><option value="ripristino">Ripristini</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="reg-solo-lordo" onchange="renderRegistroModifiche()" checked> Solo quelle che cambiano il lordo</label>
+      <input type="text" id="reg-cerca" oninput="renderRegistroModifiche()" placeholder="Cerca ospite, struttura, n° OTA..." style="flex:1;min-width:180px;padding:6px 10px;font-size:13px">
+    </div>
+    <div id="reg-summary" style="margin-bottom:10px"></div>
+    <div id="reg-list" style="max-height:60vh;overflow:auto;border:1.5px solid var(--border);border-radius:var(--radius)"></div>
   </div>
 </div>
 
@@ -3036,6 +3060,19 @@ function bkCollectChanges(){
   Object.keys(_bkSnap).forEach(function(id){ if(!seen[id])del.push(id); });
   return {upsert:upsert,delete:del};
 }
+// ─── v106: ORIGINE DELLE MODIFICHE per il Registro modifiche ───
+// id prenotazione → origine ('sync Smoobu', 'import CSV Smoobu', ...). Senza
+// segno la modifica viene registrata come 'manuale'.
+var _bkLogSrc={};
+function bkMarkSrc(id,src){ if(id&&src&&!_bkLogSrc[String(id)]) _bkLogSrc[String(id)]=src; }
+// segna con 'src' tutte le prenotazioni cambiate e non ancora salvate
+function bkMarkPending(src){
+  if(!_bkSnapReady) return;
+  var ch=bkCollectChanges();
+  ch.upsert.forEach(function(b){ bkMarkSrc(b.id,src); });
+  ch.delete.forEach(function(id){ bkMarkSrc(id,src); });
+}
+function saveDBSrc(src,onSuccess,onError){ bkMarkPending(src); saveDB(onSuccess,onError); }
 var _saveInFlight=false,_saveQueued=null;
 function saveDB(onSuccess, onError){
   try{localStorage.setItem('houzly_v4', JSON.stringify(DB));}catch(e){} // fallback locale
@@ -3057,6 +3094,11 @@ function saveDB(onSuccess, onError){
   }
   var rest={}; for(var k in DB){ if(k!=='prenotazioni') rest[k]=DB[k]; }
   var changes=_bkSnapReady?bkCollectChanges():{upsert:[],delete:[]};
+  // v106: origine di ogni modifica (per il registro sul server)
+  changes.src={};
+  changes.upsert.forEach(function(b){ var k=String(b.id); if(_bkLogSrc[k]) changes.src[k]=_bkLogSrc[k]; });
+  changes.delete.forEach(function(id){ var k=String(id); if(_bkLogSrc[k]) changes.src[k]=_bkLogSrc[k]; });
+  Object.keys(changes.src).forEach(function(k){ delete _bkLogSrc[k]; });
   // fotografia "ottimistica": se il salvataggio fallisce la ripristiniamo
   var prevSnap={};
   changes.upsert.forEach(function(b){ prevSnap[b.id]=_bkSnap[b.id]; _bkSnap[b.id]=bkKey(b); });
@@ -6626,9 +6668,9 @@ function slToccaPeriodo(b, meseNum, annoVal){
 // v96: applica la mensilizzazione al b.calc delle prenotazioni soggiorno-lungo,
 // SOLO quando il report è su un mese+anno specifico. Ricalcola tot/comm/pulizia/
 // netto/houzly/iva/canone sulla quota di competenza di quel mese.
-// v104: il report sostituisce b.calc con la quota del mese (soggiorni lunghi e
-// locazioni transitorie) direttamente sulle prenotazioni del DB. Fuori dal report
-// (Dashboard, Prenotazioni, Adempimenti) va ripristinato il calcolo pieno.
+// v104/v105: dalla v105 il report lavora su copie e non modifica più il DB.
+// Questa funzione resta come rete di sicurezza: ripulisce eventuali quote mensili
+// rimaste nei dati salvati con versioni precedenti.
 function ripristinaCalcPieni(){
   (DB.prenotazioni||[]).forEach(function(b){
     if(b._slMese||b._trMese){ b.calc=doCalc(b); delete b._slMese; delete b._trMese; }
@@ -6692,8 +6734,10 @@ function getReportBksFull(){
       return bkInPeriod(b,_mi,_y);
     });
   }
-  ripristinaCalcPieni(); // v104: azzero quote rimaste da un report precedente
-  bks.forEach(function(b){b.calc=doCalc(b);});
+  // v105: il report lavora su COPIE delle prenotazioni: le quote mensili dei
+  // soggiorni lunghi e delle locazioni transitorie non toccano mai il DB, quindi
+  // Dashboard, Prenotazioni, Adempimenti e i salvataggi restano sempre sui totali pieni.
+  bks=bks.map(function(b){ var c=Object.assign({},b); c.calc=doCalc(c); return c; });
   // v96: mensilizza le quote dei soggiorni lunghi per il mese selezionato
   applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
   return bks;
@@ -6726,8 +6770,10 @@ function getReportBks(){
     });
   }
   // Always recalculate to ensure fresh values after any data changes
-  ripristinaCalcPieni(); // v104
-  bks.forEach(function(b){b.calc=doCalc(b);});
+  // v105: il report lavora su COPIE delle prenotazioni: le quote mensili dei
+  // soggiorni lunghi e delle locazioni transitorie non toccano mai il DB, quindi
+  // Dashboard, Prenotazioni, Adempimenti e i salvataggi restano sempre sui totali pieni.
+  bks=bks.map(function(b){ var c=Object.assign({},b); c.calc=doCalc(c); return c; });
   applySoggiornoLungoCalc(bks, mese?mesiArr().indexOf(mese)+1:0, anno||0);
   return bks;
 }
@@ -7968,7 +8014,7 @@ function processSmoobu(file){
       });
 
       DB.prenotazioni=DB.prenotazioni.concat(newBks);
-      saveDB();
+      saveDBSrc('import CSV Smoobu',);
 
       // Riepilogo trasparente con conteggi separati per motivo (v36)
       var totalRows = rawRows.filter(function(l){return l.trim();}).length;
@@ -13875,7 +13921,7 @@ function ctrSave(andPreview){
     var ivaT=(ow&&ow.tipo==='azienda')?false:cfg.iva22;
     return +b.houzly_perc!==+cfg.houzly_perc || (!!b.iva22)!==(!!ivaT);
   });
-  saveDB();
+  saveDBSrc('aggiornamento contratto',);
   closeModal('modal-contratto');
   renderContratti();
   toast(oid==='__new__'?'Mandante creato e contratto salvato \u2713':'Contratto salvato \u2713 (anagrafiche aggiornate)');
@@ -13890,7 +13936,7 @@ function ctrSave(andPreview){
         b.iva22=(ow&&ow.tipo==='azienda')?false:cfg.iva22;
         b.calc=doCalc(b);
       });
-      saveDB();
+      saveDBSrc('aggiornamento contratto',);
       toast('\u2713 '+_toFix.length+' prenotazioni aggiornate alla % del contratto');
     }
   }
@@ -14273,7 +14319,7 @@ function ademImportStorico(ev){
         if(idx>=0){nb.id=DB.prenotazioni[idx].id;DB.prenotazioni[idx]=nb;rep.agg++;}
         else{DB.prenotazioni.push(nb);rep.creati++;}
       });
-      saveDB();
+      saveDBSrc('import storico',);
       var sel=document.getElementById('adem-anno'); if(sel)sel.value=String(anno);
       renderAdempimenti();
       var nm=Object.keys(rep.nomatch);
@@ -15659,6 +15705,7 @@ function syncApply(items){
       // v92: mai eliminazione automatica. Airbnb a volte cancella prenotazioni che
       // restano un incasso vero: decide Houzly (elimina o tieni).
       if(!bc._sync_cancelled){
+        bkMarkSrc(bc.id,'sync Smoobu');
         bc._sync_cancelled=now;
         if(typeof lvLog==='function') lvLog('cancel',bc,'cancellata su Smoobu');
         if(Array.isArray(bc.verified_checks)) bc.verified_checks=bc.verified_checks.filter(function(t){return t!=='sync_cancel_doc';});
@@ -15690,6 +15737,7 @@ function syncApply(items){
       b._smoobu={v:d.fields,mod:item.modifiedAt,at:now,created:true};
       b.prenotata_il=item.res['created-at']||now;
       b.calc=doCalc(b);
+      bkMarkSrc(b.id,'sync Smoobu');
       DB.prenotazioni.push(b);
       if(before) out.recuperate++; else out.nuove++;
       return;
@@ -15725,6 +15773,7 @@ function syncApply(items){
       }
     }
     var firstLink=!b._smoobu;
+    bkMarkSrc(b.id,'sync Smoobu');
     b._smoobu={v:d.fields,mod:item.modifiedAt,at:now};
     if(item.res['created-at']&&b.prenotata_il!==item.res['created-at']){ b.prenotata_il=item.res['created-at']; out.meta=(out.meta||0)+1; }
     if(changed){
@@ -15854,6 +15903,76 @@ function lvChannel(c){
   return {cls:'altro',t:'•'};
 }
 // registro delle variazioni (modifiche e cancellazioni) arrivate dalla sync
+// ═══ REGISTRO MODIFICHE PRENOTAZIONI (v106) ═══
+var _regItems=[];
+function openRegistroModifiche(){ openModal('modal-registro'); loadRegistroModifiche(); }
+function loadRegistroModifiche(){
+  var list=document.getElementById('reg-list'); if(!list) return;
+  list.innerHTML='<div style="padding:18px;color:var(--text-light);font-size:13px">Caricamento…</div>';
+  var g=document.getElementById('reg-giorni').value||'30';
+  fetch('/api/booking-log?giorni='+encodeURIComponent(g),{headers:onbHeaders()})
+    .then(function(r){ if(r.status===401){ authRequirePin('Reinserisci la password per vedere il registro'); throw new Error('auth'); } return r.json(); })
+    .then(function(d){
+      if(!d||d.ok===false) throw new Error((d&&d.error)||'errore');
+      _regItems=d.items||[]; renderRegistroModifiche();
+    })
+    .catch(function(e){ if(e.message!=='auth') list.innerHTML='<div style="padding:18px;color:var(--red,#e11d48);font-size:13px">Impossibile caricare il registro: '+String(e.message||e)+'</div>'; });
+}
+function regFmtVal(f,v){
+  if(v===null||v===undefined||v==='') return '—';
+  if(['tot','comm_ota_abs','pulizia','tassa_tot'].indexOf(f)>=0) return eur(+v||0);
+  if(f==='houzly_perc') return v+'%';
+  if(f==='proprieta_id') return nomeProp(v);
+  if(f==='checkin'||f==='checkout') return dateIt(v);
+  if(f==='_sync_cancelled') return v?'segnalata cancellata ('+dateIt(String(v).slice(0,10))+')':'—';
+  if(v===true) return 'sì'; if(v===false) return 'no';
+  return String(v).replace(/</g,'&lt;');
+}
+var REG_LBL={tot:'Importo',comm_ota_abs:'Comm. OTA',pulizia:'Pulizia',tassa_tot:'Tassa soggiorno',checkin:'Check-in',checkout:'Check-out',notti:'Notti',
+  n_ospiti:'Ospiti',proprieta_id:'Struttura',ospite_nome:'Ospite',canale:'Canale',houzly_perc:'% Houzly',iva22:'IVA 22%',black:'Aggiuntiva',
+  incasso_diretto:'Incasso diretto',transitorio:'Locazione transitoria',_sync_cancelled:'Cancellazione Smoobu',prenotazioni:'N. prenotazioni'};
+function renderRegistroModifiche(){
+  var list=document.getElementById('reg-list'); if(!list) return;
+  var tipo=document.getElementById('reg-tipo').value;
+  var solo=document.getElementById('reg-solo-lordo').checked;
+  var q=(document.getElementById('reg-cerca').value||'').toLowerCase().trim();
+  var items=_regItems.filter(function(x){
+    if(tipo&&x.type!==tipo) return false;
+    if(solo&&!(+x.delta)) return false;
+    if(q){ var hay=((x.ospite_nome||'')+' '+(x.proprieta_id?nomeProp(x.proprieta_id):'')+' '+(x.ota_num||'')+' '+(x.src||'')).toLowerCase(); if(hay.indexOf(q)<0) return false; }
+    return true;
+  });
+  var dTot=0,nEl=0,nMod=0,nNew=0;
+  items.forEach(function(x){ dTot+=+x.delta||0; if(x.type==='eliminata')nEl++; else if(x.type==='modificata')nMod++; else if(x.type==='creata')nNew++; });
+  dTot=r2(dTot);
+  document.getElementById('reg-summary').innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="padding:8px 14px;border-radius:8px;background:'+(dTot<0?'rgba(225,29,72,0.08)':'rgba(16,185,129,0.08)')+';font-size:13px"><span style="color:var(--text-light)">Effetto sul lordo:</span> <strong style="color:'+(dTot<0?'#e11d48':'#059669')+'">'+(dTot>0?'+':'')+eur(dTot)+'</strong></div>'
+    +'<div style="padding:8px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:13px">'+nEl+' eliminate · '+nMod+' modificate · '+nNew+' create</div></div>';
+  if(!items.length){ list.innerHTML='<div style="padding:18px;color:var(--text-light);font-size:13px">Nessuna modifica nel periodo.</div>'; return; }
+  var tipoStyle={eliminata:['🗑','#e11d48','Eliminata'],modificata:['✏️','#d97706','Modificata'],creata:['➕','#059669','Creata'],ripristino:['♻️','#7c3aed','Ripristino backup']};
+  var html='';
+  items.forEach(function(x){
+    var ts=tipoStyle[x.type]||['•','var(--text)',x.type];
+    var d=new Date(x.t), when=d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    var chg=(x.changes||[]).map(function(c){ return '<span style="display:inline-block;margin:2px 10px 2px 0"><span style="color:var(--text-light)">'+(REG_LBL[c.f]||c.f)+':</span> '+regFmtVal(c.f,c.da)+' → <strong>'+regFmtVal(c.f,c.a)+'</strong></span>'; }).join('');
+    if(x.type==='eliminata'&&x.snapshot) chg='<span style="color:var(--text-light)">Importo eliminato:</span> <strong>'+eur(+x.snapshot.tot||0)+'</strong>'+(x.snapshot._sync_cancelled?' <span style="color:var(--text-light)">· era segnalata cancellata su Smoobu</span>':'')+(x.snapshot.black?' <span style="color:var(--text-light)">· aggiuntiva</span>':'');
+    var delta=+x.delta||0;
+    html+='<div style="display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:flex-start">'
+      +'<div style="font-size:18px;line-height:1.2">'+ts[0]+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +'<div style="font-size:13px"><strong style="color:'+ts[1]+'">'+ts[2]+'</strong> · '+(x.ospite_nome?String(x.ospite_nome).replace(/</g,'&lt;'):'—')
+            +(x.proprieta_id?' · <span style="color:var(--text-mid)">'+nomeProp(x.proprieta_id)+'</span>':'')
+            +(x.checkin?' · <span style="color:var(--text-light)">'+dateIt(x.checkin)+(x.checkout?' – '+dateIt(x.checkout):'')+'</span>':'')
+            +(x.canale?' · <span style="color:var(--text-light)">'+x.canale+'</span>':'')+'</div>'
+          +'<div style="font-size:13px;font-weight:700;white-space:nowrap;color:'+(delta<0?'#e11d48':delta>0?'#059669':'var(--text-light)')+'">'+(delta?(delta>0?'+':'')+eur(delta):'lordo invariato')+'</div>'
+        +'</div>'
+        +(chg?'<div style="font-size:12px;margin-top:4px;line-height:1.5">'+chg+'</div>':'')
+        +'<div style="font-size:11px;color:var(--text-light);margin-top:3px">'+when+' · origine: '+(x.src||'manuale')+(x.ota_num?' · OTA '+x.ota_num:'')+'</div>'
+      +'</div></div>';
+  });
+  list.innerHTML=html;
+}
 function lvLog(type,b,detail){
   if(!DB.sync_events) DB.sync_events=[];
   DB.sync_events.unshift({t:new Date().toISOString(),type:type,id:b.id,detail:detail||''});
