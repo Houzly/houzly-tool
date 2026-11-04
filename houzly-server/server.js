@@ -754,7 +754,8 @@ async function loadAllBookings() {
 // (modifica manuale, sync Smoobu, import...). I log si cancellano da soli dopo 400 giorni.
 const BOOKING_LOG_COL = 'booking_log';
 const LOG_FIELDS = ['tot', 'comm_ota_abs', 'pulizia', 'tassa_tot', 'checkin', 'checkout', 'notti', 'n_ospiti',
-  'proprieta_id', 'ospite_nome', 'canale', 'houzly_perc', 'iva22', 'black', 'incasso_diretto', 'transitorio', '_sync_cancelled'];
+  'proprieta_id', 'ospite_nome', 'canale', 'houzly_perc', 'iva22', 'black', 'incasso_diretto', 'transitorio', '_sync_cancelled',
+  'rimborso', 'rimborso_carico']; // v107: rimborso all'ospite
 let _bookingLogIndexed = false;
 function logLordo(b) { return (!b || b.black) ? 0 : Math.round((+b.tot || 0) * 100) / 100; }
 function logSame(a, b) {
