@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v106 · 10/10 · Registro modifiche prenotazioni</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v107 · 04/11 · Rimborso all'ospite</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2069,6 +2069,21 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
         <div class="field"><label>IVA 22% su Houzly</label><select id="p-iva22" onchange="calcScorporo()"><option value="0">No (esente)</option><option value="1">S&igrave; (+ 22%)</option></select></div>
       </div>
+      <!-- RIMBORSO ALL'OSPITE (v107) -->
+      <div class="field" style="margin-top:4px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(225,29,72,0.05);border:1px solid rgba(225,29,72,0.25);border-radius:var(--radius)">
+          <input type="checkbox" id="p-rimb-on" onchange="onRimbToggle()" style="width:18px;height:18px;flex-shrink:0">
+          <span><span style="font-weight:600">&#8617; Rimborso all'ospite</span><br><span style="font-size:11px;color:var(--text-light)">Somma restituita all'ospite dopo il soggiorno (es. dal Centro risoluzioni Airbnb). L'importo OTA resta quello pagato dall'ospite: il rimborso si registra qui, sulla prenotazione che l'ha causato, anche se Airbnb lo scala da un payout successivo.</span></span>
+        </label>
+      </div>
+      <div id="rimb-fields" style="display:none;margin-top:8px;padding:12px;background:rgba(225,29,72,0.03);border:1px solid rgba(225,29,72,0.16);border-radius:var(--radius)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin:0"><label>Importo rimborsato (&euro;)</label><input type="number" id="p-rimb" step="0.01" min="0" oninput="calcScorporo()"></div>
+          <div class="field" style="margin:0"><label>A carico di</label><select id="p-rimb-carico" onchange="calcScorporo()"><option value="condiviso">Condiviso (prima del compenso Houzly)</option><option value="proprietario">Proprietario (dopo il compenso)</option><option value="houzly">Houzly (dal compenso)</option></select></div>
+        </div>
+        <div class="field" style="margin:10px 0 0"><label>Motivo e compensazione <span style="font-weight:400;color:var(--text-light);font-size:11px">(opzionale)</span></label><input type="text" id="p-rimb-nota" placeholder="es. Jacuzzi non funzionante &mdash; scalato su payout del 12/10"></div>
+        <div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:8px"><strong>Condiviso</strong>: si toglie dal Tot. Netto come la commissione OTA, quindi riduce in proporzione compenso Houzly e canone. <strong>Proprietario</strong>: si toglie solo dal canone. <strong>Houzly</strong>: si toglie solo dal compenso Houzly. Non si applica alle locazioni transitorie.</div>
+      </div>
       <div class="field" style="margin-top:4px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:var(--radius)">
           <input type="checkbox" id="p-incasso-diretto" onchange="onCanaleChange()" style="width:18px;height:18px;flex-shrink:0">
@@ -3191,7 +3206,14 @@ function doCalc(b){
   var prop=DB&&DB.proprieta?DB.proprieta.find(function(p){return p.id===b.proprieta_id;}):null;
   var pulizieOwner=prop?!!prop.pulizie_owner:false;
   // Base netto: lordo - comm - tassa - pulizie (pulizie sempre escluse dalla base houzly)
-  var netto=r2(tot-comm_ota-tassa-pulizia);
+  // v107: rimborso all'ospite (es. Centro risoluzioni Airbnb). Il lordo non cambia.
+  //   condiviso    → costo condiviso: si toglie dal netto, prima del compenso Houzly
+  //   proprietario → si toglie solo dal canone, dopo il compenso
+  //   houzly       → si toglie solo dal compenso Houzly (IVA inclusa), il canone non cambia
+  // Le locazioni transitorie hanno un calcolo a payout dedicato: lì non si applica.
+  var rimb=(!b.transitorio&&+b.rimborso>0)?r2(+b.rimborso):0;
+  var rimbCar=rimb?((b.rimborso_carico==='proprietario'||b.rimborso_carico==='houzly')?b.rimborso_carico:'condiviso'):'';
+  var netto=r2(tot-comm_ota-tassa-pulizia-(rimbCar==='condiviso'?rimb:0));
   var houzly=r2(netto*(b.houzly_perc/100));
   // IVA su Houzly: NON applicata se la prenotazione è Aggiuntiva (b.black),
   // perché Houzly non emette fattura su quelle.
@@ -3201,14 +3223,16 @@ function doCalc(b){
   // la versa la piattaforma a lei, non Houzly. Il denaro è già suo.
   // Houzly deve RICEVERE da lei: compenso + IVA + rimborso pulizie anticipate.
   var incassoDiretto=!!b.incasso_diretto;
-  var canone=r2(netto-houzly-iva22);
+  var canone=r2(netto-houzly-iva22-(rimbCar==='proprietario'?rimb:0));
+  // v107: rimborso a carico Houzly → cala compenso+IVA della stessa cifra (dopo aver fissato il canone)
+  if(rimbCar==='houzly'){ var _hz=r2(houzly+iva22-rimb); if(iva22>0){ houzly=r2(_hz/1.22); iva22=r2(_hz-houzly); } else houzly=_hz; }
   // Se pulizie_owner: le pulizie vengono restituite al proprietario sopra il canone
   var rimborso_pulizie=pulizieOwner?pulizia:0;
   var canone_totale=r2(canone+rimborso_pulizie);
   // v52: saldo a favore Houzly quando incasso diretto
   // = compenso + IVA + pulizie anticipate da Houzly (pulizie OFF = trattenute da Houzly)
   var saldo_houzly=incassoDiretto?r2(houzly+iva22+(pulizieOwner?0:pulizia)):0;
-  return{tot:tot,comm_ota:comm_ota,tassa:tassa,pulizia:pulizia,netto:netto,houzly:houzly,iva22:iva22,canone:canone,rimborso_pulizie:rimborso_pulizie,canone_totale:canone_totale,pulizie_owner:pulizieOwner,incasso_diretto:incassoDiretto,saldo_houzly:saldo_houzly};
+  return{tot:tot,comm_ota:comm_ota,tassa:tassa,pulizia:pulizia,netto:netto,houzly:houzly,iva22:iva22,canone:canone,rimborso_pulizie:rimborso_pulizie,canone_totale:canone_totale,pulizie_owner:pulizieOwner,incasso_diretto:incassoDiretto,saldo_houzly:saldo_houzly,rimborso:rimb,rimborso_carico:rimbCar,rimb_lordo:(rimbCar&&rimbCar!=='houzly')?rimb:0};
 }
 function r2(n){return Math.round((+(n||0))*100)/100;}
 
@@ -3511,7 +3535,8 @@ function slQuotaMese(b, anno, mese){
   var pulMese=(b.sl_pulizia_mese||slUltimoMese(b));
   if(fineComp && pulMese>fineComp) pulMese=fineComp; // pulizia mai oltre l'ultimo mese di competenza
   var pulizia=(meseStr===pulMese)?(+b.pulizia||0):0;
-  return {notti:nMese, tot:totMese, pulizia:pulizia, nottiTot:nottiTot, valNotte:valNotte};
+  var rimbMese=(meseStr===pulMese)?(+b.rimborso||0):0; // v107: rimborso ospite nello stesso mese della pulizia
+  return {notti:nMese, tot:totMese, pulizia:pulizia, nottiTot:nottiTot, valNotte:valNotte, rimborso:rimbMese};
 }
 
 // v59: la ritenuta d'acconto 21% si applica SOLO a proprietari persona fisica.
@@ -5364,6 +5389,7 @@ function editPren(id){
   // v101: campi locazione transitoria
   trFillForm(b);
   if(b.transitorio) onTransitorioToggle();
+  rimbFillForm(b); // v107
   onPropSel();
   // v103: onPropSel() rimette la % e l'IVA del contratto: in modifica ripristino quelle
   // salvate sulla prenotazione (es. 25% concordato per una locazione transitoria)
@@ -5733,6 +5759,7 @@ function openNewModal(){
   var elSLur=document.getElementById('p-sl-ultimo-mese');if(elSLur)elSLur.value='';
   var slBox=document.getElementById('sl-fields');if(slBox)slBox.style.display='none';
   trFillForm(null); // v101: reset locazione transitoria
+  rimbFillForm(null); // v107: reset rimborso ospite
   var sel=document.getElementById('p-prop-sel');
   sel.innerHTML='<option value="">-- Seleziona propriet\u00e0 --</option>'+buildPropOptions();
   document.getElementById('prop-fiscal-info').style.display='none';
@@ -5893,6 +5920,45 @@ function onTransitorioToggle(){
   var ne=document.getElementById('p-tr-netto');
   if(ne&&!ne.value){ var tt=+document.getElementById('p-tot').value||0, cc=+document.getElementById('p-comm-abs').value||0; if(tt>0)ne.value=r2(tt-cc); }
   renderTRPreview();
+}
+// ═══ RIMBORSO ALL'OSPITE (v107) ═══
+function rimbCaricoLbl(car){ return car==='proprietario'?'a carico proprietario':car==='houzly'?'a carico Houzly':'condiviso'; }
+function rimbReadForm(){
+  function v(id){ var e=document.getElementById(id); return e?e.value:''; }
+  var on=document.getElementById('p-rimb-on');
+  var imp=(on&&on.checked)?r2(Math.max(0,+v('p-rimb')||0)):0;
+  return {rimborso:imp, rimborso_carico:imp?(v('p-rimb-carico')||'condiviso'):'', rimborso_nota:imp?v('p-rimb-nota').trim():''};
+}
+function rimbFillForm(b){
+  b=b||{};
+  var has=+b.rimborso>0;
+  var on=document.getElementById('p-rimb-on'); if(on) on.checked=has;
+  var e1=document.getElementById('p-rimb'); if(e1) e1.value=has?b.rimborso:'';
+  var e2=document.getElementById('p-rimb-carico'); if(e2) e2.value=(has&&b.rimborso_carico)?b.rimborso_carico:'condiviso';
+  var e3=document.getElementById('p-rimb-nota'); if(e3) e3.value=has?(b.rimborso_nota||''):'';
+  var box=document.getElementById('rimb-fields'); if(box) box.style.display=has?'block':'none';
+}
+function onRimbToggle(){
+  var on=document.getElementById('p-rimb-on');
+  var box=document.getElementById('rimb-fields'); if(box) box.style.display=(on&&on.checked)?'block':'none';
+  if(on&&on.checked){ var e=document.getElementById('p-rimb'); if(e) e.focus(); }
+  calcScorporo();
+}
+// righe per lo Scorporo Live
+function scRimbPrima(c){
+  if(!c.rimborso||c.rimborso_carico!=='condiviso') return '';
+  return '<div class="sc-row"><span>Rimborso ospite</span><span class="amt">- '+eur(c.rimborso)+'</span></div>';
+}
+function scRimbDopo(c){
+  if(!c.rimborso) return '';
+  if(c.rimborso_carico==='proprietario') return '<div class="sc-row"><span>Rimborso ospite (a carico proprietario)</span><span class="amt">- '+eur(c.rimborso)+'</span></div>';
+  if(c.rimborso_carico==='houzly') return '<div style="font-size:10px;color:rgba(255,255,255,0.45);margin:-2px 0 4px;padding-left:2px">&nbsp;&nbsp;&nbsp;&nbsp;Compenso Houzly'+(c.iva22?' + IVA':'')+' ridotto di '+eur(c.rimborso)+' per il rimborso ospite a carico Houzly</div>'+((c.houzly<0)?'<div style="font-size:10.5px;color:#ff9eb2;margin-bottom:4px">&#9888; Il rimborso supera il compenso Houzly</div>':'');
+  return '';
+}
+// nota nella cella del report
+function rptRimbNote(c){
+  if(!c||!c.rimborso) return '';
+  return '<br><span style="font-size:10px;color:#e11d48;font-weight:600;white-space:nowrap">&#8617; rimb. ospite '+eur(c.rimborso)+'</span><br><span style="font-size:9px;color:var(--text-light);white-space:nowrap">'+rimbCaricoLbl(c.rimborso_carico)+'</span>';
 }
 function trReadForm(){
   function v(id){ var e=document.getElementById(id); return e?e.value:''; }
@@ -6064,6 +6130,7 @@ function calcScorporo(){
   var canale=document.getElementById('p-canale').value;
   var b={tot:+document.getElementById('p-tot').value||0,canale:canale,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),proprieta_id:document.getElementById('p-prop-sel').value};
   if(!b.tot){document.getElementById('sc-rows').innerHTML='<div style="color:rgba(255,255,255,0.3);font-size:12px">Inserisci importo OTA</div>';return;}
+  Object.assign(b,rimbReadForm()); b.transitorio=!!(_trEl&&_trEl.checked); // v107
   var c=doCalc(b);
   // Su Booking.com mostro la decomposizione: commissione pura + 1,5% bancaria
   var commLabel='Commissione OTA';
@@ -6079,6 +6146,7 @@ function calcScorporo(){
     +'<div class="sc-section-label">Costi Condivisi</div>'
     +'<div class="sc-row"><span>'+commLabel+'</span><span class="amt">- '+eur(c.comm_ota)+'</span></div>'
     +commHint
+    +scRimbPrima(c)
     +'<div class="sc-section-label">Trattenute</div>'
     +(c.tassa>0?'<div class="sc-row"><span>Tassa di Soggiorno'+(b.tassa_tot?'<span style="font-size:10px;color:#22d1ee;margin-left:6px">[override]</span>':'')+'</span><span class="amt">- '+eur(c.tassa)+'</span></div>':'')
     +'<div class="sc-row"><span>Spese Pulizia</span><span class="amt">- '+eur(c.pulizia)+'</span></div>'
@@ -6086,6 +6154,7 @@ function calcScorporo(){
     +'<div class="sc-row"><span>Tot. Netto</span><span class="amt">'+eur(c.netto)+'</span></div>'
     +'<div class="sc-row"><span>Compenso Houzly ('+b.houzly_perc+'%)</span><span class="amt">- '+eur(c.houzly)+'</span></div>'
     +(b.iva22?'<div class="sc-row"><span>IVA 22% Houzly</span><span class="amt">- '+eur(c.iva22)+'</span></div>':'')
+    +scRimbDopo(c)
     +'<div class="sc-total"><span class="label">Canone di Locazione Puro</span><span class="amt">'+eur(c.canone)+'</span></div>'
     +(c.incasso_diretto
       ?'<div style="margin-top:10px;padding:10px 12px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.35);border-radius:8px">'
@@ -6110,6 +6179,7 @@ function buildConfirm(){
   var propId=document.getElementById('p-prop-sel').value;
   var own=ownerOfProp(propId);
   var b={tot:+document.getElementById('p-tot').value||0,canale:document.getElementById('p-canale').value,comm_ota_abs:+document.getElementById('p-comm-abs').value||0,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),notti:+document.getElementById('p-notti').value||0,n_ospiti:+document.getElementById('p-n-ospiti').value||1,pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',proprieta_id:document.getElementById('p-prop-sel').value};
+  Object.assign(b,rimbReadForm()); var _trC=document.getElementById('p-transitorio'); b.transitorio=!!(_trC&&_trC.checked); // v107
   var c=doCalc(b);
   document.getElementById('confirm-summary').innerHTML=
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
@@ -6122,6 +6192,7 @@ function buildConfirm(){
     +'<div class="scorporo-box"><h4>Riepilogo Scorporo</h4>'
     +'<div class="sc-row"><span>Importo OTA</span><span class="amt">'+eur(c.tot)+'</span></div>'
     +'<div class="sc-row"><span>Comm. OTA + Tassa + Pulizia</span><span class="amt">- '+eur(c.comm_ota+c.tassa+c.pulizia)+'</span></div>'
+    +(c.rimborso?'<div class="sc-row"><span>Rimborso ospite ('+rimbCaricoLbl(c.rimborso_carico)+')</span><span class="amt">- '+eur(c.rimborso)+'</span></div>':'')
     +'<div class="sc-row"><span>Compenso Houzly'+(b.iva22?' + IVA':'')+'</span><span class="amt">- '+eur(c.houzly+c.iva22)+'</span></div>'
     +'<div class="sc-total"><span class="label">Canone Locazione Puro</span><span class="amt">'+eur(c.canone)+'</span></div></div>';
 }
@@ -6137,6 +6208,7 @@ function savePren(){
   var b={id:uid(),proprieta_id:propId,canale:canale,ota_num:document.getElementById('p-ota-num').value,ospite_nome:document.getElementById('p-ospite-nome').value.trim(),n_ospiti:+document.getElementById('p-n-ospiti').value||1,ospite_cf:document.getElementById('p-ospite-cf').value,ospite_email:document.getElementById('p-ospite-email').value,ospite_ind:document.getElementById('p-ospite-ind').value,checkin:document.getElementById('p-checkin').value,checkout:document.getElementById('p-checkout').value,notti:+document.getElementById('p-notti').value||0,tot:newTot,comm_ota_perc:newCommPerc,comm_ota_abs:newCommAbs,tassa_pn:+document.getElementById('p-tassa-pn').value||0,tassa_tot:(document.getElementById('p-tassa-tot').value!==''?+document.getElementById('p-tassa-tot').value:null),pulizia:+document.getElementById('p-pulizia').value||0,houzly_perc:+document.getElementById('p-houzly-perc').value||0,iva22:document.getElementById('p-iva22').value==='1',incasso_diretto:!!(document.getElementById('p-incasso-diretto')&&document.getElementById('p-incasso-diretto').checked),note:document.getElementById('p-note').value,meseReportOverride:(document.getElementById('p-mese-override')?document.getElementById('p-mese-override').value:''),meseReportConfermato:!!(document.getElementById('p-mese-confermato')&&document.getElementById('p-mese-confermato').checked),soggiorno_lungo:!!(document.getElementById('p-soggiorno-lungo')&&document.getElementById('p-soggiorno-lungo').checked),sl_base:(document.getElementById('p-sl-base')&&document.getElementById('p-sl-base').value!==''?+document.getElementById('p-sl-base').value:null),sl_pulizia_mese:(document.getElementById('p-sl-pulizia-mese')?document.getElementById('p-sl-pulizia-mese').value:''),sl_chiuso_al:(document.getElementById('p-sl-chiuso-al')?document.getElementById('p-sl-chiuso-al').value:''),sl_ultimo_mese:(document.getElementById('p-sl-ultimo-mese')?document.getElementById('p-sl-ultimo-mese').value:''),calc:{}};
   // v101: locazione transitoria
   Object.assign(b, trReadForm());
+  Object.assign(b, rimbReadForm()); // v107
   if(b.transitorio) b.soggiorno_lungo=false;
   b.calc=doCalc(b);
   var eBtnS=document.getElementById('btn-save-pren');
@@ -6694,6 +6766,7 @@ function applySoggiornoLungoCalc(bks, meseNum, annoVal){
     vb.tot=q.tot;
     vb.notti=q.notti;
     vb.pulizia=q.pulizia;
+    vb.rimborso=q.rimborso||0; // v107
     // La commissione OTA va ricalcolata in proporzione: uso la % effettiva sul totale reale.
     // Se comm_ota_abs era assoluta sul totale pieno, la riduco in proporzione alle notti del mese.
     if(b.comm_ota_abs!=null && +b.comm_ota_abs>0 && q.nottiTot>0){
@@ -6852,7 +6925,7 @@ function previewReportProp(){
         +'<td style="text-align:center">'+b.notti+'</td>'
         +'<td style="text-align:center">'+b.n_ospiti+'</td>'
         +'<td>'+eur(b.calc.tot)+'</td>'
-        +'<td>'+eur(b.calc.comm_ota)+'</td>'
+        +'<td>'+eur(b.calc.comm_ota)+rptRimbNote(b.calc)+'</td>'
         +'<td>'+eur(b.calc.tassa)+'</td>'
         +'<td>'+eur(b.calc.pulizia)+'</td>'
         +'<td>'+eur(b.calc.netto)+'</td>'
@@ -6947,6 +7020,7 @@ function previewReportProp(){
        +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;letter-spacing:0.08em">RIEPILOGO — PRENOTAZIONI PRINCIPALI</div>'
        +'<div class="rpt-sum-row"><span>Totale Lordo</span><span style="font-weight:600">'+eur(r2(bks.reduce(function(s,b){return s+b.calc.tot;},0)))+'</span></div>'
        +'<div class="rpt-sum-row"><span>Commissioni OTA</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+b.calc.comm_ota;},0)))+'</span></div>'
+       +(bks.some(function(b){return b.calc.rimborso>0;})?'<div class="rpt-sum-row"><span>Rimborsi ospiti</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+(b.calc.rimborso||0);},0)))+'</span></div>':'')
        +'<div class="rpt-sum-row"><span>Tasse di soggiorno</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+b.calc.tassa;},0)))+'</span></div>'
        +'<div class="rpt-sum-row"><span>Spese pulizia</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+b.calc.pulizia;},0)))+'</span></div>'
        +'<div class="rpt-sum-row"><span>Compenso Houzly</span><span style="color:var(--orange)">- '+eur(r2(bks.reduce(function(s,b){return s+b.calc.houzly;},0)))+'</span></div>'
@@ -7552,7 +7626,7 @@ function exportReportExcel(){
     var cbks=bks.filter(function(b){return b.canale===ch;});
     data.push([ch,'','','','','','COSTI CONDIVISI','TASSA DI SOGGIORNO','GIRO DI PARTITA','TOTALI','','','']);
     data.push(['INGRESSO','USCITA','CLIENTE','NOTTE','N.ADULTI','TOT.PRENOTAZIONE','COMMISSIONE OTA','TASSA SOGGIORNO','PULIZIA','Tot.Netto','Houzly','IVA 22%','Netto Proprietario']);
-    cbks.forEach(function(b){data.push([b.checkin,b.checkout,b.ospite_nome+(b._slMese?' (quota '+b.calc.notti_mese_sl+'/'+b.calc.notti_tot_sl+' notti)':''),(b._slMese?b.calc.notti_mese_sl:b.notti),b.n_ospiti,b.calc.tot,b.calc.comm_ota,b.calc.tassa,b.calc.pulizia,b.calc.netto,b.calc.houzly,b.iva22?b.calc.iva22:0,b.calc.canone]);});
+    cbks.forEach(function(b){data.push([b.checkin,b.checkout,b.ospite_nome+(b._slMese?' (quota '+b.calc.notti_mese_sl+'/'+b.calc.notti_tot_sl+' notti)':'')+(b.calc.rimborso?' (rimborso ospite '+b.calc.rimborso+' EUR, '+rimbCaricoLbl(b.calc.rimborso_carico)+')':''),(b._slMese?b.calc.notti_mese_sl:b.notti),b.n_ospiti,b.calc.tot,b.calc.comm_ota,b.calc.tassa,b.calc.pulizia,b.calc.netto,b.calc.houzly,b.iva22?b.calc.iva22:0,b.calc.canone]);});
     data.push([]);
   });
   var sommaNetti=r2(bks.reduce(function(s,b){return s+b.calc.canone;},0));
@@ -12341,7 +12415,7 @@ function ademCalcMandanteYearly(ownerId, anno){
     var c=b.calc;
     var t=ademTrimestreDi(b);
     if(t<1||t>4)return;
-    var lordo=+c.tot||0;
+    var lordo=r2((+c.tot||0)-(+c.rimb_lordo||0)); // v107: meno il rimborso ospite a carico del mandante
     var commOTA=+c.comm_ota||0;
     var commHouzly=+c.houzly||0;
     var pulizia=+c.pulizia||0;
@@ -12422,7 +12496,7 @@ function ademCalcMandanteYearly(ownerId, anno){
       if(!b.calc)return;
       var notti=+b.notti||0;
       g.giorniLocazione+=notti;
-      var lordo=+b.calc.tot||0;
+      var lordo=r2((+b.calc.tot||0)-(+b.calc.rimb_lordo||0)); // v107
       var canone_puro=(b.calc.pulizie_owner && b.calc.canone_totale!=null)?+b.calc.canone_totale:+b.calc.canone||0;
       var canone_intero=lordo;
       var base=method==='ade'?canone_intero:canone_puro;
@@ -15930,7 +16004,7 @@ function regFmtVal(f,v){
 }
 var REG_LBL={tot:'Importo',comm_ota_abs:'Comm. OTA',pulizia:'Pulizia',tassa_tot:'Tassa soggiorno',checkin:'Check-in',checkout:'Check-out',notti:'Notti',
   n_ospiti:'Ospiti',proprieta_id:'Struttura',ospite_nome:'Ospite',canale:'Canale',houzly_perc:'% Houzly',iva22:'IVA 22%',black:'Aggiuntiva',
-  incasso_diretto:'Incasso diretto',transitorio:'Locazione transitoria',_sync_cancelled:'Cancellazione Smoobu',prenotazioni:'N. prenotazioni'};
+  incasso_diretto:'Incasso diretto',transitorio:'Locazione transitoria',_sync_cancelled:'Cancellazione Smoobu',prenotazioni:'N. prenotazioni',rimborso:'Rimborso ospite',rimborso_carico:'Rimborso a carico di'};
 function renderRegistroModifiche(){
   var list=document.getElementById('reg-list'); if(!list) return;
   var tipo=document.getElementById('reg-tipo').value;
