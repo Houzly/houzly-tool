@@ -2125,7 +2125,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field" style="margin-top:4px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.28);border-radius:var(--radius)">
           <input type="checkbox" id="p-transitorio" onchange="onTransitorioToggle()" style="width:18px;height:18px;flex-shrink:0">
-          <span><span style="font-weight:600">&#127968; Locazione transitoria &mdash; contratto registrato</span><br><span style="font-size:11px;color:var(--text-light)">Soggiorno oltre 30 giorni regolato da contratto transitorio. Nel report va in una sezione separata: niente ritenuta 21% di Houzly (niente F24 1919 / CU), payout Airbnb a blocchi di 30 notti, cedolare pagata dal proprietario in dichiarazione.</span></span>
+          <span><span style="font-weight:600">&#127968; Locazione transitoria &mdash; contratto registrato</span><br><span style="font-size:11px;color:var(--text-light)">Soggiorno oltre 30 giorni regolato da contratto transitorio. Nel report va in una sezione separata: niente ritenuta 21% di Houzly (niente F24 1919 / CU), payout Airbnb mensili (da giorno a giorno, pro-rata per notti), cedolare pagata dal proprietario in dichiarazione.</span></span>
         </label>
       </div>
       <div id="tr-fields" style="display:none;margin-top:8px;padding:12px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.18);border-radius:var(--radius)">
@@ -2133,7 +2133,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div class="field" style="margin:0"><label>Conduttori</label><input type="text" id="p-tr-conduttori" placeholder="es. Mario Rossi e Anna Bianchi"></div>
           <div class="field" style="margin:0"><label>Tipo contratto</label><input type="text" id="p-tr-tipo" placeholder="Transitorio art. 5 c.1 L. 431/98"></div>
           <div class="field" style="margin:0"><label>Totale Airbnb &laquo;You earn&raquo; (&euro;)</label><input type="number" id="p-tr-netto" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Total Stay Price meno la commissione host Airbnb.</div></div>
-          <div class="field" style="margin:0"><label>Notti per payout</label><input type="number" id="p-tr-blocco" step="1" min="1" value="30" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Airbnb Long Term: 30.</div></div>
+          <div class="field" style="margin:0"><label>Cadenza payout</label><div style="display:flex;gap:6px"><select id="p-tr-cadenza" onchange="onTRCadenzaChange()" style="flex:1"><option value="mese">Mensile (dal giorno di check-in allo stesso giorno del mese dopo)</option><option value="notti">Blocchi fissi di N notti</option></select><input type="number" id="p-tr-blocco" step="1" min="1" value="30" oninput="renderTRPreview()" style="width:70px;display:none" title="Notti per payout"></div><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Airbnb Long Term paga per mese di calendario: es. 15/10&ndash;15/11 = 31 notti.</div></div>
           <div class="field" style="margin:0"><label>Canone registrato (&euro;)</label><input type="number" id="p-tr-canone" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Base della cedolare, pulizia esclusa.</div></div>
           <div class="field" style="margin:0"><label>Aliquota cedolare (%)</label><input type="number" id="p-tr-ced" step="0.5" value="21" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">10% se canone concordato.</div></div>
           <div class="field" style="margin:0"><label>Data registrazione RLI</label><input type="date" id="p-tr-rli-data"></div>
@@ -3323,14 +3323,15 @@ function isSoggiornoLungo(b){ return !!(b && (b.soggiorno_lungo || b.transitorio
 // ═══════════════════════════════════════════════════════════════════════
 //  LOCAZIONE TRANSITORIA (v101)
 //  Contratto transitorio (art. 5 c.1 L. 431/98) incassato tramite Airbnb,
-//  che paga a blocchi di 30 notti (policy Long Term). NON è locazione breve:
+//  che paga a mesi di calendario dal giorno di check-in (policy Long Term). NON è locazione breve:
 //  Houzly non trattiene la ritenuta 21% (niente F24 1919, niente CU/770).
 //  La cedolare la paga il proprietario in dichiarazione sul canone registrato.
 //  Campi sulla prenotazione:
 //   b.transitorio        = true
 //   b.tr_netto_airbnb    = totale "You earn" Airbnb (già al netto della commissione host)
 //   b.tr_payout_reali    = {"1":2325.68,...} importi reali dei payout (indice 1-based)
-//   b.tr_blocco_notti    = notti per payout (default 30)
+//   b.tr_cadenza         = 'mese' (default: da giorno a giorno del mese dopo) | 'notti' (blocchi fissi)
+//   b.tr_blocco_notti    = notti per payout se tr_cadenza='notti' (default 30)
 //   b.tr_canone          = canone registrato (base della cedolare, pulizia esclusa)
 //   b.tr_cedolare_perc   = aliquota cedolare (default 21)
 //   b.tr_tipo, b.tr_conduttori, b.tr_rli_data, b.tr_rli_protocollo, b.tr_imposta_registro
@@ -3340,11 +3341,20 @@ function isSoggiornoLungo(b){ return !!(b && (b.soggiorno_lungo || b.transitorio
 // ═══════════════════════════════════════════════════════════════════════
 function isTransitorio(b){ return !!(b && b.transitorio && b.checkin && b.checkout); }
 function trAddDays(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// v112: stesso giorno del mese successivo (giorno limitato all'ultimo del mese)
+function trAddMonths(iso,n){
+  var y=+iso.slice(0,4), m=+iso.slice(5,7)-1+n, d=+iso.slice(8,10);
+  y+=Math.floor(m/12); m=((m%12)+12)%12;
+  var last=new Date(y,m+1,0).getDate();
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(Math.min(d,last)).padStart(2,'0');
+}
+function trNottiTra(a,z){ return Math.round((new Date(z+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+function trCadenzaMese(b){ return (b.tr_cadenza||'mese')!=='notti'; }
 function trNettoAirbnb(b){
   if(b.tr_netto_airbnb!=null && b.tr_netto_airbnb!=='' && +b.tr_netto_airbnb>0) return r2(+b.tr_netto_airbnb);
   return r2((+b.tot||0)-(+b.comm_ota_abs||0));
 }
-// Piano completo dei payout: blocchi da N notti dal check-in, stima pro-rata per notti
+// Piano completo dei payout: mesi di calendario dal check-in (o blocchi da N notti), stima pro-rata per notti
 // (l'ultimo blocco prende il residuo), importi reali dove inseriti.
 function trPiano(b){
   var P={blocchi:[],nottiTot:0,nottiEff:0,totale:trNettoAirbnb(b),pulizia:+b.pulizia||0,perc:+b.houzly_perc||0,
@@ -3358,11 +3368,21 @@ function trPiano(b){
   P.nottiEff=nEff;
   var bl=Math.max(1,parseInt(b.tr_blocco_notti,10)||30);
   var reali=b.tr_payout_reali||{};
+  var mensile=trCadenzaMese(b);
   var start=0, i=0;
   while(start<nEff){
     i++;
-    var n=Math.min(bl, nEff-start);
-    var dal=trAddDays(b.checkin,start), al=trAddDays(b.checkin,start+n);
+    var dal, al, n;
+    if(mensile){
+      // v112: Airbnb Long Term paga per mese di calendario (es. 15/10 → 15/11 = 31 notti)
+      dal=trAddMonths(b.checkin,i-1); al=trAddMonths(b.checkin,i);
+      if(trNottiTra(b.checkin,al)>nEff) al=coEff;
+      n=trNottiTra(dal,al);
+      if(n<=0) break;
+    } else {
+      n=Math.min(bl, nEff-start);
+      dal=trAddDays(b.checkin,start); al=trAddDays(b.checkin,start+n);
+    }
     var rv=reali[String(i)];
     var hasReal=(rv!=null && rv!=='' && !isNaN(+rv));
     P.blocchi.push({n:i,key:dal.slice(0,7),dal:dal,al:al,notti:n,reale:hasReal,
@@ -3467,7 +3487,7 @@ function trSectionHTML(list, isGroup){
           +cell('Canone registrato',eur(P.canone))
           +cell('Pulizia finale',eur(P.pulizia)+'<br><span style="font-weight:500;font-size:10.5px">servizio separato, trattenuta da Houzly per la ditta</span>')
           +cell('Corrispettivo totale',eur(r2(P.canone+P.pulizia)))
-          +cell('Incasso Airbnb totale',eur(P.totale)+'<br><span style="font-weight:500;font-size:10.5px">payout a blocchi di '+(parseInt(b.tr_blocco_notti,10)||30)+' notti</span>')
+          +cell('Incasso Airbnb totale',eur(P.totale)+'<br><span style="font-weight:500;font-size:10.5px">'+(trCadenzaMese(b)?'payout mensili da giorno a giorno, pro-rata per notti':'payout a blocchi di '+(parseInt(b.tr_blocco_notti,10)||30)+' notti')+'</span>')
           +cell('Registrazione RLI',rli)
           +cell('Regime fiscale','Cedolare secca '+pc(P.cedPerc)+'%<br><span style="font-weight:500;font-size:10.5px">imposta di registro '+eur(+b.tr_imposta_registro||0)+'</span>')
           +cell('Compenso Houzly',pc(P.perc)+'%'+(percContr>P.perc?'<br><span style="font-weight:500;font-size:10.5px">anziché '+pc(percContr)+'% da mandato</span>':''))
@@ -5918,6 +5938,7 @@ function onTransitorioToggle(){
   var tp=document.getElementById('p-tr-tipo'); if(tp&&!tp.value)tp.value='Transitorio art. 5 c.1 L. 431/98';
   var ce=document.getElementById('p-tr-ced'); if(ce&&ce.value==='')ce.value=21;
   var bn=document.getElementById('p-tr-blocco'); if(bn&&!bn.value)bn.value=30;
+  var cd=document.getElementById('p-tr-cadenza'); if(cd&&!cd.value)cd.value='mese'; trSyncCadenza();
   var ne=document.getElementById('p-tr-netto');
   if(ne&&!ne.value){ var tt=+document.getElementById('p-tot').value||0, cc=+document.getElementById('p-comm-abs').value||0; if(tt>0)ne.value=r2(tt-cc); }
   renderTRPreview();
@@ -5974,6 +5995,7 @@ function trReadForm(){
     tr_conduttori:v('p-tr-conduttori').trim(),
     tr_tipo:v('p-tr-tipo').trim(),
     tr_netto_airbnb:v('p-tr-netto')!==''?+v('p-tr-netto'):null,
+    tr_cadenza:v('p-tr-cadenza')||'mese',
     tr_blocco_notti:parseInt(v('p-tr-blocco'),10)||30,
     tr_canone:+v('p-tr-canone')||0,
     tr_cedolare_perc:v('p-tr-ced')!==''?+v('p-tr-ced'):21,
@@ -5989,7 +6011,7 @@ function trFillForm(b){
   var el=document.getElementById('p-transitorio'); if(el)el.checked=!!(b&&b.transitorio);
   b=b||{};
   s('p-tr-conduttori',b.tr_conduttori||''); s('p-tr-tipo',b.tr_tipo||'');
-  s('p-tr-netto',b.tr_netto_airbnb!=null?b.tr_netto_airbnb:''); s('p-tr-blocco',b.tr_blocco_notti||30);
+  s('p-tr-netto',b.tr_netto_airbnb!=null?b.tr_netto_airbnb:''); s('p-tr-blocco',b.tr_blocco_notti||30); s('p-tr-cadenza',b.tr_cadenza||'mese'); trSyncCadenza();
   s('p-tr-canone',b.tr_canone||''); s('p-tr-ced',b.tr_cedolare_perc!=null?b.tr_cedolare_perc:21);
   s('p-tr-rli-data',b.tr_rli_data||''); s('p-tr-rli-prot',b.tr_rli_protocollo||'');
   s('p-tr-imposta',b.tr_imposta_registro!=null?b.tr_imposta_registro:0); s('p-tr-chiuso-al',b.tr_chiuso_al||'');
@@ -5997,6 +6019,12 @@ function trFillForm(b){
   var box=document.getElementById('tr-fields'); if(box)box.style.display=(b.transitorio?'block':'none');
   var pv=document.getElementById('tr-preview'); if(pv)pv.innerHTML='';
 }
+// v112: mostra il campo notti solo con la cadenza a blocchi fissi
+function trSyncCadenza(){
+  var c=document.getElementById('p-tr-cadenza'), n=document.getElementById('p-tr-blocco');
+  if(n) n.style.display=(c&&c.value==='notti')?'':'none';
+}
+function onTRCadenzaChange(){ trSyncCadenza(); renderTRPreview(); }
 function onTRRealeChange(idx,el){
   var v=String(el.value||'').trim().replace(',','.');
   if(v===''||isNaN(+v)) delete _trRealiForm[String(idx)]; else _trRealiForm[String(idx)]=r2(+v);
