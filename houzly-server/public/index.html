@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v110 · 04/11 · Registro ritenute automatico</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v111 · 05/11 · Rimborso ospite nel PDF</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -5956,6 +5956,11 @@ function scRimbDopo(c){
   if(c.rimborso_carico==='houzly') return '<div style="font-size:10px;color:rgba(255,255,255,0.45);margin:-2px 0 4px;padding-left:2px">&nbsp;&nbsp;&nbsp;&nbsp;Compenso Houzly'+(c.iva22?' + IVA':'')+' ridotto di '+eur(c.rimborso)+' per il rimborso ospite a carico Houzly</div>'+((c.houzly<0)?'<div style="font-size:10.5px;color:#ff9eb2;margin-bottom:4px">&#9888; Il rimborso supera il compenso Houzly</div>':'');
   return '';
 }
+// nota nella cella del PDF (v111)
+function rptRimbNotePdf(c){
+  if(!c||!c.rimborso) return '';
+  return '<div style="font-size:8px;color:#c0122c;font-weight:700;white-space:nowrap;margin-top:1px">&#8617; rimb. ospite '+eur(c.rimborso)+'</div><div style="font-size:7px;color:#8a8fa3;white-space:nowrap">'+rimbCaricoLbl(c.rimborso_carico)+'</div>';
+}
 // nota nella cella del report
 function rptRimbNote(c){
   if(!c||!c.rimborso) return '';
@@ -7534,6 +7539,7 @@ function previewReportProp(){
        +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:10px;letter-spacing:0.08em">&#9679; RIEPILOGO — PRENOTAZIONI AGGIUNTIVE</div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Totale Lordo</span><span style="font-weight:600">'+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.tot;},0)))+'</span></div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Commissioni OTA</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.comm_ota;},0)))+'</span></div>'
+       +(bksBlack.some(function(b){return b.calc.rimborso>0;})?'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Rimborsi ospiti</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+(b.calc.rimborso||0);},0)))+'</span></div>':'')
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Spese pulizia</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.pulizia;},0)))+'</span></div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Compenso Houzly</span><span style="color:#b85c00">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.houzly;},0)))+'</span></div>'
        +(function(){var rimbBlk=r2(bksBlack.reduce(function(s,b){return s+(b.calc.rimborso_pulizie||0);},0));return rimbBlk>0?'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Rimborso pulizia al proprietario</span><span style="color:#0a7d3c;font-weight:600">+ '+eur(rimbBlk)+'</span></div>':'';})()
@@ -7784,7 +7790,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
       +'<td><span class="'+chCls+'">'+b.canale+'</span></td>'
       +'<td class="r">'+b.n_ospiti+'</td>'
       +'<td class="r">'+eur(b.calc.tot)+'</td>'
-      +'<td class="r">'+eur(b.calc.comm_ota)+'</td>'
+      +'<td class="r">'+eur(b.calc.comm_ota)+rptRimbNotePdf(b.calc)+'</td>'
       +'<td class="r">'+eur(b.calc.tassa)+'</td>'
       +'<td class="r">'+eur(b.calc.pulizia)+'</td>'
       +'<td class="r">'+eur(b.calc.houzly)+'</td>'
@@ -7808,6 +7814,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
      +'<div class="sum-title">RIEPILOGO — PRENOTAZIONI PRINCIPALI</div>'
      +srow('Totale Lordo',eur(bksNorm.reduce(function(s,b){return s+b.calc.tot;},0)))
      +srow('Commissioni OTA','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.comm_ota;},0)),'neg')
+     +(bksNorm.some(function(b){return b.calc.rimborso>0;})?srow('Rimborsi ospiti','- '+eur(r2(bksNorm.reduce(function(s,b){return s+(b.calc.rimborso||0);},0))),'neg'):'')
      +srow('Tasse di soggiorno','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.tassa;},0)),'neg')
      +srow('Spese pulizia','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.pulizia;},0)),'neg')
      +srow('Compenso Houzly','- '+eur(bksNorm.reduce(function(s,b){return s+b.calc.houzly;},0)),'neg')
@@ -7864,6 +7871,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
      +'<div class="sum-title" style="background:#33384a">RIEPILOGO — PRENOTAZIONI AGGIUNTIVE</div>'
      +srow('Totale Lordo',eur(bksBlk.reduce(function(s,b){return s+b.calc.tot;},0)))
      +srow('Commissioni OTA','- '+eur(bksBlk.reduce(function(s,b){return s+b.calc.comm_ota;},0)),'neg')
+     +(bksBlk.some(function(b){return b.calc.rimborso>0;})?srow('Rimborsi ospiti','- '+eur(r2(bksBlk.reduce(function(s,b){return s+(b.calc.rimborso||0);},0))),'neg'):'')
      +srow('Spese pulizia','- '+eur(bksBlk.reduce(function(s,b){return s+b.calc.pulizia;},0)),'neg')
      +srow('Compenso Houzly','- '+eur(bksBlk.reduce(function(s,b){return s+b.calc.houzly;},0)),'neg')
      +(rimbBlk2>0?srow('Rimborso pulizia al proprietario','+ '+eur(rimbBlk2),'pos'):'')
@@ -7880,7 +7888,7 @@ function printReportContinue(selectedAntIds, markRecuperati){
       +'<td>'+escHtml(b.ospite_nome||'—')+'</td>'
       +'<td><span class="ota-dir">'+escHtml(b.canale||'—')+'</span></td>'
       +'<td class="r">'+eur(b.calc.tot)+'</td>'
-      +'<td class="r">'+eur(b.calc.comm_ota)+'</td>'
+      +'<td class="r">'+eur(b.calc.comm_ota)+rptRimbNotePdf(b.calc)+'</td>'
       +'<td class="r">'+eur(b.calc.pulizia)+'</td>'
       +'<td class="r">'+eur(b.calc.houzly+b.calc.iva22)+'</td>'
       +'<td class="r bold">'+eur(b.calc.saldo_houzly)+'</td>'
