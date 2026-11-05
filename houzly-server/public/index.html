@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v109 · 04/11 · Registro ritenute, F24, CU e 770</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v110 · 04/11 · Registro ritenute automatico</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -1131,7 +1131,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
         <div class="field"><label>Propriet&agrave;</label><select id="rpt-prop-sel" onchange="previewReportProp()"><option value="">-- Seleziona --</option></select></div>
         <div class="field"><label>Mese</label><select id="rpt-mese" onchange="setupReportFiltri();previewReportProp()"><option value="">Tutti i mesi</option><option>Gennaio</option><option>Febbraio</option><option>Marzo</option><option>Aprile</option><option>Maggio</option><option>Giugno</option><option>Luglio</option><option>Agosto</option><option>Settembre</option><option>Ottobre</option><option>Novembre</option><option>Dicembre</option></select></div>
         <div class="field"><label>Anno</label><input type="number" id="rpt-anno" value="2026" min="2020" max="2030" oninput="setupReportFiltri();previewReportProp()"></div>
-        <div class="field" style="margin:0"><button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="renderRecapRitenute()">&#129534; Recap ritenute F24 del mese</button><div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:4px">Somma delle ritenute 21% di tutti i proprietari persona fisica: un unico F24 Houzly, cod. 1919.</div></div>
+        <div class="field" style="margin:0"><button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="renderRecapRitenute()">&#129534; Recap ritenute F24 del mese</button><div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:4px">Somma delle ritenute 21% di tutti i proprietari persona fisica: un unico F24 Houzly, cod. 1919. Il mese si chiude da solo il 16 del mese dopo.</div></div>
         <div class="field" style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
           <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text-mid);cursor:pointer;font-weight:500;line-height:1.4">
             <input type="checkbox" id="rpt-include-extra" checked style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:2px;accent-color:var(--blue)">
@@ -6781,54 +6781,57 @@ function applySoggiornoLungoCalc(bks, meseNum, annoVal){
     b._slMese=true; // marca che è una quota mensilizzata (per badge nel report)
   });
 }
-// ═══ REGISTRO RITENUTE E F24 (v109) ═══
-// Fonte unica per F24, 770 e CU.
-// • Houzly versa con UN F24 a proprio nome (cod. 1919) le ritenute 21% operate
-//   nel mese su tutti i proprietari persona fisica.
-// • La ritenuta si considera OPERATA quando Houzly bonifica il proprietario:
-//   il versamento va fatto entro il 16 del mese successivo al bonifico.
-// • Quando segni il bonifico di un proprietario, il tool "fotografa" i numeri
-//   del report (base, ritenuta, notti, dettaglio per immobile): CU e 770 usano
-//   quella fotografia, così una modifica successiva non cambia di nascosto i
-//   dati fiscali (compare invece un avviso con la differenza).
+// ═══ REGISTRO RITENUTE E F24 (v110) ═══
+// Fonte unica per F24, 770 e CU, SENZA registrazioni manuali.
+// Routine Houzly: dal 1 al 15 del mese si bonificano i proprietari e si versa
+// l'F24 (cod. 1919, a nome Houzly) per il mese di report precedente.
+// Quindi: le ritenute del report di Ottobre sono operate a Novembre (anno del
+// bonifico = anno della CU e del 770).
+// Il 16 del mese dopo il report il mese si CHIUDE da solo: il tool fotografa i
+// numeri di ogni proprietario e da lì CU e 770 usano quella fotografia. Se poi
+// cambi una prenotazione di un mese chiuso compare un avviso con la differenza
+// e il pulsante "Riallinea".
 // Dati:
-//   DB.f24_ritenute['AAAA-MM' mese del report] = { bonif: { ownerId: fotografia } }
-//   DB.f24_versamenti['AAAA-MM' mese dei bonifici] = { data, importo, note }
+//   DB.f24_ritenute['AAAA-MM' mese del report] = { snap:{ownerId:fotografia}, chiuso_il }
+//   DB.f24_versamenti['AAAA-MM' mese del report] = { data, importo }  (facoltativo)
+var RT_START='2025-12'; // primo report nel registro (bonifici e F24 di gennaio 2026)
 function rtKey(mi, anno){ return anno+'-'+String(mi).padStart(2,'0'); }
-function rtState(key){
-  if(!DB.f24_ritenute) DB.f24_ritenute={};
-  if(!DB.f24_ritenute[key]) DB.f24_ritenute[key]={bonif:{}};
-  if(!DB.f24_ritenute[key].bonif) DB.f24_ritenute[key].bonif={};
-  return DB.f24_ritenute[key];
-}
-function rtVers(opKey){
-  if(!DB.f24_versamenti) DB.f24_versamenti={};
-  return DB.f24_versamenti[opKey]||null;
-}
-// fotografia del bonifico (le date salvate come semplice stringa sono "legacy")
-function rtBon(st, ownId){
-  var v=st&&st.bonif?st.bonif[ownId]:null;
-  if(!v) return null;
-  if(typeof v==='string') return {data:v, legacy:true};
-  return v;
-}
+function rtNext(k){ var y=+k.slice(0,4), m=+k.slice(5,7)+1; if(m>12){m=1;y++;} return rtKey(m,y); }
+function rtPrev(k){ var y=+k.slice(0,4), m=+k.slice(5,7)-1; if(m<1){m=12;y--;} return rtKey(m,y); }
 function rtNomiM(){ return mesiArr(); }
 function rtLblMese(k){ return rtNomiM()[+k.slice(5,7)-1]+' '+k.slice(0,4); }
 function rtOggi(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-// scadenza F24: 16 del mese dopo i bonifici; sabato/domenica → lunedì
-function rtScadenza(opKey){
-  var y=+opKey.slice(0,4), m=+opKey.slice(5,7);
+function rtMeseCorr(){ return rtOggi().slice(0,7); }
+function rtIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rtDataIt(d){ return d?d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'; }
+// il report del mese K si chiude il 16 del mese successivo
+function rtChiusura(repKey){ return rtNext(repKey)+'-16'; }
+function rtChiuso(repKey){ return rtOggi()>=rtChiusura(repKey); }
+// termine di legge del versamento: 16 del mese dopo i bonifici (sab/dom → lunedì)
+function rtTermine(repKey){
+  var op=rtNext(repKey), y=+op.slice(0,4), m=+op.slice(5,7);
   var s=new Date(y, m, 16);
   if(s.getDay()===6) s.setDate(18); else if(s.getDay()===0) s.setDate(17);
   return s;
 }
-function rtIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function rtDataIt(d){ return d?d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'; }
+function rtState(key){
+  if(!DB.f24_ritenute) DB.f24_ritenute={};
+  var st=DB.f24_ritenute[key];
+  if(!st){ st=DB.f24_ritenute[key]={snap:{}}; }
+  if(!st.snap) st.snap={};
+  // migrazione v108/v109: le spunte "bonifico" diventano fotografie
+  if(st.bonif){ Object.keys(st.bonif).forEach(function(id){ var v=st.bonif[id]; if(v&&typeof v==='object'&&!st.snap[id]){ var c=Object.assign({},v); delete c.data; st.snap[id]=c; } }); delete st.bonif; delete st.versato_il; delete st.importo_versato; }
+  return st;
+}
+function rtVers(repKey){ return (DB.f24_versamenti||{})[repKey]||null; }
 
 // Calcolo delle ritenute di un mese di report, IDENTICO al Report Mensile:
 // stesse prenotazioni, soggiorni lunghi mensilizzati, rimborsi ospite; escluse
 // aziende, aggiuntive, locazioni transitorie e incassi diretti dal proprietario.
+var _rtLiveCache={};
 function rtCalcMese(mi, anno){
+  var ck=rtKey(mi,anno);
+  if(_rtLiveCache[ck]&&(Date.now()-_rtLiveCache[ck].t)<1500) return _rtLiveCache[ck].rows;
   var rows=[];
   (DB.proprietari||[]).forEach(function(own){
     if(!fiscRitenutaAttiva(own)) return;
@@ -6862,118 +6865,117 @@ function rtCalcMese(mi, anno){
       lordo:R.lordo, ota:R.ota, houzly:R.houzly, pul:R.pul, props:det, coprops:cop});
   });
   rows.sort(function(a,b){ return nomeOwner(a.ownId).localeCompare(nomeOwner(b.ownId)); });
+  _rtLiveCache[ck]={t:Date.now(),rows:rows};
   return rows;
 }
-function rtSnap(row, data){
-  return {data:data, base:row.base, rit:row.rit, n:row.n, notti:row.notti, lordo:row.lordo, ota:row.ota, houzly:row.houzly, pul:row.pul,
+function rtSnap(row){
+  return {base:row.base, rit:row.rit, n:row.n, notti:row.notti, lordo:row.lordo, ota:row.ota, houzly:row.houzly, pul:row.pul,
     props:JSON.parse(JSON.stringify(row.props||{})), at:new Date().toISOString()};
 }
-function rtRowFor(key, ownId){
-  var mi=+key.slice(5,7), anno=+key.slice(0,4);
-  return rtCalcMese(mi,anno).find(function(r){return r.ownId===ownId;})||null;
+function rtInvalida(){ _rtRegCache=null; _rtLiveCache={}; }
+// Chiude da solo i mesi di report arrivati al 16 del mese dopo (una volta sola)
+function rtAutoChiudi(){
+  var cambiati=0, k=RT_START, lim=rtMeseCorr();
+  while(k<lim){
+    if(rtChiuso(k)){
+      var st=rtState(k);
+      if(!st.chiuso_il){
+        rtCalcMese(+k.slice(5,7), +k.slice(0,4)).forEach(function(r){ if(!st.snap[r.ownId]) st.snap[r.ownId]=rtSnap(r); });
+        st.chiuso_il=rtOggi(); cambiati++;
+      }
+    }
+    k=rtNext(k);
+  }
+  if(cambiati){ rtInvalida(); saveDB(); }
+  return cambiati;
 }
-function rtToggleBonif(key, ownId, on){
-  var st=rtState(key);
-  if(on){ var r=rtRowFor(key,ownId); if(r) st.bonif[ownId]=rtSnap(r, rtOggi()); }
-  else delete st.bonif[ownId];
-  _rtRegCache=null; saveDB(); renderRecapRitenute();
+// Valori di un mese di report: fotografia se chiuso, calcolo se ancora aperto
+function rtValMese(repKey){
+  var mi=+repKey.slice(5,7), anno=+repKey.slice(0,4);
+  var live=rtCalcMese(mi,anno), chiuso=rtChiuso(repKey), st=(DB.f24_ritenute||{})[repKey];
+  var snap=(st&&st.snap)||{}, byId={}, ids=[];
+  live.forEach(function(r){ byId[r.ownId]=r; ids.push(r.ownId); });
+  if(chiuso) Object.keys(snap).forEach(function(id){ if(ids.indexOf(id)<0) ids.push(id); });
+  return ids.map(function(id){
+    var l=byId[id]||null, s=chiuso?(snap[id]||null):null;
+    var v=chiuso?s:l;
+    var delta=chiuso?r2((l?l.rit:0)-(s?s.rit:0)):0;
+    return {ownId:id, l:l, s:s, v:v||{base:0,rit:0,n:0,notti:0,lordo:0,ota:0,houzly:0,pul:0,props:{}}, delta:Math.abs(delta)>=0.01?delta:0,
+      chiuso:chiuso, coprops:l?l.coprops:[], negativo:!chiuso&&l&&l.negativo};
+  }).sort(function(a,b){ return nomeOwner(a.ownId).localeCompare(nomeOwner(b.ownId)); });
 }
-function rtSetBonifData(key, ownId, val){
-  var st=rtState(key), s=rtBon(st,ownId);
-  if(!val){ delete st.bonif[ownId]; }
-  else if(s&&!s.legacy){ s.data=val; st.bonif[ownId]=s; }
-  else { var r=rtRowFor(key,ownId); if(r) st.bonif[ownId]=rtSnap(r,val); }
-  _rtRegCache=null; saveDB(); renderRecapRitenute();
+function rtRiallinea(repKey, ownId){
+  var st=rtState(repKey), r=rtCalcMese(+repKey.slice(5,7), +repKey.slice(0,4)).find(function(x){return x.ownId===ownId;});
+  if(r) st.snap[ownId]=rtSnap(r); else delete st.snap[ownId];
+  rtInvalida(); saveDB(); toast('Mese riallineato ✓'); rtRefreshViste();
 }
-function rtRiallinea(key, ownId){
-  var st=rtState(key), s=rtBon(st,ownId), r=rtRowFor(key,ownId);
-  if(!s) return;
-  if(!r){ if(!confirm('Per questo proprietario non risultano più prenotazioni nel mese. Rimuovere il bonifico registrato?')) return; delete st.bonif[ownId]; }
-  else st.bonif[ownId]=rtSnap(r, s.data);
-  _rtRegCache=null; saveDB(); toast('Dati del bonifico riallineati ✓'); renderRecapRitenute();
-}
-function rtSegnaTutti(key){
-  var el=document.getElementById('rt-bulk-date'), d=(el&&el.value)||rtOggi();
-  var mi=+key.slice(5,7), anno=+key.slice(0,4), st=rtState(key), n=0;
-  rtCalcMese(mi,anno).forEach(function(r){ var s=rtBon(st,r.ownId); if(r.rit>0&&(!s||s.legacy)){ st.bonif[r.ownId]=rtSnap(r, s?s.data:d); n++; } });
-  _rtRegCache=null; saveDB(); toast(n+' bonific'+(n===1?'o registrato':'i registrati')+' ✓'); renderRecapRitenute();
-}
-function rtSegnaVersato(opKey, defImp){
-  var el=document.getElementById('rt-v-'+opKey), ei=document.getElementById('rt-vi-'+opKey);
+function rtSegnaVersato(repKey, defImp){
+  var el=document.getElementById('rt-v-'+repKey), ei=document.getElementById('rt-vi-'+repKey);
   var d=el&&el.value; if(!d){ toast('Inserisci la data del versamento'); return; }
   var imp=ei&&ei.value!==''?r2(+ei.value):r2(defImp);
   if(!DB.f24_versamenti) DB.f24_versamenti={};
-  DB.f24_versamenti[opKey]={data:d, importo:imp, note:(DB.f24_versamenti[opKey]&&DB.f24_versamenti[opKey].note)||''};
-  _rtRegCache=null; saveDB(); toast('F24 registrato ✓'); rtRefreshViste();
+  DB.f24_versamenti[repKey]={data:d, importo:imp};
+  rtInvalida(); saveDB(); toast('F24 registrato ✓'); rtRefreshViste();
 }
-function rtAnnullaVersato(opKey){
-  if(!confirm('Annullare il versamento F24 registrato per '+rtLblMese(opKey)+'?')) return;
-  if(DB.f24_versamenti) delete DB.f24_versamenti[opKey];
-  _rtRegCache=null; saveDB(); rtRefreshViste();
+function rtAnnullaVersato(repKey){
+  if(DB.f24_versamenti) delete DB.f24_versamenti[repKey];
+  rtInvalida(); saveDB(); rtRefreshViste();
 }
 function rtRefreshViste(){
-  var pr=document.getElementById('page-report_prop');
   if(document.getElementById('rt-recap-root')) renderRecapRitenute();
   if(document.getElementById('adem-m770-content')) try{ renderAdemp770(); }catch(e){}
 }
 
-// ── Aggregato annuale (anno = data dei bonifici) ─────────────────────
+// ── Aggregato annuale: anno dei bonifici (report da dicembre anno-1 a novembre anno) ──
 var _rtRegCache=null;
 function rtRegistroAnno(anno){
   if(_rtRegCache&&_rtRegCache.anno===anno&&(Date.now()-_rtRegCache.t)<1500) return _rtRegCache.R;
   var R={anno:anno, hasData:false, ops:{}, owners:{}, items:[]};
-  var liveCache={};
-  Object.keys(DB.f24_ritenute||{}).sort().forEach(function(repKey){
-    var st=DB.f24_ritenute[repKey]; if(!st||!st.bonif) return;
-    Object.keys(st.bonif).forEach(function(ownId){
-      var s=rtBon(st,ownId); if(!s||!s.data) return;
-      if(+s.data.slice(0,4)!==anno) return;
-      if(s.legacy){
-        if(!liveCache[repKey]) liveCache[repKey]=rtCalcMese(+repKey.slice(5,7), +repKey.slice(0,4));
-        var lr=liveCache[repKey].find(function(r){return r.ownId===ownId;});
-        if(!lr) return;
-        s=rtSnap(lr, s.data); s.legacy=true;
-      }
-      R.hasData=true;
-      var op=s.data.slice(0,7);
-      if(!R.ops[op]) R.ops[op]={rit:0,base:0,items:[],repKeys:[]};
-      var O=R.ops[op]; O.rit=r2(O.rit+s.rit); O.base=r2(O.base+s.base); O.items.push({repKey:repKey,ownId:ownId,s:s});
-      if(O.repKeys.indexOf(repKey)<0) O.repKeys.push(repKey);
-      if(!R.owners[ownId]) R.owners[ownId]={rit:0,base:0,n:0,notti:0,lordo:0,props:{},mesi:Array(12).fill(0).map(function(_,i){return{m:i+1,nPren:0,lordo:0,base:0,ritenuta:0};})};
-      var W=R.owners[ownId];
+  var cur=rtMeseCorr();
+  for(var m=1;m<=12;m++){
+    var op=rtKey(m,anno), rep=rtPrev(op);
+    if(rep<RT_START) continue;
+    R.hasData=true;
+    if(rep>cur) continue; // report futuri: niente
+    var chiuso=rtChiuso(rep);
+    var O={rit:0,base:0,rep:rep,chiuso:chiuso,nDelta:0,items:[]};
+    rtValMese(rep).forEach(function(x){
+      var s=x.v; if(!s||(!s.rit&&!x.delta)) return;
+      if(x.delta) O.nDelta++;
+      O.rit=r2(O.rit+s.rit); O.base=r2(O.base+s.base); O.items.push(x);
+      R.items.push({repKey:rep, ownId:x.ownId, s:s, chiuso:chiuso, delta:x.delta});
+      if(!s.rit) return;
+      if(!R.owners[x.ownId]) R.owners[x.ownId]={rit:0,base:0,n:0,notti:0,lordo:0,props:{},mesi:Array(12).fill(0).map(function(_,i){return{m:i+1,nPren:0,lordo:0,base:0,ritenuta:0};})};
+      var W=R.owners[x.ownId];
       W.rit=r2(W.rit+s.rit); W.base=r2(W.base+s.base); W.n+=s.n||0; W.notti+=s.notti||0; W.lordo=r2(W.lordo+(s.lordo||0));
-      var M=W.mesi[+op.slice(5,7)-1]; M.nPren+=s.n||0; M.lordo=r2(M.lordo+(s.lordo||0)); M.base=r2(M.base+s.base); M.ritenuta=r2(M.ritenuta+s.rit);
+      var M=W.mesi[m-1]; M.nPren+=s.n||0; M.lordo=r2(M.lordo+(s.lordo||0)); M.base=r2(M.base+s.base); M.ritenuta=r2(M.ritenuta+s.rit);
       Object.keys(s.props||{}).forEach(function(pid){
         var P=s.props[pid];
         if(!W.props[pid]) W.props[pid]={nome:P.nome,n:0,notti:0,base:0,rit:0,lordo:0};
         var X=W.props[pid]; X.n+=P.n||0; X.notti+=P.notti||0; X.base=r2(X.base+(P.base||0)); X.rit=r2(X.rit+(P.rit||0)); X.lordo=r2(X.lordo+(P.lordo||0));
       });
-      R.items.push({repKey:repKey,ownId:ownId,s:s});
     });
-  });
+    R.ops[op]=O;
+  }
   _rtRegCache={anno:anno,t:Date.now(),R:R};
   return R;
 }
-// Report dell'anno con ritenuta ma senza bonifico registrato (fino al mese scorso)
-function rtDaRegistrare(anno){
-  var out=[], now=new Date(), lim=(anno<now.getFullYear())?12:(anno===now.getFullYear()?now.getMonth():0);
-  for(var mi=1; mi<=lim; mi++){
-    var key=rtKey(mi,anno), st=(DB.f24_ritenute||{})[key];
-    rtCalcMese(mi,anno).forEach(function(r){ if(r.rit>0&&!rtBon(st,r.ownId)) out.push({repKey:key, ownId:r.ownId, rit:r.rit, base:r.base}); });
-  }
-  return out;
+// Mesi chiusi con prenotazioni cambiate dopo la chiusura
+function rtDifferenze(anno){
+  var R=rtRegistroAnno(anno);
+  return R.items.filter(function(i){return i.chiuso&&i.delta;});
 }
-// Stato di un mese di versamento
-function rtStatoOp(opKey, rit){
-  var v=rtVers(opKey), scad=rtScadenza(opKey), oggi=rtOggi();
+// Stato del versamento di un mese di report (la data F24 è facoltativa)
+function rtStatoOp(repKey, rit){
+  var v=rtVers(repKey);
   if(v&&v.data){
     var diff=r2(rit-(+v.importo||0));
-    if(Math.abs(diff)>=0.01) return {cod:'diff', txt:'Differenza '+(diff>0?'+':'')+eur(diff), col:'#e11d48', v:v, diff:diff};
-    if(v.data>rtIso(scad)) return {cod:'ritardo', txt:'Versato in ritardo — valuta il ravvedimento', col:'#d97706', v:v};
-    return {cod:'ok', txt:'Versato', col:'#059669', v:v};
+    if(Math.abs(diff)>=0.01) return {cod:'diff', txt:'Importo F24 diverso di '+(diff>0?'+':'')+eur(diff), col:'#e11d48', v:v, diff:diff};
+    if(v.data>rtIso(rtTermine(repKey))) return {cod:'ritardo', txt:'Versato oltre il termine — valuta il ravvedimento', col:'#d97706', v:v};
+    return {cod:'ok', txt:'F24 registrato', col:'#059669', v:v};
   }
-  if(oggi>rtIso(scad)) return {cod:'scaduto', txt:'Scaduto, non versato', col:'#e11d48'};
-  return {cod:'attesa', txt:'Da versare entro il '+rtDataIt(scad), col:'var(--text-mid)'};
+  if(!rtChiuso(repKey)) return {cod:'aperto', txt:'Provvisorio — si chiude il '+dateIt(rtChiusura(repKey)), col:'var(--text-mid)'};
+  return {cod:'chiuso', txt:'Chiuso', col:'#059669'};
 }
 
 // ── Recap del mese nella pagina Report ───────────────────────────────
@@ -6982,154 +6984,124 @@ function renderRecapRitenute(){
   var mese=document.getElementById('rpt-mese').value;
   var anno=+document.getElementById('rpt-anno').value;
   if(!mese||!anno){ toast('Scegli mese e anno nei filtri'); return; }
-  var mi=mesiArr().indexOf(mese)+1, key=rtKey(mi,anno), st=rtState(key);
-  var live=rtCalcMese(mi,anno), byId={};
-  live.forEach(function(r){ byId[r.ownId]=r; });
-  // righe: proprietari col calcolo del mese + quelli con un bonifico registrato
-  var ids=live.map(function(r){return r.ownId;});
-  Object.keys(st.bonif).forEach(function(id){ if(ids.indexOf(id)<0) ids.push(id); });
-  var rows=ids.map(function(id){
-    var l=byId[id]||null, s=rtBon(st,id), own=(DB.proprietari||[]).find(function(o){return o.id===id;});
-    var fz=(s&&!s.legacy)?s:null;
-    var base=fz?fz.base:(l?l.base:0), rit=fz?fz.rit:(l?l.rit:0);
-    var delta=(fz&&(Math.abs((l?l.rit:0)-fz.rit)>=0.01))?r2((l?l.rit:0)-fz.rit):0;
-    return {id:id, own:own, l:l, s:s, base:base, rit:rit, n:fz?fz.n:(l?l.n:0), delta:delta, coprops:l?l.coprops:[], strutture:Object.keys((fz||l||{}).props||{}).map(function(p){return ((fz||l).props[p].nome)||nomeProp(p);}), negativo:!fz&&l&&l.negativo};
-  }).sort(function(a,b){ return nomeOwner(a.id).localeCompare(nomeOwner(b.id)); });
-  var dov=rows.filter(function(r){return r.rit>0;});
-  var tot=r2(dov.reduce(function(s,r){return s+r.rit;},0));
-  var totBase=r2(dov.reduce(function(s,r){return s+r.base;},0));
-  var nBon=dov.filter(function(r){return r.s;}).length;
-  var tuttiBon=dov.length>0&&nBon===dov.length;
-  var opMesi={}; dov.forEach(function(r){ if(r.s&&r.s.data){ var k=r.s.data.slice(0,7); opMesi[k]=r2((opMesi[k]||0)+r.rit); } });
-  var opKeys=Object.keys(opMesi).sort();
+  rtAutoChiudi();
+  var mi=mesiArr().indexOf(mese)+1, key=rtKey(mi,anno), op=rtNext(key);
+  var rows=rtValMese(key), chiuso=rtChiuso(key);
+  var dov=rows.filter(function(r){return r.v.rit>0;});
+  var tot=r2(dov.reduce(function(s,r){return s+r.v.rit;},0));
+  var totBase=r2(dov.reduce(function(s,r){return s+r.v.base;},0));
+  var nDelta=rows.filter(function(r){return r.delta;}).length;
   var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Syne,sans-serif;font-size:21px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
   var html='<div id="rt-recap-root"><div style="margin-bottom:12px"><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:var(--blue)">Recap ritenute F24 &mdash; '+mese+' '+anno+'</div>'
-    +'<div style="font-size:12px;color:var(--text-light)">Ritenute d\'acconto 21% dei report del mese &middot; versamento a nome di Houzly Snc, cod. tributo 1919</div></div>';
+    +'<div style="font-size:12px;color:var(--text-light)">Ritenute d\'acconto 21% dei report del mese &middot; un unico F24 a nome di Houzly Snc, cod. tributo 1919</div></div>';
   html+='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">'
-    +kpi('Ritenute del mese',eur(tot),'var(--orange)','cod. tributo 1919')
+    +kpi('Totale F24',eur(tot),'var(--orange)','cod. tributo 1919')
     +kpi('Base imponibile',eur(totBase),'var(--blue)','canoni puri del mese')
-    +kpi('Bonifici registrati',nBon+' / '+dov.length,tuttiBon?'var(--green)':'var(--text)',tuttiBon?'tutti i proprietari pagati':'mancano '+(dov.length-nBon))
-    +kpi('Scadenza F24',opKeys.length===1?rtDataIt(rtScadenza(opKeys[0])):(opKeys.length?'più scadenze':'16 del mese dopo i bonifici'),'var(--text)','')
+    +kpi('Proprietari',String(dov.length),'var(--text)','persone fisiche con ritenuta')
+    +kpi('Da versare',('dall\'1 al 15 '+rtLblMese(op)).replace(' '+op.slice(0,4),''),'var(--text)','termine di legge '+rtDataIt(rtTermine(key)))
     +'</div></div>';
+  html+=chiuso
+    ?'<div style="margin-bottom:14px;padding:10px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--radius);font-size:12.5px;color:#065f46">&#128274; Mese <strong>chiuso</strong> il '+dateIt(rtChiusura(key))+': questi numeri sono quelli che vanno in CU e 770'+(nDelta?'. <strong style="color:#b91c1c">'+nDelta+' proprietari'+(nDelta===1?'o ha':' hanno')+' prenotazioni cambiate dopo la chiusura</strong> (vedi sotto).':'.')+'</div>'
+    :'<div style="margin-bottom:14px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-size:12.5px;color:var(--text-mid)">&#9203; Mese <strong>aperto</strong>: i numeri seguono le prenotazioni. Si chiude da solo il '+dateIt(rtChiusura(key))+', dopo bonifici e F24.</div>';
   if(!rows.length){
     area.innerHTML=html+'<div class="card"><div style="text-align:center;padding:30px;color:var(--text-light)">Nessuna ritenuta nel mese: nessuna prenotazione di proprietari persona fisica con ritenuta attiva.</div></div></div>';
     return;
   }
   var th='padding:8px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap';
   var td='padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--border);vertical-align:top';
-  var nDaFare=dov.filter(function(r){return !r.s||r.s.legacy;}).length;
-  html+='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div class="card-title" style="margin:0">Ritenute per proprietario</div>'
-    +(nDaFare?'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px"><span style="color:var(--text-mid)">Segna i mancanti come bonificati il</span><input type="date" id="rt-bulk-date" value="'+rtOggi()+'" style="font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:6px"><button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="rtSegnaTutti(\''+key+'\')">&#10003; Registra</button></div>':'')+'</div>'
+  html+='<div class="card" style="padding:16px;margin-bottom:14px"><div class="card-title">Ritenute per proprietario</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-    +'<th style="'+th+'">Proprietario</th><th style="'+th+'">Strutture</th><th style="'+th+';text-align:center">Pren.</th><th style="'+th+';text-align:right">Base</th><th style="'+th+';text-align:right">Ritenuta 21%</th><th style="'+th+'">Bonifico fatto il</th></tr></thead><tbody>';
+    +'<th style="'+th+'">Proprietario</th><th style="'+th+'">Strutture</th><th style="'+th+';text-align:center">Pren.</th><th style="'+th+';text-align:right">Base</th><th style="'+th+';text-align:right">Ritenuta 21%</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    var d=r.s?r.s.data:'';
-    html+='<tr style="'+(d?'background:rgba(16,185,129,0.05)':'')+'">'
-      +'<td style="'+td+';font-weight:600">'+escHtml(nomeOwner(r.id))+(r.coprops.length?'<div style="font-size:10.5px;color:var(--text-light);font-weight:400;margin-top:2px">CU ripartita con: '+escHtml(r.coprops.join(', '))+'</div>':'')
-        +(r.delta?'<div style="margin-top:4px;font-size:10.5px;color:#e11d48;font-weight:600">&#9888; Dopo il bonifico la ritenuta è cambiata di '+(r.delta>0?'+':'')+eur(r.delta)+' <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-left:4px" onclick="rtRiallinea(\''+key+'\',\''+r.id+'\')">Riallinea</button></div>':'')
-        +(r.s&&!r.l?'<div style="margin-top:4px;font-size:10.5px;color:#e11d48">&#9888; Nessuna prenotazione nel mese per questo proprietario <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-left:4px" onclick="rtRiallinea(\''+key+'\',\''+r.id+'\')">Controlla</button></div>':'')+'</td>'
-      +'<td style="'+td+';font-size:11.5px;color:var(--text-mid)">'+r.strutture.map(function(n){return escHtml(String(n));}).join(', ')+'</td>'
-      +'<td style="'+td+';text-align:center">'+r.n+'</td>'
-      +'<td style="'+td+';text-align:right;font-variant-numeric:tabular-nums">'+eur(r.base)+'</td>'
-      +'<td style="'+td+';text-align:right;font-weight:700;font-variant-numeric:tabular-nums">'+(r.negativo?'<span style="color:#e11d48;font-size:11px;font-weight:600">base negativa &mdash; nessuna ritenuta</span>':eur(r.rit))+'</td>'
-      +'<td style="'+td+';white-space:nowrap">'+((r.rit>0||r.s)
-        ?'<input type="checkbox" '+(d?'checked ':'')+'onchange="rtToggleBonif(\''+key+'\',\''+r.id+'\',this.checked)" style="width:16px;height:16px;vertical-align:middle">'
-          +(d?' <input type="date" value="'+d+'" onchange="rtSetBonifData(\''+key+'\',\''+r.id+'\',this.value)" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;margin-left:4px">':'')
-        :'&mdash;')+'</td>'
+    var strutture=Object.keys(r.v.props||{}).map(function(p){return r.v.props[p].nome||nomeProp(p);});
+    html+='<tr>'
+      +'<td style="'+td+';font-weight:600">'+escHtml(nomeOwner(r.ownId))+(r.coprops.length?'<div style="font-size:10.5px;color:var(--text-light);font-weight:400;margin-top:2px">CU ripartita con: '+escHtml(r.coprops.join(', '))+'</div>':'')
+        +(r.delta?'<div style="margin-top:4px;font-size:10.5px;color:#e11d48;font-weight:600">&#9888; Dopo la chiusura la ritenuta è cambiata di '+(r.delta>0?'+':'')+eur(r.delta)+' <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-left:4px" onclick="rtRiallinea(\''+key+'\',\''+r.ownId+'\')">Riallinea</button></div>':'')+'</td>'
+      +'<td style="'+td+';font-size:11.5px;color:var(--text-mid)">'+strutture.map(function(n){return escHtml(String(n));}).join(', ')+'</td>'
+      +'<td style="'+td+';text-align:center">'+(r.v.n||0)+'</td>'
+      +'<td style="'+td+';text-align:right;font-variant-numeric:tabular-nums">'+eur(r.v.base)+'</td>'
+      +'<td style="'+td+';text-align:right;font-weight:700;font-variant-numeric:tabular-nums">'+(r.negativo?'<span style="color:#e11d48;font-size:11px;font-weight:600">base negativa &mdash; nessuna ritenuta</span>':eur(r.v.rit))+'</td>'
       +'</tr>';
   });
-  html+='<tr><td style="'+td+';font-weight:800" colspan="3">TOTALE</td><td style="'+td+';text-align:right;font-weight:700">'+eur(totBase)+'</td><td style="'+td+';text-align:right;font-weight:800;color:var(--orange)">'+eur(tot)+'</td><td style="'+td+'"></td></tr>';
+  html+='<tr><td style="'+td+';font-weight:800" colspan="3">TOTALE</td><td style="'+td+';text-align:right;font-weight:700">'+eur(totBase)+'</td><td style="'+td+';text-align:right;font-weight:800;color:var(--orange)">'+eur(tot)+'</td></tr>';
   html+='</tbody></table></div>'
-    +'<div style="font-size:11px;color:var(--text-light);margin-top:8px;line-height:1.5">Quando spunti un bonifico il tool fotografa i numeri del report: CU e 770 useranno quelli. Se dopo cambi una prenotazione compare un avviso e puoi riallineare.</div></div>';
-  // riquadri F24 per mese dei bonifici (un F24 può raccogliere bonifici di report diversi)
+    +(nDelta?'<div style="font-size:11px;color:var(--text-light);margin-top:8px;line-height:1.5">"Riallinea" aggiorna i dati fiscali del mese con le prenotazioni attuali. Usalo solo se la differenza è stata davvero regolata con il proprietario (o lo sarà con un F24 integrativo).</div>':'')
+    +'</div>';
+  // riquadro F24
+  var stt=rtStatoOp(key, tot);
   var box='background:linear-gradient(135deg,#0d1b3e,#132a5c);color:#fff;border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:14px';
   var line=function(l,v){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:13px"><span style="color:rgba(255,255,255,0.65)">'+l+'</span><strong>'+v+'</strong></div>'; };
-  if(!opKeys.length){
-    html+='<div style="'+box+'"><div style="font-size:11px;color:#22d1ee;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:8px">&#129534; F24</div><div style="font-size:12.5px;color:rgba(255,255,255,0.75);line-height:1.55">Registra i bonifici ai proprietari: l\'F24 si versa entro il 16 del mese successivo a quello dei bonifici e raccoglie tutte le ritenute operate in quel mese, anche di report diversi.</div></div>';
+  html+='<div style="'+box+'"><div style="font-size:11px;color:#22d1ee;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:8px">&#129534; F24 da compilare</div>'
+    +line('Contribuente','Houzly Snc &middot; P.IVA 02499920516')
+    +line('Sezione / codice tributo','Erario &middot; 1919')
+    +line('Ritenute operate a',rtLblMese(op))
+    +line('Importo a debito',eur(tot));
+  if(stt.v){
+    html+='<div style="margin-top:12px;font-size:12px;color:'+(stt.cod==='ok'?'#6ee7b7':'#fca5a5')+'">'+stt.txt+' &middot; F24 del '+dateIt(stt.v.data)+' per '+eur(stt.v.importo)+' <button class="btn btn-ghost" style="font-size:10.5px;padding:2px 8px;margin-left:6px;color:#fff;border-color:rgba(255,255,255,0.3)" onclick="rtAnnullaVersato(\''+key+'\')">Togli</button></div>';
+  } else {
+    html+='<details style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.7)"><summary style="cursor:pointer">Facoltativo: annota la data dell\'F24 per il 770</summary>'
+      +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input type="date" id="rt-v-'+key+'" value="'+rtOggi()+'" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;color-scheme:dark"><input type="number" step="0.01" id="rt-vi-'+key+'" value="'+tot.toFixed(2)+'" style="width:110px;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;color-scheme:dark"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="rtSegnaVersato(\''+key+'\','+tot+')">Salva</button></div>'
+      +'<div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.5)">Se non la annoti, nel pacchetto per il commercialista la data resta vuota e la prende dalla quietanza.</div></details>';
   }
-  opKeys.forEach(function(op){
-    var REG=rtRegistroAnno(+op.slice(0,4));
-    var O=REG.ops[op]||{rit:opMesi[op],repKeys:[key]};
-    var stt=rtStatoOp(op, O.rit);
-    html+='<div style="'+box+'"><div style="font-size:11px;color:#22d1ee;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:8px">&#129534; F24 dei bonifici di '+rtLblMese(op)+'</div>'
-      +line('Contribuente','Houzly Snc &middot; P.IVA 02499920516')
-      +line('Sezione / codice tributo','Erario &middot; 1919')
-      +line('Scadenza',rtDataIt(rtScadenza(op)))
-      +line('Importo a debito',eur(O.rit));
-    if(O.repKeys.length>1||O.repKeys[0]!==key){
-      html+='<div style="font-size:11.5px;color:rgba(255,255,255,0.65);margin-top:6px">Comprende i bonifici dei report: '+O.repKeys.map(rtLblMese).join(', ')+'. Questo mese di report vale '+eur(opMesi[op])+'.</div>';
-    }
-    if(stt.v){
-      html+='<div style="margin-top:12px;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:8px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><span style="color:'+(stt.cod==='ok'?'#6ee7b7':'#fca5a5')+';font-weight:700">'+stt.txt+'</span> &middot; F24 del '+dateIt(stt.v.data)+' per '+eur(stt.v.importo)+'</span><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#fff;border-color:rgba(255,255,255,0.3)" onclick="rtAnnullaVersato(\''+op+'\')">Annulla</button></div>';
-    } else {
-      if(!tuttiBon) html+='<div style="margin-top:8px;font-size:11.5px;color:rgba(255,255,255,0.6)">Il totale è definitivo quando hai registrato tutti i bonifici del mese.</div>';
-      html+='<div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px"><span style="color:rgba(255,255,255,0.7)">F24 versato il</span><input type="date" id="rt-v-'+op+'" value="'+rtOggi()+'" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;color-scheme:dark"><span style="color:rgba(255,255,255,0.7)">importo</span><input type="number" step="0.01" id="rt-vi-'+op+'" value="'+O.rit.toFixed(2)+'" style="width:110px;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;color-scheme:dark"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="rtSegnaVersato(\''+op+'\','+O.rit+')">Registra F24</button>'
-        +(stt.cod==='scaduto'?'<span style="color:#fca5a5;font-weight:700">&#9888; scaduto</span>':'')+'</div>';
-    }
-    html+='</div>';
-  });
-  html+='<div style="font-size:11px;color:var(--text-light);line-height:1.6;padding:0 4px">Le ritenute del singolo proprietario vanno nella sua <strong>CU</strong>, nell\'anno del bonifico; il totale versato da Houzly va nel <strong>770</strong> (prospetto versamenti). Esclusi proprietari azienda, prenotazioni aggiuntive, locazioni transitorie e incassi diretti dal proprietario. Il riepilogo annuale e il pacchetto per il commercialista sono in Adempimenti &rarr; Modello 770.</div></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:var(--text-light);line-height:1.6;padding:0 4px">Le ritenute di ogni proprietario vanno nella sua <strong>CU</strong> dell\'anno dei bonifici ('+op.slice(0,4)+'); il totale versato da Houzly va nel <strong>770</strong>. Esclusi proprietari azienda, prenotazioni aggiuntive, locazioni transitorie e incassi diretti dal proprietario. Riepilogo annuale e pacchetto per il commercialista: Adempimenti &rarr; Modello 770.</div></div>';
   area.innerHTML=html;
 }
 
 // ── 770: prospetto versamenti dal Registro ───────────────────────────
 function rtRender770(anno, el){
+  rtAutoChiudi();
   var REG=rtRegistroAnno(anno);
   var opKeys=Object.keys(REG.ops).sort();
   var totRit=r2(opKeys.reduce(function(s,k){return s+REG.ops[k].rit;},0));
-  var totVers=r2(opKeys.reduce(function(s,k){var v=rtVers(k);return s+(v?(+v.importo||0):0);},0));
-  var aperti=rtDaRegistrare(anno);
+  var nChiusi=opKeys.filter(function(k){return REG.ops[k].chiuso;}).length;
+  var diffs=rtDifferenze(anno);
   var nOwn=Object.keys(REG.owners).length;
   var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
-  var diff=r2(totRit-totVers);
-  var html='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><div style="font-size:12px;color:var(--text-mid)">Fonte: <strong>Registro ritenute</strong> &middot; anno '+anno+' per <strong>data del bonifico</strong> ai proprietari (quando la ritenuta è operata)</div>'
+  var html='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><div style="font-size:12px;color:var(--text-mid)">Fonte: <strong>Registro ritenute</strong> &middot; anno '+anno+' = bonifici e F24 di gennaio&ndash;dicembre '+anno+' (report da dicembre '+(anno-1)+' a novembre '+anno+')</div>'
     +'<button class="btn btn-primary" style="font-size:12px" onclick="rtExportPacchetto('+anno+')">&#8595; Pacchetto commercialista (Excel)</button></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">'
     +kpi('Ritenute operate',eur(totRit),'var(--blue)',nOwn+' mandant'+(nOwn===1?'e':'i'))
-    +kpi('F24 registrati',eur(totVers),'var(--green)',opKeys.filter(function(k){return rtVers(k);}).length+' / '+opKeys.length+' mesi')
-    +kpi('Differenza',eur(diff),Math.abs(diff)>=0.01?'#e11d48':'var(--green)',Math.abs(diff)>=0.01?'da verificare':'tutto quadra')
+    +kpi('Mesi chiusi',nChiusi+' / '+opKeys.length,'var(--green)',opKeys.length-nChiusi?'gli altri sono provvisori':'anno completo')
+    +kpi('Modifiche dopo chiusura',String(diffs.length),diffs.length?'#e11d48':'var(--green)',diffs.length?'da controllare':'nessuna')
     +kpi('Codice tributo','1919','var(--orange)','')
     +'</div></div>';
   html+='<div class="card" style="padding:16px;margin-bottom:14px"><div class="card-title">Prospetto versamenti F24 &mdash; anno '+anno+'</div>'
-    +'<table class="adem-quarter-table"><thead><tr><th>Mese dei bonifici</th><th>Report inclusi</th><th>Scadenza</th><th class="num">Ritenute operate</th><th>F24 versato</th><th class="num">Importo versato</th><th>Stato</th></tr></thead><tbody>';
+    +'<table class="adem-quarter-table"><thead><tr><th>Ritenute operate a</th><th>Report</th><th>Termine di legge</th><th class="num">Ritenute</th><th>Data F24</th><th>Stato</th></tr></thead><tbody>';
   opKeys.forEach(function(k){
-    var O=REG.ops[k], stt=rtStatoOp(k,O.rit), v=stt.v;
-    html+='<tr><td><strong>'+rtLblMese(k)+'</strong></td><td style="font-size:11.5px">'+O.repKeys.map(rtLblMese).join(', ')+'</td><td>'+rtDataIt(rtScadenza(k))+'</td><td class="num"><strong>'+eur(O.rit)+'</strong></td>'
-      +(v?'<td>'+dateIt(v.data)+' <button class="btn btn-ghost" style="font-size:10px;padding:2px 7px" onclick="rtAnnullaVersato(\''+k+'\')">&times;</button></td><td class="num">'+eur(v.importo)+'</td>'
-         :'<td><input type="date" id="rt-v-'+k+'" value="'+rtOggi()+'" style="font-size:11.5px;padding:3px 6px;border:1px solid var(--border);border-radius:6px"></td><td class="num"><input type="number" step="0.01" id="rt-vi-'+k+'" value="'+O.rit.toFixed(2)+'" style="width:95px;font-size:11.5px;padding:3px 6px;border:1px solid var(--border);border-radius:6px"> <button class="btn btn-sm btn-primary" onclick="rtSegnaVersato(\''+k+'\','+O.rit+')">Registra</button></td>')
-      +'<td style="color:'+stt.col+';font-weight:600;font-size:12px">'+stt.txt+'</td></tr>';
+    var O=REG.ops[k], stt=rtStatoOp(O.rep,O.rit);
+    html+='<tr><td><strong>'+rtLblMese(k)+'</strong></td><td>'+rtLblMese(O.rep)+'</td><td>'+rtDataIt(rtTermine(O.rep))+'</td><td class="num"><strong>'+eur(O.rit)+'</strong></td>'
+      +'<td>'+(stt.v?dateIt(stt.v.data)+(Math.abs((+stt.v.importo||0)-O.rit)>=0.01?' ('+eur(stt.v.importo)+')':''):'<span style="color:var(--text-light)">da quietanza</span>')+'</td>'
+      +'<td style="color:'+stt.col+';font-weight:600;font-size:12px">'+stt.txt+(O.nDelta?' &middot; <span style="color:#e11d48">'+O.nDelta+' modific'+(O.nDelta===1?'a':'he')+'</span>':'')+'</td></tr>';
   });
-  html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td></td><td></td><td class="num">'+eur(totRit)+'</td><td></td><td class="num">'+eur(totVers)+'</td><td></td></tr></tbody></table></div>';
-  // per mandante (CU)
+  html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td></td><td></td><td class="num">'+eur(totRit)+'</td><td></td><td></td></tr></tbody></table></div>';
   html+='<div class="card" style="padding:16px;margin-bottom:14px"><div class="card-title">Ritenute per mandante (base della CU)</div><table class="adem-quarter-table"><thead><tr><th>Mandante</th><th>CF</th><th class="num">Pren.</th><th class="num">Giorni</th><th class="num">Base imponibile</th><th class="num">Ritenuta 21%</th></tr></thead><tbody>';
   Object.keys(REG.owners).sort(function(a,b){return nomeOwner(a).localeCompare(nomeOwner(b));}).forEach(function(id){
     var W=REG.owners[id], own=(DB.proprietari||[]).find(function(o){return o.id===id;})||{};
     html+='<tr><td>'+escHtml(nomeOwner(id))+'</td><td>'+escHtml(own.cf||'—')+'</td><td class="num">'+W.n+'</td><td class="num">'+W.notti+'</td><td class="num">'+eur(W.base)+'</td><td class="num"><strong>'+eur(W.rit)+'</strong></td></tr>';
   });
   html+='</tbody></table></div>';
-  if(aperti.length){
-    var tA=r2(aperti.reduce(function(s,a){return s+a.rit;},0));
-    html+='<div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #fbbf24;background:#fffbeb"><div class="card-title" style="color:#92400e">&#9888; Report '+anno+' senza bonifico registrato ('+aperti.length+' &middot; '+eur(tA)+')</div>'
-      +'<div style="font-size:12px;color:#5a4a20;margin-bottom:8px">Queste ritenute non sono ancora nel registro. Se il bonifico è già stato fatto, registralo dal Report Mensile &rarr; Recap ritenute del mese indicato, con la data reale.</div>'
-      +'<table class="adem-quarter-table"><thead><tr><th>Mese report</th><th>Mandante</th><th class="num">Base</th><th class="num">Ritenuta</th></tr></thead><tbody>'
-      +aperti.map(function(a){return '<tr><td>'+rtLblMese(a.repKey)+'</td><td>'+escHtml(nomeOwner(a.ownId))+'</td><td class="num">'+eur(a.base)+'</td><td class="num">'+eur(a.rit)+'</td></tr>';}).join('')
+  if(diffs.length){
+    html+='<div class="card" style="padding:16px;margin-bottom:14px;border:1px solid #fca5a5;background:#fef2f2"><div class="card-title" style="color:#b91c1c">&#9888; Prenotazioni cambiate dopo la chiusura del mese</div>'
+      +'<div style="font-size:12px;color:#7f1d1d;margin-bottom:8px">CU e 770 usano i numeri al momento della chiusura. Se la differenza è stata regolata col proprietario, apri il Recap del mese e premi "Riallinea".</div>'
+      +'<table class="adem-quarter-table"><thead><tr><th>Mese report</th><th>Mandante</th><th class="num">Ritenuta chiusa</th><th class="num">Differenza</th></tr></thead><tbody>'
+      +diffs.map(function(a){return '<tr><td>'+rtLblMese(a.repKey)+'</td><td>'+escHtml(nomeOwner(a.ownId))+'</td><td class="num">'+eur(a.s.rit)+'</td><td class="num" style="color:#b91c1c;font-weight:700">'+(a.delta>0?'+':'')+eur(a.delta)+'</td></tr>';}).join('')
       +'</tbody></table></div>';
   }
-  html+='<div style="font-size:11px;color:var(--text-light);line-height:1.6;padding:0 4px">Il prospetto riporta, per ogni mese dei bonifici, le ritenute operate e l\'F24 versato: sono i dati del prospetto versamenti del 770. Un versamento oltre la scadenza va regolarizzato con ravvedimento operoso. Fai confermare a Lucia la compilazione dei singoli campi.</div>';
+  html+='<div style="font-size:11px;color:var(--text-light);line-height:1.6;padding:0 4px">Ogni mese di report si chiude da solo il 16 del mese successivo, dopo bonifici e F24. La data dell\'F24 è facoltativa: se non l\'hai annotata, nel pacchetto resta vuota e Lucia la prende dalla quietanza. Fai confermare a Lucia la compilazione dei singoli campi.</div>';
   el.innerHTML=html;
 }
 function rtExportPacchetto(anno){
   if(typeof XLSX==='undefined'){ toast('Libreria Excel non disponibile'); return; }
+  rtAutoChiudi();
   var REG=rtRegistroAnno(anno), wb=XLSX.utils.book_new();
   var opKeys=Object.keys(REG.ops).sort();
-  // 1) F24 / prospetto versamenti 770
   var f=[['PROSPETTO VERSAMENTI F24 — ANNO '+anno+' — Houzly Snc P.IVA 02499920516'],[],
-    ['Mese ritenute (bonifici)','Anno','Codice tributo','Ritenute operate','Data versamento','Importo versato','Scadenza','Stato','Report inclusi']];
-  opKeys.forEach(function(k){ var O=REG.ops[k], st=rtStatoOp(k,O.rit), v=st.v;
-    f.push([rtNomiM()[+k.slice(5,7)-1], +k.slice(0,4), '1919', O.rit, v?dateIt(v.data):'', v?(+v.importo||0):'', rtDataIt(rtScadenza(k)), st.txt, O.repKeys.map(rtLblMese).join(', ')]); });
-  f.push(['TOTALE','','',r2(opKeys.reduce(function(s,k){return s+REG.ops[k].rit;},0)),'',r2(opKeys.reduce(function(s,k){var v=rtVers(k);return s+(v?(+v.importo||0):0);},0))]);
+    ['Mese ritenute','Anno','Codice tributo','Ritenute operate','Data versamento','Importo versato','Termine di legge','Mese di report','Stato']];
+  opKeys.forEach(function(k){ var O=REG.ops[k], st=rtStatoOp(O.rep,O.rit), v=st.v;
+    f.push([rtNomiM()[+k.slice(5,7)-1], +k.slice(0,4), '1919', O.rit, v?dateIt(v.data):'', v?(+v.importo||0):'', rtDataIt(rtTermine(O.rep)), rtLblMese(O.rep), st.txt]); });
+  f.push(['TOTALE','','',r2(opKeys.reduce(function(s,k){return s+REG.ops[k].rit;},0))]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(f), 'F24 - 770');
-  // 2) CU: un rigo per percipiente e immobile (comproprietari per quota)
   var c=[['CU '+anno+' — LOCAZIONI BREVI — sostituto d\'imposta Houzly Snc'],[],
     ['Percipiente','Codice fiscale','Indirizzo','Mandante (intestatario)','Immobile','CIN','Comune catastale','Foglio','Particella','Sub','Quota %','Giorni locazione','N. prenotazioni','Corrispettivo lordo','Base imponibile (canone puro)','Ritenuta operata']];
   Object.keys(REG.owners).sort(function(a,b){return nomeOwner(a).localeCompare(nomeOwner(b));}).forEach(function(id){
@@ -7144,18 +7116,15 @@ function rtExportPacchetto(anno){
     });
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(c), 'CU percipienti');
-  // 3) dettaglio dei bonifici
-  var d=[['DETTAGLIO BONIFICI E RITENUTE — ANNO '+anno],[],['Mese report','Data bonifico','Mese F24','Mandante','Codice fiscale','N. prenotazioni','Giorni','Lordo','Comm. OTA','Compenso Houzly','Pulizie','Base imponibile','Ritenuta 21%','Fotografia']];
-  REG.items.slice().sort(function(a,b){return a.s.data<b.s.data?-1:a.s.data>b.s.data?1:0;}).forEach(function(it){
+  var d=[['DETTAGLIO MENSILE PER MANDANTE — ANNO '+anno],[],['Mese report','Ritenute operate a','Mandante','Codice fiscale','N. prenotazioni','Giorni','Lordo','Comm. OTA','Compenso Houzly','Pulizie','Base imponibile','Ritenuta 21%','Stato']];
+  REG.items.forEach(function(it){
     var s=it.s, own=(DB.proprietari||[]).find(function(o){return o.id===it.ownId;})||{};
-    d.push([rtLblMese(it.repKey), dateIt(s.data), rtLblMese(s.data.slice(0,7)), nomeOwner(it.ownId), own.cf||'', s.n, s.notti, s.lordo, s.ota, s.houzly, s.pul, s.base, s.rit, s.legacy?'ricalcolata':'del '+dateIt((s.at||'').slice(0,10))]);
+    d.push([rtLblMese(it.repKey), rtLblMese(rtNext(it.repKey)), nomeOwner(it.ownId), own.cf||'', s.n, s.notti, s.lordo, s.ota, s.houzly, s.pul, s.base, s.rit, it.chiuso?(it.delta?'chiuso, modificato dopo ('+(it.delta>0?'+':'')+it.delta+')':'chiuso'):'provvisorio']);
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(d), 'Dettaglio bonifici');
-  // 4) da sistemare
-  var aperti=rtDaRegistrare(anno);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(d), 'Dettaglio mensile');
   var x=[['DA SISTEMARE PRIMA DELLE DICHIARAZIONI — ANNO '+anno],[],['Tipo','Riferimento','Mandante','Importo','Nota']];
-  aperti.forEach(function(a){ x.push(['Report senza bonifico',rtLblMese(a.repKey),nomeOwner(a.ownId),a.rit,'Registrare la data del bonifico']); });
-  opKeys.forEach(function(k){ var st=rtStatoOp(k,REG.ops[k].rit); if(st.cod!=='ok') x.push(['F24',rtLblMese(k),'',REG.ops[k].rit,st.txt]); });
+  rtDifferenze(anno).forEach(function(a){ x.push(['Modifica dopo chiusura',rtLblMese(a.repKey),nomeOwner(a.ownId),a.delta,'Prenotazioni cambiate dopo il 16: verificare e, se regolato, riallineare']); });
+  opKeys.forEach(function(k){ var O=REG.ops[k]; if(!O.chiuso) x.push(['Mese provvisorio',rtLblMese(O.rep),'',O.rit,'Si chiude il '+dateIt(rtChiusura(O.rep))]); var st=rtStatoOp(O.rep,O.rit); if(st.cod==='diff'||st.cod==='ritardo') x.push(['F24',rtLblMese(k),'',O.rit,st.txt]); });
   Object.keys(REG.owners).forEach(function(id){ var own=(DB.proprietari||[]).find(function(o){return o.id===id;})||{}; if(!own.cf) x.push(['Anagrafica','',nomeOwner(id),'','Codice fiscale mancante']); if(!own.via||!own.comune) x.push(['Anagrafica','',nomeOwner(id),'','Indirizzo incompleto']); });
   if(x.length===3) x.push(['—','','','','Nessuna anomalia']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(x), 'Da sistemare');
@@ -13022,6 +12991,7 @@ function adempSwitchTab(tab){
 
 // Main render
 function renderAdempimenti(){
+  try{ rtAutoChiudi(); }catch(e){ console.error('[rtAutoChiudi]',e); } // v110
   renderAdempOverview();
   renderAdempDAC7();
   renderAdempCU();
@@ -13296,8 +13266,8 @@ function adempViewCU(ownerId){
       +'<div class="doc-party"><h4>Sostituto d\'Imposta</h4><p><strong>Houzly Snc di Carella Daniele e Ruberti Romeo</strong><br>P.IVA 02499920516<br>Via A. de Gasperi 90<br>52028 Terranuova Bracciolini (AR)</p></div>'
       +'<div class="doc-party"><h4>Mandante (Sostituito)</h4><p><strong>'+escHtml(nomeMandante)+'</strong><br>CF '+escHtml(owner.cf||'—')+'<br>'+escHtml((owner.via||'')+' '+(owner.cap||'')+' '+(owner.comune||'')+(owner.provincia?' ('+owner.provincia+')':''))+'</p></div>'
     +'</div>'
-    +(_cm.registro?'<div style="margin:10px 0;padding:8px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;font-size:11.5px;color:#065f46">&#10003; Dati dal <strong>Registro ritenute</strong>: ritenute operate con i bonifici fatti nel '+anno+'.</div>':'<div style="margin:10px 0;padding:8px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:11.5px;color:#92400e">&#9888; Stima: nessun bonifico registrato per il '+anno+'. Calcolo per mese di check-out.</div>')
-    +'<div class="sep-label">'+(_cm.registro?'Ritenute operate per mese del bonifico (cod. tributo 1919)':'Dettaglio Mensile Ritenute (cod. tributo 1919)')+'</div>'
+    +(_cm.registro?'<div style="margin:10px 0;padding:8px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;font-size:11.5px;color:#065f46">&#10003; Dati dal <strong>Registro ritenute</strong>: ritenute operate nel '+anno+' (report da dicembre '+(anno-1)+' a novembre '+anno+').</div>':'<div style="margin:10px 0;padding:8px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:11.5px;color:#92400e">&#9888; Stima: il '+anno+' è precedente al Registro ritenute. Calcolo per mese di check-out.</div>')
+    +'<div class="sep-label">'+(_cm.registro?'Ritenute operate per mese (cod. tributo 1919)':'Dettaglio Mensile Ritenute (cod. tributo 1919)')+'</div>'
     +'<table class="adem-quarter-table"><thead><tr><th>Mese</th><th>N. Pren.</th><th class="num">Lordo</th><th class="num">Base Imponibile</th><th class="num">Ritenuta 21%</th></tr></thead><tbody>';
   monthly.forEach(function(r,i){
     if(r.nPren>0)html+='<tr><td>'+mesi[i]+'</td><td>'+r.nPren+'</td><td class="num">'+eur(r.lordo)+'</td><td class="num">'+eur(r.base)+'</td><td class="num">'+eur(r.ritenuta)+'</td></tr>';
@@ -13453,7 +13423,7 @@ function renderAdemp770(){
   });
   html+='<tr class="tot-row"><td>TOTALE '+anno+'</td><td>—</td><td class="num">'+eur(totBase)+'</td><td class="num"><strong>'+eur(totRitenuta)+'</strong></td></tr>';
   html+='</tbody></table></div>';
-  html='<div class="card" style="padding:12px 16px;margin-bottom:14px;background:#fffbeb;border:1px solid #fcd34d;font-size:12px;color:#92400e;line-height:1.55">&#9888; <strong>Stima</strong>: per il '+anno+' non ci sono bonifici nel Registro ritenute, quindi il calcolo è per mese di check-out. Registra i bonifici da Report Mensile &rarr; Recap ritenute F24: da quel momento qui trovi i versamenti reali e il pacchetto per il commercialista.</div>'+html;
+  html='<div class="card" style="padding:12px 16px;margin-bottom:14px;background:#fffbeb;border:1px solid #fcd34d;font-size:12px;color:#92400e;line-height:1.55">&#9888; <strong>Stima</strong>: il '+anno+' è precedente al Registro ritenute (che parte dai bonifici di gennaio 2026), quindi il calcolo è per mese di check-out.</div>'+html;
   document.getElementById('adem-m770-content').innerHTML=html;
 }
 
@@ -13461,7 +13431,7 @@ function renderAdemp770(){
 function ademComputeAlerts(anno){
   var alerts=[];
   var mandanti=ademGetActiveMandanti(anno);
-  var _aperti=rtRegistroAnno(anno).hasData?rtDaRegistrare(anno):[]; // v109
+  var _aperti=rtRegistroAnno(anno).hasData?rtDifferenze(anno):[]; // v110: modifiche dopo la chiusura del mese
   mandanti.forEach(function(owner){
     var d=ademCalcMandanteYearly(owner.id, anno);
     if(!d)return;
@@ -13495,7 +13465,7 @@ function ademComputeAlerts(anno){
     }
     var _ap=_aperti.filter(function(a){return a.ownId===owner.id;});
     if(_ap.length){
-      issues.push({lvl:'medium',text:'<strong>'+_ap.length+' report senza bonifico registrato</strong> ('+_ap.map(function(a){return rtLblMese(a.repKey);}).join(', ')+'): le ritenute non sono ancora nel Registro, quindi mancano in CU e 770.'});
+      issues.push({lvl:'medium',text:'<strong>Prenotazioni cambiate dopo la chiusura</strong> ('+_ap.map(function(a){return rtLblMese(a.repKey)+' '+(a.delta>0?'+':'')+eur(a.delta);}).join(', ')+'): CU e 770 usano i numeri alla chiusura. Controlla nel Recap ritenute del mese.'});
       if(severity==='low')severity='medium';
     }
     if(issues.length){
@@ -13891,8 +13861,8 @@ function adempExport770CSV(){
   // v109: dal Registro ritenute, se presente
   var _R=rtRegistroAnno(anno);
   if(_R.hasData){
-    var _rows=[['Modello 770 — Anno '+anno+' — Houzly Snc (Registro ritenute)'],[],['Mese bonifici','Scadenza F24','Ritenute operate','Data versamento','Importo versato','Stato','Cod. Tributo']];
-    Object.keys(_R.ops).sort().forEach(function(k){ var O=_R.ops[k], st=rtStatoOp(k,O.rit); _rows.push([rtLblMese(k),rtDataIt(rtScadenza(k)),O.rit,st.v?dateIt(st.v.data):'',st.v?st.v.importo:'',st.txt,'1919']); });
+    var _rows=[['Modello 770 — Anno '+anno+' — Houzly Snc (Registro ritenute)'],[],['Ritenute operate a','Termine di legge','Ritenute operate','Data versamento','Importo versato','Stato','Cod. Tributo']];
+    Object.keys(_R.ops).sort().forEach(function(k){ var O=_R.ops[k], st=rtStatoOp(O.rep,O.rit); _rows.push([rtLblMese(k),rtDataIt(rtTermine(O.rep)),O.rit,st.v?dateIt(st.v.data):'',st.v?st.v.importo:'',st.txt,'1919']); });
     ademDownloadCSV('770_'+anno+'.csv', _rows); toast('CSV 770 scaricato ✓'); return;
   }
   var rows=[['Modello 770 — Anno '+anno+' — Houzly Snc'],[],['Mese','Scadenza F24','Base Imponibile','Ritenuta 21%','Cod. Tributo']];
