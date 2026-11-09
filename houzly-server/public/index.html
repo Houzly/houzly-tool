@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v111 · 05/11 · Rimborso ospite nel PDF</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v112 · 05/11 · Pre-fatture in blocco</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2125,7 +2125,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="field" style="margin-top:4px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.28);border-radius:var(--radius)">
           <input type="checkbox" id="p-transitorio" onchange="onTransitorioToggle()" style="width:18px;height:18px;flex-shrink:0">
-          <span><span style="font-weight:600">&#127968; Locazione transitoria &mdash; contratto registrato</span><br><span style="font-size:11px;color:var(--text-light)">Soggiorno oltre 30 giorni regolato da contratto transitorio. Nel report va in una sezione separata: niente ritenuta 21% di Houzly (niente F24 1919 / CU), payout Airbnb mensili (da giorno a giorno, pro-rata per notti), cedolare pagata dal proprietario in dichiarazione.</span></span>
+          <span><span style="font-weight:600">&#127968; Locazione transitoria &mdash; contratto registrato</span><br><span style="font-size:11px;color:var(--text-light)">Soggiorno oltre 30 giorni regolato da contratto transitorio. Nel report va in una sezione separata: niente ritenuta 21% di Houzly (niente F24 1919 / CU), payout Airbnb a blocchi di 30 notti, cedolare pagata dal proprietario in dichiarazione.</span></span>
         </label>
       </div>
       <div id="tr-fields" style="display:none;margin-top:8px;padding:12px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.18);border-radius:var(--radius)">
@@ -2133,7 +2133,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <div class="field" style="margin:0"><label>Conduttori</label><input type="text" id="p-tr-conduttori" placeholder="es. Mario Rossi e Anna Bianchi"></div>
           <div class="field" style="margin:0"><label>Tipo contratto</label><input type="text" id="p-tr-tipo" placeholder="Transitorio art. 5 c.1 L. 431/98"></div>
           <div class="field" style="margin:0"><label>Totale Airbnb &laquo;You earn&raquo; (&euro;)</label><input type="number" id="p-tr-netto" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Total Stay Price meno la commissione host Airbnb.</div></div>
-          <div class="field" style="margin:0"><label>Cadenza payout</label><div style="display:flex;gap:6px"><select id="p-tr-cadenza" onchange="onTRCadenzaChange()" style="flex:1"><option value="mese">Mensile (dal giorno di check-in allo stesso giorno del mese dopo)</option><option value="notti">Blocchi fissi di N notti</option></select><input type="number" id="p-tr-blocco" step="1" min="1" value="30" oninput="renderTRPreview()" style="width:70px;display:none" title="Notti per payout"></div><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Airbnb Long Term paga per mese di calendario: es. 15/10&ndash;15/11 = 31 notti.</div></div>
+          <div class="field" style="margin:0"><label>Notti per payout</label><input type="number" id="p-tr-blocco" step="1" min="1" value="30" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Airbnb Long Term: 30.</div></div>
           <div class="field" style="margin:0"><label>Canone registrato (&euro;)</label><input type="number" id="p-tr-canone" step="0.01" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">Base della cedolare, pulizia esclusa.</div></div>
           <div class="field" style="margin:0"><label>Aliquota cedolare (%)</label><input type="number" id="p-tr-ced" step="0.5" value="21" oninput="renderTRPreview()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light)">10% se canone concordato.</div></div>
           <div class="field" style="margin:0"><label>Data registrazione RLI</label><input type="date" id="p-tr-rli-data"></div>
@@ -3323,15 +3323,14 @@ function isSoggiornoLungo(b){ return !!(b && (b.soggiorno_lungo || b.transitorio
 // ═══════════════════════════════════════════════════════════════════════
 //  LOCAZIONE TRANSITORIA (v101)
 //  Contratto transitorio (art. 5 c.1 L. 431/98) incassato tramite Airbnb,
-//  che paga a mesi di calendario dal giorno di check-in (policy Long Term). NON è locazione breve:
+//  che paga a blocchi di 30 notti (policy Long Term). NON è locazione breve:
 //  Houzly non trattiene la ritenuta 21% (niente F24 1919, niente CU/770).
 //  La cedolare la paga il proprietario in dichiarazione sul canone registrato.
 //  Campi sulla prenotazione:
 //   b.transitorio        = true
 //   b.tr_netto_airbnb    = totale "You earn" Airbnb (già al netto della commissione host)
 //   b.tr_payout_reali    = {"1":2325.68,...} importi reali dei payout (indice 1-based)
-//   b.tr_cadenza         = 'mese' (default: da giorno a giorno del mese dopo) | 'notti' (blocchi fissi)
-//   b.tr_blocco_notti    = notti per payout se tr_cadenza='notti' (default 30)
+//   b.tr_blocco_notti    = notti per payout (default 30)
 //   b.tr_canone          = canone registrato (base della cedolare, pulizia esclusa)
 //   b.tr_cedolare_perc   = aliquota cedolare (default 21)
 //   b.tr_tipo, b.tr_conduttori, b.tr_rli_data, b.tr_rli_protocollo, b.tr_imposta_registro
@@ -3341,20 +3340,11 @@ function isSoggiornoLungo(b){ return !!(b && (b.soggiorno_lungo || b.transitorio
 // ═══════════════════════════════════════════════════════════════════════
 function isTransitorio(b){ return !!(b && b.transitorio && b.checkin && b.checkout); }
 function trAddDays(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-// v112: stesso giorno del mese successivo (giorno limitato all'ultimo del mese)
-function trAddMonths(iso,n){
-  var y=+iso.slice(0,4), m=+iso.slice(5,7)-1+n, d=+iso.slice(8,10);
-  y+=Math.floor(m/12); m=((m%12)+12)%12;
-  var last=new Date(y,m+1,0).getDate();
-  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(Math.min(d,last)).padStart(2,'0');
-}
-function trNottiTra(a,z){ return Math.round((new Date(z+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
-function trCadenzaMese(b){ return (b.tr_cadenza||'mese')!=='notti'; }
 function trNettoAirbnb(b){
   if(b.tr_netto_airbnb!=null && b.tr_netto_airbnb!=='' && +b.tr_netto_airbnb>0) return r2(+b.tr_netto_airbnb);
   return r2((+b.tot||0)-(+b.comm_ota_abs||0));
 }
-// Piano completo dei payout: mesi di calendario dal check-in (o blocchi da N notti), stima pro-rata per notti
+// Piano completo dei payout: blocchi da N notti dal check-in, stima pro-rata per notti
 // (l'ultimo blocco prende il residuo), importi reali dove inseriti.
 function trPiano(b){
   var P={blocchi:[],nottiTot:0,nottiEff:0,totale:trNettoAirbnb(b),pulizia:+b.pulizia||0,perc:+b.houzly_perc||0,
@@ -3368,21 +3358,11 @@ function trPiano(b){
   P.nottiEff=nEff;
   var bl=Math.max(1,parseInt(b.tr_blocco_notti,10)||30);
   var reali=b.tr_payout_reali||{};
-  var mensile=trCadenzaMese(b);
   var start=0, i=0;
   while(start<nEff){
     i++;
-    var dal, al, n;
-    if(mensile){
-      // v112: Airbnb Long Term paga per mese di calendario (es. 15/10 → 15/11 = 31 notti)
-      dal=trAddMonths(b.checkin,i-1); al=trAddMonths(b.checkin,i);
-      if(trNottiTra(b.checkin,al)>nEff) al=coEff;
-      n=trNottiTra(dal,al);
-      if(n<=0) break;
-    } else {
-      n=Math.min(bl, nEff-start);
-      dal=trAddDays(b.checkin,start); al=trAddDays(b.checkin,start+n);
-    }
+    var n=Math.min(bl, nEff-start);
+    var dal=trAddDays(b.checkin,start), al=trAddDays(b.checkin,start+n);
     var rv=reali[String(i)];
     var hasReal=(rv!=null && rv!=='' && !isNaN(+rv));
     P.blocchi.push({n:i,key:dal.slice(0,7),dal:dal,al:al,notti:n,reale:hasReal,
@@ -3487,7 +3467,7 @@ function trSectionHTML(list, isGroup){
           +cell('Canone registrato',eur(P.canone))
           +cell('Pulizia finale',eur(P.pulizia)+'<br><span style="font-weight:500;font-size:10.5px">servizio separato, trattenuta da Houzly per la ditta</span>')
           +cell('Corrispettivo totale',eur(r2(P.canone+P.pulizia)))
-          +cell('Incasso Airbnb totale',eur(P.totale)+'<br><span style="font-weight:500;font-size:10.5px">'+(trCadenzaMese(b)?'payout mensili da giorno a giorno, pro-rata per notti':'payout a blocchi di '+(parseInt(b.tr_blocco_notti,10)||30)+' notti')+'</span>')
+          +cell('Incasso Airbnb totale',eur(P.totale)+'<br><span style="font-weight:500;font-size:10.5px">payout a blocchi di '+(parseInt(b.tr_blocco_notti,10)||30)+' notti</span>')
           +cell('Registrazione RLI',rli)
           +cell('Regime fiscale','Cedolare secca '+pc(P.cedPerc)+'%<br><span style="font-weight:500;font-size:10.5px">imposta di registro '+eur(+b.tr_imposta_registro||0)+'</span>')
           +cell('Compenso Houzly',pc(P.perc)+'%'+(percContr>P.perc?'<br><span style="font-weight:500;font-size:10.5px">anziché '+pc(percContr)+'% da mandato</span>':''))
@@ -3630,7 +3610,7 @@ function getEffectiveHouzlyConfig(propId){
   return {houzly_perc:hp, iva22:iva, source:src};
 }
 function mesiArr(){return['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];}
-function nextNum(key){if(!DB.counters)DB.counters={rnf:1,fto:1,faz:1,xml:1};var n=DB.counters[key]||1;DB.counters[key]=n+1;saveDB();return String(n).padStart(4,'0');}
+function nextNum(key){if(!DB.counters)DB.counters={rnf:1,fto:1,faz:1,xml:1};var n=DB.counters[key]||1;DB.counters[key]=n+1;if(!window._nnBatch)saveDB();return String(n).padStart(4,'0');}
 
 // ─── NAV ──────────────────────────────────────────────────────────────────
 function showPage(p){
@@ -5938,7 +5918,6 @@ function onTransitorioToggle(){
   var tp=document.getElementById('p-tr-tipo'); if(tp&&!tp.value)tp.value='Transitorio art. 5 c.1 L. 431/98';
   var ce=document.getElementById('p-tr-ced'); if(ce&&ce.value==='')ce.value=21;
   var bn=document.getElementById('p-tr-blocco'); if(bn&&!bn.value)bn.value=30;
-  var cd=document.getElementById('p-tr-cadenza'); if(cd&&!cd.value)cd.value='mese'; trSyncCadenza();
   var ne=document.getElementById('p-tr-netto');
   if(ne&&!ne.value){ var tt=+document.getElementById('p-tot').value||0, cc=+document.getElementById('p-comm-abs').value||0; if(tt>0)ne.value=r2(tt-cc); }
   renderTRPreview();
@@ -5995,7 +5974,6 @@ function trReadForm(){
     tr_conduttori:v('p-tr-conduttori').trim(),
     tr_tipo:v('p-tr-tipo').trim(),
     tr_netto_airbnb:v('p-tr-netto')!==''?+v('p-tr-netto'):null,
-    tr_cadenza:v('p-tr-cadenza')||'mese',
     tr_blocco_notti:parseInt(v('p-tr-blocco'),10)||30,
     tr_canone:+v('p-tr-canone')||0,
     tr_cedolare_perc:v('p-tr-ced')!==''?+v('p-tr-ced'):21,
@@ -6011,7 +5989,7 @@ function trFillForm(b){
   var el=document.getElementById('p-transitorio'); if(el)el.checked=!!(b&&b.transitorio);
   b=b||{};
   s('p-tr-conduttori',b.tr_conduttori||''); s('p-tr-tipo',b.tr_tipo||'');
-  s('p-tr-netto',b.tr_netto_airbnb!=null?b.tr_netto_airbnb:''); s('p-tr-blocco',b.tr_blocco_notti||30); s('p-tr-cadenza',b.tr_cadenza||'mese'); trSyncCadenza();
+  s('p-tr-netto',b.tr_netto_airbnb!=null?b.tr_netto_airbnb:''); s('p-tr-blocco',b.tr_blocco_notti||30);
   s('p-tr-canone',b.tr_canone||''); s('p-tr-ced',b.tr_cedolare_perc!=null?b.tr_cedolare_perc:21);
   s('p-tr-rli-data',b.tr_rli_data||''); s('p-tr-rli-prot',b.tr_rli_protocollo||'');
   s('p-tr-imposta',b.tr_imposta_registro!=null?b.tr_imposta_registro:0); s('p-tr-chiuso-al',b.tr_chiuso_al||'');
@@ -6019,12 +5997,6 @@ function trFillForm(b){
   var box=document.getElementById('tr-fields'); if(box)box.style.display=(b.transitorio?'block':'none');
   var pv=document.getElementById('tr-preview'); if(pv)pv.innerHTML='';
 }
-// v112: mostra il campo notti solo con la cadenza a blocchi fissi
-function trSyncCadenza(){
-  var c=document.getElementById('p-tr-cadenza'), n=document.getElementById('p-tr-blocco');
-  if(n) n.style.display=(c&&c.value==='notti')?'':'none';
-}
-function onTRCadenzaChange(){ trSyncCadenza(); renderTRPreview(); }
 function onTRRealeChange(idx,el){
   var v=String(el.value||'').trim().replace(',','.');
   if(v===''||isNaN(+v)) delete _trRealiForm[String(idx)]; else _trRealiForm[String(idx)]=r2(+v);
@@ -6447,7 +6419,7 @@ function genFatturaAzienda(bid, dest){
 // prenotazione, da inviare via email al commercialista del proprietario.
 // Sarà il commercialista a generare poi la FatturaPA XML dal suo gestionale.
 // NON è una fattura fiscale valida — è una pre-fattura informativa.
-function genPreFattura(bid, dest){
+function genPreFattura(bid, dest, soloHtml){
   var b=DB.prenotazioni.find(function(x){return x.id===bid;});
   if(!b){console.error('genPreFattura: prenotazione non trovata',bid);toast('Errore: prenotazione non trovata');return;}
   var own=ownerOfProp(b.proprieta_id);
@@ -6510,7 +6482,47 @@ function genPreFattura(bid, dest){
     +'<div class="doc-note">&#9888; <strong>Nota per il commercialista:</strong> i dati sopra sono indicativi e basati sull\'aliquota IVA 10% per attivit&agrave; ricettiva esercitata da soggetto societario. Verificare il regime fiscale del cedente e applicare l\'aliquota effettiva al momento dell\'emissione della FatturaPA. Numero documento '+num+' (interno Houzly): non utilizzare come riferimento fiscale ufficiale.</div>'
     +'<div class="doc-footer">Documento generato automaticamente da Houzly Tool il '+oggi+' &middot; '+CO.nome+' &middot; P.IVA '+CO.piva+'</div>'
     +'</div>';
+  if(soloHtml) return html; // v112: usato dalla generazione in blocco
   openPrintModal('Pre-Fattura &mdash; '+num,html);
+}
+
+// ─── PRE-FATTURE IN BLOCCO (v112) ──────────────────────────────────────
+// Per i proprietari azienda: genera in un solo documento (una pagina per
+// prenotazione) le pre-fatture di tutte le prenotazioni filtrate nella pagina
+// Documenti che hanno i dati dell'ospite dal check-in online.
+function docBloccoBks(){
+  var propId=document.getElementById('doc-prop-sel').value;
+  var mese=document.getElementById('doc-mese-sel').value;
+  var anno=+document.getElementById('doc-anno-sel').value;
+  var dGrpSel=document.getElementById('doc-group-sel'), dGrpId=dGrpSel?dGrpSel.value:'';
+  var ids=propId?[propId]:(dGrpId?(function(){var g2=(DB.propGroups||[]).find(function(g){return g.id===dGrpId;});return g2?g2.children:[];})():[]);
+  var mi=mese?mesiArr().indexOf(mese)+1:0;
+  var tutte=DB.prenotazioni.filter(function(b){
+    if(b.black) return false;
+    if(ids.length&&ids.indexOf(b.proprieta_id)<0) return false;
+    if((mese||anno)&&!bkInPeriod(b,mi,anno||0,'checkin')) return false;
+    var own=ownerOfProp(b.proprieta_id); return !!(own&&own.tipo==='azienda');
+  }).sort(function(a,b){return a.checkin<b.checkin?-1:a.checkin>b.checkin?1:0;});
+  return {si:tutte.filter(function(b){return b.checkin_data_at;}), no:tutte.filter(function(b){return !b.checkin_data_at;}), mese:mese, anno:anno};
+}
+function docPrefattureBlocco(){
+  var r=docBloccoBks();
+  if(!r.si.length){ toast('Nessuna prenotazione con dati del check-in nel filtro'); return; }
+  if(!confirm('Genero '+r.si.length+' pre-fatture (una pagina ciascuna)'+(r.no.length?'.\n\n'+r.no.length+' prenotazioni senza check-in restano escluse.':'.')+'\n\nOgni pre-fattura prende un nuovo numero PF.')) return;
+  var parti=[];
+  window._nnBatch=true; // un solo salvataggio a fine blocco
+  try{
+  r.si.forEach(function(b){
+    var dest=null;
+    if(b.az_ragione) dest={tipo:'azienda',nome:b.az_ragione,piva:b.az_piva||'',cf:b.az_cf||'',sdi:b.az_sdi||'',ind:b.ospite_ind||'',cap:b.ospite_cap||'',citta:b.ospite_citta||'',prov:b.ospite_prov||''};
+    var h=genPreFattura(b.id, dest, true);
+    if(h) parti.push(h.replace(PS,''));
+  });
+  } finally { window._nnBatch=false; saveDB(); }
+  var sep='<div style="page-break-after:always;break-after:page;height:0"></div>';
+  var titolo='Pre-fatture'+(r.mese?' '+r.mese:'')+(r.anno?' '+r.anno:'')+' ('+parti.length+')';
+  var esclusi=r.no.length?'<div class="no-print" style="margin:0 0 14px;padding:10px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e">&#9888; Escluse perch&eacute; senza check-in ('+r.no.length+'): '+r.no.map(function(b){return escHtml(b.ospite_nome||'?')+' ('+dateIt(b.checkin)+', '+escHtml(nomeProp(b.proprieta_id))+')';}).join(' &middot; ')+'</div>':'';
+  openPrintModal(titolo, PS+'<style>@media print{.no-print{display:none!important}}</style>'+esclusi+parti.join(sep));
 }
 
 // ─── loadDocSection ───────────────────────────────────────────────────────
@@ -6601,7 +6613,10 @@ function renderDocumenti(){
     return;
   }
 
-  var html='<div class="card" style="padding:0">';
+  // v112: pre-fatture in blocco per i proprietari azienda
+  var _blk=docBloccoBks();
+  var html=(_blk.si.length||_blk.no.length)?'<div class="card" style="padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:12.5px;color:var(--text-mid)">&#128221; <strong>Pre-fatture proprietari azienda</strong>: '+_blk.si.length+' con dati del check-in'+(_blk.no.length?' &middot; <span style="color:var(--orange)">'+_blk.no.length+' senza check-in</span>':'')+'</div>'+(_blk.si.length?'<button class="btn btn-primary" style="font-size:12px" onclick="docPrefattureBlocco()">Genera tutte ('+_blk.si.length+')</button>':'')+'</div>':'';
+  html+='<div class="card" style="padding:0">';
   bks.forEach(function(b){
     var own=ownerOfProp(b.proprieta_id);
     var isDone=DB.docDone&&DB.docDone[b.id];
