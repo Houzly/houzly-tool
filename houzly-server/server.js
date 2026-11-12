@@ -26,6 +26,26 @@ const R2_BUCKET = process.env.R2_BUCKET_NAME || 'houzly-guest-documents';
 // Resend client (email fallback for direct bookings)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// ── Stripe: pagamenti delle prenotazioni dirette dal sito ─────────
+// STRIPE_SECRET_KEY      sk_test_… per il collaudo, sk_live_… in produzione
+// STRIPE_WEBHOOK_SECRET  whsec_… (dall'endpoint webhook registrato su Stripe)
+// Senza STRIPE_SECRET_KEY il sito torna da solo alla modalità "richiesta".
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+const BOOKING_CATALOG = require('./booking-catalog');
+const SITE_URL = process.env.SITE_URL || 'https://www.houzly.it';
+const DIRECT_BOOKINGS_COL = 'direct_bookings';
+// Collaudo: con una chiave sk_test_ i pagamenti sono attivi SOLO per chi apre
+// il sito con ?testpagamenti=<PAYMENTS_TEST_TOKEN>. Tutti gli altri ospiti
+// continuano a vedere la modalità "richiesta". Con la chiave sk_live_ il
+// token non serve più e i pagamenti sono attivi per tutti.
+const STRIPE_TEST_MODE = String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_');
+function paymentsEnabledFor(token) {
+  if (!stripe) return false;
+  if (!STRIPE_TEST_MODE) return true;
+  return !!process.env.PAYMENTS_TEST_TOKEN && token === process.env.PAYMENTS_TEST_TOKEN;
+}
+const HOUZLY_INFO_EMAIL = 'info@houzly.it';
+
 // Anthropic client — non più usato dal check-in (OCR rimosso a settembre 2026,
 // l'ospite inserisce i dati a mano). Lasciato disponibile per altri moduli.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -613,6 +633,10 @@ app.use(compression({
   threshold: 1024,        // non comprime risposte sotto 1 kB (inutile)
   level: 6                // buon compromesso CPU/compressione
 }));
+
+// Il webhook Stripe deve leggere il corpo GREZZO per verificare la firma:
+// per questo è registrato PRIMA di express.json.
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), (req, res) => stripeWebhookHandler(req, res));
 
 app.use(express.json({ limit: "20mb" }));
 app.use("/api/booking", (req, res, next) => {
@@ -1614,6 +1638,326 @@ function bookingCors(req, res, next) {
 // Ogni chiamata a Smoobu passa ora da smoobuFetch(). Non riutilizzare.
 function smoobuHdr() {
   return { 'Api-Key': SMOOBU_API_KEY, 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' };
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PRENOTAZIONE DIRETTA CON PAGAMENTO (Stripe Checkout)
+// ══════════════════════════════════════════════════════════════════
+//  1. Il sito chiama /api/booking/checkout con date, ospiti e dati ospite.
+//  2. Il server ricalcola prezzo e disponibilità da Smoobu + catalogo,
+//     salva la richiesta in `direct_bookings` (stato "in_attesa") e apre
+//     una sessione Stripe Checkout. L'ospite paga sulla pagina di Stripe.
+//  3. Stripe chiama /api/stripe/webhook: il server ricontrolla la
+//     disponibilità, crea la prenotazione su Smoobu (canale Direct, che
+//     blocca subito Airbnb e Booking), registra la commissione Stripe e
+//     manda le email. Se nel frattempo le date sono state prese, rimborsa.
+//  Stati: in_attesa → in_lavorazione → confermata
+//         | rimborsata_non_disponibile | da_verificare | scaduta | pagamento_fallito
+// ══════════════════════════════════════════════════════════════════
+
+function dbEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+function dbDate(iso, it) {
+  return new Date(iso + 'T00:00:00Z').toLocaleDateString(it ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+function dbEuro(n) { return '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// Prezzo e disponibilità calcolati dal server (stessa formula del sito)
+async function quoteDirectStay(aptId, arrival, departure) {
+  const cat = BOOKING_CATALOG[aptId];
+  if (!cat) return { ok: false, error: 'not_bookable' };
+  const [ratesResp, smoobuCleaning] = await Promise.all([
+    smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': aptId, start_date: arrival, end_date: departure } }),
+    getSmoobuCleaningFee(aptId)
+  ]);
+  if (!ratesResp.ok) return { ok: false, error: 'smoobu_' + ratesResp.status };
+  const j = await ratesResp.json();
+  const days = j && j.data && (j.data[aptId] || j.data[String(aptId)]);
+  if (!days) return { ok: false, error: 'smoobu_no_data' };
+  const r = evalStay(days, arrival, departure, smoobuCleaning);
+  if (!r.available) return { ok: true, available: false, reason: r.reason, minStay: r.minStay };
+  const total = Math.round((r.price || 0) + (+cat.cleaningFee || 0));
+  return { ok: true, available: true, nights: r.nights, total, cat };
+}
+
+function policyText(policy, it) {
+  if (policy === 'limitata') return it
+    ? 'Cancellazione: rimborso totale fino a 14 giorni prima dell\'arrivo, 50% fino a 7 giorni prima, nessun rimborso dopo. I rimborsi sono al netto delle commissioni del servizio di pagamento.'
+    : 'Cancellation: full refund up to 14 days before arrival, 50% up to 7 days before, no refund afterwards. Refunds are net of payment processing fees.';
+  return it
+    ? 'Cancellazione gratuita fino a 24 ore prima dell\'arrivo, con rimborso al netto delle commissioni del servizio di pagamento. Dopo, nessun rimborso.'
+    : 'Free cancellation up to 24 hours before arrival, refunded net of payment processing fees. No refund afterwards.';
+}
+
+// ── GET /api/booking/payments-status?t=… ──────────────────────────
+// Il sito chiede se mostrare "Prenota e paga" o la modalità richiesta.
+app.get('/api/booking/payments-status', bookingCors, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, enabled: paymentsEnabledFor(String(req.query.t || '')), test: STRIPE_TEST_MODE });
+});
+
+// ── POST /api/booking/checkout ────────────────────────────────────
+// Body: { apartmentId, arrival, departure, guests, firstName, lastName,
+//         email, phone?, note?, lang?, acceptTerms }
+// Risposta: { ok, url } → il sito porta l'ospite su Stripe Checkout
+app.post('/api/booking/checkout', bookingCors, async (req, res) => {
+  const b = req.body || {};
+  if (!paymentsEnabledFor(String(b.testToken || ''))) return res.status(503).json({ ok: false, code: 'payments_disabled' });
+  const aptId = parseInt(b.apartmentId, 10);
+  const dateOk = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const email = String(b.email || '').trim();
+  const firstName = String(b.firstName || '').trim().slice(0, 80);
+  const lastName  = String(b.lastName || '').trim().slice(0, 80);
+  const guests = parseInt(b.guests, 10) || 1;
+  const it = b.lang !== 'en';
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (!aptId || !dateOk(b.arrival) || !dateOk(b.departure) || b.departure <= b.arrival || b.arrival < today)
+    return res.status(400).json({ ok: false, code: 'bad_dates' });
+  if (!firstName || !lastName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ ok: false, code: 'bad_guest' });
+  if (b.acceptTerms !== true)
+    return res.status(400).json({ ok: false, code: 'terms_required' });
+
+  try {
+    const q = await quoteDirectStay(aptId, b.arrival, b.departure);
+    if (!q.ok) return res.status(q.error === 'not_bookable' ? 404 : 502).json({ ok: false, code: q.error });
+    if (!q.available) return res.status(409).json({ ok: false, code: 'not_available', reason: q.reason, minStay: q.minStay });
+    if (guests > q.cat.maxGuests) return res.status(400).json({ ok: false, code: 'too_many_guests', maxGuests: q.cat.maxGuests });
+
+    const ref = crypto.randomBytes(12).toString('hex');
+    const doc = {
+      _id: ref,
+      status: 'in_attesa',
+      test: STRIPE_TEST_MODE,
+      created_at: new Date().toISOString(),
+      apartment_id: aptId,
+      property_slug: q.cat.slug,
+      property_name: q.cat.name,
+      arrival: b.arrival, departure: b.departure, nights: q.nights,
+      guests,
+      total: q.total,
+      currency: 'eur',
+      policy: q.cat.policy || 'flessibile',
+      guest: {
+        first_name: firstName, last_name: lastName, email,
+        phone: String(b.phone || '').trim().slice(0, 40),
+        note: String(b.note || '').trim().slice(0, 1000),
+        lang: it ? 'it' : 'en'
+      },
+      terms_accepted_at: new Date().toISOString(),
+      events: [{ at: new Date().toISOString(), what: 'checkout_creato' }]
+    };
+
+    const back = `${SITE_URL}/villa/${q.cat.slug}/`;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      locale: it ? 'it' : 'en',
+      customer_email: email,
+      client_reference_id: ref,
+      metadata: { ref, apartment_id: String(aptId) },
+      payment_intent_data: {
+        description: `${q.cat.name} · ${b.arrival} → ${b.departure}`,
+        metadata: { ref, apartment_id: String(aptId) }
+      },
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          unit_amount: Math.round(q.total * 100),
+          product_data: {
+            name: q.cat.name,
+            description: it
+              ? `${dbDate(b.arrival, true)} – ${dbDate(b.departure, true)} · ${q.nights} ${q.nights === 1 ? 'notte' : 'notti'} · ${guests} ${guests === 1 ? 'ospite' : 'ospiti'} · pulizie incluse`
+              : `${dbDate(b.arrival, false)} – ${dbDate(b.departure, false)} · ${q.nights} ${q.nights === 1 ? 'night' : 'nights'} · ${guests} ${guests === 1 ? 'guest' : 'guests'} · cleaning included`
+          }
+        }
+      }],
+      custom_text: { submit: { message: policyText(doc.policy, it) } },
+      expires_at: Math.floor(Date.now() / 1000) + 31 * 60, // 31 minuti (Stripe chiede almeno 30)
+      success_url: `${back}?pagamento=ok&rif=${ref}`,
+      cancel_url:  `${back}?pagamento=annullato`
+    });
+
+    doc.stripe_session_id = session.id;
+    const col = await getCollection(DIRECT_BOOKINGS_COL);
+    await col.insertOne(doc);
+    console.log(`[checkout] ${ref} ${q.cat.name} ${b.arrival}→${b.departure} € ${q.total}`);
+    res.json({ ok: true, url: session.url, ref });
+  } catch (e) {
+    console.error('[booking/checkout]', e.message);
+    res.status(500).json({ ok: false, code: 'server_error' });
+  }
+});
+
+// ── GET /api/booking/checkout-status?ref=… ────────────────────────
+// Usata dalla pagina di ritorno del sito per mostrare l'esito.
+app.get('/api/booking/checkout-status', bookingCors, async (req, res) => {
+  const ref = String(req.query.ref || '');
+  if (!/^[a-f0-9]{24}$/.test(ref)) return res.status(400).json({ ok: false });
+  try {
+    const col = await getCollection(DIRECT_BOOKINGS_COL);
+    const d = await col.findOne({ _id: ref }, { projection: { status: 1, property_name: 1, arrival: 1, departure: 1, total: 1, 'guest.email': 1 } });
+    if (!d) return res.status(404).json({ ok: false });
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, status: d.status, propertyName: d.property_name, arrival: d.arrival, departure: d.departure, total: d.total, email: d.guest && d.guest.email });
+  } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+// ── Webhook Stripe ────────────────────────────────────────────────
+async function stripeWebhookHandler(req, res) {
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).send('stripe non configurato');
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (e) {
+    console.error('[stripe/webhook] firma non valida:', e.message);
+    return res.status(400).send('firma non valida');
+  }
+  try {
+    const s = event.data && event.data.object;
+    const ref = s && s.metadata && s.metadata.ref;
+    if (ref) {
+      const col = await getCollection(DIRECT_BOOKINGS_COL);
+      const log = what => col.updateOne({ _id: ref }, { $push: { events: { at: new Date().toISOString(), what } } });
+      if (event.type === 'checkout.session.completed') {
+        if (s.payment_status === 'paid') await finalizeDirectBooking(ref, s);
+        else { await col.updateOne({ _id: ref, status: 'in_attesa' }, { $set: { status: 'pagamento_in_corso' } }); await log('pagamento_in_corso'); }
+      } else if (event.type === 'checkout.session.async_payment_succeeded') {
+        await finalizeDirectBooking(ref, s);
+      } else if (event.type === 'checkout.session.async_payment_failed') {
+        await col.updateOne({ _id: ref }, { $set: { status: 'pagamento_fallito' } }); await log('pagamento_fallito');
+      } else if (event.type === 'checkout.session.expired') {
+        await col.updateOne({ _id: ref, status: 'in_attesa' }, { $set: { status: 'scaduta' } }); await log('scaduta');
+      }
+    }
+    res.json({ received: true });
+  } catch (e) {
+    // 500 → Stripe riprova più tardi; finalizeDirectBooking è idempotente
+    console.error('[stripe/webhook]', event.type, e.message);
+    res.status(500).send('errore');
+  }
+}
+
+async function finalizeDirectBooking(ref, session) {
+  const col = await getCollection(DIRECT_BOOKINGS_COL);
+  // Lucchetto: una sola esecuzione anche se Stripe manda l'evento più volte
+  const d = await col.findOneAndUpdate(
+    { _id: ref, status: { $in: ['in_attesa', 'pagamento_in_corso', 'scaduta'] } },
+    { $set: { status: 'in_lavorazione', paid_at: new Date().toISOString(), stripe_payment_intent: session.payment_intent } },
+    { returnDocument: 'after' }
+  );
+  if (!d) return; // già gestita
+  const it = d.guest.lang !== 'en';
+  const log = (what, extra) => col.updateOne({ _id: ref }, Object.assign({ $push: { events: { at: new Date().toISOString(), what } } }, extra ? { $set: extra } : {}));
+
+  // Commissione Stripe e metodo di pagamento (per il report del proprietario)
+  let fee = null, method = null;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(session.payment_intent, { expand: ['latest_charge.balance_transaction'] });
+    const ch = pi.latest_charge;
+    if (ch && ch.balance_transaction && typeof ch.balance_transaction === 'object') fee = ch.balance_transaction.fee / 100;
+    if (ch && ch.payment_method_details) method = ch.payment_method_details.type;
+  } catch (e) { console.error('[finalize] commissione non letta', ref, e.message); }
+  await log('pagato', { stripe_fee: fee, payment_method: method, amount_paid: (session.amount_total || 0) / 100 });
+
+  // 1) Le date sono ancora libere?
+  let q = null;
+  try { q = await quoteDirectStay(d.apartment_id, d.arrival, d.departure); } catch (e) { q = null; }
+  if (q && q.ok && !q.available) {
+    try {
+      await stripe.refunds.create({ payment_intent: session.payment_intent, reason: 'requested_by_customer', metadata: { ref, motivo: 'date_non_disponibili' } });
+      await log('rimborsata_non_disponibile', { status: 'rimborsata_non_disponibile' });
+      await sendDirectEmail(d.guest.email, it ? `Le date non sono più disponibili — ${d.property_name}` : `Dates no longer available — ${d.property_name}`,
+        directEmailHtml(d, it, 'unavailable'), d.test);
+      await notifyHouzlyDirect(`⚠️ Rimborsata (date prese nel frattempo) — ${d.property_name}`, d, 'Pagamento rimborsato in automatico: le date sono state prenotate su un altro canale durante il pagamento.');
+    } catch (e) {
+      await log('rimborso_fallito: ' + e.message, { status: 'da_verificare' });
+      await notifyHouzlyDirect(`🚨 DA VERIFICARE — rimborso non riuscito — ${d.property_name}`, d, 'Le date non sono più libere e il rimborso automatico è fallito: rimborsare a mano da Stripe. Errore: ' + e.message);
+    }
+    return;
+  }
+
+  // 2) Creo la prenotazione su Smoobu (canale Direct → blocca i portali)
+  const base = {
+    apartmentId: d.apartment_id, arrivalDate: d.arrival, departureDate: d.departure,
+    firstName: d.guest.first_name, lastName: d.guest.last_name, email: d.guest.email,
+    adults: d.guests, channelId: SMOOBU_CHANNEL_DIRECT, language: it ? 'it' : 'en',
+    notice: `${d.test ? '[TEST STRIPE — DA CANCELLARE] ' : ''}Prenotazione dal sito houzly.it, pagata online (rif. ${ref}). ${d.guest.note ? 'Note ospite: ' + d.guest.note : ''}`.trim()
+  };
+  if (d.guest.phone) base.phone = d.guest.phone;
+  let reservationId = null, lastErr = '';
+  for (const payload of [Object.assign({ price: d.total, priceStatus: 1 }, base), base]) {
+    try {
+      const r = await smoobuFetch('POST', '/api/reservations', { body: payload });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.id) { reservationId = j.id; break; }
+      lastErr = `Smoobu ${r.status}: ${JSON.stringify(j).slice(0, 300)}`;
+    } catch (e) { lastErr = e.message; }
+  }
+  if (!reservationId) {
+    await log('smoobu_fallita: ' + lastErr, { status: 'da_verificare' });
+    await notifyHouzlyDirect(`🚨 DA VERIFICARE — pagata ma non creata su Smoobu — ${d.property_name}`, d,
+      'L\'ospite ha pagato ma la prenotazione non è stata creata su Smoobu. Inseritela a mano e bloccate il calendario. Errore: ' + lastErr);
+    await sendDirectEmail(d.guest.email, it ? `Pagamento ricevuto — ${d.property_name}` : `Payment received — ${d.property_name}`, directEmailHtml(d, it, 'pending'), d.test);
+    return;
+  }
+
+  await log('confermata', { status: 'confermata', smoobu_reservation_id: reservationId, confirmed_at: new Date().toISOString() });
+  console.log(`[finalize] ${ref} confermata, Smoobu #${reservationId}, commissione ${fee}`);
+  await sendDirectEmail(d.guest.email, it ? `Prenotazione confermata — ${d.property_name}` : `Booking confirmed — ${d.property_name}`, directEmailHtml(d, it, 'confirmed'), d.test);
+  await notifyHouzlyDirect(`✅ Nuova prenotazione dal sito — ${d.property_name}`, Object.assign({}, d, { smoobu_reservation_id: reservationId, stripe_fee: fee, payment_method: method }),
+    'Prenotazione pagata online e creata su Smoobu.');
+}
+
+function directEmailHtml(d, it, kind) {
+  const g = d.guest;
+  const intro = {
+    confirmed:   it ? `Gentile ${dbEsc(g.first_name)}, la tua prenotazione è confermata e il pagamento è stato ricevuto. Grazie per aver scelto Houzly.`
+                    : `Dear ${dbEsc(g.first_name)}, your booking is confirmed and your payment has been received. Thank you for choosing Houzly.`,
+    pending:     it ? `Gentile ${dbEsc(g.first_name)}, abbiamo ricevuto il tuo pagamento. Stiamo completando la prenotazione e ti scriveremo a breve con la conferma.`
+                    : `Dear ${dbEsc(g.first_name)}, we have received your payment. We are completing your booking and will write to you shortly with the confirmation.`,
+    unavailable: it ? `Gentile ${dbEsc(g.first_name)}, ci dispiace: mentre completavi il pagamento le date sono state prenotate da un altro ospite. Ti abbiamo già rimborsato l'intero importo, che tornerà sul tuo metodo di pagamento nei prossimi giorni. Rispondi a questa email e ti aiutiamo a trovare un'alternativa.`
+                    : `Dear ${dbEsc(g.first_name)}, we are sorry: while you were completing the payment, these dates were booked by another guest. We have already refunded the full amount, which will reach your payment method in the coming days. Reply to this email and we will help you find an alternative.`
+  }[kind];
+  const row = (k, v) => `<tr><td style="padding:6px 0;color:#5a80b0;font-size:13px">${k}</td><td style="padding:6px 0;color:#170046;font-size:13px;text-align:right">${v}</td></tr>`;
+  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#170046">
+    <p style="font-size:22px;letter-spacing:2px;margin:0 0 24px">Houzly</p>
+    <p style="font-size:14px;line-height:1.6">${intro}</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0;border-top:1px solid #e6e1d8;border-bottom:1px solid #e6e1d8">
+      ${row(it ? 'Struttura' : 'Property', dbEsc(d.property_name))}
+      ${row(it ? 'Arrivo' : 'Arrival', dbDate(d.arrival, it))}
+      ${row(it ? 'Partenza' : 'Departure', dbDate(d.departure, it))}
+      ${row(it ? 'Notti' : 'Nights', d.nights)}
+      ${row(it ? 'Ospiti' : 'Guests', d.guests)}
+      ${row(it ? 'Totale pagato' : 'Total paid', dbEuro(d.total))}
+      ${row(it ? 'Riferimento' : 'Reference', d._id.slice(-8).toUpperCase())}
+    </table>
+    ${kind === 'confirmed' ? `<p style="font-size:13px;line-height:1.6">${dbEsc(policyText(d.policy, it))} ${it ? 'Per cancellare o modificare rispondi a questa email.' : 'To cancel or change your booking, reply to this email.'}</p>
+    <p style="font-size:13px;line-height:1.6">${it ? 'L\'imposta di soggiorno, dove prevista, si paga all\'arrivo. Qualche giorno prima del check-in riceverai il link per la registrazione online degli ospiti.' : 'The tourist tax, where applicable, is paid on arrival. A few days before check-in you will receive the link for online guest registration.'}</p>` : ''}
+    <p style="font-size:13px;line-height:1.6;margin-top:24px">${it ? 'A presto,' : 'See you soon,'}<br>Houzly · ${HOUZLY_INFO_EMAIL} · +39 331 212 7801</p>
+  </div>`;
+}
+
+async function sendDirectEmail(to, subject, html, isTest) {
+  if (isTest) subject = '[TEST] ' + subject;
+  try {
+    const r = await resend.emails.send({ from: `Houzly <${HOUZLY_INFO_EMAIL}>`, replyTo: HOUZLY_INFO_EMAIL, to, subject, html });
+    if (r && r.error) console.error('[direct email]', r.error.message || r.error);
+  } catch (e) { console.error('[direct email]', e.message); }
+}
+
+async function notifyHouzlyDirect(subject, d, message) {
+  if (d.test) subject = '[TEST] ' + subject;
+  const to = Array.from(new Set([HOUZLY_INFO_EMAIL].concat(CHECKIN_NOTIFY_EMAILS)));
+  const lines = [
+    ['Struttura', d.property_name], ['Arrivo', d.arrival], ['Partenza', d.departure], ['Notti', d.nights], ['Ospiti', d.guests],
+    ['Totale', dbEuro(d.total)], ['Commissione Stripe', d.stripe_fee != null ? dbEuro(d.stripe_fee) : 'n/d'],
+    ['Metodo', d.payment_method || 'n/d'], ['Ospite', `${d.guest.first_name} ${d.guest.last_name}`], ['Email', d.guest.email],
+    ['Telefono', d.guest.phone || '—'], ['Note', d.guest.note || '—'], ['Smoobu', d.smoobu_reservation_id || '—'], ['Rif.', d._id]
+  ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#666">${k}</td><td>${dbEsc(v)}</td></tr>`).join('');
+  await sendDirectEmail(to, subject, `<div style="font-family:Arial,sans-serif"><p>${dbEsc(message)}</p><table>${lines}</table></div>`);
 }
 
 // ── GET /api/booking/apartments ───────────────────────────────────
