@@ -1936,12 +1936,18 @@ async function finalizeDirectBooking(ref, session) {
 //   flessibile: fino a 24 ore prima dell'arrivo (ore 15:00) → pagato − commissione
 //   limitata:   ≥14 giorni → pagato − commissione; ≥7 giorni → 50% − commissione
 //   modalità "totale": rimborso pieno, commissione inclusa (es. cancella Houzly)
+// Data/ora italiana → istante UTC (gestisce ora legale e solare)
+function romeLocalToDate(isoDate, hour) {
+  const guess = new Date(isoDate + 'T' + String(hour).padStart(2, '0') + ':00:00Z');
+  const romeHour = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }).format(guess);
+  return new Date(guess.getTime() - (romeHour - hour) * 3600000);
+}
 function refundQuote(d, mode, now) {
   now = now || new Date();
   const paid = +(d.amount_paid || d.total || 0);
   const fee  = +(d.stripe_fee || 0);
   const already = +(d.refunded || 0);
-  const arrivalAt = new Date(d.arrival + 'T14:00:00Z'); // 15:00 ora italiana (16:00 con l'ora legale: margine a favore dell'ospite)
+  const arrivalAt = romeLocalToDate(d.arrival, 16); // check-in alle 16:00 ora italiana (come nei Termini del sito)
   const hoursLeft = (arrivalAt - now) / 3600000;
   let amount = 0, rule = '';
   if (mode === 'totale') { amount = paid; rule = 'Rimborso totale deciso da Houzly (commissione a carico di Houzly/proprietario)'; }
