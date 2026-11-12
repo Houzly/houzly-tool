@@ -779,7 +779,8 @@ async function loadAllBookings() {
 const BOOKING_LOG_COL = 'booking_log';
 const LOG_FIELDS = ['tot', 'comm_ota_abs', 'pulizia', 'tassa_tot', 'checkin', 'checkout', 'notti', 'n_ospiti',
   'proprieta_id', 'ospite_nome', 'canale', 'houzly_perc', 'iva22', 'black', 'incasso_diretto', 'transitorio', '_sync_cancelled',
-  'rimborso', 'rimborso_carico']; // v107: rimborso all'ospite
+  'rimborso', 'rimborso_carico', // v107: rimborso all'ospite
+  'comm_pag']; // commissione del pagamento online (prenotazioni dal sito)
 let _bookingLogIndexed = false;
 function logLordo(b) { return (!b || b.black) ? 0 : Math.round((+b.tot || 0) * 100) / 100; }
 function logSame(a, b) {
@@ -1606,6 +1607,24 @@ app.get('/api/bookings/mirror', requireAdminAuth, async (req, res) => {
       } : null,
       priceElements: (m.priceElements || []).map(p => ({ type: p.type, name: p.name, amount: p.amount, priceIncludedInId: p.priceIncludedInId })),
     }));
+    // Prenotazioni pagate online dal sito: aggiungo commissione Stripe e metodo
+    // (il tool le scala nel report come una commissione del canale).
+    try {
+      const ids = items.map(it => Number(it.id)).filter(Boolean);
+      if (ids.length) {
+        const pays = await (await getCollection(DIRECT_BOOKINGS_COL)).find(
+          { smoobu_reservation_id: { $in: ids } },
+          { projection: { smoobu_reservation_id: 1, stripe_fee: 1, payment_method: 1, total: 1, amount_paid: 1, status: 1, refunded: 1, test: 1, cleaning_fee: 1 } }
+        ).toArray();
+        const byRes = {};
+        pays.forEach(p => { byRes[String(p.smoobu_reservation_id)] = p; });
+        items.forEach(it => {
+          const p = byRes[String(it.id)];
+          if (p) it.directPay = { ref: p._id, fee: p.stripe_fee, method: p.payment_method || null, total: p.total,
+            paid: p.amount_paid, status: p.status, refunded: p.refunded || 0, test: !!p.test, cleaning: p.cleaning_fee || 0 };
+        });
+      }
+    } catch (e) { console.error('[mirror/directPay]', e.message); }
     res.json({ ok: true, sync_from: BOOKINGS_SYNC_FROM, server_time: new Date().toISOString(), items });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -1678,7 +1697,7 @@ async function quoteDirectStay(aptId, arrival, departure) {
   const r = evalStay(days, arrival, departure, smoobuCleaning);
   if (!r.available) return { ok: true, available: false, reason: r.reason, minStay: r.minStay };
   const total = Math.round((r.price || 0) + (+cat.cleaningFee || 0));
-  return { ok: true, available: true, nights: r.nights, total, cat };
+  return { ok: true, available: true, nights: r.nights, total, cat, cleaning: Math.round((+cat.cleaningFee || 0) + (+r.cleaningFee || 0)) };
 }
 
 function policyText(policy, it) {
@@ -1738,6 +1757,7 @@ app.post('/api/booking/checkout', bookingCors, async (req, res) => {
       arrival: b.arrival, departure: b.departure, nights: q.nights,
       guests,
       total: q.total,
+      cleaning_fee: q.cleaning, // pulizie incluse nel totale (per il report del tool)
       currency: 'eur',
       policy: q.cat.policy || 'flessibile',
       guest: {
@@ -1910,6 +1930,94 @@ async function finalizeDirectBooking(ref, session) {
   await notifyHouzlyDirect(`✅ Nuova prenotazione dal sito — ${d.property_name}`, Object.assign({}, d, { smoobu_reservation_id: reservationId, stripe_fee: fee, payment_method: method }),
     'Prenotazione pagata online e creata su Smoobu.');
 }
+
+// ── CANCELLAZIONE CON RIMBORSO (dal tool, solo admin) ─────────────
+// Calcolo del rimborso secondo la politica della prenotazione.
+//   flessibile: fino a 24 ore prima dell'arrivo (ore 15:00) → pagato − commissione
+//   limitata:   ≥14 giorni → pagato − commissione; ≥7 giorni → 50% − commissione
+//   modalità "totale": rimborso pieno, commissione inclusa (es. cancella Houzly)
+function refundQuote(d, mode, now) {
+  now = now || new Date();
+  const paid = +(d.amount_paid || d.total || 0);
+  const fee  = +(d.stripe_fee || 0);
+  const already = +(d.refunded || 0);
+  const arrivalAt = new Date(d.arrival + 'T14:00:00Z'); // 15:00 ora italiana (16:00 con l'ora legale: margine a favore dell'ospite)
+  const hoursLeft = (arrivalAt - now) / 3600000;
+  let amount = 0, rule = '';
+  if (mode === 'totale') { amount = paid; rule = 'Rimborso totale deciso da Houzly (commissione a carico di Houzly/proprietario)'; }
+  else if ((d.policy || 'flessibile') === 'limitata') {
+    if (hoursLeft >= 14 * 24) { amount = paid - fee; rule = 'Politica limitata: oltre 14 giorni → rimborso totale meno commissione'; }
+    else if (hoursLeft >= 7 * 24) { amount = paid * 0.5 - fee; rule = 'Politica limitata: tra 14 e 7 giorni → 50% meno commissione'; }
+    else { amount = 0; rule = 'Politica limitata: meno di 7 giorni → nessun rimborso'; }
+  } else {
+    if (hoursLeft >= 24) { amount = paid - fee; rule = 'Politica flessibile: oltre 24 ore → rimborso totale meno commissione'; }
+    else { amount = 0; rule = 'Politica flessibile: meno di 24 ore → nessun rimborso'; }
+  }
+  amount = Math.max(0, Math.min(paid - already, Math.round(amount * 100) / 100));
+  return { paid, fee, already, amount, kept: Math.round((paid - already - amount) * 100) / 100, rule, hoursLeft: Math.round(hoursLeft) };
+}
+
+app.get('/api/direct-bookings/:ref/refund-preview', requireAdminAuth, async (req, res) => {
+  try {
+    const d = await (await getCollection(DIRECT_BOOKINGS_COL)).findOne({ _id: String(req.params.ref) });
+    if (!d) return res.status(404).json({ ok: false, error: 'Prenotazione non trovata' });
+    res.json({ ok: true, status: d.status, policy: d.policy, arrival: d.arrival, departure: d.departure,
+      property: d.property_name, guest: d.guest, smoobu: d.smoobu_reservation_id || null,
+      payment_method: d.payment_method || null, test: !!d.test,
+      policyQuote: refundQuote(d, 'politica'), fullQuote: refundQuote(d, 'totale') });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Body: { mode: 'politica' | 'totale', cancelSmoobu: true|false }
+app.post('/api/direct-bookings/:ref/cancel', requireAdminAuth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ ok: false, error: 'Stripe non configurato' });
+  const ref = String(req.params.ref);
+  const mode = (req.body && req.body.mode) === 'totale' ? 'totale' : 'politica';
+  const cancelSmoobu = !(req.body && req.body.cancelSmoobu === false);
+  const col = await getCollection(DIRECT_BOOKINGS_COL);
+  // lucchetto contro doppio clic
+  const d = await col.findOneAndUpdate({ _id: ref, status: 'confermata' }, { $set: { status: 'in_cancellazione' } }, { returnDocument: 'after' });
+  if (!d) return res.status(409).json({ ok: false, error: 'La prenotazione non è in stato "confermata" (già cancellata o in lavorazione)' });
+  const it = d.guest.lang !== 'en';
+  const q = refundQuote(d, mode);
+  let refundId = null, smoobuOk = null, smoobuErr = '';
+  try {
+    if (q.amount > 0) {
+      const r = await stripe.refunds.create({ payment_intent: d.stripe_payment_intent, amount: Math.round(q.amount * 100),
+        metadata: { ref, motivo: mode === 'totale' ? 'cancellazione_totale' : 'cancellazione_politica' } });
+      refundId = r.id;
+    }
+  } catch (e) {
+    await col.updateOne({ _id: ref }, { $set: { status: 'confermata' }, $push: { events: { at: new Date().toISOString(), what: 'rimborso_fallito: ' + e.message } } });
+    return res.status(502).json({ ok: false, error: 'Rimborso Stripe non riuscito: ' + e.message });
+  }
+  if (cancelSmoobu && d.smoobu_reservation_id) {
+    try {
+      const r = await smoobuFetch('DELETE', `/api/reservations/${d.smoobu_reservation_id}`);
+      smoobuOk = r.ok; if (!r.ok) smoobuErr = `Smoobu ${r.status}: ${(await r.text()).slice(0, 200)}`;
+    } catch (e) { smoobuOk = false; smoobuErr = e.message; }
+  }
+  const now = new Date().toISOString();
+  await col.updateOne({ _id: ref }, {
+    $set: { status: 'cancellata', cancelled_at: now, cancel_mode: mode, refunded: Math.round(((+d.refunded || 0) + q.amount) * 100) / 100,
+            refund_id: refundId, kept_amount: q.kept, smoobu_cancelled: smoobuOk },
+    $push: { events: { at: now, what: `cancellata (${mode}) rimborso € ${q.amount}${smoobuOk === false ? ' · Smoobu NON cancellata' : ''}` } }
+  });
+  const guestHtml = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#170046">
+    <p style="font-size:22px;letter-spacing:2px;margin:0 0 24px">Houzly</p>
+    <p style="font-size:14px;line-height:1.6">${it
+      ? `Gentile ${dbEsc(d.guest.first_name)}, la tua prenotazione presso ${dbEsc(d.property_name)} dal ${dbDate(d.arrival, true)} al ${dbDate(d.departure, true)} è stata cancellata.`
+      : `Dear ${dbEsc(d.guest.first_name)}, your booking at ${dbEsc(d.property_name)} from ${dbDate(d.arrival, false)} to ${dbDate(d.departure, false)} has been cancelled.`}</p>
+    <p style="font-size:14px;line-height:1.6">${q.amount > 0
+      ? (it ? `Ti abbiamo rimborsato ${dbEuro(q.amount)}: l'importo tornerà sul tuo metodo di pagamento entro 5-10 giorni lavorativi.` : `We have refunded ${dbEuro(q.amount)}: it will reach your payment method within 5-10 business days.`)
+      : (it ? 'In base alla politica di cancellazione accettata alla prenotazione, non è previsto alcun rimborso.' : 'Under the cancellation policy accepted at booking, no refund is due.')}</p>
+    <p style="font-size:13px;line-height:1.6;margin-top:24px">${it ? 'Un saluto,' : 'Kind regards,'}<br>Houzly · ${HOUZLY_INFO_EMAIL} · +39 331 212 7801</p></div>`;
+  await sendDirectEmail(d.guest.email, it ? `Cancellazione prenotazione — ${d.property_name}` : `Booking cancellation — ${d.property_name}`, guestHtml, d.test);
+  await notifyHouzlyDirect(`↩️ Prenotazione dal sito cancellata — ${d.property_name}`, d,
+    `Cancellata dal tool (${mode === 'totale' ? 'rimborso totale' : 'secondo politica'}). Rimborsato € ${q.amount}, trattenuto € ${q.kept}. ${q.rule}.` +
+    (smoobuOk === false ? ' ATTENZIONE: cancellazione su Smoobu non riuscita, cancellarla a mano. ' + smoobuErr : ''));
+  res.json({ ok: true, refunded: q.amount, kept: q.kept, smoobuCancelled: smoobuOk, smoobuError: smoobuErr || null });
+});
 
 function directEmailHtml(d, it, kind) {
   const g = d.guest;
