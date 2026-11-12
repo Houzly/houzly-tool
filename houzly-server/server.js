@@ -1659,10 +1659,10 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure' });
   }
   try {
-    // Chiamate parallele: rates + apartment details (per costo pulizie)
-    const [ratesResp, aptResp] = await Promise.all([
+    // Rates da Smoobu + costo pulizie Smoobu (in cache 24h, vedi getSmoobuCleaningFee)
+    const [ratesResp, cleaningFee] = await Promise.all([
       smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': apartmentId, start_date: arrival, end_date: departure } }),
-      smoobuFetch('GET', `/api/apartments/${apartmentId}`)
+      getSmoobuCleaningFee(apartmentId)
     ]);
 
     const ratesText = await ratesResp.text();
@@ -1677,56 +1677,118 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Dati non trovati per questo appartamento' });
     }
 
-    // Costo pulizie dall'apartment details
-    let cleaningFee = 0;
-    try {
-      const aptData = await aptResp.json();
-      console.log('[booking/availability] apartment keys:', JSON.stringify(Object.keys(aptData)));
-      console.log('[booking/availability] apartment data:', JSON.stringify(aptData).slice(0, 500));
-      cleaningFee = aptData.cleaningFee || aptData.cleaning_fee || aptData['cleaning-fee'] || 
-                    aptData.extra_costs || aptData.extraCosts || 0;
-      console.log('[booking/availability] cleaningFee:', cleaningFee);
-    } catch(e) {
-      console.log('[booking/availability] could not get cleaning fee:', e.message);
-    }
-
-    // Calcola notti e verifica disponibilità
-    const arrDate = new Date(arrival);
-    const depDate = new Date(departure);
-    const nights  = Math.round((depDate - arrDate) / 86400000);
-    let available = true, totalPrice = 0, minStay = 1, blocked = false;
-    for (let i = 0; i < nights; i++) {
-      const d = new Date(arrDate); d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
-      const dayData = aptDays[dateStr];
-      if (!dayData || dayData.available === 0) { available = false; blocked = true; break; }
-      totalPrice += dayData.price || 0;
-      if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
-    }
-    // Se i giorni sono tutti liberi ma sotto il min-stay: non disponibile per min-stay
-    let minStayFail = false;
-    if (available && nights < minStay) {
-      available = false;
-      minStayFail = true;
-    }
-
-    const finalPrice = available ? Math.round(totalPrice + cleaningFee) : null;
-
-    // reason: 'min_stay' se bloccato solo per min-stay, 'blocked' se c'è un giorno occupato, null se disponibile
-    const reason = blocked ? 'blocked' : (minStayFail ? 'min_stay' : null);
-
-    res.json({
-      ok: true,
-      available,
-      nights,
-      price: finalPrice,
-      cleaningFee: Math.round(cleaningFee),
-      reason,
-      minStay
-    });
+    const r = evalStay(aptDays, arrival, departure, cleaningFee);
+    res.json(Object.assign({ ok: true }, r));
 
   } catch (e) {
     console.error('[booking/availability]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── HELPER BOOKING ENGINE ─────────────────────────────────────────
+// Valuta un soggiorno sui giorni restituiti da /api/rates di Smoobu.
+// Risposta: { available, nights, price, cleaningFee, reason, minStay }
+//   reason: 'blocked' (giorno occupato), 'min_stay' (sotto il minimo), null (ok)
+function evalStay(aptDays, arrival, departure, cleaningFee) {
+  cleaningFee = +cleaningFee || 0;
+  const arrDate = new Date(arrival + 'T00:00:00Z');
+  const depDate = new Date(departure + 'T00:00:00Z');
+  const nights  = Math.round((depDate - arrDate) / 86400000);
+  let available = nights > 0, totalPrice = 0, minStay = 1, blocked = false;
+  for (let i = 0; i < nights; i++) {
+    const d = new Date(arrDate); d.setUTCDate(d.getUTCDate() + i);
+    const dayData = aptDays && aptDays[d.toISOString().slice(0, 10)];
+    if (!dayData || dayData.available === 0) { available = false; blocked = true; break; }
+    totalPrice += +dayData.price || 0;
+    if (i === 0 && dayData.min_length_of_stay) minStay = dayData.min_length_of_stay;
+  }
+  let minStayFail = false;
+  if (available && nights < minStay) { available = false; minStayFail = true; }
+  return {
+    available,
+    nights,
+    price: available ? Math.round(totalPrice + cleaningFee) : null,
+    cleaningFee: Math.round(cleaningFee),
+    reason: blocked ? 'blocked' : (minStayFail ? 'min_stay' : null),
+    minStay
+  };
+}
+
+// Costo pulizie impostato su Smoobu per l'appartamento, in cache 24 ore:
+// prima veniva richiesto a Smoobu a ogni verifica di disponibilità.
+const _cleaningFeeCache = new Map(); // aptId -> { fee, at }
+async function getSmoobuCleaningFee(aptId) {
+  const hit = _cleaningFeeCache.get(String(aptId));
+  if (hit && Date.now() - hit.at < 24 * 3600 * 1000) return hit.fee;
+  let fee = 0;
+  try {
+    const r = await smoobuFetch('GET', `/api/apartments/${aptId}`);
+    if (r.ok) {
+      const a = await r.json();
+      fee = +(a.cleaningFee || a.cleaning_fee || a['cleaning-fee'] || a.extra_costs || a.extraCosts || 0) || 0;
+    }
+  } catch (e) { console.log('[booking] pulizie Smoobu non lette per', aptId, e.message); }
+  _cleaningFeeCache.set(String(aptId), { fee, at: Date.now() });
+  return fee;
+}
+
+// ── GET /api/booking/ping ─────────────────────────────────────────
+// Risveglio del server (piano gratuito Render): il sito la chiama appena
+// un ospite apre la pagina, così alla ricerca il server è già attivo.
+app.get('/api/booking/ping', bookingCors, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true });
+});
+
+// ── POST /api/booking/search ──────────────────────────────────────
+// Disponibilità e prezzo di più appartamenti con UNA richiesta a Smoobu
+// (a blocchi di 20), invece di una richiesta per appartamento.
+// Body: { apartmentIds: [..], arrival, departure, guests? }
+// Risposta: { ok, results: { [aptId]: { available, nights, price, cleaningFee, reason, minStay } } }
+app.post('/api/booking/search', bookingCors, async (req, res) => {
+  const { apartmentIds, arrival, departure } = req.body || {};
+  const dateOk = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if (!Array.isArray(apartmentIds) || !apartmentIds.length || !dateOk(arrival) || !dateOk(departure) || departure <= arrival) {
+    return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentIds[], arrival, departure' });
+  }
+  // ID numerici, unici, ordinati (stesso ordine nella firma HMAC e nella URL)
+  const ids = Array.from(new Set(apartmentIds.map(x => parseInt(x, 10)).filter(x => x > 0))).sort((a, b) => a - b).slice(0, 80);
+  if (!ids.length) return res.status(400).json({ ok: false, error: 'apartmentIds non validi' });
+
+  const results = {};
+  try {
+    const fees = await Promise.all(ids.map(id => getSmoobuCleaningFee(id)));
+    const feeOf = {}; ids.forEach((id, i) => { feeOf[id] = fees[i]; });
+
+    for (let i = 0; i < ids.length; i += 20) {
+      const chunk = ids.slice(i, i + 20);
+      let days = null;
+      try {
+        const r = await smoobuFetch('GET', '/api/rates', {
+          query: { 'apartments[]': chunk, start_date: arrival, end_date: departure }
+        });
+        if (r.ok) { const j = await r.json(); days = (j && j.data) || null; }
+        else console.error('[booking/search] Smoobu rates', r.status, (await r.text()).slice(0, 200));
+      } catch (e) { console.error('[booking/search] chunk', e.message); }
+
+      if (days) {
+        chunk.forEach(id => { results[id] = evalStay(days[id] || days[String(id)], arrival, departure, feeOf[id]); });
+      } else {
+        // Ripiego: una richiesta per appartamento (stesso risultato, più lento)
+        await Promise.all(chunk.map(async id => {
+          try {
+            const r = await smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': id, start_date: arrival, end_date: departure } });
+            const j = r.ok ? await r.json() : null;
+            const d = j && j.data && (j.data[id] || j.data[String(id)]);
+            results[id] = d ? evalStay(d, arrival, departure, feeOf[id]) : { available: false, reason: 'error' };
+          } catch (e) { results[id] = { available: false, reason: 'error' }; }
+        }));
+      }
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    console.error('[booking/search]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -1755,7 +1817,11 @@ app.get('/api/booking/rates', bookingCors, async (req, res) => {
 // Crea una prenotazione diretta su Smoobu (canale Direct, senza OTA).
 // Body: { apartmentId, arrival, departure, firstName, lastName, email,
 //         phone?, adults?, note? }
-app.post('/api/booking/create', bookingCors, async (req, res) => {
+// SICUREZZA (11/11/2026): l'endpoint era aperto a chiunque e permetteva di
+// creare prenotazioni vere su Smoobu (bloccando i calendari) senza pagamento.
+// Il sito non lo usa (modalità richiesta). Resta utilizzabile solo con PIN admin;
+// con i pagamenti online la prenotazione verrà creata dal webhook Stripe.
+app.post('/api/booking/create', bookingCors, requireAdminAuth, async (req, res) => {
   const { apartmentId, arrival, departure, firstName, lastName, email, phone, adults, note } = req.body || {};
   if (!apartmentId || !arrival || !departure || !firstName || !lastName || !email) {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure, firstName, lastName, email' });
