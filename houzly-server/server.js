@@ -1438,12 +1438,51 @@ async function mirrorMarkCancelled(id, reason) {
   return r.modifiedCount;
 }
 
+// v114: elenco degli alloggi ancora presenti su Smoobu (cache 10 minuti).
+// Serve a distinguere una prenotazione CANCELLATA da una che sparisce solo perché
+// l'alloggio è stato eliminato da Smoobu (proprietà chiusa): in quel caso la
+// prenotazione resta valida nel tool e non va segnata come cancellata.
+let _aptCache = { t: 0, ids: null };
+async function smoobuApartmentIds() {
+  if (_aptCache.ids && (Date.now() - _aptCache.t) < 10 * 60 * 1000) return _aptCache.ids;
+  const d = await smoobuGetJson('/api/apartments');
+  const list = Array.isArray(d) ? d : (d.apartments || (d._embedded && d._embedded.apartments) || []);
+  const ids = new Set(list.map(a => String(a.id)).filter(Boolean));
+  if (!ids.size) throw new Error('elenco alloggi Smoobu vuoto');
+  _aptCache = { t: Date.now(), ids };
+  return ids;
+}
+function mirrorAptId(m) { return m && m.res && m.res.apartment && m.res.apartment.id != null ? String(m.res.apartment.id) : null; }
+// true se l'alloggio della prenotazione non esiste più su Smoobu
+async function aptRimosso(aptId) {
+  if (!aptId) return false;
+  const ids = await smoobuApartmentIds();
+  return !ids.has(String(aptId));
+}
+
 // Dal webhook Smoobu: nuove/modificate → scarica dettaglio prezzi; cancellate → segna
 async function mirrorFromWebhook(b, action) {
   const id = String(b.id || b.reservationId || '');
   if (!id) return;
   const arrival = (b.arrival || '').slice(0, 10);
   if (action === 'cancelledReservation' || action === 'deleteReservation') {
+    // v114: se l'alloggio è stato eliminato da Smoobu non è una cancellazione vera
+    if (action === 'deleteReservation') {
+      try {
+        const col = await getCollection(MIRROR_COL);
+        const m = await col.findOne({ _id: id }, { projection: { 'res.apartment': 1 } });
+        const apt = mirrorAptId(m) || (b.apartment && b.apartment.id != null ? String(b.apartment.id) : null);
+        if (await aptRimosso(apt)) {
+          await col.updateOne({ _id: id }, { $set: { apartment_removed: true, synced_at: new Date().toISOString() } });
+          console.log('[Mirror] delete ignorata: alloggio eliminato da Smoobu', id, apt);
+          return;
+        }
+      } catch (e) {
+        // senza l'elenco alloggi non posso distinguere: per sicurezza non segno nulla
+        console.warn('[Mirror] delete non verificabile, ignorata', id, e.message);
+        return;
+      }
+    }
     await mirrorMarkCancelled(id, 'webhook:' + action);
     return;
   }
@@ -1489,7 +1528,7 @@ async function reconcileMirror(trigger) {
     out.found = items.length;
 
     // 2. aggiorna solo quelle nuove o modificate (il dettaglio prezzi costa una chiamata)
-    const existing = await col.find({}, { projection: { modifiedAt: 1, cancelled: 1, arrival: 1, departure: 1 } }).toArray();
+    const existing = await col.find({}, { projection: { modifiedAt: 1, cancelled: 1, arrival: 1, departure: 1, 'res.apartment': 1, apartment_removed: 1 } }).toArray();
     const byId = {};
     existing.forEach(m => { byId[m._id] = m; });
     for (const b of items) {
@@ -1510,8 +1549,25 @@ async function reconcileMirror(trigger) {
     if (items.length === 0 && activeInMirror.length > 5) {
       out.warning = 'Smoobu ha restituito 0 prenotazioni: cancellazioni saltate per sicurezza';
     } else {
-      for (const m of activeInMirror) {
-        if (!active.has(m._id)) out.cancelled += await mirrorMarkCancelled(m._id, 'reconcile:not_in_smoobu');
+      // v114: le prenotazioni di alloggi eliminati da Smoobu (proprietà chiuse)
+      // restano valide: non vengono segnate come cancellate.
+      const missing = activeInMirror.filter(m => !active.has(m._id) && !m.apartment_removed);
+      let aptIds = null;
+      if (missing.length) {
+        try { aptIds = await smoobuApartmentIds(); }
+        catch (e) { out.warning = 'Elenco alloggi Smoobu non disponibile: cancellazioni saltate per sicurezza (' + e.message + ')'; }
+      }
+      out.apartment_removed = 0;
+      if (aptIds) {
+        for (const m of missing) {
+          const apt = mirrorAptId(m);
+          if (apt && !aptIds.has(apt)) {
+            await col.updateOne({ _id: m._id }, { $set: { apartment_removed: true } });
+            out.apartment_removed++;
+            continue;
+          }
+          out.cancelled += await mirrorMarkCancelled(m._id, 'reconcile:not_in_smoobu');
+        }
       }
     }
     await status.updateOne({ _id: 'bookings' }, { $set: { running: false, finished_at: new Date().toISOString(), last_ok: true, last_result: out, last_error: null } });
