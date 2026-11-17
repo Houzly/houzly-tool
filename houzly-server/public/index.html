@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" sizes="192x192" href="/favicon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -37,11 +37,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .sidebar-footer{margin-top:auto;padding:14px 18px;font-size:10px;color:rgba(255,255,255,0.2);line-height:1.5}
 #main{margin-left:var(--sidebar-w);flex:1;min-width:0;overflow-x:hidden}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 8px rgba(67,97,238,0.06)}
-.topbar-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)}
+.topbar-title{font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:700;color:var(--blue)}
 /* ── Kanban ───────────────────────────────────────────────────── */
 .kb-col{background:var(--surface2);border-radius:var(--radius-lg);padding:0;width:260px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 220px)}
 .kb-col-header{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0;z-index:1}
-.kb-col-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-col-title{font-family:'Fraunces',Georgia,serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kb-col-body{padding:8px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px}
 .kb-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;cursor:pointer;transition:box-shadow .15s}
 .kb-card:hover{box-shadow:var(--shadow-lg)}
@@ -57,12 +57,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 .page{display:none;padding:24px 28px;width:100%;min-width:0;box-sizing:border-box}.page.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)}
-.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.06em}
+.card-title{font-family:'Fraunces',Georgia,serif;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.06em}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
 .stat-card::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:var(--grad-soft)}
 .stat-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:8px;font-weight:600}
-.stat-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--blue)}
+.stat-value{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:700;color:var(--blue)}
 .stat-sub{font-size:11px;color:var(--text-light);margin-top:3px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
 .btn-primary{background:var(--grad);color:#fff;box-shadow:0 3px 12px rgba(67,97,238,0.25)}.btn-primary:hover{opacity:.88}
@@ -99,7 +99,7 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,21,53,0.5);z-index:500;align-items:center;justify-content:center}.modal-overlay.open{display:flex}
 .modal{background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:760px;width:94%;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);position:relative}
 .modal-close{position:absolute;top:14px;right:14px;background:var(--surface2);border:none;border-radius:6px;cursor:pointer;padding:5px 9px;font-size:16px;color:var(--text-light)}
-.modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--blue);margin-bottom:20px}
+.modal-title{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:700;color:var(--blue);margin-bottom:20px}
 .tabs{display:flex;gap:4px;margin-bottom:18px}
 .tab{padding:7px 16px;border-radius:var(--radius);cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-light);border:1.5px solid transparent;transition:all 0.15s}
 .tab:hover{color:var(--text);background:var(--surface2)}.tab.active{color:var(--blue);background:var(--surface);border-color:var(--border);box-shadow:0 1px 6px rgba(0,0,0,0.06)}
@@ -108,14 +108,14 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .tipo-btn:hover{border-color:var(--blue-mid)}.tipo-btn.active{border-color:var(--blue);background:rgba(67,97,238,0.04)}
 .tipo-btn .tipo-icon{font-size:20px;margin-bottom:3px}.tipo-btn .tipo-label{font-size:12.5px;font-weight:700;color:var(--blue)}.tipo-btn .tipo-sub{font-size:10.5px;color:var(--text-light);margin-top:1px}
 .scorporo-box{background:var(--text);border-radius:var(--radius-lg);padding:18px 22px;color:rgba(255,255,255,0.8);margin-top:18px}
-.scorporo-box h4{font-family:'Syne',sans-serif;font-size:13px;color:var(--cyan);margin-bottom:10px;letter-spacing:0.06em;text-transform:uppercase}
+.scorporo-box h4{font-family:'Fraunces',Georgia,serif;font-size:13px;color:var(--cyan);margin-bottom:10px;letter-spacing:0.06em;text-transform:uppercase}
 .sc-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px}.sc-row:last-child{border-bottom:none}
 .sc-row .amt{font-weight:700;font-variant-numeric:tabular-nums}
 .sc-section-label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,255,255,0.3);padding-top:10px;padding-bottom:2px;font-weight:700}
 .sc-total{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center}
 .sc-total .label{font-weight:700;color:#fff;font-size:14px}.sc-total .amt{font-size:20px;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums}
 .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-.section-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--blue)}
+.section-title{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:700;color:var(--blue)}
 .alert{padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:14px;border:1.5px solid}
 .alert-info{background:rgba(67,97,238,0.06);border-color:rgba(67,97,238,0.2);color:var(--blue)}
 .alert-success{background:rgba(0,196,140,0.06);border-color:rgba(0,196,140,0.2);color:#007a55}
@@ -132,7 +132,7 @@ td.bold{font-weight:700;color:var(--text)}td.money{font-variant-numeric:tabular-
 .sep-label::before,.sep-label::after{content:'';flex:1;border-top:1px solid var(--border)}
 .coprop-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.coprop-row:last-child{border-bottom:none}
 .rpt-section{margin-bottom:0}
-.rpt-ota-header{background:var(--grad);color:#fff;padding:7px 14px;border-radius:var(--radius) var(--radius) 0 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.rpt-ota-header{background:var(--grad);color:#fff;padding:7px 14px;border-radius:var(--radius) var(--radius) 0 0;font-family:'Fraunces',Georgia,serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
 .rpt-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}
 .rpt-table th{background:#0f1535;color:#fff;padding:7px 10px;text-align:right;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--border)}
 .rpt-table th:first-child,.rpt-table th:nth-child(2),.rpt-table th:nth-child(3){text-align:left}
@@ -205,13 +205,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cl-week-nav{display:flex;align-items:center;gap:8px}
 .cl-week-nav button{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-mid);font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;transition:all .15s}
 .cl-week-nav button:hover{border-color:var(--blue);color:var(--blue)}
-.cl-week-label{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);min-width:200px;text-align:center}
+.cl-week-label{font-family:'Fraunces',Georgia,serif;font-size:15px;font-weight:700;color:var(--text);min-width:200px;text-align:center}
 .cl-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:start}
 .cl-day-col{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;min-height:120px}
 .cl-day-col.today{border-color:var(--blue);box-shadow:0 0 0 2px rgba(67,97,238,0.12)}
 .cl-day-header{padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center}
 .cl-day-header .dow{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-light);font-weight:700}
-.cl-day-header .dom{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+.cl-day-header .dom{font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:700;color:var(--text)}
 .cl-day-col.today .cl-day-header .dom{color:var(--blue)}
 .cl-day-body{padding:6px;display:flex;flex-direction:column;gap:5px}
 .cl-task-card{border-radius:8px;padding:8px 9px;cursor:pointer;transition:box-shadow .15s;border:1.5px solid transparent;position:relative}
@@ -228,7 +228,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cl-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 .cl-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 18px;flex:1;min-width:120px}
 .cl-stat .cs-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-light);font-weight:700;margin-bottom:4px}
-.cl-stat .cs-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--blue)}
+.cl-stat .cs-val{font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:700;color:var(--blue)}
 .cl-smoobu-bar{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:9px 14px;margin-bottom:14px;flex-wrap:wrap}
 .cl-smoobu-bar .sb-status{font-size:12px;color:var(--text-light)}
 .cl-smoobu-bar .sb-status.ok{color:var(--green);font-weight:600}
@@ -264,7 +264,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .mc-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .mc-card-title{font-weight:700;font-size:14px;color:var(--text);line-height:1.3;flex:1;min-width:0}
 .mc-card-sub{font-size:11.5px;color:var(--text-light);margin-top:2px;line-height:1.4}
-.mc-card-amount{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;flex-shrink:0;text-align:right}
+.mc-card-amount{font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;flex-shrink:0;text-align:right}
 .mc-card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;color:var(--text-mid)}
 .mc-card-meta .sep{color:var(--border);margin:0 2px}
 .mc-card-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px}
@@ -506,7 +506,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .adem-deadline-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;transition:all .15s;cursor:pointer;position:relative;overflow:hidden}
 .adem-deadline-card:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(67,97,238,0.08);transform:translateY(-1px)}
 .adem-deadline-card .dl-icon{font-size:22px;margin-bottom:8px}
-.adem-deadline-card .dl-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.adem-deadline-card .dl-title{font-family:'Fraunces',Georgia,serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
 .adem-deadline-card .dl-date{font-size:12px;color:var(--text-light);margin-bottom:10px}
 .adem-deadline-card .dl-stat{font-size:11px;color:var(--text-mid);line-height:1.4}
 .adem-deadline-card.upcoming{border-left:4px solid var(--orange)}
@@ -519,7 +519,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .adem-mandante-row .m-meta{font-size:11.5px;color:var(--text-light);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .adem-mandante-row .m-stat{text-align:right;min-width:120px}
 .adem-mandante-row .m-stat-label{font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:2px}
-.adem-mandante-row .m-stat-value{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)}
+.adem-mandante-row .m-stat-value{font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)}
 .adem-mandante-row .m-actions{display:flex;gap:6px}
 .adem-warning-chip{display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;padding:2px 7px;border-radius:8px;font-size:10.5px;font-weight:600}
 .adem-error-chip{display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 7px;border-radius:8px;font-size:10.5px;font-weight:600}
@@ -573,7 +573,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .cki-kpi:hover{border-color:var(--blue-mid)}
 .cki-kpi.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(67,97,238,.12)}
 .cki-kpi-label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light)}
-.cki-kpi-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-top:2px;color:var(--text)}
+.cki-kpi-value{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:800;margin-top:2px;color:var(--text)}
 .cki-kpi-sub{font-size:11px;color:var(--text-light)}
 .cki-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .cki-filters select,.cki-filters input[type=search]{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:12.5px;color:var(--text);outline:none}
@@ -658,7 +658,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 /* ══ LIVE DA SMOOBU (v93) ══ */
 .lv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
 .lv-hd{display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,#0f1535 0%,#1b2560 100%);color:#fff;flex-wrap:wrap}
-.lv-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.lv-title{font-family:'Fraunces',Georgia,serif;font-weight:800;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
 .lv-dot{width:9px;height:9px;border-radius:50%;background:#00e0a0;box-shadow:0 0 0 0 rgba(0,224,160,.7);animation:lvPulse 1.8s infinite}
 @keyframes lvPulse{0%{box-shadow:0 0 0 0 rgba(0,224,160,.6)}70%{box-shadow:0 0 0 9px rgba(0,224,160,0)}100%{box-shadow:0 0 0 0 rgba(0,224,160,0)}}
 .lv-sub{font-size:11px;color:rgba(255,255,255,.6)}
@@ -667,7 +667,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .lv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border)}
 .lv-kpi{background:var(--surface);padding:12px 16px}
 .lv-kpi span{display:block;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-light)}
-.lv-kpi b{display:block;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-top:2px}
+.lv-kpi b{display:block;font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:800;color:var(--text);margin-top:2px}
 .lv-kpi small{font-size:11px;color:var(--text-light)}
 .lv-tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .lv-tab{border:1.5px solid var(--border);background:var(--surface);border-radius:16px;padding:4px 12px;font-size:11.5px;font-weight:600;color:var(--text-mid);cursor:pointer;font-family:inherit}
@@ -676,7 +676,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .lv-row{display:grid;grid-template-columns:40px minmax(0,1.5fr) minmax(0,1.3fr) 150px 110px 110px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
 .lv-row:hover{background:rgba(67,97,238,.04)}
 .lv-row:last-child{border-bottom:none}
-.lv-ch{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;font-family:'Syne',sans-serif}
+.lv-ch{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;font-family:'Fraunces',Georgia,serif}
 .lv-ch.airbnb{background:#ff5a5f}.lv-ch.booking{background:#003580}.lv-ch.diretta{background:#00b47d}.lv-ch.altro{background:#8892b0}
 .lv-who b{display:block;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lv-who small{font-size:11px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
@@ -706,7 +706,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 #auth-overlay{position:fixed;inset:0;background:var(--text);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
 #auth-overlay.hidden{display:none}
 .auth-box{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:48px 40px;text-align:center;width:360px}
-.auth-logo{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--cyan);letter-spacing:2px;margin-bottom:6px}
+.auth-logo{font-family:'Fraunces',Georgia,serif;font-size:32px;font-weight:800;color:var(--cyan);letter-spacing:2px;margin-bottom:6px}
 .auth-sub{font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:.15em;text-transform:uppercase;margin-bottom:32px}
 .auth-input{width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 18px;color:#fff;font-size:18px;font-family:'Plus Jakarta Sans',sans-serif;text-align:center;letter-spacing:.3em;outline:none;margin-bottom:14px}
 .auth-input:focus{border-color:var(--cyan)}
@@ -740,11 +740,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .onb-kpi-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);font-weight:700;margin-bottom:8px}
 .onb-kpi.warn .onb-kpi-label{color:#a06400}
 .onb-kpi.danger .onb-kpi-label{color:#a52647}
-.onb-kpi-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--blue);line-height:1}
+.onb-kpi-value{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:700;color:var(--blue);line-height:1}
 .onb-kpi.warn .onb-kpi-value{color:#cc7a00}
 .onb-kpi.danger .onb-kpi-value{color:var(--red)}
 .onb-kpi-sub{font-size:11px;color:var(--text-light);margin-top:4px}
-.onb-section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.onb-section-title{font-family:'Fraunces',Georgia,serif;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 /* Cockpit table */
 .onb-cockpit-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;table-layout:fixed}
 .onb-cockpit-table th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:10px 6px;background:#0f1535;text-align:center;font-weight:700}
@@ -779,7 +779,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 /* Detail view (drawer-style inline) */
 .onb-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-top:14px;box-shadow:var(--shadow)}
 .onb-detail-h{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;margin-bottom:18px;border-bottom:1px solid var(--border)}
-.onb-detail-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);margin:0}
+.onb-detail-title{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:700;color:var(--text);margin:0}
 .onb-detail-meta{font-size:11.5px;color:var(--text-light);margin-top:4px}
 .onb-detail-meta span{margin-right:14px}
 .onb-detail-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
@@ -787,12 +787,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 .onb-detail-stat.warn{background:rgba(245,166,35,0.08)}
 .onb-detail-stat.danger{background:rgba(240,64,96,0.06)}
 .onb-detail-stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);font-weight:700;margin-bottom:3px}
-.onb-detail-stat-v{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+.onb-detail-stat-v{font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:700;color:var(--text)}
 .onb-detail-stat.warn .onb-detail-stat-v{color:#cc7a00}
 .onb-detail-stat.danger .onb-detail-stat-v{color:var(--red)}
 .onb-phase{margin-bottom:20px}
 .onb-phase-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.onb-phase-t{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em}
+.onb-phase-t{font-family:'Fraunces',Georgia,serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em}
 .onb-phase-c{font-size:11px;color:var(--text-light)}
 /* Task row */
 .onb-task{display:grid;grid-template-columns:24px 16px 1fr auto auto auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);margin-bottom:6px;transition:border-color .15s}
@@ -875,6 +875,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Finance</div>
     <div class="nav-item" onclick="showPage('prenotazioni')"><span class="nav-icon">&#128203;</span> Prenotazioni</div>
     <div class="nav-item" onclick="showPage('report_prop')"><span class="nav-icon">&#128202;</span> Report Proprietari</div>
+    <div class="nav-item" onclick="showPage('analisi')"><span class="nav-icon">&#129517;</span> Analisi</div>
     <div class="nav-item" onclick="showPage('documenti')"><span class="nav-icon">&#128196;</span> Documenti Fiscali</div>
     <div class="nav-item" onclick="showPage('adempimenti')"><span class="nav-icon">&#127974;</span> Adempimenti Fiscali</div>
     <div class="nav-item" onclick="showPage('anticipi')"><span class="nav-icon">&#128184;</span> Anticipi Spese</div>
@@ -893,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v115 · 17/11 · Imposta di soggiorno: valori dei comuni</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v121 · 17/11 · Analisi: tutto senza IVA</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -904,11 +905,11 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </button>
   <div class="topbar-title" id="topbar-title">Dashboard</div>
   <div class="topbar-actions-desktop" style="display:flex;gap:8px;align-items:center">
-    <button class="btn btn-primary btn-sm" onclick="manualSave()" title="Salva tutti i dati">&#128190; Salva</button>
-    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authLogout()" title="Esci">&#128274; Esci</button>
-    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authSetup()" title="Cambia password">&#128273; Password</button>
-    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">&#128190; Backup</button>
-    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">&#128204; Ripristina</button>
+    <button class="btn btn-primary btn-sm" onclick="manualSave()" title="Salva tutti i dati">Salva</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authLogout()" title="Esci">Esci</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="authSetup()" title="Cambia password">Password</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="exportBackup()" title="Esporta tutti i dati in un file JSON">Backup</button>
+    <button class="btn btn-ghost btn-sm topbar-btn-secondary" onclick="document.getElementById('import-backup-file').click()" title="Ripristina dati da file JSON">Ripristina</button>
     <button class="btn btn-ghost btn-sm topbar-more-btn" onclick="toggleTopbarMenu(event)" title="Altre azioni" style="display:none">&#8942;</button>
     <input type="file" id="import-backup-file" accept=".json" style="display:none" onchange="importBackup(this)">
     <div id="topbar-actions"></div>
@@ -927,12 +928,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div style="margin-bottom:18px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Dashboard</div>
-        <button class="btn btn-ghost" onclick="openRegistroModifiche()" style="font-size:12px;padding:6px 12px">&#128220; Registro modifiche</button>
+        <div><div class="dash-eyebrow">Houzly &middot; Gestione</div><div class="dash-h1">Panoramica</div></div>
+        <button class="btn btn-ghost" onclick="openRegistroModifiche()" style="font-size:12px;padding:6px 12px;align-self:flex-end">Registro modifiche</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:40px;padding:5px 8px 5px 14px;box-shadow:var(--shadow)">
         <select id="dash-mese-filter" onchange="renderDash()" style="background:transparent;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer">
-          <option value="">📅 Tutti i mesi</option>
+          <option value="">Tutti i mesi</option>
           <option>Gennaio</option><option>Febbraio</option><option>Marzo</option><option>Aprile</option>
           <option>Maggio</option><option>Giugno</option><option>Luglio</option><option>Agosto</option>
           <option>Settembre</option><option>Ottobre</option><option>Novembre</option><option>Dicembre</option>
@@ -943,7 +944,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
     <!-- PILL FILTER -->
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap">Proprietà:</span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.14em;white-space:nowrap">Proprietà</span>
       <div id="dash-prop-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
   </div>
@@ -959,7 +960,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- BOTTOM PANEL: REPORT DEL MESE -->
   <div class="card" style="padding:0;overflow:hidden">
     <div style="padding:14px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0">📤 Report del Mese</div>
+      <div style="font-family:var(--serif);font-size:17px;font-weight:500;color:var(--ink);flex-shrink:0">Report del mese</div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <button id="dr-prev" class="btn btn-ghost btn-sm" title="Mese precedente" onclick="dashReportShiftMonth(-1)" style="padding:4px 8px;font-size:14px;line-height:1">‹</button>
         <select id="dr-mese-sel" onchange="renderDashReports()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:var(--text);outline:none;cursor:pointer;font-weight:600">
@@ -1087,7 +1088,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       </select>
       <input type="number" id="pren-filter-anno" placeholder="Anno" oninput="renderPrenotazioni()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer;width:80px;cursor:text">
       <label id="pren-filter-conferma-wrap" title="Mostra solo prenotazioni lunghe a cavallo di due mesi non ancora confermate" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-mid);cursor:pointer;padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface2);user-select:none"><input type="checkbox" id="pren-filter-daconfermare" onchange="renderPrenotazioni()" style="width:14px;height:14px;cursor:pointer"><span>&#9888; Da confermare</span></label>
-      <button class="btn btn-outline" id="sync-now-btn" onclick="syncNow()" title="Allinea subito il tool con Smoobu">🔄 Sincronizza ora</button>
+      <button class="btn btn-outline" id="sync-now-btn" onclick="syncNow()" title="Allinea subito il tool con Smoobu">Sincronizza ora</button>
       <span id="sync-last" style="font-size:11px;color:var(--text-light);align-self:center"></span>
       <button class="btn btn-primary" onclick="openNewModal()">+ Nuova Prenotazione</button>
     </div>
@@ -1143,6 +1144,9 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div id="rpt-preview-area"><div class="card"><div style="text-align:center;padding:40px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:12px">&#128202;</div><p>Seleziona proprietario e periodo</p></div></div></div>
   </div>
 </div>
+
+<!-- ANALISI (v120) -->
+<div id="page-analisi" class="page"><div id="an-root"></div></div>
 
 <!-- DOCUMENTI -->
 <div id="page-documenti" class="page">
@@ -1428,7 +1432,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="modal-overlay" id="modal-dac7-preview">
   <div class="modal" style="max-width:920px;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)" id="dac7p-title">Scheda DAC7</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)" id="dac7p-title">Scheda DAC7</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="printModalDoc()">&#128424; Stampa / PDF</button>
         <button class="modal-close" style="position:static" onclick="closeModal('modal-dac7-preview')">&#10005;</button>
@@ -1501,7 +1505,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div class="field" style="margin:0"><label>Importo (&euro;) *</label><input type="number" id="ant-importo" step="0.01" min="0" oninput="updateAntSaldo()"></div>
         <div class="field" style="margin:0"><label>Recuperato (&euro;)</label><input type="number" id="ant-recuperato" step="0.01" min="0" value="0" oninput="updateAntSaldo()"><div class="field-hint" style="font-size:10px;color:var(--text-light)">Lascia 0 se non ancora detratto</div></div>
-        <div class="field" style="margin:0"><label>Saldo residuo</label><input type="text" id="ant-saldo" readonly style="background:var(--surface2);font-family:Syne,sans-serif;font-weight:700;color:var(--blue)"></div>
+        <div class="field" style="margin:0"><label>Saldo residuo</label><input type="text" id="ant-saldo" readonly style="background:var(--surface2);font-family:Fraunces,Georgia,serif;font-weight:700;color:var(--blue)"></div>
       </div>
       <div class="field"><label>Mese di recupero *</label><select id="ant-mese-recupero"></select><div class="field-hint">Mese in cui mostrare l'anticipo nel Report e detrarre dal payout</div></div>
       <div class="field"><label>Note (opzionale)</label><textarea id="ant-note" rows="2" placeholder="Riferimento fattura, dettagli aggiuntivi..."></textarea></div>
@@ -1517,7 +1521,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="modal-overlay" id="modal-import-anticipi">
   <div class="modal" style="max-width:920px;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">📥 Import Anticipi da Excel</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)">📥 Import Anticipi da Excel</div>
       <button class="modal-close" style="position:static" onclick="closeModal('modal-import-anticipi')">&#10005;</button>
     </div>
     <div id="imp-ant-body" style="padding:24px;max-height:78vh;overflow-y:auto"></div>
@@ -1528,7 +1532,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="modal-overlay" id="modal-ant-select">
   <div class="modal" style="max-width:920px;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">💸 Anticipi da includere nel Report PDF</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)">💸 Anticipi da includere nel Report PDF</div>
       <button class="modal-close" style="position:static" onclick="closeModal('modal-ant-select')">&#10005;</button>
     </div>
     <div id="ant-sel-body" style="padding:24px;max-height:78vh;overflow-y:auto"></div>
@@ -1682,7 +1686,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <!-- Preview tabella import -->
   <div id="import-tasks-preview" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--blue)">Anteprima Import — <span id="import-preview-count">0</span> task</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:14px;font-weight:700;color:var(--blue)">Anteprima Import — <span id="import-preview-count">0</span> task</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" onclick="document.getElementById('import-tasks-preview').style.display='none'">Annulla</button>
         <button class="btn btn-primary" onclick="confirmImportTasks()">✅ Importa tutti</button>
@@ -1713,7 +1717,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
   <div class="onb-header">
     <div>
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Onboarding</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Onboarding</div>
       <div style="font-size:11.5px;color:var(--text-light);margin-top:2px" id="onb-header-sub">Caricamento...</div>
     </div>
     <div style="display:flex;gap:8px">
@@ -2160,7 +2164,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="modal-overlay" id="modal-print">
   <div class="modal" style="max-width:900px;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)" id="pm-title">Documento</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)" id="pm-title">Documento</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="printModalDoc()">&#128424; Stampa / PDF</button>
         <button class="modal-close" style="position:static" onclick="closeModal('modal-print')">&#10005;</button>
@@ -2253,7 +2257,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
     <!-- dati cliente -->
     <div style="background:var(--surface2);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:18px;border:1.5px solid var(--border)">
-      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">Dati Cliente / Pagante</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">Dati Cliente / Pagante</div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="field"><label>Nome / Ragione Sociale *</label><input type="text" id="ric-cli-nome"></div>
         <div class="field"><label>P.IVA / C.F.</label><input type="text" id="ric-cli-piva"></div>
@@ -2273,7 +2277,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <!-- righe prestazioni -->
     <div style="margin-bottom:18px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase">Dettaglio Prestazioni</div>
+        <div style="font-family:'Fraunces',Georgia,serif;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.1em;text-transform:uppercase">Dettaglio Prestazioni</div>
         <button class="btn btn-ghost btn-sm" onclick="addRigaRicevuta()">&#43; Riga</button>
       </div>
       <div class="table-wrap">
@@ -2334,7 +2338,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div class="modal-overlay" id="modal-ric-preview">
   <div class="modal" style="max-width:860px;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)" id="ric-preview-title">Ricevuta N° —</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:15px;font-weight:700;color:var(--blue)" id="ric-preview-title">Ricevuta N° —</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary btn-sm" onclick="stampaPDF()">&#128424; Scarica PDF</button>
         <button class="modal-close" style="position:static" onclick="closeModal('modal-ric-preview')">&#10005;</button>
@@ -2369,7 +2373,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 
     <!-- Kanban toolbar -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">📋 Board</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:13px;font-weight:700;color:var(--blue)">📋 Board</div>
       <div style="flex:1"></div>
       <button class="btn btn-ghost btn-sm" onclick="addKanbanCol()">+ Colonna</button>
     </div>
@@ -2398,7 +2402,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div id="ops-view-tasks" style="display:none">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
         <button class="btn btn-ghost btn-sm" onclick="backToProps()">&#8592; Proprietà</button>
-        <div id="ops-prop-title" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)"></div>
+        <div id="ops-prop-title" style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)"></div>
         <div style="flex:1"></div>
         <button class="btn btn-ghost btn-sm" onclick="applyOpsTemplate()">&#128203; Applica Checklist</button>
         <button class="btn btn-primary btn-sm" onclick="openNewTask(_opsCurProp)">&#43; Task</button>
@@ -2413,7 +2417,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div id="ops-view-templates" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
       <button class="btn btn-ghost btn-sm" onclick="closeTemplatesView()">&#8592; Indietro</button>
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--blue)">Checklist Ricorrenti</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:700;color:var(--blue)">Checklist Ricorrenti</div>
       <div style="flex:1"></div>
       <button class="btn btn-primary" onclick="openNewTemplate()">&#43; Nuova Checklist</button>
     </div>
@@ -2429,7 +2433,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 <div id="page-checkin" class="page">
   <div class="onb-header">
     <div>
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Check-in Ospiti</div>
+      <div style="font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:800;color:var(--blue);letter-spacing:-0.02em">Check-in Ospiti</div>
       <div style="font-size:11.5px;color:var(--text-light);margin-top:2px" id="cki-sub">Caricamento...</div>
     </div>
     <div style="display:flex;gap:8px">
@@ -2499,7 +2503,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   </div>
   <div class="card" style="max-width:640px;margin:0 auto;text-align:center;padding:40px 32px">
     <div style="font-size:52px;margin-bottom:8px">🧹</div>
-    <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:10px">Cleaning Manager</div>
+    <div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:10px">Cleaning Manager</div>
     <div style="font-size:14px;color:var(--text-mid);line-height:1.6;margin-bottom:26px;max-width:440px;margin-left:auto;margin-right:auto">
       La gestione delle pulizie è ora un'app dedicata, con vista settimanale, assegnazione pulitrici, calcolo ore e margini, ed export mensile. Le pulitrici accedono con il proprio nome; tu con l'accesso Amministratore.
     </div>
@@ -3052,11 +3056,11 @@ function manualSave(){
   if(btn){ btn.innerHTML = '⏳ Salvo...'; btn.disabled = true; }
   saveDB(
     function(){
-      if(btn){ var orig='&#128190; Salva'; btn.innerHTML='&#10003; Salvato!'; btn.style.background='var(--green)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; },1800); }
+      if(btn){ var orig='Salva'; btn.innerHTML='&#10003; Salvato!'; btn.style.background='var(--green)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; },1800); }
       toast('✅ Dati salvati nel DB');
     },
     function(err){
-      if(btn){ btn.innerHTML='&#10005; Errore!'; btn.style.background='var(--red)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML='&#128190; Salva'; btn.style.background=''; },2500); }
+      if(btn){ btn.innerHTML='&#10005; Errore!'; btn.style.background='var(--red)'; btn.disabled=false; setTimeout(function(){ btn.innerHTML='Salva'; btn.style.background=''; },2500); }
       toast('❌ Errore salvataggio: '+err);
     }
   );
@@ -3633,7 +3637,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(el){if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+p+"'")>=0)el.classList.add('active');});
-  var titles={dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',impostazioni:'⚙ Impostazioni',onboarding:'Onboarding'};
+  var titles={analisi:'Analisi',dashboard:'Dashboard',contratti:'📜 Contratti Mandato',proprietari:'Proprietari',proprieta:'Proprietà',prenotazioni:'Prenotazioni',report_prop:'Report Mensile Proprietari',documenti:'Documenti Fiscali',adempimenti:'🏛 Adempimenti Fiscali',anticipi:'💸 Anticipi Spese',import:'Import da Smoobu',operations:'Operational Tasks',ricevute:'Ricevute','import-tasks':'Import Tasks',pulizie:'🧹 Cleaning Manager',checkin:'🔑 Check-in Ospiti','cl-settings':'⚙ Impostazioni Pulizie',impostazioni:'⚙ Impostazioni',onboarding:'Onboarding'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   // Reset stato espansione pillole quando torno in dashboard (parte fresco)
   if(p==='dashboard')_dpMobileExpanded=null;
@@ -3670,10 +3674,10 @@ function toggleTopbarMenu(ev){
   } else {
     // Popola contenuto al volo: stessi pulsanti della topbar desktop
     m.innerHTML=
-      '<button onclick="closeTopbarMenu();authLogout()">&#128274; Esci</button>'
+      '<button onclick="closeTopbarMenu();authLogout()">Esci</button>'
      +'<button onclick="closeTopbarMenu();authSetup()">&#128273; Cambia Password</button>'
-     +'<button onclick="closeTopbarMenu();exportBackup()">&#128190; Backup</button>'
-     +'<button onclick="closeTopbarMenu();document.getElementById(\'import-backup-file\').click()">&#128204; Ripristina</button>';
+     +'<button onclick="closeTopbarMenu();exportBackup()">Backup</button>'
+     +'<button onclick="closeTopbarMenu();document.getElementById(\'import-backup-file\').click()">Ripristina</button>';
     m.classList.add('open');
     m.style.display='block';
     // Click fuori chiude il menu
@@ -3697,6 +3701,7 @@ window.addEventListener('resize',function(){
   }
 });
 function renderPage(p){
+  if(p==='analisi'){renderAnalisi();}
   if(p==='dashboard'){renderDash();setTimeout(wireDashReports,0);}
   if(p==='proprietari'){renderProprietari();wireTableActions('tbody-proprietari');}
   if(p==='proprieta'){renderProprieta();wireTableActions('tbody-proprieta');}
@@ -3863,7 +3868,7 @@ function renderDashPills(){
 
   (DB.propGroups||[]).forEach(function(g){
     var active=dashPropSelection.indexOf(g.id)>=0;
-    html+=pill(g.id,'🏘️ '+g.nome,active,'font-weight:700;');
+    html+=pill(g.id,g.nome,active,'font-weight:700;');
     g.children.forEach(function(cid){
       var p=DB.proprieta.find(function(x){return x.id===cid;});
       if(!p)return;
@@ -3877,6 +3882,7 @@ function renderDashPills(){
   });
 
   container.innerHTML=html;
+  try{ dashPillsCompact(); }catch(e){} // v116
 
   // Wire clicks via event delegation
   container.querySelectorAll('[data-pill-id]').forEach(function(el){
@@ -4058,14 +4064,11 @@ function buildPropOptions(prefixAll){
 
 
 function statCardEditable(icon, label, value, dbKey){
-  return '<div class="stat-card" style="position:relative;overflow:hidden">'
-    +'<div style="position:absolute;top:-10px;right:-8px;font-size:48px;opacity:0.06;line-height:1;pointer-events:none">'+icon+'</div>'
-    +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">'
-    +'<span style="font-size:18px;line-height:1">'+icon+'</span>'
-    +'<div class="stat-label" style="margin:0">'+label+'</div></div>'
+  return '<div class="stat-card" style="position:relative;overflow:hidden"><span class="kpi-rule"></span>' // v116
+    +'<div class="kpi-head"><span class="kpi-emo">'+icon+'</span><div class="stat-label" style="margin:0">'+label+'</div></div>' // v119: emoji sobria
     +'<div class="stat-value" id="sv-'+dbKey+'" style="color:var(--red);cursor:pointer;user-select:none" '
     +'data-key="'+dbKey+'" onclick="startEditStat(this.dataset.key)" title="Clicca per modificare">'+eur(value||0)+'</div>'
-    +'<div class="stat-sub" style="font-size:10px;color:var(--text-light);margin-top:3px">&#9999;&#65039; clicca per modificare</div>'
+    +'<div class="stat-sub" style="font-size:10.5px;color:var(--text-light);margin-top:6px">Valore inserito a mano &middot; clicca per modificare</div>'
     +'</div>';
 }
 
@@ -4074,7 +4077,7 @@ function startEditStat(dbKey){
   if(!el||el.querySelector('input')) return;
   var cur = DB[dbKey]||0;
   el.innerHTML = '<input type="number" step="0.01" value="'+cur+'" '
-    +'style="width:120px;font-family:\'Syne\',sans-serif;font-size:22px;font-weight:700;color:var(--red);background:transparent;border:none;border-bottom:2px solid var(--red);outline:none;padding:2px 0" '
+    +'style="width:120px;font-family:\'Fraunces\',Georgia,serif;font-size:22px;font-weight:700;color:var(--red);background:transparent;border:none;border-bottom:2px solid var(--red);outline:none;padding:2px 0" '
     +'data-key="'+dbKey+'" onblur="saveEditStat(this.dataset.key,this.value)" '
     +'onkeydown="if(event.key===\'Enter\'||event.key===\'Escape\')this.blur()"'
     +'>';
@@ -4141,25 +4144,24 @@ function renderPostImportCheck(){
     // Card verde — tutto ok
     container.innerHTML = '<div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac;border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:12px">'
       +'<div style="font-size:24px">✓</div>'
-      +'<div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#166534">Tutto in ordine</div>'
+      +'<div style="flex:1"><div style="font-family:Fraunces,Georgia,serif;font-size:14px;font-weight:700;color:#166534">Tutto in ordine</div>'
       +'<div style="font-size:11.5px;color:#166534;opacity:0.75">Nessun elemento da sistemare nelle prenotazioni del periodo selezionato</div></div>'
     +'</div>';
     return;
   }
   // Card gialla con lista di issue
   var chip = function(count, label, actionText, actionFn){
-    return '<div style="background:#fff;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12.5px">'
-      +'<span style="background:#fef3c7;color:#92400e;font-weight:700;padding:2px 8px;border-radius:6px;min-width:26px;text-align:center">'+count+'</span>'
+    return '<div class="pro-chip">'
+      +'<span class="pro-chip-n">'+count+'</span>'
       +'<span style="flex:1">'+label+'</span>'
       +(actionText?'<button class="btn btn-sm btn-outline" onclick="'+actionFn+'" style="font-size:11px;padding:3px 10px">'+actionText+'</button>':'')
     +'</div>';
   };
-  var html = '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fbbf24;border-radius:var(--radius-lg);padding:14px 18px">'
+  var html = '<div class="pro-alert">' // v116
     +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
-      +'<div style="font-size:22px">⚠</div>'
       +'<div style="flex:1">'
-        +'<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#92400e">Check post-import — '+totIssues+' elementi da verificare</div>'
-        +'<div style="font-size:11px;color:#92400e;opacity:0.75">Elementi che richiedono intervento manuale nel periodo/proprietà selezionati</div>'
+        +'<div class="pro-alert-title">Da verificare &middot; '+totIssues+' element'+(totIssues===1?'o':'i')+'</div>'
+        +'<div class="pro-alert-sub">Elementi che richiedono un intervento manuale nel periodo e nelle proprietà selezionati</div>'
       +'</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:8px">';
@@ -4189,8 +4191,8 @@ function renderPostImportCheck(){
   }
   if(bookingNoTax.length){
     var cutoffLabel = bkCutoff.split('-').reverse().join('/');
-    html += '<div style="background:#fff;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12.5px">'
-      +'<span style="background:#fef3c7;color:#92400e;font-weight:700;padding:2px 8px;border-radius:6px;min-width:26px;text-align:center">'+bookingNoTax.length+'</span>'
+    html += '<div class="pro-chip">'
+      +'<span class="pro-chip-n">'+bookingNoTax.length+'</span>'
       +'<span style="flex:1">Prenotazioni Booking <strong>senza tassa soggiorno</strong> (verificare)<br><span style="font-size:10.5px;color:var(--text-light)">dal <span onclick="editBookingCutoff()" style="color:var(--blue);cursor:pointer;text-decoration:underline;font-weight:600">'+cutoffLabel+'</span> in poi · il pregresso è escluso</span></span>'
       +'<button class="btn btn-sm btn-outline" onclick="goToPostImportCheck(\'booking_no_tax\')" style="font-size:11px;padding:3px 10px">Vai a Prenotazioni</button>'
     +'</div>';
@@ -4428,7 +4430,7 @@ function renderImpostaSoggiorno(){
   if(propsTratt.length===0){
     container.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">&#127963;</span>'
-      +'<span style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno</span></div>'
+      +'<span style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno</span></div>'
       +'<div style="font-size:12px;color:var(--text-light);line-height:1.5">Nessuna proprietà ha il flag <strong>"Imposta di Soggiorno trattenuta da Houzly"</strong> attivo. Attivalo nel modal Proprietà (tab Fiscale) per le strutture in cui incassi tu l\'imposta e la versi al Comune.</div>'
       +'</div>';
     return;
@@ -4442,9 +4444,8 @@ function renderImpostaSoggiorno(){
 
   var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">'
     +'<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">'
-      +'<span style="font-size:18px">&#127963;</span>'
       +'<div style="flex:1;min-width:180px">'
-        +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno trattenuta</div>'
+        +'<div style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:var(--text)">Imposta di Soggiorno trattenuta</div>'
         +'<div style="font-size:11px;color:var(--text-light)">'+escHtml(isogLabelPeriodo(meseDash,anno))+' &middot; da versare ai Comuni</div>'
       +'</div>'
       +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+btnsHtml+'</div>'
@@ -4465,7 +4466,7 @@ function renderImpostaSoggiorno(){
     });
     html+='</div>';
     html+='<div style="display:flex;align-items:center;gap:12px;padding:13px 20px;background:rgba(245,166,35,0.06);border-top:2px solid rgba(245,166,35,0.3)">'
-      +'<div style="flex:1"><div style="font-size:11.5px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;font-family:Syne,sans-serif">Totale da versare</div>'
+      +'<div style="flex:1"><div style="font-size:11.5px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;font-family:Fraunces,Georgia,serif">Totale da versare</div>'
       +'<div style="font-size:10.5px;color:#a16207">Imposta incassata dagli ospiti — partita di giro</div></div>'
       +'<div style="font-size:19px;font-weight:800;color:#b45309;font-variant-numeric:tabular-nums">'+eur(totale)+'</div>'
     +'</div>';
@@ -4490,11 +4491,8 @@ function renderDash(){
   var totCommOTA=allBks.reduce(function(s,b){return s+(b.calc.comm_ota||0);},0);
   var totTasse=allBks.reduce(function(s,b){return s+(b.calc.tassa||0);},0);
   function statCard(icon,label,value,sub,accent){
-    return '<div class="stat-card" style="position:relative;overflow:hidden">'
-      +'<div style="position:absolute;top:-10px;right:-8px;font-size:48px;opacity:0.06;line-height:1;pointer-events:none">'+icon+'</div>'
-      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">'
-      +'<span style="font-size:18px;line-height:1">'+icon+'</span>'
-      +'<div class="stat-label" style="margin:0">'+label+'</div></div>'
+    return '<div class="stat-card" style="position:relative;overflow:hidden"><span class="kpi-rule"></span>' // v116: niente emoji
+      +'<div class="kpi-head"><span class="kpi-emo">'+icon+'</span><div class="stat-label" style="margin:0">'+label+'</div></div>' // v119: emoji sobria
       +'<div class="stat-value" style="color:'+(accent||'var(--blue)')+'">'+value+'</div>'
       +'<div class="stat-sub">'+sub+'</div>'
       +'</div>';
@@ -4519,18 +4517,18 @@ function renderDash(){
     subProps=nPropAttive+' di '+DB.proprieta.length+' proprietà';
   }
   document.getElementById('stat-grid').innerHTML=
-    statCard('📋','Prenotazioni',allBks.length,subProps,'var(--blue)')+
+    statCard('📅','Prenotazioni',allBks.length,subProps,'var(--blue)')+
     statCard('💰','Incasso Lordo',eur(totOTA),'Lordo da piattaforme','var(--blue)')+
-    statCard('🏷️','Compenso Houzly',eur(totHouzly),'Commissioni maturate','var(--orange)')+
+    statCard('💼','Compenso Houzly',eur(totHouzly),'Commissioni maturate','var(--orange)')+
     statCard('🏠','Canone Proprietari',eur(totCanone),'Canone Locazione Puro','var(--green)')+
-    statCard('🏦','Commissioni OTA',eur(totCommOTA),'Trattenute da Booking/Airbnb','var(--red)')+
+    statCard('🧾','Commissioni OTA',eur(totCommOTA),'Trattenute da Booking/Airbnb','var(--red)')+
     statCard('🏛️','Tasse di Soggiorno',eur(totTasse),'Partita di giro → Comuni','var(--cyan)');
   document.getElementById('stat-grid-2').innerHTML=
     statCard('👥','Totale Ospiti',totOspiti,(dashPropSelection.length>0?'Proprietà selezionate':'Tutte le proprietà'),'var(--blue)')+
     statCard('🧹','Pulizie Incassate',eur(totPulizie),'Cumulate nel periodo','var(--blue-mid)')+
-    statCardEditable('🏠','Pulizie In-House',DB.spese_pulizie,'spese_pulizie')+
+    statCardEditable('🧽','Pulizie In-House',DB.spese_pulizie,'spese_pulizie')+
     statCardEditable('🚚','Pulizie GL Servizi',DB.spese_pulizie_glservizi,'spese_pulizie_glservizi')+
-    statCardEditable('👔','Spesa Biancheria',DB.spese_biancheria,'spese_biancheria')+
+    statCardEditable('🛏️','Spesa Biancheria',DB.spese_biancheria,'spese_biancheria')+
     statCard('🌙','Totale Notti',totNotti,'Notti prenotate','var(--cyan)')+
     statCard('👤','Proprietari Attivi',DB.proprietari.length,DB.proprietari.filter(function(p){return p.tipo==='persona_fisica';}).length+' PF · '+DB.proprietari.filter(function(p){return p.tipo==='azienda';}).length+' Aziende','var(--blue)');
   // v51: Check post-import
@@ -4710,7 +4708,7 @@ function renderDashReports(){
       if(b.meseReportOverride)nOver++;
       if(needsMeseConferma(b))nWarn++;
     });
-    var icon=it.type==='group'?'🏘️':'🏠';
+    var icon=(String(it.nome||'?').replace(/^(villa|casa|la|il|lo|le|borgo|podere|tenuta|the)\s+/i,'').trim().charAt(0)||'?').toUpperCase(); // v116: monogramma
     var iconBg=it.type==='group'?'var(--grad)':'var(--grad-soft)';
     var iconBorder=it.type==='group'?'none':'1.5px solid var(--border)';
     var rowOpacity=inviato?'opacity:0.55':'';
@@ -4729,7 +4727,7 @@ function renderDashReports(){
         +' <button class="btn btn-sm btn-primary" data-action="goto-report" data-id="'+dataIdAttr+'" style="font-size:11px">Report →</button>';
 
     return '<div class="dr-row'+(inviato?' is-inviato':'')+'" style="display:grid;grid-template-columns:34px minmax(180px,1.8fr) 0.7fr 0.95fr 0.95fr 0.95fr 0.95fr 0.95fr 110px 150px;gap:9px;padding:11px 20px;border-bottom:1px solid var(--border);align-items:center;'+rowOpacity+';transition:background .12s">'
-      +'<div class="dr-cell-icon" style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
+      +'<div class="dr-cell-icon'+(it.type==='group'?' is-group':'')+'" style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';border:'+iconBorder+';display:flex;align-items:center;justify-content:center;font-size:16px">'+icon+'</div>'
       +'<div class="dr-cell-name" style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.nome)+badgesExtra+'</div>'
       +'<div style="font-size:11px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sottotitolo||'')+'</div></div>'
       +'<div class="dr-cell-pren" data-mlbl="Prenotazioni" style="text-align:center;font-size:13px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums">'+it.bks.length+'</div>'
@@ -4746,7 +4744,7 @@ function renderDashReports(){
   // Riga totali
   rowsHtml+='<div class="dr-row dr-totali" style="display:grid;grid-template-columns:34px minmax(180px,1.8fr) 0.7fr 0.95fr 0.95fr 0.95fr 0.95fr 0.95fr 110px 150px;gap:9px;padding:11px 20px;background:rgba(67,97,238,0.04);border-top:2px solid var(--border);font-weight:700;align-items:center">'
     +'<div></div>'
-    +'<div class="dr-cell-name" style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Syne,sans-serif">Totali del mese</div>'
+    +'<div class="dr-cell-name" style="font-size:11.5px;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;font-family:Fraunces,Georgia,serif">Totali del mese</div>'
     +'<div class="dr-cell-pren" data-mlbl="Totale prenotazioni" style="text-align:center;font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums">'+grandPren+'</div>'
     +'<div class="dr-cell-lordo" data-mlbl="Totale lordo" style="text-align:right;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums">'+eur(grandLordo)+'</div>'
     +'<div class="dr-cell-comm" data-mlbl="Totale Commissioni OTA" style="text-align:right;font-size:13px;color:var(--red);font-variant-numeric:tabular-nums">'+eur(grandComm)+'</div>'
@@ -6563,7 +6561,7 @@ function printModalDoc(){
   var title=document.getElementById('pm-title').innerHTML;
   var hasStyle=body.indexOf('<style>')>=0||body.indexOf('<STYLE>')>=0;
   var fullHtml='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title>'
-    +'<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">'
+    +'<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">'
     +(hasStyle?'':'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Plus Jakarta Sans",sans-serif;background:#fff;color:#0f1535;font-size:12px;padding:20px}@media print{body{padding:0}@page{margin:12mm}}</style>')
     +'</head><body>'+body
     +'<script>window.onload=function(){window.print();}<\/script>'
@@ -7351,8 +7349,8 @@ function renderRecapRitenute(){
   var tot=r2(dov.reduce(function(s,r){return s+r.v.rit;},0));
   var totBase=r2(dov.reduce(function(s,r){return s+r.v.base;},0));
   var nDelta=rows.filter(function(r){return r.delta;}).length;
-  var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Syne,sans-serif;font-size:21px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
-  var html='<div id="rt-recap-root"><div style="margin-bottom:12px"><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:var(--blue)">Recap ritenute F24 &mdash; '+mese+' '+anno+'</div>'
+  var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Fraunces,Georgia,serif;font-size:21px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
+  var html='<div id="rt-recap-root"><div style="margin-bottom:12px"><div style="font-family:Fraunces,Georgia,serif;font-size:18px;font-weight:700;color:var(--blue)">Recap ritenute F24 &mdash; '+mese+' '+anno+'</div>'
     +'<div style="font-size:12px;color:var(--text-light)">Ritenute d\'acconto 21% dei report del mese &middot; un unico F24 a nome di Houzly Snc, cod. tributo 1919</div></div>';
   html+='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">'
     +kpi('Totale F24',eur(tot),'var(--orange)','cod. tributo 1919')
@@ -7417,7 +7415,7 @@ function rtRender770(anno, el){
   var nChiusi=opKeys.filter(function(k){return REG.ops[k].chiuso;}).length;
   var diffs=rtDifferenze(anno);
   var nOwn=Object.keys(REG.owners).length;
-  var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
+  var kpi=function(lbl,val,col,sub){ return '<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">'+lbl+'</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:'+col+'">'+val+'</div>'+(sub?'<div style="font-size:11px;color:var(--text-light);margin-top:2px">'+sub+'</div>':'')+'</div>'; };
   var html='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><div style="font-size:12px;color:var(--text-mid)">Fonte: <strong>Registro ritenute</strong> &middot; anno '+anno+' = bonifici e F24 di gennaio&ndash;dicembre '+anno+' (report da dicembre '+(anno-1)+' a novembre '+anno+')</div>'
     +'<button class="btn btn-primary" style="font-size:12px" onclick="rtExportPacchetto('+anno+')">&#8595; Pacchetto commercialista (Excel)</button></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">'
@@ -7712,7 +7710,7 @@ function previewReportProp(){
     var totBlack=r2(bksBlack.reduce(function(s,b){return s+b.calc.canone;},0));
     blackHTML='<div style="margin-top:24px;border-top:2px dashed rgba(120,120,140,0.3);padding-top:18px">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text-mid);letter-spacing:0.06em;text-transform:uppercase">&#9679; Prenotazioni Aggiuntive</span>'
+      +'<span style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:var(--text-mid);letter-spacing:0.06em;text-transform:uppercase">&#9679; Prenotazioni Aggiuntive</span>'
       +'<span style="font-size:11px;color:var(--text-light)">— gestione separata</span>'
       +'</div>'
       +'<div class="rpt-section" style="opacity:0.85">'
@@ -7743,7 +7741,7 @@ function previewReportProp(){
   var reportTitle=isGroup&&grp?grp.nome:(prop?prop.nome:'');
   var subLabel=isGroup&&grp?(grp.children.length+' unità'):(own?nomeOwner(own.id):'');
   area.innerHTML='<div style="margin-bottom:12px">'
-    +'<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:var(--blue)">Report Mensile &mdash; '+reportTitle+'</div>'
+    +'<div style="font-family:Fraunces,Georgia,serif;font-size:18px;font-weight:700;color:var(--blue)">Report Mensile &mdash; '+reportTitle+'</div>'
     +'<div style="font-size:12px;color:var(--text-light)">'+subLabel+' &middot; '+mese+' '+anno+' &middot; '+bks.length+' principali'+(bksTr.length?' &middot; '+bksTr.length+' locazion'+(bksTr.length===1?'e':'i')+' transitori'+(bksTr.length===1?'a':'e'):'')+(bksBlack.length?' &middot; <span style="color:var(--text-mid)">'+bksBlack.length+' aggiuntive</span>':'')+'</div>'
     +'</div>'
     +bannerHTML
@@ -7752,7 +7750,7 @@ function previewReportProp(){
     // ── Riepilogo FATTURATO ──
     +(bks.length
       ?'<div class="rpt-summary">'
-       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;letter-spacing:0.08em">RIEPILOGO — PRENOTAZIONI PRINCIPALI</div>'
+       +'<div style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:10px;letter-spacing:0.08em">RIEPILOGO — PRENOTAZIONI PRINCIPALI</div>'
        +'<div class="rpt-sum-row"><span>Totale Lordo</span><span style="font-weight:600">'+eur(r2(bks.reduce(function(s,b){return s+b.calc.tot;},0)))+'</span></div>'
        +'<div class="rpt-sum-row"><span>Commissioni OTA</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+b.calc.comm_ota;},0)))+'</span></div>'
        +(bks.some(function(b){return b.calc.rimborso>0;})?'<div class="rpt-sum-row"><span>Rimborsi ospiti</span><span style="color:var(--red)">- '+eur(r2(bks.reduce(function(s,b){return s+(b.calc.rimborso||0);},0)))+'</span></div>':'')
@@ -7845,7 +7843,7 @@ function previewReportProp(){
     // ── v52: Riepilogo INCASSO DIRETTO ──
     +(bksDiretto.length
       ?'<div style="margin-top:16px;background:#fffaf0;border:1.5px solid #f5c97b;border-radius:var(--radius-lg);padding:18px 22px">'
-       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;letter-spacing:0.06em">&#128181; PRENOTAZIONI INCASSATE DAL PROPRIETARIO</div>'
+       +'<div style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;letter-spacing:0.06em">&#128181; PRENOTAZIONI INCASSATE DAL PROPRIETARIO</div>'
        +'<div style="font-size:11px;color:#a16207;margin-bottom:12px;line-height:1.5">Queste prenotazioni sono state incassate direttamente dal proprietario. La ritenuta 21% è gestita dalla piattaforma. Houzly deve <strong>ricevere</strong> il compenso maturato e il rimborso delle spese anticipate.</div>'
        +bksDiretto.map(function(b){
           var propB=DB.proprieta.find(function(p){return p.id===b.proprieta_id;});
@@ -7876,7 +7874,7 @@ function previewReportProp(){
            rows+='<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.12)"><span>Saldo a favore Houzly (incassi diretti)</span><span style="color:#f87096;font-weight:600">- '+eur(saldoHouzlyTot)+'</span></div>';
          }
          return '<div style="margin-top:16px;background:linear-gradient(135deg,#0d1b3e,#12294f);border:2px solid #22d1ee;border-radius:var(--radius-lg);padding:20px 24px;color:#fff">'
-           +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#22d1ee;margin-bottom:12px;letter-spacing:0.08em">&#128176; SALDO FINALE</div>'
+           +'<div style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:#22d1ee;margin-bottom:12px;letter-spacing:0.08em">&#128176; SALDO FINALE</div>'
            +rows
            +'<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px;margin-top:8px;border-top:2px solid rgba(34,209,238,0.4)">'
              +'<span style="font-weight:700;font-size:15px">'+(positivo?'BONIFICO FINALE al proprietario':'Il proprietario deve versare a Houzly')+'</span>'
@@ -7891,7 +7889,7 @@ function previewReportProp(){
     // ── Riepilogo BLACK ──
     +(bksBlack.length
       ?'<div style="margin-top:16px;background:#fff5f6;border:1.5px solid #f7b8c2;border-radius:var(--radius-lg);padding:18px 22px">'
-       +'<div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:10px;letter-spacing:0.08em">&#9679; RIEPILOGO — PRENOTAZIONI AGGIUNTIVE</div>'
+       +'<div style="font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:10px;letter-spacing:0.08em">&#9679; RIEPILOGO — PRENOTAZIONI AGGIUNTIVE</div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Totale Lordo</span><span style="font-weight:600">'+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.tot;},0)))+'</span></div>'
        +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Commissioni OTA</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+b.calc.comm_ota;},0)))+'</span></div>'
        +(bksBlack.some(function(b){return b.calc.rimborso>0;})?'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fad0d8;color:#3d2020"><span>Rimborsi ospiti</span><span style="color:#c0122c">- '+eur(r2(bksBlack.reduce(function(s,b){return s+(b.calc.rimborso||0);},0)))+'</span></div>':'')
@@ -8006,13 +8004,13 @@ function openAnticipiSelectionDialog(allPending){
       +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(a.categoria?'<span style="background:rgba(67,209,238,0.08);color:#0891b2;padding:1px 6px;border-radius:5px">'+escHtml(a.categoria)+'</span>':'<span style="color:var(--text-light)">—</span>')+'</td>'
       +'<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+escHtml(a.causale||'—')+partialNote+'</td>'
       +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">'+(a.data?dateIt(a.data):'<span style="color:var(--text-light)">—</span>')+'</td>'
-      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700;color:var(--orange)">'+eur(saldo)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Fraunces,Georgia,serif;font-weight:700;color:var(--orange)">'+eur(saldo)+'</td>'
     +'</tr>';
   }).join('');
   html += '</tbody></table></div>';
   // Footer totale + bottoni
   html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:14px;margin-top:14px;border-top:1px solid var(--border);flex-wrap:wrap">'
-    +'<div style="font-size:13px;color:var(--text-mid)"><strong id="ant-sel-count">0</strong> selezionati · Totale recupero: <strong id="ant-sel-total" style="color:var(--orange);font-family:Syne,sans-serif">€0,00</strong></div>'
+    +'<div style="font-size:13px;color:var(--text-mid)"><strong id="ant-sel-count">0</strong> selezionati · Totale recupero: <strong id="ant-sel-total" style="color:var(--orange);font-family:Fraunces,Georgia,serif">€0,00</strong></div>'
     +'<div style="display:flex;gap:8px">'
       +'<button class="btn btn-ghost" onclick="closeModal(\'modal-ant-select\')">Annulla</button>'
       +'<button class="btn btn-outline" onclick="proceedReportPDFNoUpdate()">Solo PDF (non aggiornare stato)</button>'
@@ -8580,14 +8578,14 @@ function verifyCSVProcess(text){
   if(cancMaAttive.length){
     var totFantasmi=cancMaAttive.reduce(function(a,r){return a+(+r.db_tot||0);},0);
     html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #ef4444">';
-    html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+cancMaAttive.length+' prenotazioni CANCELLATE su Smoobu ma ancora ATTIVE nel Tool</div>';
+    html+='<div style="font-family:Fraunces,Georgia,serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+cancMaAttive.length+' prenotazioni CANCELLATE su Smoobu ma ancora ATTIVE nel Tool</div>';
     html+='<div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5">Erano gi&agrave; state importate quando erano valide. L\'import le salta come cancellate, <strong>ma non le rimuove dal database</strong>: restano nei report e li gonfiano. Valore complessivo: <strong>&euro;'+totFantasmi.toFixed(2)+'</strong>. Aprile una a una in Prenotazioni (cerca il numero Pos.) e cancellale a mano.</div>';
     html+=renderTbl(cancMaAttive, true);
     html+='</div>';
   }
   if(missing.length){
     html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5">';
-    html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+missing.length+' prenotazioni MANCANTI nel DB</div>';
+    html+='<div style="font-family:Fraunces,Georgia,serif;font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">&#9888; '+missing.length+' prenotazioni MANCANTI nel DB</div>';
     html+='<div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5">Queste righe sono nel CSV ma <strong>non sono state importate</strong>. Verifica perché — potrebbero essere prenotazioni nuove da importare con il bottone "Import CSV" sopra, oppure errori di sincronizzazione.</div>';
     html+=renderTbl(missing, false);
     html+='</div>';
@@ -8869,7 +8867,7 @@ function processSmoobu(file){
           return tbl;
         };
         html+='<div class="card" style="margin-bottom:14px;padding:14px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fbbf24">';
-        html+='<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#92400e;margin-bottom:10px">&#128203; Dettaglio delle '+skipped+' prenotazioni saltate</div>';
+        html+='<div style="font-family:Fraunces,Georgia,serif;font-size:14px;font-weight:700;color:#92400e;margin-bottom:10px">&#128203; Dettaglio delle '+skipped+' prenotazioni saltate</div>';
         if(skipReasons.cancellate.length){
           html+='<details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:700;color:var(--text);padding:8px 0">';
           html+='&#10060; <strong>'+skipReasons.cancellate.length+' cancellate</strong> <span style="font-weight:400;color:var(--text-light);font-size:11.5px">&mdash; correttamente escluse (stato "Cancellata" su Smoobu)</span>';
@@ -8988,6 +8986,7 @@ function toast(msg,ms){ms=ms||2800;var t=document.getElementById('toast');t.text
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 function appInit(){
+  try{ applyNavIcons(); }catch(e){} // v116
   loadDB();renderDash();setupDropZone();populateDashFilter();
   wireDashReports();
   if(typeof renderArchivioRicevute==='function')renderArchivioRicevute();
@@ -9335,7 +9334,7 @@ function stampaPDF() {
   var body = document.getElementById('ric-preview-body').innerHTML;
   var win = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ricevuta</title>'+
-    '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">'+
+    '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">'+
     '<style>'+
       'body{font-family:"Plus Jakarta Sans",sans-serif;margin:0;padding:20px;background:#fff;color:#0f1535;font-size:12px}'+
       '@media print{body{padding:0}@page{margin:12mm}}'+
@@ -9381,7 +9380,7 @@ function buildRicevutaHTML(r) {
   // TITOLO + N° e DATA
   '<table style="width:100%;margin-bottom:14px"><tr>'+
     '<td style="background:#F0F4FF;padding:14px 18px;border-radius:8px 0 0 8px;width:58%">'+
-      '<div style="font-size:22px;font-weight:800;color:#1A3A8F;font-family:\'Syne\',sans-serif">RICEVUTA NON FISCALE</div>'+
+      '<div style="font-size:22px;font-weight:800;color:#1A3A8F;font-family:\'Fraunces\',Georgia,serif">RICEVUTA NON FISCALE</div>'+
       '<div style="font-size:11px;color:#556677;font-style:italic;margin-top:4px">Ricevuta di pagamento per soggiorno turistico</div>'+
     '</td>'+
     '<td style="background:#fff;border:1.5px solid #BBCCEE;border-radius:0 8px 8px 0;padding:14px 18px;vertical-align:middle">'+
@@ -12347,10 +12346,10 @@ function renderAnticipiStats(){
     return saldo > 0.005;
   }).map(function(a){return a.proprieta_id;})).size;
   var html = ''
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Totale anticipato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+eur(r2(tot))+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Già recuperato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(r2(recuperato))+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Saldo residuo</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(residuo)+'</div></div>'
-    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Proprietà con saldo</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nProps+'</div></div>';
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Totale anticipato</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--text)">'+eur(r2(tot))+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Già recuperato</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(r2(recuperato))+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Saldo residuo</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(residuo)+'</div></div>'
+    +'<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Proprietà con saldo</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--blue)">'+nProps+'</div></div>';
   document.getElementById('ant-stats').innerHTML = html;
 }
 
@@ -12440,7 +12439,7 @@ function renderAnticipiTable(){
     if(needsAmount){
       importoCell = '<td style="text-align:right;background:rgba(249,115,22,0.08)"><span style="color:#9a3412;font-weight:700;background:#fed7aa;padding:2px 8px;border-radius:6px;font-size:11px">⚠ €0,00</span></td>';
     } else {
-      importoCell = '<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(importo)+'</td>';
+      importoCell = '<td style="text-align:right;font-family:Fraunces,Georgia,serif;font-weight:700">'+eur(importo)+'</td>';
     }
     // Riga intera con sfondo leggero se da completare
     var rowStyle = needsAttention ? ' style="background:rgba(244,67,54,0.02)"' : '';
@@ -12451,8 +12450,8 @@ function renderAnticipiTable(){
       +'<td>'+catChip+'</td>'
       +'<td><div style="font-size:13px">'+escHtml(a.causale||'—')+'</div>'+(a.note?'<div style="font-size:10.5px;color:var(--text-light);margin-top:2px">'+escHtml(a.note)+'</div>':'')+'</td>'
       + importoCell
-      +'<td style="text-align:right;font-family:Syne,sans-serif;color:var(--green)">'+(recuperato>0?eur(recuperato):'<span style="color:var(--text-light)">—</span>')+'</td>'
-      +'<td style="text-align:right;font-family:Syne,sans-serif;font-weight:700;color:'+(saldo>0?'var(--orange)':'var(--text-light)')+'">'+eur(saldo)+'</td>'
+      +'<td style="text-align:right;font-family:Fraunces,Georgia,serif;color:var(--green)">'+(recuperato>0?eur(recuperato):'<span style="color:var(--text-light)">—</span>')+'</td>'
+      +'<td style="text-align:right;font-family:Fraunces,Georgia,serif;font-weight:700;color:'+(saldo>0?'var(--orange)':'var(--text-light)')+'">'+eur(saldo)+'</td>'
       +'<td><span style="font-size:11.5px;background:rgba(67,97,238,0.08);color:var(--blue);padding:2px 8px;border-radius:6px;font-weight:600">'+anticipiMeseLabel(a.mese_recupero)+'</span></td>'
       +'<td>'+statusChip+'</td>'
       +'<td><div style="display:flex;gap:4px"><button class="btn btn-sm '+(needsAttention?'btn-primary':'btn-outline')+'" onclick="editAnticipo(\''+a.id+'\')" title="'+(needsAttention?'Completa':'Modifica')+'">'+(needsAttention?'✓ Completa':'✎')+'</button><button class="btn btn-sm btn-danger" onclick="deleteAnticipo(\''+a.id+'\')">🗑</button></div></td>'
@@ -12936,7 +12935,7 @@ function renderImportPreview(parsed, skipped, meseRecKey, totalRows, headerIdx){
     html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
       +'<div style="padding:10px 14px;background:#dcfce7;border-bottom:1px solid #86efac;font-weight:700;color:#166534;display:flex;justify-content:space-between;align-items:center">'
         +'<span>✓ '+parsed.valid.length+' anticipi completi (import diretto)</span>'
-        +'<span style="font-family:Syne,sans-serif">Tot: '+eur(r2(tot))+' · Già rec.: '+eur(r2(totRec))+' · Saldo: '+eur(r2(tot-totRec))+'</span>'
+        +'<span style="font-family:Fraunces,Georgia,serif">Tot: '+eur(r2(tot))+' · Già rec.: '+eur(r2(totRec))+' · Saldo: '+eur(r2(tot-totRec))+'</span>'
       +'</div>'
       + renderParsedTable(parsed.valid, 'valid')
       +'</div>';
@@ -12947,7 +12946,7 @@ function renderImportPreview(parsed, skipped, meseRecKey, totalRows, headerIdx){
     html += '<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">'
       +'<div style="padding:10px 14px;background:#fee2e2;border-bottom:1px solid #fca5a5;font-weight:700;color:#991b1b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
         +'<span>⚠ '+parsed.noProp.length+' anticipi con proprietà DA ASSEGNARE</span>'
-        +'<span style="font-family:Syne,sans-serif;font-size:13px">Tot: '+eur(r2(tot2))+'</span>'
+        +'<span style="font-family:Fraunces,Georgia,serif;font-size:13px">Tot: '+eur(r2(tot2))+'</span>'
       +'</div>'
       +'<div style="padding:8px 14px;background:#fff7ed;font-size:11.5px;color:#9a3412;border-bottom:1px solid #fde68a">Importate con proprietà "<em>Da assegnare</em>". Apri ognuna in modifica e scegli la proprietà giusta dal dropdown.</div>'
       + renderParsedTable(parsed.noProp, 'noProp')
@@ -13010,7 +13009,7 @@ function renderParsedTable(items, mode){
     if(mode==='noImport'){
       importoCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right"><span style="color:#9a3412;font-weight:700;background:#fed7aa;padding:2px 6px;border-radius:5px;font-size:11px">⚠ €0,00</span></td>';
     } else {
-      importoCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Syne,sans-serif;font-weight:700">'+eur(p.importo)+'</td>';
+      importoCell = '<td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:Fraunces,Georgia,serif;font-weight:700">'+eur(p.importo)+'</td>';
     }
     return '<tr>'
       +'<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text-light)">R'+p.rowNum+'</td>'
@@ -13415,10 +13414,10 @@ function renderAdempOverview(){
     +'<div class="card" style="padding:18px">'
       +'<div class="card-title" style="margin-bottom:14px">Riepilogo anno '+anno+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">'
-        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Mandanti attivi</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+totMandanti+'</div></div>'
-        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Lordo totale incassato</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+eur(totLordo)+'</div></div>'
-        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute d\'acconto 21%</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
-        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Tassa Soggiorno</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(totTassaSogg)+'</div></div>'
+        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Mandanti attivi</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--text)">'+totMandanti+'</div></div>'
+        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Lordo totale incassato</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--blue)">'+eur(totLordo)+'</div></div>'
+        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute d\'acconto 21%</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
+        +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Tassa Soggiorno</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--orange)">'+eur(totTassaSogg)+'</div></div>'
       +'</div>'
       +'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-light);line-height:1.5">'
         +'<strong>Metodo base imponibile cedolare:</strong> '+methodLabel+'. Il flag è modificabile a livello configurazione globale (richiesta tecnica).'
@@ -13716,8 +13715,8 @@ function renderAdempSoggiorno(){
     entries.forEach(function(e){totComune.nPren+=e.nPren;totComune.nNotti+=e.nNotti;totComune.nOspiti+=e.nOspiti;totComune.tassaIncassata+=e.tassaIncassata;});
     html+='<div class="card" style="margin-bottom:14px;padding:14px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
-        +'<div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--text)">🏛 Comune di '+escHtml(comune)+'</div><div style="font-size:11.5px;color:var(--text-light);margin-top:2px">'+entries.length+' struttur'+(entries.length===1?'a':'e')+' · '+totComune.nPren+' prenotazioni · '+totComune.nOspiti+' pernottamenti</div></div>'
-        +'<div style="text-align:right"><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Tassa Incassata</div><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--green)">'+eur(totComune.tassaIncassata)+'</div></div>'
+        +'<div><div style="font-family:Fraunces,Georgia,serif;font-size:16px;font-weight:700;color:var(--text)">🏛 Comune di '+escHtml(comune)+'</div><div style="font-size:11.5px;color:var(--text-light);margin-top:2px">'+entries.length+' struttur'+(entries.length===1?'a':'e')+' · '+totComune.nPren+' prenotazioni · '+totComune.nOspiti+' pernottamenti</div></div>'
+        +'<div style="text-align:right"><div style="font-size:10px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Tassa Incassata</div><div style="font-family:Fraunces,Georgia,serif;font-size:20px;font-weight:700;color:var(--green)">'+eur(totComune.tassaIncassata)+'</div></div>'
       +'</div>'
       +'<table class="adem-quarter-table" style="margin-top:0"><thead><tr><th>Struttura</th><th>Mandante</th><th class="num">N. Pren</th><th class="num">Pernottam.</th><th class="num">Tassa Incassata</th></tr></thead><tbody>';
     entries.forEach(function(e){
@@ -13771,10 +13770,10 @@ function renderAdemp770(){
   var mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   var html='<div class="card" style="padding:16px;margin-bottom:14px">'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">'
-      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Mandanti soggetti</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--text)">'+totMandantiCount.size+'</div></div>'
-      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Base imponibile totale</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+eur(totBase)+'</div></div>'
-      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute versate</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
-      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Codice tributo</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">1919</div></div>'
+      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Mandanti soggetti</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--text)">'+totMandantiCount.size+'</div></div>'
+      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Base imponibile totale</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--blue)">'+eur(totBase)+'</div></div>'
+      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Ritenute versate</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--green)">'+eur(totRitenuta)+'</div></div>'
+      +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Codice tributo</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--orange)">1919</div></div>'
     +'</div></div>';
   html+='<div class="card" style="padding:16px"><div class="card-title">Versamenti F24 per Mese — anno '+anno+'</div>';
   html+='<table class="adem-quarter-table"><thead><tr><th>Mese di Competenza</th><th>Scadenza F24</th><th class="num">Base Imponibile</th><th class="num">Ritenuta 21%</th></tr></thead><tbody>';
@@ -13896,7 +13895,7 @@ function renderAdempManuale(){
   var nOverrides=0;
   allMandanti.forEach(function(m){if(ademGetManualData(anno,m.id))nOverrides++;});
   var statHtml='<div class="card" style="margin-bottom:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">'
-    +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Override attivi per '+anno+'</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--blue)">'+nOverrides+' / '+allMandanti.length+'</div></div>'
+    +'<div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Override attivi per '+anno+'</div><div style="font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:700;color:var(--blue)">'+nOverrides+' / '+allMandanti.length+'</div></div>'
     +'<div style="font-size:11.5px;color:var(--text-light);max-width:520px;line-height:1.5">I valori che inserisci qui vengono usati al posto del calcolo automatico per CU, DAC7 e Modello 770 dell\'anno selezionato. Lascia vuoto un campo per usare il calcolo automatico per quel valore.</div>'
   +'</div>';
   // Lista mandanti con form
@@ -16478,7 +16477,7 @@ function covKeep(id,btn){
 function covBox(label,n,sub,color){
   return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">'
     +'<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-light)">'+label+'</div>'
-    +'<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800;color:'+color+'">'+n+'</div>'
+    +'<div style="font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:800;color:'+color+'">'+n+'</div>'
     +'<div style="font-size:11px;color:var(--text-light)">'+sub+'</div></div>';
 }
 function saveSyncIgnore(){
@@ -16672,7 +16671,7 @@ async function syncNow(){
     }
     await syncFromSmoobu(true,false);
   }catch(e){ toast('Sync non riuscita: '+e.message,5000); }
-  finally{ if(btn){btn.disabled=false;btn.innerHTML='🔄 Sincronizza ora';} }
+  finally{ if(btn){btn.disabled=false;btn.innerHTML='Sincronizza ora';} }
 }
 
 function syncRenderBadge(){
@@ -16840,7 +16839,7 @@ function renderLiveFeed(){
   var html='<div class="lv-card">'
     +'<div class="lv-hd"><div><div class="lv-title"><span class="lv-dot"></span>Live da Smoobu</div>'
     +'<div class="lv-sub">'+(last?'Ultima sincronizzazione '+last.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'In attesa della prima sincronizzazione')+'</div></div>'
-    +'<span style="flex:1"></span><button class="btn btn-sm" onclick="syncNow()">🔄 Sincronizza</button></div>'
+    +'<span style="flex:1"></span><button class="btn btn-sm" onclick="syncNow()">Sincronizza</button></div>'
     +'<div class="lv-kpis">'
     +'<div class="lv-kpi"><span>Nuove ultime 24h</span><b>'+today.n+'</b><small>'+eur(today.tot)+' lordo</small></div>'
     +'<div class="lv-kpi"><span>Compenso 24h</span><b style="color:#079a6e">'+eur(today.h)+'</b><small>Houzly</small></div>'
@@ -16872,6 +16871,678 @@ function renderLiveFeed(){
   }
   html+='</div></div>';
   box.innerHTML=html;
+}
+</script>
+<style id="tema-pro">
+/* ══════════════════════════════════════════════════════════════════
+   TEMA PRO (v116) — palette Houzly: indaco profondo + oro, fondo carta.
+   Le variabili rimappate valgono per tutto il tool; sotto, gli stili
+   specifici di Dashboard, card, tabelle, menu.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --blue-dark:#170046;--blue:#2c2168;--blue-mid:#4a3f8e;--cyan:#94753a;
+  --grad:linear-gradient(135deg,#170046 0%,#2c2168 100%);
+  --grad-soft:linear-gradient(135deg,rgba(23,0,70,0.035) 0%,rgba(23,0,70,0.035) 100%);
+  --bg:#f5f3ee;--surface:#ffffff;--surface2:#faf8f4;--border:#e6e1d6;
+  --text:#1a1730;--text-mid:#4b4862;--text-light:#8a8799;
+  --green:#2f7d5c;--red:#b0473d;--orange:#a8741d;
+  --gold:#c8a55b;--gold-ink:#94753a;--ink:#1a1730;
+  --shadow:0 1px 2px rgba(26,23,48,0.04);--shadow-lg:0 12px 32px rgba(26,23,48,0.10);
+  --radius:7px;--radius-lg:10px;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-feature-settings:"ss01" on}
+/* tipografia: il serif solo per titoli e cifre, mai pesante */
+[style*="Fraunces"][style*="font-weight:800"],[style*="Fraunces"][style*="font-weight:700"]{font-weight:500!important}
+[style*="Fraunces"]{letter-spacing:-0.01em}
+/* ── Sidebar ── */
+#sidebar{background:#170046;background:linear-gradient(180deg,#1a0550 0%,#140040 100%)}
+.sidebar-logo{border-bottom-color:rgba(200,165,91,0.16)}
+.sidebar-footer-text{color:rgba(200,165,91,0.55)}
+.nav-group-label{color:rgba(255,255,255,0.32);letter-spacing:.18em;font-size:9px}
+.nav-item{color:rgba(255,255,255,0.62);font-size:12.8px;border-left:2px solid transparent;padding:8px 18px}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.04)}
+.nav-item.active{color:#fff;background:rgba(200,165,91,0.10);border-left-color:var(--gold)}
+.nav-item.active .nav-icon{color:var(--gold)}
+.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;opacity:.9}
+.nav-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{color:rgba(255,255,255,0.28)}
+/* ── Topbar ── */
+.topbar{background:rgba(255,255,255,0.86);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--border);box-shadow:none}
+.topbar-title{font-family:var(--serif);font-weight:500;color:var(--ink);font-size:19px}
+/* ── Card e titoli di sezione ── */
+.card,.stat-card,.lv-card{box-shadow:var(--shadow);border-color:var(--border)}
+.card-title{font-family:'Plus Jakarta Sans',sans-serif!important;font-size:10.5px;font-weight:700;color:var(--text-mid);letter-spacing:.14em}
+/* ── KPI ── */
+.stat-card::before,.stat-card::after{display:none!important}
+.stat-grid{gap:12px}
+.stat-card{padding:18px 20px 16px;transition:border-color .15s}
+.stat-card:hover{border-color:#d3ccbd}
+.stat-card .stat-label{font-size:10px;letter-spacing:.14em;color:var(--text-light);font-weight:700}
+.stat-card .stat-value{font-family:var(--serif)!important;font-weight:400!important;font-size:30px;line-height:1.15;color:var(--ink)!important;letter-spacing:-0.015em;font-variant-numeric:tabular-nums lining-nums;margin-top:10px}
+.stat-card .stat-sub{font-size:11px;color:var(--text-light);margin-top:6px}
+.kpi-head{display:flex;align-items:center;gap:9px}
+.kpi-emo{width:26px;height:26px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:13px;line-height:1;filter:saturate(.7);flex-shrink:0}
+.stat-card:hover .kpi-emo{filter:none}
+.stat-card .kpi-rule{position:absolute;left:20px;top:0;width:22px;height:2px;background:var(--gold)}
+/* ── Bottoni e badge ── */
+.btn-primary{background:var(--blue-dark);box-shadow:none;color:#fff}
+.btn-primary:hover{background:var(--blue);opacity:1}
+.btn-ghost{border:1px solid var(--border)!important;background:var(--surface)!important;color:var(--text-mid)!important}
+.btn-ghost:hover{border-color:#cfc8b8!important;color:var(--ink)!important}
+.btn-outline{border-color:var(--border)!important;color:var(--blue)!important;background:transparent}
+.badge{border-radius:4px;font-weight:700;letter-spacing:.02em}
+.badge-blue{background:rgba(44,33,104,0.07);color:var(--blue)}
+.badge-cyan{background:rgba(148,117,58,0.10);color:var(--gold-ink)}
+.badge-green{background:rgba(47,125,92,0.09);color:var(--green)}
+.badge-red{background:rgba(176,71,61,0.09);color:var(--red)}
+.badge-orange{background:rgba(168,116,29,0.10);color:var(--orange)}
+input,select,textarea{accent-color:var(--blue-dark)}
+/* ── Dashboard: intestazione e filtro proprietà ── */
+.dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.dash-eyebrow{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-ink)}
+.dash-h1{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1;color:var(--ink);letter-spacing:-0.02em;margin-top:4px}
+#dash-prop-pills span[data-pill-id]{border-radius:5px!important;font-size:11.5px!important;padding:4px 10px!important;font-weight:500!important}
+#dash-prop-pills.is-collapsed{max-height:27px;overflow:hidden}
+.pills-toggle{background:none;border:none;color:var(--blue);font:600 11.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer;padding:4px 2px;white-space:nowrap}
+.pills-toggle:hover{text-decoration:underline}
+/* ── Live da Smoobu ── */
+.lv-hd{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--border);padding:16px 20px}
+.lv-title{font-family:var(--serif)!important;font-weight:500!important;font-size:18px;letter-spacing:-0.01em}
+.lv-sub{color:var(--text-light)}
+.lv-dot{background:#3f9a72;box-shadow:none;animation:lvPulsePro 2.4s infinite}
+@keyframes lvPulsePro{0%{box-shadow:0 0 0 0 rgba(63,154,114,.45)}70%{box-shadow:0 0 0 7px rgba(63,154,114,0)}100%{box-shadow:0 0 0 0 rgba(63,154,114,0)}}
+.lv-hd .btn{background:var(--surface);border:1px solid var(--border);color:var(--text-mid)}
+.lv-hd .btn:hover{background:var(--surface2);color:var(--ink)}
+.lv-kpi{padding:14px 20px}
+.lv-kpi b{font-family:var(--serif)!important;font-weight:400!important;font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+.lv-tab{border-radius:5px;border-width:1px}
+.lv-tab.on{background:var(--blue-dark);border-color:var(--blue-dark)}
+.lv-row:hover{background:var(--surface2)}
+.lv-ch{border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif!important;font-size:11.5px;width:30px;height:30px}
+.lv-ch.airbnb{background:#e8e0e0;color:#a33c40}.lv-ch.booking{background:#e2e6f0;color:#1f3a73}.lv-ch.diretta{background:#e1ece6;color:#2f7d5c}.lv-ch.altro{background:#ece9e2;color:#6b6879}
+.lv-amt b{font-variant-numeric:tabular-nums}
+.lv-amt small{color:var(--green)}
+.lv-badge{border-radius:4px}
+.lv-badge.new{background:rgba(47,125,92,.09);color:var(--green)}
+.lv-badge.mod{background:rgba(44,33,104,.07);color:var(--blue)}
+.lv-badge.cancel{background:rgba(176,71,61,.09);color:var(--red)}
+.lv-badge.rec{background:rgba(168,116,29,.10);color:var(--orange)}
+/* ── Report del mese ── */
+.dr-row{font-variant-numeric:tabular-nums}
+.dr-row:hover{background:var(--surface2)!important}
+.dr-cell-icon{border-radius:7px!important;font-family:var(--serif);font-size:13px!important;font-weight:500;color:var(--ink)}
+.dr-cell-icon.is-group{color:#fff}
+/* ── Avvisi (check post-import) ── */
+.pro-alert{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:var(--radius-lg);padding:16px 20px}
+.pro-alert-title{font-family:var(--serif);font-weight:500;font-size:16px;color:var(--ink)}
+.pro-alert-sub{font-size:11.5px;color:var(--text-light);margin-top:2px}
+.pro-chip{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text)}
+.pro-chip-n{font-family:var(--serif);font-size:18px;color:var(--orange);min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+/* ── Tabelle e numeri ovunque ── */
+table{font-variant-numeric:tabular-nums}
+.adem-quarter-table th,.rpt-table th{letter-spacing:.08em}
+::selection{background:rgba(200,165,91,0.28)}
+@media(max-width:860px){.stat-card .stat-value{font-size:23px;margin-top:8px}.dash-h1{font-size:25px}}
+@media(max-width:480px){.stat-card .stat-value{font-size:20px}.stat-card{padding:14px 14px 12px}.stat-card .kpi-rule{left:14px}}
+
+[style*="Fraunces"][style*="uppercase"]{font-family:'Plus Jakarta Sans',sans-serif!important;font-weight:700!important;letter-spacing:.12em}
+/* ══ TEMI (v117): Penombra (chiaro morbido) e Notte (scuro indaco) ══ */
+/* Penombra: niente bianco puro, contrasto pieno sul testo */
+html[data-tema="penombra"]{
+  --bg:#e4e0d7;--surface:#f1eee8;--surface2:#ebe7df;--border:#d6d0c3;
+  --text:#191628;--text-mid:#433f58;--text-light:#77738a;--ink:#191628;
+  --shadow:0 1px 2px rgba(25,22,40,0.05);
+}
+html[data-tema="penombra"] .topbar{background:rgba(241,238,232,0.9)}
+html[data-tema="penombra"] .page [style*="background:#fff;"],html[data-tema="penombra"] .page [style*="background:#ffffff"]{background:var(--surface)!important}
+/* Notte: indaco profondo del brand, oro come accento */
+html[data-tema="notte"]{
+  color-scheme:dark;
+  --bg:#110a29;--surface:#1a1238;--surface2:#211845;--border:#30265a;
+  --text:#ece8f6;--text-mid:#bdb6d3;--text-light:#8d86a8;--ink:#f3efe6;
+  --blue-dark:#5a47c9;--blue:#9d8ff0;--blue-mid:#7d6de0;--cyan:#d8bb78;--gold-ink:#d8bb78;
+  --green:#6cc79c;--red:#ec8a7f;--orange:#e2ae58;
+  --grad:linear-gradient(135deg,#4b39b5 0%,#5a47c9 100%);--grad-soft:rgba(255,255,255,0.03);
+  --shadow:0 1px 0 rgba(255,255,255,0.02);--shadow-lg:0 16px 40px rgba(0,0,0,0.45);
+}
+html[data-tema="notte"] body{background:var(--bg)}
+html[data-tema="notte"] #sidebar{background:linear-gradient(180deg,#0d0722 0%,#0a051b 100%);border-right:1px solid #241a4b}
+html[data-tema="notte"] .topbar{background:rgba(17,10,41,0.88);border-bottom-color:var(--border)}
+html[data-tema="notte"] .btn-primary{background:#5a47c9;color:#fff}
+html[data-tema="notte"] .btn-primary:hover{background:#6a58d6}
+html[data-tema="notte"] .btn-ghost{background:var(--surface2)!important}
+html[data-tema="notte"] .stat-card:hover{border-color:#43377a}
+html[data-tema="notte"] input,html[data-tema="notte"] select,html[data-tema="notte"] textarea{background-color:var(--surface2);color:var(--text);border-color:var(--border)}
+html[data-tema="notte"] .lv-ch.airbnb{background:#3a1f2c;color:#f2a3a6}html[data-tema="notte"] .lv-ch.booking{background:#1c2547;color:#a8b8ec}
+html[data-tema="notte"] .lv-ch.diretta{background:#173326;color:#8fd6b2}html[data-tema="notte"] .lv-ch.altro{background:#2a2440;color:#bdb6d3}
+html[data-tema="notte"] .badge-blue{background:rgba(157,143,240,0.14)}html[data-tema="notte"] .badge-cyan{background:rgba(216,187,120,0.13)}
+html[data-tema="notte"] .badge-green{background:rgba(108,199,156,0.13)}html[data-tema="notte"] .badge-red{background:rgba(236,138,127,0.13)}
+html[data-tema="notte"] .badge-orange{background:rgba(226,174,88,0.14)}
+html[data-tema="notte"] .lv-badge.mod{background:rgba(157,143,240,.14)}
+/* colori chiari scritti a mano nei riquadri (solo nelle pagine, non nei documenti) */
+html[data-tema="notte"] .page :is([style*="background:#fff;"],[style*="background:#ffffff"],[style*="background:#fafafa"],[style*="background:#f5f7ff"],[style*="background:#f7f9ff"],[style*="background:#f0f4ff"],[style*="background:#f3f4f8"]):not(.doc *):not(.doc){background:var(--surface2)!important}
+html[data-tema="notte"] .page :is([style*="background:#fffaf0"],[style*="background:#fffbeb"],[style*="background:#fff7ed"],[style*="background:#fff8e6"],[style*="background:#fffbf0"],[style*="background:#fef3c7"],[style*="background:#fed7aa"],[style*="linear-gradient(135deg,#fef3c7"],[style*="linear-gradient(135deg,#fffbeb"]):not(.doc *):not(.doc){background:rgba(226,174,88,0.10)!important;border-color:rgba(226,174,88,0.35)!important}
+html[data-tema="notte"] .page :is([style*="background:#fee2e2"],[style*="background:#fef2f2"],[style*="background:#fff0f0"],[style*="background:#fff5f5"],[style*="background:#fff5f6"]):not(.doc *):not(.doc){background:rgba(236,138,127,0.10)!important;border-color:rgba(236,138,127,0.35)!important}
+html[data-tema="notte"] .page :is([style*="background:#f0fdf4"],[style*="background:#f0fff8"],[style*="background:#ecfdf5"]):not(.doc *):not(.doc){background:rgba(108,199,156,0.10)!important;border-color:rgba(108,199,156,0.35)!important}
+html[data-tema="notte"] .page :is([style*="color:#92400e"],[style*="color:#b45309"],[style*="color:#a06400"],[style*="color:#c47a00"],[style*="color:#9a3412"],[style*="color:#a16207"],[style*="color:#5a4a20"],[style*="color:#cc7a00"]):not(.doc *):not(.doc){color:var(--orange)!important}
+html[data-tema="notte"] .page :is([style*="color:#991b1b"],[style*="color:#dc2626"],[style*="color:#b91c1c"],[style*="color:#c0122c"],[style*="color:#e11d48"],[style*="color:#3d2020"]):not(.doc *):not(.doc){color:var(--red)!important}
+html[data-tema="notte"] .page :is([style*="color:#166534"],[style*="color:#079a6e"],[style*="color:#065f46"]):not(.doc *):not(.doc){color:var(--green)!important}
+html[data-tema="notte"] .page :is([style*="color:#0f1535"],[style*="color:#170046"],[style*="color:#4361ee"],[style*="color:#2d3fe0"]):not(.doc *):not(.doc){color:var(--text)!important}
+html[data-tema="notte"] .page [style*="rgba(67,97,238,0.0"]:not(.doc *){background:rgba(157,143,240,0.06)!important}
+/* i documenti (pre-fatture, ricevute, report PDF in anteprima) restano su carta bianca */
+html[data-tema="notte"] :is(#pm-body,#pm-body-adem,.doc,.ric-doc){background:#fff;color:#111;color-scheme:light}
+html[data-tema="notte"] ::selection{background:rgba(216,187,120,0.32)}
+/* menu: icone più presenti in tutti i temi */
+.nav-icon{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,0.05);margin-left:-4px}
+.nav-icon svg{width:15px;height:15px;stroke-width:1.75}
+.nav-item.active .nav-icon{background:rgba(200,165,91,0.16)}
+/* selettore del tema in alto */
+.nav-emo{font-size:14px;line-height:1;filter:saturate(.65);opacity:.88;transition:filter .15s,opacity .15s}
+.nav-item:hover .nav-emo{filter:saturate(.9);opacity:1}
+.nav-item.active .nav-emo{filter:none;opacity:1}
+.tema-switch{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;background:var(--surface2)}
+.tema-switch button{background:none;border:none;padding:5px 10px;font:600 11.5px 'Plus Jakarta Sans',sans-serif;color:var(--text-light);cursor:pointer}
+.tema-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--border)}
+/* ══ ANALISI (v120) ══ */
+.an-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.an-per{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.an-per select,.an-per input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 9px;font-family:inherit;font-size:12.5px;color:var(--text)}
+.an-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.an-tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;font:600 12.5px 'Plus Jakarta Sans',sans-serif;color:var(--text-light);cursor:pointer;margin-bottom:-1px}
+.an-tabs button.on{color:var(--ink);border-bottom-color:var(--gold)}
+.an-sub{font-size:11.5px;color:var(--text-light);margin:-4px 0 12px}
+.an-note{margin:0 0 12px;padding:10px 14px;border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:var(--radius);background:var(--surface);font-size:12px;color:var(--text-mid)}
+.an-note a{color:var(--blue);font-weight:600}
+.an-foot{font-size:11px;color:var(--text-light);line-height:1.55;margin:10px 2px 18px}
+.an-empty{text-align:center;color:var(--text-light);padding:30px}
+.an-vt,.an-kt,.an-ft{display:grid;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);font-size:12.5px;font-variant-numeric:tabular-nums}
+.an-vt{grid-template-columns:minmax(170px,1.6fr) 50px 1fr 1fr 1fr 1fr 1.3fr}
+.an-kt{grid-template-columns:minmax(170px,1.6fr) 60px 1.2fr 1fr 1.2fr 0.8fr 1fr}
+.an-ft{grid-template-columns:1fr 60px 1.2fr 1fr 1.2fr 1fr 0.8fr}
+.an-vt-h{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);background:var(--surface2)}
+.an-vt-t{font-weight:700;background:var(--surface2)}
+.an-vt:not(.an-vt-h):hover,.an-kt:not(.an-vt-h):hover,.an-ft:not(.an-vt-h):hover{background:var(--surface2)}
+.an-vt .r,.an-kt .r,.an-ft .r{text-align:right}
+.an-name{font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-name small,.an-m small,.an-tab small{display:block;font-size:10.5px;font-weight:400;color:var(--text-light)}
+.an-m{font-family:var(--serif);font-size:15px}
+.an-m.pos{color:var(--green)}.an-m.neg{color:var(--red)}
+.an-bar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.an-bar span{display:block;height:100%;border-radius:4px}
+.an-bar span.pos{background:var(--green);opacity:.75}.an-bar span.neg{background:var(--red);opacity:.75}
+.an-delta{font-size:10.5px;font-weight:700;margin-left:4px;font-family:'Plus Jakarta Sans',sans-serif}
+.an-delta.up{color:var(--green)}.an-delta.down{color:var(--red)}
+.an-occ{display:inline-block;width:46px;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;vertical-align:middle;margin-right:6px}
+.an-occ i{display:block;height:100%;background:var(--gold)}
+.an-chart{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;height:190px;align-items:end;padding:4px 4px 0}
+.an-col{display:flex;flex-direction:column;align-items:center;height:100%}
+.an-bars{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+.an-bars span{width:38%;border-radius:3px 3px 0 0;min-height:2px}
+.an-bars .cur{background:var(--blue-dark)}.an-bars .cur.neg{background:var(--red)}
+.an-bars .prev{background:var(--gold);opacity:.55}
+html[data-tema="notte"] .an-bars .cur{background:#9d8ff0}
+.an-lbl{font-size:10.5px;color:var(--text-light);margin-top:6px;white-space:nowrap}
+.an-legend{display:flex;gap:16px;font-size:11px;color:var(--text-light);margin-top:10px}
+.an-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.an-legend i.cur{background:var(--blue-dark)}.an-legend i.prev{background:var(--gold);opacity:.55}
+html[data-tema="notte"] .an-legend i.cur{background:#9d8ff0}
+.an-help{font-size:11.5px;color:var(--text-light);line-height:1.55;margin:-4px 0 12px}
+.an-tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.an-tab thead th{background:transparent!important;color:var(--text-light)!important}
+.an-tab th{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+.an-tab td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.an-tab .r{text-align:right}
+.an-in{width:86px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-family:inherit;font-size:12.5px;color:var(--text);text-align:right}
+.an-tag{display:inline-block;font-size:10px;color:var(--text-light);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-top:2px}
+.an-mesi{display:flex;gap:3px}
+.an-m-chip{width:20px;height:20px;border-radius:4px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text-light);cursor:pointer;user-select:none}
+.an-m-chip input{display:none}
+.an-m-chip.on{background:rgba(200,165,91,0.16);border-color:rgba(200,165,91,0.55);color:var(--gold-ink)}
+.an-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.an-form input,.an-form select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:12.5px;color:var(--text)}
+.an-form #anc-descr{flex:1;min-width:220px}
+.an-form #anc-imp{width:110px}
+.an-chk{font-size:12px;color:var(--text-mid);display:inline-flex;align-items:center;gap:5px}
+@media(max-width:860px){
+  .an-vt,.an-kt,.an-ft{grid-template-columns:minmax(120px,1.4fr) 1fr 1fr;row-gap:2px}
+  .an-vt>div:nth-child(2),.an-vt>div:nth-child(4),.an-vt>div:nth-child(5),.an-vt>div:nth-child(7){display:none}
+  .an-kt>div:nth-child(2),.an-kt>div:nth-child(4),.an-kt>div:nth-child(6),.an-kt>div:nth-child(7){display:none}
+  .an-ft>div:nth-child(2),.an-ft>div:nth-child(4),.an-ft>div:nth-child(6),.an-ft>div:nth-child(7){display:none}
+  #page-analisi .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .an-chart{gap:3px}.an-lbl{font-size:9px}
+}
+</style>
+<script>
+// v116: icone di linea per il menu (al posto delle emoji)
+var NAV_ICONS={
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  proprietari:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+  proprieta:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  gruppi:'<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+  contratti:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/><path d="M8 17c1.5-1.5 2.5-1.5 3.5 0s2 1.5 3.5 0"/>',
+  prenotazioni:'<rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  report_prop:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  documenti:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h6"/>',
+  adempimenti:'<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/>',
+  anticipi:'<rect x="2.5" y="6" width="19" height="13" rx="1.5"/><path d="M16 12.5h2.5M2.5 10h19"/>',
+  ricevute:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  operations:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l3 3 5-6"/>',
+  checkin:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>',
+  pulizie:'<path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  onboarding:'<rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 4V3h6v1M9 11l2 2 4-4M9 17h6"/>',
+  'import':'<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+  'import-tasks':'<path d="M4 13l3-8h10l3 8v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+  impostazioni:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'
+};
+// v118: emoji nel menu, sobrie: in scala di grigi, a colori sulla voce attiva e al passaggio del mouse
+var NAV_EMOJI={analisi:'🧭',dashboard:'📊',proprietari:'👤',proprieta:'🏠',gruppi:'🗂️',contratti:'✍️',prenotazioni:'📅',report_prop:'📈',documenti:'📄',adempimenti:'🏛️',anticipi:'💳',ricevute:'🧾',operations:'✅',checkin:'🔑',pulizie:'🧽',onboarding:'📋','import':'📥','import-tasks':'🗃️',impostazioni:'⚙️'};
+function applyNavIcons(){
+  document.querySelectorAll('#sidebar .nav-item').forEach(function(it){
+    var m=(it.getAttribute('onclick')||'').match(/showPage\('([^']+)'\)/);
+    var ic=it.querySelector('.nav-icon');
+    if(!m||!ic) return;
+    var e=NAV_EMOJI[m[1]]; if(!e) return;
+    ic.innerHTML='<span class="nav-emo">'+e+'</span>';
+  });
+}
+// filtro proprietà della Dashboard: compatto, con "Mostra tutte"
+var _pillsOpen=false;
+function dashPillsCompact(){
+  var c=document.getElementById('dash-prop-pills'); if(!c||window.innerWidth<=860) return;
+  var n=c.querySelectorAll('[data-pill-id]').length;
+  var t=document.getElementById('pills-toggle');
+  if(!t){ t=document.createElement('button'); t.id='pills-toggle'; t.className='pills-toggle'; t.type='button';
+    t.onclick=function(){ _pillsOpen=!_pillsOpen; dashPillsCompact(); };
+    c.parentNode.appendChild(t); }
+  var sel=c.querySelectorAll('[data-pill-id]:not([data-pill-id="__all__"])');
+  var attive=0; sel.forEach(function(p){ if(/background:\s*var\(--blue\)/.test(p.getAttribute('style')||'')) attive++; });
+  c.classList.toggle('is-collapsed',!_pillsOpen);
+  t.textContent=_pillsOpen?'Riduci':('Tutte le proprietà ('+(n-1)+')'+(attive?' · '+attive+' selezionat'+(attive===1?'a':'e'):''));
+}
+document.addEventListener('DOMContentLoaded',function(){ try{applyNavIcons();}catch(e){} });
+</script>
+<script>
+// v117: tema (Chiaro / Penombra / Notte), scelto per dispositivo
+function temaGet(){ try{ return localStorage.getItem('houzly_tema')||'penombra'; }catch(e){ return 'penombra'; } }
+function temaSet(t){
+  document.documentElement.setAttribute('data-tema',t);
+  try{ localStorage.setItem('houzly_tema',t); }catch(e){}
+  document.querySelectorAll('.tema-switch button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t')===t); });
+}
+(function(){
+  document.documentElement.setAttribute('data-tema',temaGet());
+  function mount(){
+    var bar=document.querySelector('.topbar-actions-desktop'); if(!bar||document.querySelector('.tema-switch')) return;
+    var w=document.createElement('div'); w.className='tema-switch'; w.title='Tema';
+    w.innerHTML='<button type="button" data-t="chiaro">Chiaro</button><button type="button" data-t="penombra">Penombra</button><button type="button" data-t="notte">Notte</button>';
+    w.addEventListener('click',function(e){ var t=e.target.getAttribute('data-t'); if(t) temaSet(t); });
+    bar.insertBefore(w,bar.firstChild); temaSet(temaGet());
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mount); else mount();
+})();
+</script>
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  ANALISI (v120) — ispirata alla business intelligence per l'extra-alberghiero
+//  • Verdetto: quanto rende a Houzly ogni struttura (ricavi Houzly − costi)
+//  • Costi: costi diretti per intervento + registro costi con ripartizione
+//  • KPI: occupazione, ADR, RevPAR, soggiorno medio, confronto anno prima
+//  • Forecast: prossimi 12 mesi dalle prenotazioni confermate
+//  Dati: DB.analisi = { prop:{pid:{pul,bia,mq,mesi:[12 bool]}}, costi:[...] }
+//  Il periodo segue il mese di check-in, come i report ai proprietari.
+// ══════════════════════════════════════════════════════════════════
+var AN_CAT=['Pulizie e biancheria','Manutenzioni','Consumabili e kit di cortesia','Software e abbonamenti','Marketing e pubblicità','Commercialista e consulenze','Personale e collaboratori','Assicurazioni','Altro'];
+var AN_METODI={notti_ospite:'Per notti-ospite',uguale:'In parti uguali',mq:'Per metri quadri',ricavi:'In proporzione ai ricavi Houzly'};
+var _anTab='verdetto', _anPer={tipo:'mese',mese:0,anno:0};
+function anDB(){
+  if(!DB.analisi) DB.analisi={prop:{},costi:[]};
+  if(!DB.analisi.prop) DB.analisi.prop={};
+  if(!Array.isArray(DB.analisi.costi)) DB.analisi.costi=[];
+  return DB.analisi;
+}
+function anProp(pid){ var a=anDB(); if(!a.prop[pid]) a.prop[pid]={}; return a.prop[pid]; }
+function anMesiNomi(){ return ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']; }
+function anYm(y,m){ return y+'-'+String(m).padStart(2,'0'); }
+// Intervallo del periodo scelto → {da:'YYYY-MM', a:'YYYY-MM', label, mesi:n}
+function anRange(per){
+  var y=per.anno, m=per.mese;
+  if(per.tipo==='mese') return {da:anYm(y,m),a:anYm(y,m),label:mesiArr()[m-1]+' '+y,mesi:1};
+  if(per.tipo==='trim'){ var q=Math.ceil(m/3), s=(q-1)*3+1; return {da:anYm(y,s),a:anYm(y,s+2),label:'Q'+q+' '+y,mesi:3}; }
+  if(per.tipo==='12m'){ var d=new Date(y,m-12,1); return {da:anYm(d.getFullYear(),d.getMonth()+1),a:anYm(y,m),label:'12 mesi fino a '+mesiArr()[m-1]+' '+y,mesi:12}; }
+  return {da:anYm(y,1),a:anYm(y,12),label:'Anno '+y,mesi:12};
+}
+function anRangePrec(r){ // stesso periodo, anno prima
+  var f=function(k){ return (+k.slice(0,4)-1)+k.slice(4); };
+  return {da:f(r.da),a:f(r.a),label:'',mesi:r.mesi};
+}
+function anMeseBk(b){ return /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')?b.meseReportOverride:(b.checkin||'').slice(0,7); }
+function anBksValide(){ return (DB.prenotazioni||[]).filter(function(b){ return b.checkin&&b.proprieta_id&&!b._sync_cancelled; }); }
+function anCalc(b){ return b.calc&&b.calc.tot!=null?b.calc:doCalc(b); }
+// Ricavi Houzly di una prenotazione, SEMPRE SENZA IVA (l'IVA va allo Stato):
+//  • contratto "30% + IVA": il compenso calcolato è già l'imponibile
+//  • contratto "30% IVA inclusa": il compenso contiene l'IVA → si scorpora (÷ 1,22)
+//  • pulizie che restano a Houzly: fatturate con IVA scorporata → ÷ 1,22
+//  • prenotazioni aggiuntive: nessuna fattura, nessuna IVA da scorporare
+function anRicavo(b){
+  var c=anCalc(b), nero=!!b.black;
+  var cfg=getEffectiveHouzlyConfig(b.proprieta_id);
+  var piuIva=!!(b.iva22||cfg.iva22);
+  var compLordo=+c.houzly||0;
+  var comp=(nero||piuIva)?compLordo:compLordo/1.22;
+  var pulLordo=c.pulizie_owner?0:(+c.pulizia||0);
+  var pul=nero?pulLordo:pulLordo/1.22;
+  return {comp:r2(comp), pul:r2(pul), tot:r2(comp+pul), ivaIncl:!nero&&!piuIva};
+}
+// Costi diretti automatici di una prenotazione: pulizia e biancheria per intervento
+function anCostoAuto(b){
+  var c=anCalc(b), p=anProp(b.proprieta_id);
+  var pul=c.pulizie_owner?0:(+p.pul||0);  // se le pulizie vanno al proprietario, le paga lui
+  var bia=+p.bia||0;
+  return {pul:pul, bia:bia, tot:r2(pul+bia)};
+}
+// Importo di un costo che cade nel range (i ricorrenti valgono per ogni mese attivo)
+function anCostoNelRange(k, r){
+  if(!k||!(+k.importo)) return 0;
+  var mk=(k.data||'').slice(0,7); if(!mk) return 0;
+  if(!k.ricorrente) return (mk>=r.da&&mk<=r.a)?+k.importo:0;
+  var fine=(k.fine||'').slice(0,7)||'9999-12', n=0;
+  var y=+r.da.slice(0,4), m=+r.da.slice(5,7);
+  for(var i=0;i<r.mesi;i++){ var cur=anYm(y,m); if(cur>=mk&&cur<=fine) n++; m++; if(m>12){m=1;y++;} }
+  return r2(n*(+k.importo));
+}
+var _anAgg=false; // includere le prenotazioni aggiuntive
+// Prenotazioni di un mese (y, m 1-12) calcolate come nel Report Mensile, su copie
+function anBksMese(y,m){
+  var bks=(DB.prenotazioni||[]).filter(function(b){
+    if(!b.proprieta_id||b._sync_cancelled) return false;
+    if(b.black&&!_anAgg) return false;
+    if(isSoggiornoLungo(b)) return slToccaPeriodo(b,m,y);
+    return bkInPeriod(b,m,y);
+  }).map(function(b){ var c=Object.assign({},b); c.calc=doCalc(c); return c; });
+  applySoggiornoLungoCalc(bks,m,y);
+  return bks;
+}
+// Conto economico per struttura nel range
+function anVerdetto(r){
+  var props={};
+  function P(pid){ if(!props[pid]){ var pr=(DB.proprieta||[]).find(function(x){return x.id===pid;})||{}; props[pid]={pid:pid,nome:pr.nome||'—',n:0,notti:0,ospNotti:0,lordo:0,comp:0,pulInc:0,ric:0,cPul:0,cBia:0,cDir:0,cCom:0,costi:0,margine:0}; } return props[pid]; }
+  // mese per mese con la stessa logica dei report: soggiorni lunghi e transitorie a quote
+  var y=+r.da.slice(0,4), m=+r.da.slice(5,7);
+  for(var i=0;i<r.mesi;i++){
+    anBksMese(y,m).forEach(function(b){
+      var c=b.calc, quota=!!(b._slMese||b._trMese), ym=anYm(y,m);
+      var X=P(b.proprieta_id), ri=anRicavo(b), pa=anProp(b.proprieta_id);
+      var notti=b._slMese?(+c.notti_mese_sl||0):(b._trMese?(+c.notti_mese_sl||0):(+b.notti||0));
+      if(!quota||(b.checkin||'').slice(0,7)===ym) X.n++;
+      X.notti+=notti; X.ospNotti+=notti*(+b.n_ospiti||1); X.lordo+=+c.tot||0;
+      X.comp+=ri.comp; X.pulInc+=ri.pul; X.ric+=ri.tot;
+      var cambio=quota?(+c.pulizia>0):true;   // un cambio per soggiorno, nel mese in cui si conta la pulizia
+      if(cambio){ X.cPul+=c.pulizie_owner?0:(+pa.pul||0); X.cBia+=+pa.bia||0; }
+    });
+    m++; if(m>12){m=1;y++;}
+  }
+  var dett=[];
+  // costi del registro: diretti (struttura indicata) o comuni (ripartiti)
+  anDB().costi.forEach(function(k){
+    var imp=anCostoNelRange(k,r); if(!imp) return;
+    if(k.prop_id){ P(k.prop_id).cDir+=imp; dett.push({k:k,imp:imp,quote:null}); return; }
+    var attive=Object.keys(props).filter(function(pid){ return props[pid].n>0; });
+    if(!attive.length) return;
+    var pesi={}, somma=0;
+    attive.forEach(function(pid){
+      var X=props[pid], w=1;
+      if(k.metodo==='notti_ospite') w=X.ospNotti;
+      else if(k.metodo==='mq') w=+anProp(pid).mq||0;
+      else if(k.metodo==='ricavi') w=Math.max(0,X.ric);
+      pesi[pid]=w; somma+=w;
+    });
+    if(somma<=0){ attive.forEach(function(pid){ pesi[pid]=1; }); somma=attive.length; }
+    var quote={};
+    attive.forEach(function(pid){ var q=imp*pesi[pid]/somma; props[pid].cCom+=q; quote[pid]=q; });
+    dett.push({k:k,imp:imp,quote:quote});
+  });
+  var list=Object.keys(props).map(function(pid){
+    var X=props[pid];
+    ['lordo','comp','pulInc','ric','cPul','cBia','cDir','cCom'].forEach(function(f){ X[f]=r2(X[f]); });
+    X.costi=r2(X.cPul+X.cBia+X.cDir+X.cCom); X.margine=r2(X.ric-X.costi);
+    X.margPerc=X.ric>0?X.margine/X.ric:0;
+    return X;
+  }).filter(function(X){ return X.n>0||X.costi>0; }).sort(function(a,b){ return b.margine-a.margine; });
+  var T={n:0,ric:0,comp:0,pulInc:0,cPul:0,cBia:0,cDir:0,cCom:0,costi:0,margine:0,lordo:0};
+  list.forEach(function(X){ Object.keys(T).forEach(function(f){ T[f]+=X[f]||0; }); });
+  Object.keys(T).forEach(function(f){ T[f]=r2(T[f]); });
+  return {list:list,T:T,dett:dett};
+}
+// Notti di una prenotazione che cadono nel mese 'YYYY-MM' (per KPI precisi)
+function anNottiNelMese(b, ym){
+  var ci=b.checkin, co=b.checkout||b.checkin; if(!ci) return 0;
+  var a=new Date(ci+'T12:00:00Z'), z=new Date(co+'T12:00:00Z');
+  var y=+ym.slice(0,4), m=+ym.slice(5,7);
+  var s=new Date(Date.UTC(y,m-1,1,12)), e=new Date(Date.UTC(y,m,1,12));
+  var from=a>s?a:s, to=z<e?z:e;
+  return Math.max(0,Math.round((to-from)/86400000));
+}
+function anGiorniMese(ym){ return new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate(); }
+// KPI per struttura nel range (notti ripartite sui mesi effettivi)
+function anKpi(r){
+  var out={}, mesi=[], y=+r.da.slice(0,4), m=+r.da.slice(5,7);
+  for(var i=0;i<r.mesi;i++){ mesi.push(anYm(y,m)); m++; if(m>12){m=1;y++;} }
+  (DB.proprieta||[]).forEach(function(p){
+    var ap=anProp(p.id).mesi, disp=0;
+    mesi.forEach(function(ym){ if(!Array.isArray(ap)||ap[+ym.slice(5,7)-1]!==false) disp+=anGiorniMese(ym); });
+    out[p.id]={pid:p.id,nome:p.nome,disp:disp,notti:0,ricAll:0,soggiorni:0,nottiSogg:0};
+  });
+  anBksValide().forEach(function(b){
+    var X=out[b.proprieta_id]; if(!X) return;
+    var c=anCalc(b), nT=+b.notti||0; if(nT<=0) return;
+    var alloggio=Math.max(0,(+c.tot||0)-(+c.pulizia||0)-(+c.tassa||0)-(+c.rimb_lordo||0));
+    var nn=0; mesi.forEach(function(ym){ nn+=anNottiNelMese(b,ym); });
+    if(!nn) return;
+    X.notti+=nn; X.ricAll+=alloggio*nn/nT;
+    var mk=(b.checkin||'').slice(0,7); if(mk>=r.da&&mk<=r.a){ X.soggiorni++; X.nottiSogg+=nT; }
+  });
+  return Object.keys(out).map(function(pid){
+    var X=out[pid];
+    X.occ=X.disp?X.notti/X.disp:0; X.adr=X.notti?X.ricAll/X.notti:0; X.revpar=X.disp?X.ricAll/X.disp:0; X.alos=X.soggiorni?X.nottiSogg/X.soggiorni:0;
+    return X;
+  });
+}
+// Forecast: dal mese corrente ai successivi 11, solo prenotazioni confermate
+function anForecast(){
+  var oggi=new Date(), y=oggi.getFullYear(), m=oggi.getMonth()+1, rows=[];
+  for(var i=0;i<12;i++){
+    var ym=anYm(y,m), r={da:ym,a:ym,mesi:1}, rp={da:(y-1)+ym.slice(4),a:(y-1)+ym.slice(4),mesi:1};
+    var V=anVerdetto(r), Vp=anVerdetto(rp);
+    rows.push({ym:ym,label:anMesiNomi()[m-1]+' '+String(y).slice(2),n:V.T.n,ric:V.T.ric,costi:V.T.costi,margine:V.T.margine,ricPrec:Vp.T.ric,nPrec:Vp.T.n});
+    m++; if(m>12){m=1;y++;}
+  }
+  return rows;
+}
+// ── UI ────────────────────────────────────────────────────────────
+function anInitPer(){
+  if(!_anPer.anno){ var d=new Date(); d.setMonth(d.getMonth()-1); _anPer={tipo:'mese',mese:d.getMonth()+1,anno:d.getFullYear()}; }
+}
+function anSetTab(t){ _anTab=t; renderAnalisi(); }
+function anSetPer(f,v){ _anPer[f]=(f==='tipo')?v:+v; renderAnalisi(); }
+function anShiftPer(dir){
+  var p=_anPer, step=p.tipo==='trim'?3:(p.tipo==='anno'?12:1);
+  var d=new Date(p.anno,p.mese-1+dir*step,1); p.anno=d.getFullYear(); p.mese=d.getMonth()+1; renderAnalisi();
+}
+function anEur(v){ return eur(v); }
+function anPerc(v){ return (v*100).toFixed(1).replace('.',',')+'%'; }
+function anDelta(cur,prev,isPerc){
+  if(!prev) return '<span class="an-delta">—</span>';
+  var d=isPerc?(cur-prev):(cur-prev)/Math.abs(prev);
+  var s=(d>=0?'+':'')+(d*100).toFixed(isPerc?1:0).replace('.',',')+(isPerc?' pt':'%');
+  return '<span class="an-delta '+(d>=0?'up':'down')+'">'+s+'</span>';
+}
+function renderAnalisi(){
+  var root=document.getElementById('an-root'); if(!root) return;
+  anInitPer();
+  var tabs=[['verdetto','Verdetto per struttura'],['kpi','KPI'],['forecast','Previsione'],['costi','Costi']];
+  var h='<div class="an-head"><div><div class="dash-eyebrow">Houzly &middot; Analisi</div><div class="dash-h1">Quanto rende ogni struttura</div></div>';
+  if(_anTab!=='forecast'){
+    var mo=''; mesiArr().forEach(function(n,i){ mo+='<option value="'+(i+1)+'"'+(_anPer.mese===i+1?' selected':'')+'>'+n+'</option>'; });
+    h+='<div class="an-per"><select onchange="anSetPer(\'tipo\',this.value)">'
+      +[['mese','Mese'],['trim','Trimestre'],['anno','Anno'],['12m','Ultimi 12 mesi']].map(function(o){return '<option value="'+o[0]+'"'+(_anPer.tipo===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+      +'</select><button class="btn btn-ghost btn-sm" onclick="anShiftPer(-1)">‹</button>'
+      +(_anPer.tipo==='anno'?'':'<select onchange="anSetPer(\'mese\',this.value)">'+mo+'</select>')
+      +'<input type="number" value="'+_anPer.anno+'" onchange="anSetPer(\'anno\',this.value)" style="width:76px">'
+      +'<button class="btn btn-ghost btn-sm" onclick="anShiftPer(1)">›</button></div>';
+  }
+  if(_anTab==='verdetto'||_anTab==='forecast') h+='<label class="an-chk" style="margin-left:auto"><input type="checkbox" '+(_anAgg?'checked ':'')+'onchange="_anAgg=this.checked;renderAnalisi()"> Includi prenotazioni aggiuntive</label>';
+  h+='</div><div class="an-tabs">'+tabs.map(function(t){return '<button class="'+(_anTab===t[0]?'on':'')+'" onclick="anSetTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
+  if(_anTab==='verdetto') h+=anHtmlVerdetto();
+  else if(_anTab==='kpi') h+=anHtmlKpi();
+  else if(_anTab==='forecast') h+=anHtmlForecast();
+  else h+=anHtmlCosti();
+  root.innerHTML=h;
+}
+function anKpiTile(lbl,val,sub){ return '<div class="stat-card"><span class="kpi-rule"></span><div class="stat-label">'+lbl+'</div><div class="stat-value">'+val+'</div>'+(sub?'<div class="stat-sub">'+sub+'</div>':'')+'</div>'; }
+function anHtmlVerdetto(){
+  var r=anRange(_anPer), V=anVerdetto(r), Vp=anVerdetto(anRangePrec(r)), T=V.T;
+  var senzaCosti=(DB.proprieta||[]).filter(function(p){ var a=anProp(p.id); return !(+a.pul)&&!(+a.bia); }).length;
+  var h='<div class="an-sub">'+escHtml(r.label)+' &middot; stessi criteri del Report Mensile (mese di check-in, soggiorni lunghi e transitorie a quote mensili)'+(_anAgg?' &middot; aggiuntive incluse':'')+'</div>';
+  h+='<div class="stat-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">'
+    +anKpiTile('Ricavi Houzly (senza IVA)',anEur(T.ric),'compenso '+anEur(T.comp)+' + pulizie '+anEur(T.pulInc)+' '+anDelta(T.ric,Vp.T.ric))
+    +anKpiTile('Costi',anEur(T.costi),'diretti '+anEur(r2(T.cPul+T.cBia+T.cDir))+' &middot; comuni '+anEur(T.cCom))
+    +anKpiTile('Margine',anEur(T.margine),(T.ric?anPerc(T.margine/T.ric)+' dei ricavi ':'')+anDelta(T.margine,Vp.T.margine))
+    +anKpiTile('Strutture in perdita',String(V.list.filter(function(X){return X.margine<0;}).length),'su '+V.list.length+' con attività')
+    +'</div>';
+  if(senzaCosti) h+='<div class="an-note">&#9888; '+senzaCosti+' strutture senza costo di pulizia e biancheria per intervento: imposta i valori nella scheda <a href="#" onclick="anSetTab(\'costi\');return false">Costi</a>, altrimenti il loro margine risulta più alto del reale.</div>';
+  if(!V.list.length) return h+'<div class="card an-empty">Nessuna prenotazione nel periodo.</div>';
+  var max=Math.max.apply(null,V.list.map(function(X){return Math.abs(X.margine);}).concat([1]));
+  h+='<div class="card" style="padding:0;overflow:hidden"><div class="an-vt an-vt-h"><div>Struttura</div><div class="r">Pren.</div><div class="r">Ricavi Houzly</div><div class="r">Costi diretti</div><div class="r">Costi comuni</div><div class="r">Margine</div><div></div></div>';
+  V.list.forEach(function(X){
+    var w=Math.round(Math.abs(X.margine)/max*100), neg=X.margine<0;
+    h+='<div class="an-vt"><div class="an-name">'+escHtml(X.nome)+'<small>'+X.notti+' notti &middot; lordo '+anEur(X.lordo)+'</small></div>'
+      +'<div class="r">'+X.n+'</div><div class="r">'+anEur(X.ric)+'</div><div class="r">'+anEur(r2(X.cPul+X.cBia+X.cDir))+'</div><div class="r">'+anEur(X.cCom)+'</div>'
+      +'<div class="r an-m '+(neg?'neg':'pos')+'">'+anEur(X.margine)+'<small>'+(X.ric?anPerc(X.margPerc):'')+'</small></div>'
+      +'<div class="an-bar"><span class="'+(neg?'neg':'pos')+'" style="width:'+w+'%"></span></div></div>';
+  });
+  h+='<div class="an-vt an-vt-t"><div>Totale</div><div class="r">'+T.n+'</div><div class="r">'+anEur(T.ric)+'</div><div class="r">'+anEur(r2(T.cPul+T.cBia+T.cDir))+'</div><div class="r">'+anEur(T.cCom)+'</div><div class="r">'+anEur(T.margine)+'</div><div></div></div></div>';
+  h+='<div class="an-foot">Tutti gli importi sono senza IVA. Ricavi Houzly = compenso Houzly (per i contratti &laquo;IVA inclusa&raquo; l\'IVA viene scorporata, per quelli &laquo;+ IVA&raquo; è già esclusa) + pulizie incassate che restano a Houzly, al netto dell\'IVA. Commissioni OTA, imposta di soggiorno e canone del proprietario non sono mai ricavi Houzly. Costi diretti = pulizia e biancheria per intervento (scheda Costi) + costi del registro assegnati alla struttura. Costi comuni = costi del registro senza struttura, ripartiti con il metodo scelto tra le strutture con prenotazioni nel periodo.</div>';
+  return h;
+}
+function anHtmlKpi(){
+  var r=anRange(_anPer), K=anKpi(r), Kp=anKpi(anRangePrec(r)), byP={};
+  Kp.forEach(function(X){ byP[X.pid]=X; });
+  var att=K.filter(function(X){return X.notti>0||(byP[X.pid]&&byP[X.pid].notti>0);});
+  var tot=function(L){ var o={disp:0,notti:0,ric:0,s:0,ns:0}; L.forEach(function(X){o.disp+=X.disp;o.notti+=X.notti;o.ric+=X.ricAll;o.s+=X.soggiorni;o.ns+=X.nottiSogg;}); o.occ=o.disp?o.notti/o.disp:0;o.adr=o.notti?o.ric/o.notti:0;o.revpar=o.disp?o.ric/o.disp:0;o.alos=o.s?o.ns/o.s:0; return o; };
+  var T=tot(att), Tp=tot(att.map(function(X){return byP[X.pid]||{disp:0,notti:0,ricAll:0,soggiorni:0,nottiSogg:0};}));
+  var h='<div class="an-sub">'+escHtml(r.label)+' &middot; confronto con lo stesso periodo dell\'anno prima &middot; notti ripartite sui mesi effettivi</div>';
+  h+='<div class="stat-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">'
+    +anKpiTile('Occupazione',anPerc(T.occ),anDelta(T.occ,Tp.occ,true)+' vs anno prima')
+    +anKpiTile('ADR (prezzo medio a notte)',anEur(T.adr),anDelta(T.adr,Tp.adr)+' vs anno prima')
+    +anKpiTile('RevPAR',anEur(T.revpar),anDelta(T.revpar,Tp.revpar)+' vs anno prima')
+    +anKpiTile('Soggiorno medio',T.alos.toFixed(1).replace('.',',')+' notti',anDelta(T.alos,Tp.alos)+' vs anno prima')
+    +'</div>';
+  att.sort(function(a,b){return b.revpar-a.revpar;});
+  h+='<div class="card" style="padding:0;overflow:hidden"><div class="an-kt an-vt-h"><div>Struttura</div><div class="r">Notti</div><div class="r">Occupazione</div><div class="r">ADR</div><div class="r">RevPAR</div><div class="r">Sogg. medio</div><div class="r">RevPAR anno prima</div></div>';
+  att.forEach(function(X){
+    var P=byP[X.pid]||{};
+    h+='<div class="an-kt"><div class="an-name">'+escHtml(X.nome)+'<small>'+X.disp+' notti disponibili</small></div><div class="r">'+X.notti+'</div>'
+      +'<div class="r"><span class="an-occ"><i style="width:'+Math.min(100,Math.round(X.occ*100))+'%"></i></span>'+anPerc(X.occ)+'</div>'
+      +'<div class="r">'+anEur(X.adr)+'</div><div class="r">'+anEur(X.revpar)+' '+anDelta(X.revpar,P.revpar)+'</div>'
+      +'<div class="r">'+(X.alos?X.alos.toFixed(1).replace('.',','):'—')+'</div><div class="r">'+(P.revpar?anEur(P.revpar):'—')+'</div></div>';
+  });
+  h+='</div><div class="an-foot">Occupazione = notti vendute / notti disponibili. ADR e RevPAR sul solo alloggio (senza pulizie, imposta di soggiorno e rimborsi). Le notti disponibili sono tutte quelle del periodo: per le strutture stagionali indica i mesi di apertura nella scheda Costi, altrimenti l\'occupazione d\'inverno risulta bassa.</div>';
+  return h;
+}
+function anHtmlForecast(){
+  var F=anForecast(), max=Math.max.apply(null,F.map(function(x){return Math.max(x.ric,x.ricPrec,Math.abs(x.margine));}).concat([1]));
+  var tot=F.reduce(function(s,x){return {ric:s.ric+x.ric,costi:s.costi+x.costi,marg:s.marg+x.margine,n:s.n+x.n,prec:s.prec+x.ricPrec};},{ric:0,costi:0,marg:0,n:0,prec:0});
+  var h='<div class="an-sub">Prossimi 12 mesi &middot; solo prenotazioni già confermate (on the books) e costi ricorrenti del registro &middot; il confronto è con il risultato finale dello stesso mese dell\'anno prima</div>';
+  h+='<div class="stat-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">'
+    +anKpiTile('Ricavi Houzly già in calendario',anEur(r2(tot.ric)),tot.n+' prenotazioni')
+    +anKpiTile('Costi previsti',anEur(r2(tot.costi)),'diretti + ricorrenti')
+    +anKpiTile('Margine previsto',anEur(r2(tot.marg)),'')
+    +anKpiTile('Stessi mesi, anno prima',anEur(r2(tot.prec)),'ricavi finali')
+    +'</div>';
+  h+='<div class="card"><div class="an-chart">';
+  F.forEach(function(x){
+    var a=Math.round(x.ric/max*100), b=Math.round(x.ricPrec/max*100);
+    h+='<div class="an-col" title="'+x.label+': in calendario '+anEur(x.ric)+' · anno prima '+anEur(x.ricPrec)+'"><div class="an-bars"><span class="prev" style="height:'+b+'%"></span><span class="cur'+(x.margine<0?' neg':'')+'" style="height:'+a+'%"></span></div><div class="an-lbl">'+x.label+'</div></div>';
+  });
+  h+='</div><div class="an-legend"><span><i class="cur"></i>Ricavi Houzly già in calendario</span><span><i class="prev"></i>Stesso mese anno prima (finale)</span></div></div>';
+  h+='<div class="card" style="padding:0;overflow:hidden"><div class="an-ft an-vt-h"><div>Mese</div><div class="r">Pren.</div><div class="r">Ricavi in calendario</div><div class="r">Costi previsti</div><div class="r">Margine previsto</div><div class="r">Anno prima</div><div class="r">Copertura</div></div>';
+  F.forEach(function(x){
+    h+='<div class="an-ft"><div>'+x.label+'</div><div class="r">'+x.n+'</div><div class="r">'+anEur(x.ric)+'</div><div class="r">'+anEur(x.costi)+'</div><div class="r an-m '+(x.margine<0?'neg':'pos')+'">'+anEur(x.margine)+'</div><div class="r">'+anEur(x.ricPrec)+'</div><div class="r">'+(x.ricPrec?anPerc(x.ric/x.ricPrec):'—')+'</div></div>';
+  });
+  h+='</div><div class="an-foot">"Copertura" = quanto dei ricavi finali dell\'anno prima è già in calendario oggi. Più il mese è lontano, più è normale che sia bassa: serve a vedere in anticipo i mesi più deboli.</div>';
+  return h;
+}
+function anHtmlCosti(){
+  var A=anDB(), r=anRange(_anPer);
+  var inp='class="an-in"';
+  var h='<div class="an-sub">Costi diretti per intervento (si calcolano da soli su ogni soggiorno) e registro dei costi, con struttura o ripartiti</div>';
+  // costi per intervento
+  h+='<div class="card"><div class="card-title">Costi per intervento e dati delle strutture</div>'
+    +'<div class="an-help">Quanto paga Houzly per ogni cambio (impresa o personale interno) e per la biancheria, <strong>senza IVA</strong> (l\'IVA delle fatture dei fornitori la recuperate). Se le pulizie della struttura vanno al proprietario, il costo pulizia non viene contato. Metri quadri e mesi di apertura servono alla ripartizione e all\'occupazione.</div>'
+    +'<div style="overflow-x:auto"><table class="an-tab"><thead><tr><th>Struttura</th><th class="r">Pulizia &euro;/cambio<br><small>senza IVA</small></th><th class="r">Biancheria &euro;/cambio<br><small>senza IVA</small></th><th class="r">Mq</th><th>Mesi di apertura</th></tr></thead><tbody>';
+  (DB.proprieta||[]).slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');}).forEach(function(p){
+    var a=anProp(p.id), mesi=Array.isArray(a.mesi)?a.mesi:null;
+    var chips=anMesiNomi().map(function(n,i){ var on=!mesi||mesi[i]!==false; return '<label class="an-m-chip'+(on?' on':'')+'"><input type="checkbox" data-pid="'+p.id+'" data-mese="'+i+'"'+(on?' checked':'')+' onchange="anSetMese(this)">'+n.charAt(0)+'</label>'; }).join('');
+    h+='<tr><td>'+escHtml(p.nome)+(p.pulizie_owner?'<div class="an-tag">pulizie al proprietario</div>':'')+'</td>'
+      +'<td class="r"><input type="number" step="0.5" min="0" '+inp+' value="'+(a.pul!=null&&a.pul!==''?a.pul:'')+'" placeholder="0" onchange="anSetProp(\''+p.id+'\',\'pul\',this.value)"></td>'
+      +'<td class="r"><input type="number" step="0.5" min="0" '+inp+' value="'+(a.bia!=null&&a.bia!==''?a.bia:'')+'" placeholder="0" onchange="anSetProp(\''+p.id+'\',\'bia\',this.value)"></td>'
+      +'<td class="r"><input type="number" step="1" min="0" '+inp+' value="'+(a.mq||'')+'" placeholder="—" onchange="anSetProp(\''+p.id+'\',\'mq\',this.value)"></td>'
+      +'<td><div class="an-mesi">'+chips+'</div></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  // registro costi
+  var catOpt=AN_CAT.map(function(c){return '<option>'+escHtml(c)+'</option>';}).join('');
+  var propOpt='<option value="">Comune a tutte (ripartito)</option>'+(DB.proprieta||[]).slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');}).map(function(p){return '<option value="'+p.id+'">'+escHtml(p.nome)+'</option>';}).join('');
+  var metOpt=Object.keys(AN_METODI).map(function(k){return '<option value="'+k+'">'+AN_METODI[k]+'</option>';}).join('');
+  var oggi=new Date().toISOString().slice(0,10);
+  h+='<div class="card"><div class="card-title">Registro costi</div>'
+    +'<div class="an-help">Costi di Houzly da attribuire alle strutture: manutenzioni a vostro carico, kit di cortesia, software, pubblicità, commercialista. Se indichi la struttura il costo è suo; altrimenti si ripartisce tra le strutture con prenotazioni nel periodo. I costi ricorrenti (es. abbonamento mensile) valgono ogni mese dalla data indicata fino alla fine.</div>'
+    +'<div class="an-form">'
+      +'<input type="date" id="anc-data" value="'+oggi+'"><input type="text" id="anc-descr" placeholder="Descrizione (es. Smoobu, idraulico Villa Belvedere)">'
+      +'<select id="anc-cat">'+catOpt+'</select><input type="number" id="anc-imp" step="0.01" min="0" placeholder="Importo &euro; senza IVA">'
+      +'<select id="anc-prop" onchange="document.getElementById(\'anc-met\').disabled=!!this.value">'+propOpt+'</select>'
+      +'<select id="anc-met">'+metOpt+'</select>'
+      +'<label class="an-chk"><input type="checkbox" id="anc-ric" onchange="document.getElementById(\'anc-fine\').style.display=this.checked?\'\':\'none\'"> Ricorrente mensile</label>'
+      +'<input type="month" id="anc-fine" style="display:none" title="Ultimo mese (vuoto = senza fine)">'
+      +'<button class="btn btn-primary btn-sm" onclick="anAddCosto()">Aggiungi</button>'
+    +'</div>';
+  var L=A.costi.slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});
+  if(!L.length) h+='<div class="an-empty" style="padding:18px">Nessun costo registrato.</div>';
+  else{
+    h+='<div style="overflow-x:auto"><table class="an-tab"><thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Struttura / ripartizione</th><th class="r">Importo</th><th class="r">Nel periodo</th><th></th></tr></thead><tbody>';
+    L.forEach(function(k){
+      var nel=anCostoNelRange(k,r);
+      h+='<tr><td>'+dateIt(k.data)+(k.ricorrente?'<div class="an-tag">mensile'+(k.fine?' fino a '+escHtml(k.fine):'')+'</div>':'')+'</td><td>'+escHtml(k.descr||'')+'</td><td>'+escHtml(k.cat||'')+'</td>'
+        +'<td>'+(k.prop_id?escHtml(nomeProp(k.prop_id)):'<span class="an-tag">'+escHtml(AN_METODI[k.metodo]||'')+'</span>')+'</td>'
+        +'<td class="r">'+anEur(k.importo)+(k.ricorrente?'<small>/mese</small>':'')+'</td><td class="r">'+(nel?anEur(nel):'—')+'</td>'
+        +'<td class="r"><button class="btn btn-ghost btn-sm" onclick="anDelCosto(\''+k.id+'\')" title="Elimina">&times;</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+  return h;
+}
+function anSetProp(pid,f,v){ var a=anProp(pid); a[f]=(v===''?'':r2(+v)); saveDB(); }
+function anSetMese(el){
+  var a=anProp(el.getAttribute('data-pid')), i=+el.getAttribute('data-mese');
+  if(!Array.isArray(a.mesi)) a.mesi=[true,true,true,true,true,true,true,true,true,true,true,true];
+  a.mesi[i]=el.checked; el.parentNode.classList.toggle('on',el.checked);
+  if(a.mesi.every(function(x){return x;})) delete a.mesi;
+  saveDB();
+}
+function anAddCosto(){
+  var v=function(id){ var e=document.getElementById(id); return e?e.value:''; };
+  var imp=+v('anc-imp'), descr=v('anc-descr').trim();
+  if(!(imp>0)){ toast('Inserisci un importo'); return; }
+  if(!descr){ toast('Inserisci una descrizione'); return; }
+  var prop=v('anc-prop'), ric=document.getElementById('anc-ric').checked;
+  anDB().costi.push({id:uid(),data:v('anc-data')||new Date().toISOString().slice(0,10),descr:descr,cat:v('anc-cat'),importo:r2(imp),prop_id:prop||'',metodo:prop?'':(v('anc-met')||'uguale'),ricorrente:ric,fine:ric?v('anc-fine'):''});
+  saveDB(); toast('Costo registrato ✓'); renderAnalisi();
+}
+function anDelCosto(id){
+  if(!confirm('Eliminare questo costo?')) return;
+  var A=anDB(); A.costi=A.costi.filter(function(k){return k.id!==id;}); saveDB(); renderAnalisi();
 }
 </script>
 </body>
