@@ -3952,12 +3952,21 @@ app.get('/api/checkin/billing-data', requireAdminAuth, async (req, res) => {
         smoobu_booking_id: 1, 'property.name': 1, 'property.smoobu_id': 1,
         'booking.arrival': 1, 'booking.departure': 1, 'booking.reference_id': 1,
         'booking.primary_guest_name': 1, 'booking.primary_guest_email': 1,
-        guests: { $slice: 1 },
+        guests: 1,
       } }
     ).limit(2000).toArray();
     const items = docs.map(d => {
       const g = (d.guests || [])[0] || {};
+      // v114: età all'arrivo di tutti gli ospiti registrati (per l'imposta di soggiorno).
+      // Solo l'età: data di nascita e documenti degli altri ospiti non escono dal server.
+      const arrival = d.booking?.arrival;
+      const guestAges = (d.guests || [])
+        .filter(x => x && x.submitted_at && x.date_of_birth)
+        .map(x => computeAgeAt(x.date_of_birth, arrival))
+        .filter(a => a != null && a >= 0);
       return {
+        guest_ages: guestAges,
+        n_guests: (d.guests || []).length,
         smoobu_booking_id: d.smoobu_booking_id,
         reference_id: d.booking?.reference_id || null,
         property_name: d.property?.name || null,
