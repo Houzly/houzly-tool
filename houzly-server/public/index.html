@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v114 · 17/11 · Imposta di soggiorno automatica</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v115 · 17/11 · Imposta di soggiorno: valori dei comuni</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2550,7 +2550,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
     <div class="card" style="grid-column:1/-1">
       <div class="card-title">Imposta di soggiorno per comune</div>
-      <div style="font-size:12px;color:var(--text-light);line-height:1.6;margin:4px 0 10px">Su <strong>Booking</strong> l'imposta pagata dall'ospite &egrave; inclusa nel payout e va scalata dal lordo. Quando Smoobu non la riporta, il tool la calcola con queste regole e con l'et&agrave; degli ospiti dal check-in, nei mesi di report ancora aperti. Senza check-in &egrave; una stima (pagano gli adulti dichiarati) che si corregge da sola all'arrivo dei dati. Una regola vale solo se &egrave; <strong>confermata</strong>; tariffa 0 = comune senza imposta. Sono indicate tariffa, massimo di notti ed et&agrave; di esenzione per le <strong>locazioni turistiche</strong>.</div>
+      <div style="font-size:12px;color:var(--text-light);line-height:1.6;margin:4px 0 10px">Su <strong>Booking</strong> l'imposta pagata dall'ospite &egrave; inclusa nel payout e va scalata dal lordo. Quando Smoobu non la riporta, il tool la calcola con queste regole e con l'et&agrave; degli ospiti dal check-in, nei mesi di report ancora aperti. Senza check-in &egrave; una stima (pagano gli adulti dichiarati) che si corregge da sola all'arrivo dei dati. Una regola vale solo se &egrave; <strong>confermata</strong>; tariffa 0 = comune senza imposta. Inserisci i valori per le <strong>locazioni turistiche</strong>. Sotto ogni comune trovi i valori che ho trovato nelle fonti pubbliche: <strong>Usa questi valori</strong> li copia nella riga, poi controlli, spunti <strong>Confermata</strong> e salvi. Se il comune ha una tariffa stagionale, indica i mesi della tariffa piena e quella del resto dell'anno.</div>
       <div id="cfg-tassa-regole"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveTassaRegole()">Salva regole</button></div>
     </div>
@@ -5953,6 +5953,32 @@ var TS_DEFAULT={
   'firenze':{comune:'Firenze',euro:6,max_notti:7,esenti_sotto:12,conf:false,nota:'Delibera 535/2024, in vigore dal 01/02/2025: verificare la tariffa 2026'},
   'loro ciuffenna':{comune:'Loro Ciuffenna',euro:2,max_notti:5,esenti_sotto:'',conf:false,nota:'Locazioni turistiche: delibera G.C. 177 del 15/11/2024, dal 01/01/2025. Verificare l\'età di esenzione (art. 4 del regolamento)'}
 };
+// v115: valori trovati nelle fonti pubbliche (novembre 2026) per le locazioni turistiche.
+// Non vengono mai applicati da soli: in Impostazioni compaiono sotto ogni comune con
+// "Usa questi valori", e la regola vale solo dopo la conferma.
+// Campi: euro (tariffa piena), mese_da/mese_a (mesi della tariffa piena), euro_fuori (fuori periodo),
+//        max_notti, esenti_sotto, fonte, url, nota, ok (true = fonte ufficiale o tariffa certa)
+var TS_SUGGERITI={
+  'firenze':{euro:6,max_notti:7,esenti_sotto:12,ok:true,fonte:'Delibera G.C. 535/2024, in vigore dal 01/02/2025 (Chekin, ott. 2026)',url:'https://chekin.com/it/blog/tassa-di-soggiorno-a-firenze/'},
+  'loro ciuffenna':{euro:2,max_notti:5,esenti_sotto:'',ok:true,fonte:'Delibera G.C. 177 del 15/11/2024, dal 01/01/2025',url:'https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_at/download_lib.php?key=0900f2308074dbfb&nome=364912_DIMUNIC-16ar25e693d.pdf',nota:'Età di esenzione non trovata (art. 4 del regolamento): chiedere all\'Ufficio Tributi'},
+  'reggello':{euro:2.5,max_notti:'',esenti_sotto:'',ok:true,fonte:'Comune di Reggello, tariffe dal 01/01/2026',url:'https://www.comune.reggello.fi.it/novita/avvisi/novita-sullimposta-di-soggiorno-decorrenza-dal-1deg-gennaio-2026',nota:'Massimo notti ed esenzioni nel regolamento C.C. 65/2025, non trovato online'},
+  'castel san gimignano':{euro:1,max_notti:5,esenti_sotto:12,mese_da:3,mese_a:12,euro_fuori:0,ok:true,fonte:'Colle di Val d\'Elsa: tariffe 2026 (D.G. 310/2025) e regolamento agg. 2025',url:'https://municipium-images-production.s3-eu-west-1.amazonaws.com/s3/2221/allegati/2026/su_del_delg_310_2025.pdf',nota:'Castel San Gimignano è frazione di Colle di Val d\'Elsa. Nel 2026 si paga dal 1/3 al 31/12, dal 2027 tutto l\'anno'},
+  'colle di val d\'elsa':{euro:1,max_notti:5,esenti_sotto:12,mese_da:3,mese_a:12,euro_fuori:0,ok:true,fonte:'Tariffe 2026 (D.G. 310/2025) e regolamento agg. 2025',url:'https://municipium-images-production.s3-eu-west-1.amazonaws.com/s3/2221/allegati/2026/su_del_delg_310_2025.pdf',nota:'Nel 2026 si paga dal 1/3 al 31/12, dal 2027 tutto l\'anno'},
+  'greve in chianti':{euro:2,max_notti:7,esenti_sotto:14,ok:true,fonte:'Comune di Greve in Chianti (delibera G.C. 53/2024) e regolamento 2024',url:'https://www.comune.greve-in-chianti.fi.it/servizi/tributi-finanze-e-contravvenzioni/imposta-di-soggiorno',nota:'Su Airbnb la riscuote direttamente Airbnb'},
+  'impruneta':{euro:2,max_notti:7,esenti_sotto:14,ok:true,fonte:'Comune di Impruneta, tariffe da delibera G.C. 122/2023',url:'https://www.comune.impruneta.fi.it/it/page/imposta-comunale-di-soggiorno',nota:'Tariffe indicate per il 2024: verificare che siano invariate'},
+  'monte san savino':{euro:1.5,max_notti:5,esenti_sotto:14,ok:true,fonte:'Comune di Monte San Savino (tariffe 2023, pagina aggiornata 02/2025)',url:'https://www.comune.montesansavino.ar.it/it/novita/page/istituzione-tassa-di-soggiorno',nota:'Esenti anche i residenti. Verificare che la tariffa sia ancora quella del 2023'},
+  'siena':{euro:3,mese_da:3,mese_a:10,euro_fuori:1.5,max_notti:4,esenti_sotto:12,ok:false,fonte:'Regolamento comunale (esenzioni, max notti) + tariffe da Holidu, feb. 2026',url:'https://www.holidu.it/magazine/tassa-di-soggiorno-siena-guida-per-host-e-gestori',nota:'Massimo 4 notti nel mese solare anche non consecutive. Tariffa da fonte non ufficiale: verificare con la delibera del Comune'},
+  'novara':{euro:2,max_notti:30,esenti_sotto:14,ok:false,fonte:'Delibera G.C. 545/2024, dal 01/01/2025 (Soggiora, ago. 2026)',url:'https://soggiora.it/tassa-di-soggiorno/novara',nota:'Esenti anche gli over 80. Fonte non ufficiale: verificare sul sito del Comune'},
+  'budoni':{euro:'',mese_da:3,mese_a:10,euro_fuori:0,max_notti:'',esenti_sotto:12,ok:false,fonte:'Regolamento comunale (esenti sotto i 12 anni, periodo 1/3–31/10, nessun limite di notti)',url:'https://budoni.imposta-soggiorno.it/documento/regolamento-imposta-di-soggiorno-budoni-2013-pdf',nota:'Tariffa non trovata: la fissa la Giunta ogni anno'},
+  'figline e incisa valdarno':{euro:'',mese_da:5,mese_a:8,euro_fuori:'',max_notti:7,esenti_sotto:12,ok:false,fonte:'Informativa del Comune (2023)',url:'https://comunefiv.it/wp-content/uploads/2023/10/Informativa-multilingue.doc',nota:'L\'imposta c\'è: tariffa non trovata. Ridotta del 50% da gennaio ad aprile e da settembre a dicembre (tariffa fuori periodo = metà)'},
+  'figline valdarno':{euro:'',mese_da:5,mese_a:8,euro_fuori:'',max_notti:7,esenti_sotto:12,ok:false,fonte:'Informativa del Comune di Figline e Incisa Valdarno (2023)',url:'https://comunefiv.it/wp-content/uploads/2023/10/Informativa-multilingue.doc',nota:'Stesso comune di "Figline e Incisa Valdarno": tariffa non trovata, ridotta del 50% da gennaio ad aprile e da settembre a dicembre'},
+  'montevarchi':{euro:0,ok:true,fonte:'La Nazione, 07/08/2024: imposta non applicata',url:'https://www.lanazione.it/arezzo/cronaca/allerta-tassa-di-soggiorno-in-vista-possibili-aumenti-ma-i-comuni-frenano-niente-ritocchi-in-agenda-52784307',nota:'Nessuna imposta (verificare che non sia stata introdotta dopo agosto 2024)'},
+  'san giovanni valdarno':{euro:0,ok:true,fonte:'La Nazione, 07/08/2024: imposta non applicata',url:'https://www.lanazione.it/arezzo/cronaca/allerta-tassa-di-soggiorno-in-vista-possibili-aumenti-ma-i-comuni-frenano-niente-ritocchi-in-agenda-52784307',nota:'Nessuna imposta (verificare che non sia stata introdotta dopo agosto 2024)'},
+  'chitignano':{euro:0,ok:false,fonte:'Nessuna delibera trovata; mai riscossa nelle prenotazioni Booking del tool',url:'',nota:'Probabilmente nessuna imposta: confermare col Comune'},
+  'terranuova bracciolini':{euro:'',ok:false,fonte:'Comune di Terranuova Bracciolini: tariffe nei PDF "Tariffe per strutture" e "Modifica tariffe dal 01 marzo al 30 giugno"',url:'https://comune.terranuova-bracciolini.ar.it/documenti/3291624/imposta-soggiorno',nota:'Non sono riuscito a leggere i PDF del Comune: aprili dal link. C\'è una tariffa diversa dal 1/3 al 30/6'},
+  'bucine':{euro:'',ok:false,fonte:'Pagina del Comune non leggibile da qui',url:'https://www.comune.bucine.ar.it/c051005/zf/index.php/servizi-aggiuntivi/index/index/idtesto/123',nota:'Tariffa non trovata: verificare sulla pagina del Comune'},
+  'laterina pergine valdarno':{euro:'',ok:false,fonte:'Nessuna informazione trovata',url:'',nota:'Verificare col Comune se l\'imposta esiste'}
+};
 function tsKey(c){ return String(c||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function tsRegole(){
   if(!DB.tassa_regole){ DB.tassa_regole=JSON.parse(JSON.stringify(TS_DEFAULT)); }
@@ -5964,16 +5990,30 @@ function tsRegolaProp(prop){
   var r=tsRegole()[k];
   return (r&&r.conf)?r:null;
 }
+// Tariffa di una notte (data YYYY-MM-DD) secondo il periodo della regola
+function tsTariffaNotte(r, ymd){
+  var da=+r.mese_da||0, a=+r.mese_a||0, m=+String(ymd).slice(5,7);
+  if(!da||!a) return +r.euro||0;
+  var dentro=(da<=a)?(m>=da&&m<=a):(m>=da||m<=a);
+  return dentro?(+r.euro||0):(+r.euro_fuori||0);
+}
+function tsAddGiorni(ymd,n){ var d=new Date(ymd+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
 // Calcolo per una prenotazione → {stato:'ok'|'esente'|'no_regola'|'no_comune', ...}
 function tsCalc(b){
   var prop=(DB.proprieta||[]).find(function(p){return p.id===b.proprieta_id;});
   if(!prop||!tsKey(prop.cat_comune)) return {stato:'no_comune'};
   var r=tsRegolaProp(prop);
   if(!r) return {stato:'no_regola', comune:prop.cat_comune};
-  var euro=+r.euro||0;
-  if(euro<=0) return {stato:'esente', tot:0, comune:r.comune};
+  if((+r.euro||0)<=0&&(+r.euro_fuori||0)<=0) return {stato:'esente', tot:0, comune:r.comune};
   var nottiB=+b.notti||0;
   var notti=(+r.max_notti>0)?Math.min(nottiB,+r.max_notti):nottiB;
+  // somma delle tariffe delle notti tassate (le prime N), con l'eventuale stagionalità
+  var somma=0, conTariffa=0;
+  for(var i=0;i<notti;i++){
+    var t=b.checkin?tsTariffaNotte(r, tsAddGiorni(b.checkin,i)):(+r.euro||0);
+    somma+=t; if(t>0) conTariffa++;
+  }
+  if(somma<=0) return {stato:'esente', tot:0, comune:r.comune, fuoriPeriodo:true};
   var es=(r.esenti_sotto!==''&&r.esenti_sotto!=null)?+r.esenti_sotto:0;
   var n=+b.n_ospiti||1, ages=Array.isArray(b.ospiti_eta)?b.ospiti_eta:[];
   var paganti, stimata=false, motivo='';
@@ -5985,11 +6025,12 @@ function tsCalc(b){
     stimata=true; motivo='check-in parziale ('+ages.length+' di '+n+' ospiti)';
   } else if(+b.n_adulti>0){
     paganti=Math.min(+b.n_adulti,n);
-    stimata=true; motivo='senza check-in: pagano gli '+paganti+' adulti dichiarati';
+    stimata=true; motivo='senza check-in: contati '+paganti+' adult'+(paganti===1?'o':'i')+' dichiarat'+(paganti===1?'o':'i')+' su Booking';
   } else {
     paganti=n; stimata=true; motivo='senza check-in: tutti gli ospiti';
   }
-  return {stato:'ok', tot:r2(euro*notti*paganti), persone:paganti, notti:notti, euro:euro, stimata:stimata, motivo:motivo, comune:r.comune};
+  var euroMedio=notti?r2(somma/notti):0;
+  return {stato:'ok', tot:r2(somma*paganti), persone:paganti, notti:notti, euro:euroMedio, stagionale:conTariffa!==notti||(+r.mese_da>0&&+r.mese_a>0&&(+r.euro_fuori||0)!==(+r.euro||0)), stimata:stimata, motivo:motivo, comune:r.comune};
 }
 function tsMeseReport(b){ return /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')?b.meseReportOverride:(b.checkin||'').slice(0,7); }
 // Prenotazioni che il tool può gestire in automatico
@@ -6040,28 +6081,63 @@ function tsComuni(){
   });
   return {lista:Object.keys(m).sort().map(function(k){return m[k];}), senza:senza};
 }
+function tsNum(v){ return (v===''||v==null)?'':String(v).replace('.',','); }
+function tsSuggLine(k){
+  var s=TS_SUGGERITI[k]; if(!s) return '';
+  var parti=[];
+  if(s.euro===0) parti.push('<strong>nessuna imposta</strong>');
+  else if(s.euro!==''&&s.euro!=null) parti.push('<strong>'+eur(s.euro)+'</strong>');
+  else parti.push('<strong>tariffa non trovata</strong>');
+  if(+s.mese_da&&+s.mese_a){ var mn=['','gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic']; parti.push('piena '+mn[s.mese_da]+'–'+mn[s.mese_a]+(s.euro_fuori!==''&&s.euro_fuori!=null?(+s.euro_fuori>0?', fuori '+eur(s.euro_fuori):', fuori periodo non si paga'):', fuori periodo da verificare')); }
+  if(+s.max_notti) parti.push('max '+s.max_notti+' notti');
+  if(s.esenti_sotto!==''&&s.esenti_sotto!=null) parti.push('esenti sotto i '+s.esenti_sotto+' anni');
+  var col=s.ok?'#065f46':'#92400e', bg=s.ok?'#ecfdf5':'#fffbeb', bd=s.ok?'#a7f3d0':'#fcd34d';
+  return '<div style="margin-top:6px;padding:6px 9px;background:'+bg+';border:1px solid '+bd+';border-radius:7px;font-size:11px;line-height:1.5;color:'+col+'">'
+    +(s.ok?'&#10003; Trovato':'&#9888; Da verificare')+': '+parti.join(' &middot; ')
+    +(s.nota?'<br>'+escHtml(s.nota):'')
+    +'<br><span style="color:var(--text-light)">Fonte: '+(s.url?'<a href="'+escHtml(s.url)+'" target="_blank" rel="noopener" style="color:var(--blue)">'+escHtml(s.fonte)+'</a>':escHtml(s.fonte))+'</span>'
+    +' <button type="button" class="btn btn-ghost" style="font-size:10.5px;padding:2px 8px;margin-left:6px" onclick="tsUsaSuggerito(\''+escHtml(k).replace(/'/g,"\\'")+'\')">Usa questi valori</button>'
+    +'</div>';
+}
+// Riempie i campi della riga con i valori trovati (non salva e non conferma)
+function tsUsaSuggerito(k){
+  var s=TS_SUGGERITI[k]; if(!s) return;
+  var tr=Array.prototype.find.call(document.querySelectorAll('#cfg-tassa-regole tr[data-ts-key]'),function(x){return x.getAttribute('data-ts-key')===k;});
+  if(!tr) return;
+  ['euro','mese_da','mese_a','euro_fuori','max_notti','esenti_sotto'].forEach(function(f){
+    var el=tr.querySelector('[data-f="'+f+'"]'); if(!el) return;
+    var v=s[f]; el.value=(v===''||v==null)?'':v;
+  });
+  var nota=tr.querySelector('[data-f="nota"]'); if(nota) nota.value=s.fonte+(s.nota?' — '+s.nota:'');
+  toast('Valori inseriti nella riga: controllali, spunta "Confermata" e salva',4500);
+}
 function renderTassaRegole(){
   var box=document.getElementById('cfg-tassa-regole'); if(!box) return;
   var R=tsRegole(), C=tsComuni();
   var inp='background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;padding:5px 7px;font-family:inherit;font-size:12.5px;box-sizing:border-box';
   var th='padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap';
-  var td='padding:7px 8px;font-size:12.5px;border-bottom:1px solid var(--border);vertical-align:top';
+  var td='padding:8px 8px;font-size:12.5px;border-bottom:1px solid var(--border);vertical-align:top';
+  var mesiOpt=function(sel){ var mn=['—','gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'], o=''; for(var i=0;i<=12;i++) o+='<option value="'+(i||'')+'"'+((+sel||0)===i?' selected':'')+'>'+mn[i]+'</option>'; return o; };
   var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-    +'<th style="'+th+'">Comune</th><th style="'+th+'">&euro;/persona/notte</th><th style="'+th+'">Max notti</th><th style="'+th+'">Esenti sotto i (anni)</th><th style="'+th+';text-align:center">Confermata</th><th style="'+th+'">Nota / fonte</th></tr></thead><tbody>';
-  C.lista.forEach(function(c,i){
-    var r=R[c.key]||{};
+    +'<th style="'+th+'">Comune</th><th style="'+th+'">&euro;/persona/notte</th><th style="'+th+'">Periodo tariffa piena</th><th style="'+th+'">&euro; fuori periodo</th><th style="'+th+'">Max notti</th><th style="'+th+'">Esenti sotto i (anni)</th><th style="'+th+';text-align:center">Confermata</th><th style="'+th+'">Nota / fonte</th></tr></thead><tbody>';
+  C.lista.forEach(function(c){
+    var r=R[c.key]||{}, s=TS_SUGGERITI[c.key];
+    var diverso=s&&r.conf&&s.ok&&s.euro!==''&&s.euro!=null&&r2(+r.euro||0)!==r2(+s.euro);
     h+='<tr data-ts-key="'+escHtml(c.key)+'" data-ts-comune="'+escHtml(c.comune)+'">'
-      +'<td style="'+td+'"><strong>'+escHtml(c.comune)+'</strong><div style="font-size:10.5px;color:var(--text-light);margin-top:2px;max-width:220px">'+escHtml(c.strutture.join(', '))+'</div></td>'
-      +'<td style="'+td+'"><input type="number" step="0.01" min="0" data-f="euro" value="'+(r.euro!=null&&r.euro!==''?r.euro:'')+'" placeholder="—" style="'+inp+';width:80px"></td>'
-      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="max_notti" value="'+(r.max_notti?r.max_notti:'')+'" placeholder="nessun limite" style="'+inp+';width:90px"></td>'
-      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="esenti_sotto" value="'+(r.esenti_sotto!=null&&r.esenti_sotto!==''?r.esenti_sotto:'')+'" placeholder="nessuna" style="'+inp+';width:80px"></td>'
+      +'<td style="'+td+';min-width:200px" colspan="1"><strong>'+escHtml(c.comune)+'</strong><div style="font-size:10.5px;color:var(--text-light);margin-top:2px;max-width:230px">'+escHtml(c.strutture.join(', '))+'</div>'
+        +(diverso?'<div style="margin-top:4px;font-size:10.5px;color:#b91c1c;font-weight:600">&#9888; La tariffa confermata è diversa da quella trovata</div>':'')+'</td>'
+      +'<td style="'+td+'"><input type="number" step="0.01" min="0" data-f="euro" value="'+(r.euro!=null&&r.euro!==''?r.euro:'')+'" placeholder="—" style="'+inp+';width:78px"></td>'
+      +'<td style="'+td+';white-space:nowrap"><select data-f="mese_da" style="'+inp+';width:64px">'+mesiOpt(r.mese_da)+'</select> &ndash; <select data-f="mese_a" style="'+inp+';width:64px">'+mesiOpt(r.mese_a)+'</select><div style="font-size:10px;color:var(--text-light);margin-top:2px">vuoto = tutto l\'anno</div></td>'
+      +'<td style="'+td+'"><input type="number" step="0.01" min="0" data-f="euro_fuori" value="'+(r.euro_fuori!=null&&r.euro_fuori!==''?r.euro_fuori:'')+'" placeholder="0" style="'+inp+';width:72px"></td>'
+      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="max_notti" value="'+(r.max_notti?r.max_notti:'')+'" placeholder="nessun limite" style="'+inp+';width:92px"></td>'
+      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="esenti_sotto" value="'+(r.esenti_sotto!=null&&r.esenti_sotto!==''?r.esenti_sotto:'')+'" placeholder="nessuna" style="'+inp+';width:78px"></td>'
       +'<td style="'+td+';text-align:center"><input type="checkbox" data-f="conf" '+(r.conf?'checked ':'')+'style="width:17px;height:17px"></td>'
-      +'<td style="'+td+'"><input type="text" data-f="nota" value="'+escHtml(r.nota||'')+'" style="'+inp+';width:100%;min-width:180px"></td>'
-      +'</tr>';
+      +'<td style="'+td+'"><input type="text" data-f="nota" value="'+escHtml(r.nota||'')+'" style="'+inp+';width:100%;min-width:170px"></td>'
+      +'</tr>'
+      +(s?'<tr><td colspan="8" style="padding:0 8px 10px;border-bottom:1px solid var(--border)">'+tsSuggLine(c.key)+'</td></tr>':'');
   });
   h+='</tbody></table></div>';
   if(C.senza.length) h+='<div style="margin-top:8px;font-size:11.5px;color:var(--orange)">&#9888; Strutture senza comune catastale in anagrafica (niente calcolo automatico): '+escHtml(C.senza.join(', '))+'</div>';
-  // stato delle prenotazioni gestite
   var gest=(DB.prenotazioni||[]).filter(function(b){return b.tassa_auto&&!b.tassa_auto.manuale&&+b.tassa_auto.tot>0;});
   var stim=gest.filter(function(b){return b.tassa_auto.stimata;});
   var aperte=(DB.prenotazioni||[]).filter(function(b){return tsApplicabile(b)&&(!b.tassa_tot||+b.tassa_tot<=0)&&tsCalc(b).stato==='no_regola';});
@@ -6072,7 +6148,7 @@ function renderTassaRegole(){
   box.innerHTML=h;
 }
 function saveTassaRegole(){
-  var R=tsRegole();
+  var R=tsRegole(), dubbi=[];
   document.querySelectorAll('#cfg-tassa-regole tr[data-ts-key]').forEach(function(tr){
     var k=tr.getAttribute('data-ts-key'), r={comune:tr.getAttribute('data-ts-comune')};
     tr.querySelectorAll('[data-f]').forEach(function(el){
@@ -6081,13 +6157,14 @@ function saveTassaRegole(){
       else if(f==='nota') r.nota=el.value.trim();
       else r[f]=(el.value===''?'':+el.value);
     });
-    if(r.conf&&(r.euro===''||r.euro==null)){ r.conf=false; }
+    if((r.mese_da&&!r.mese_a)||(!r.mese_da&&r.mese_a)){ r.mese_da=''; r.mese_a=''; }
+    if(r.conf&&(r.euro===''||r.euro==null)){ r.conf=false; dubbi.push(r.comune); }
     R[k]=r;
   });
   DB.tassa_regole=R;
   var n=tassaAutoApplyAll();
   saveDB();
-  toast('Regole imposta di soggiorno salvate'+(n?' · '+n+' prenotazion'+(n===1?'e aggiornata':'i aggiornate'):''),4500);
+  toast('Regole imposta di soggiorno salvate'+(n?' · '+n+' prenotazion'+(n===1?'e aggiornata':'i aggiornate'):'')+(dubbi.length?' · non confermate perché senza tariffa: '+dubbi.join(', '):''),6000);
   renderTassaRegole();
 }
 // Riquadro nel modulo prenotazione: calcolo proposto e stato
@@ -6103,10 +6180,10 @@ function tsFormHint(){
   var st='margin-top:6px;padding:7px 10px;border-radius:8px;font-size:11.5px;line-height:1.5;';
   if(c.stato==='no_comune'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">Imposta automatica: la struttura non ha il comune in anagrafica.</div>'; return; }
   if(c.stato==='no_regola'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">Imposta automatica: nessuna regola confermata per '+escHtml(c.comune||'')+' (Impostazioni &rarr; Imposta di soggiorno).</div>'; return; }
-  if(c.stato==='esente'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">'+escHtml(c.comune)+': imposta di soggiorno non applicata.</div>'; return; }
+  if(c.stato==='esente'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">'+escHtml(c.comune)+': '+(c.fuoriPeriodo?'nessuna imposta nel periodo del soggiorno.':'imposta di soggiorno non applicata.')+'</div>'; return; }
   var cur=v('p-tassa-tot'), applicata=src&&src.tassa_auto&&!src.tassa_auto.manuale&&cur!==''&&r2(+cur)===r2(+src.tassa_auto.tot);
   el.innerHTML='<div style="'+st+'background:rgba(67,97,238,0.06);border:1px solid rgba(67,97,238,0.2);color:var(--text-mid)">'
-    +'<strong>Imposta calcolata: '+eur(c.tot)+'</strong> &middot; '+c.persone+' person'+(c.persone===1?'a':'e')+' &times; '+c.notti+' nott'+(c.notti===1?'e':'i')+' &times; '+eur(c.euro)+' ('+escHtml(c.comune)+')'
+    +'<strong>Imposta calcolata: '+eur(c.tot)+'</strong> &middot; '+c.persone+' person'+(c.persone===1?'a':'e')+' &times; '+c.notti+' nott'+(c.notti===1?'e':'i')+' &times; '+(c.stagionale?'media ':'')+eur(c.euro)+' ('+escHtml(c.comune)+')'
     +'<br><span style="color:'+(c.stimata?'var(--orange)':'var(--green)')+'">'+(c.stimata?'Stima &mdash; ':'&#10003; ')+escHtml(c.motivo)+'</span>'
     +(applicata?' &middot; applicata in automatico'
       :(r2(+cur||0)!==c.tot?' &middot; <a href="#" onclick="document.getElementById(\'p-tassa-tot\').value=\''+c.tot.toFixed(2)+'\';calcScorporo();return false" style="color:var(--blue);font-weight:600">Applica</a>':''))
