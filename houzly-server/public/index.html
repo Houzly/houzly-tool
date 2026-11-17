@@ -893,7 +893,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v113 · 12/11 · Pagamenti online dal sito</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v114 · 17/11 · Imposta di soggiorno automatica</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2065,7 +2065,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div class="form-grid">
         <div class="field"><label>Importo Totale OTA (&euro;) *</label><input type="number" id="p-tot" step="0.01" oninput="calcScorporo()"></div>
         <div class="field"><label>Commissione OTA (&euro;)</label><input type="number" id="p-comm-abs" step="0.01" value="0" oninput="calcScorporo()"><div class="field-hint" style="font-size:10.5px;color:var(--text-light);margin-top:4px">Smoobu compila automaticamente. Modificabile a mano.</div></div>
-        <div class="field"><label>Tassa di Soggiorno (&euro;/persona/notte)</label><input type="number" id="p-tassa-pn" step="0.01" value="0" oninput="calcScorporo()"><div class="field-hint">Tot = &euro;/pax &times; ospiti &times; notti</div></div><div class="field"><label>Override Tassa Totale (&euro;) <span style="font-weight:400;color:var(--text-light);font-size:11px">— opzionale, sovrascrive il calcolo</span></label><input type="number" id="p-tassa-tot" step="0.01" value="" placeholder="lascia vuoto per calcolo auto" oninput="calcScorporo()"></div>
+        <div class="field"><label>Tassa di Soggiorno (&euro;/persona/notte)</label><input type="number" id="p-tassa-pn" step="0.01" value="0" oninput="calcScorporo()"><div class="field-hint">Tot = &euro;/pax &times; ospiti &times; notti</div></div><div class="field"><label>Override Tassa Totale (&euro;) <span style="font-weight:400;color:var(--text-light);font-size:11px">— opzionale, sovrascrive il calcolo</span></label><input type="number" id="p-tassa-tot" step="0.01" value="" placeholder="lascia vuoto per calcolo auto" oninput="calcScorporo()"><div id="p-tassa-auto-hint"></div></div>
         <div class="field"><label>Spese Pulizia (&euro;)</label><input type="number" id="p-pulizia" step="0.01" value="0" oninput="calcScorporo()"></div>
         <div class="field"><label>% Compenso Houzly</label><input type="number" id="p-houzly-perc" step="0.1" value="20" oninput="calcScorporo()"></div>
         <div class="field"><label>IVA 22% su Houzly</label><select id="p-iva22" onchange="calcScorporo()"><option value="0">No (esente)</option><option value="1">S&igrave; (+ 22%)</option></select></div>
@@ -2547,6 +2547,12 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <button class="btn btn-outline btn-sm" id="cov-btn" onclick="runCoverageCheck()">&#128270; Verifica</button>
         </div>
       </div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title">Imposta di soggiorno per comune</div>
+      <div style="font-size:12px;color:var(--text-light);line-height:1.6;margin:4px 0 10px">Su <strong>Booking</strong> l'imposta pagata dall'ospite &egrave; inclusa nel payout e va scalata dal lordo. Quando Smoobu non la riporta, il tool la calcola con queste regole e con l'et&agrave; degli ospiti dal check-in, nei mesi di report ancora aperti. Senza check-in &egrave; una stima (pagano gli adulti dichiarati) che si corregge da sola all'arrivo dei dati. Una regola vale solo se &egrave; <strong>confermata</strong>; tariffa 0 = comune senza imposta. Sono indicate tariffa, massimo di notti ed et&agrave; di esenzione per le <strong>locazioni turistiche</strong>.</div>
+      <div id="cfg-tassa-regole"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveTassaRegole()">Salva regole</button></div>
     </div>
   </div>
 </div>
@@ -3705,7 +3711,7 @@ function renderPage(p){
   if(p==='import-tasks'){initImportTasksPage();}
   if(p==='pulizie'){/* Cleaning ora è app esterna (/cleaning.html) — pagina solo link */}
   if(p==='cl-settings'){if(typeof renderClSettings==='function'){clDB();renderClSettings();}}
-  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();if(typeof loadSyncIgnoreField==='function')loadSyncIgnoreField();}
+  if(p==='impostazioni'){if(typeof syncBookingFeeLabel==='function')syncBookingFeeLabel();if(typeof loadSyncIgnoreField==='function')loadSyncIgnoreField();if(typeof renderTassaRegole==='function')renderTassaRegole();}
   if(p==='onboarding'){if(typeof onbInit==='function')onbInit();}
   if(p==='checkin'){if(typeof ckiInit==='function')ckiInit();}
 }
@@ -4121,7 +4127,7 @@ function renderPostImportCheck(){
   var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
   var bookingNoTax = allBks.filter(function(b){
     return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2
-      && (b.checkin||'') >= bkCutoff && !isCheckVerified(b,'booking_no_tax');
+      && (b.checkin||'') >= bkCutoff && !isCheckVerified(b,'booking_no_tax') && tsCalc(b).stato!=='esente';
   });
   // v86: segnalazioni della sincronizzazione Smoobu
   var syncConflict = allBks.filter(function(b){ return matchesPostImportCheck(b,'sync_conflict'); });
@@ -4213,7 +4219,7 @@ function matchesPostImportCheck(b, type){
   if(type==='diretta_no_tot') return b.canale==='Diretta' && (!b.tot || +b.tot<=0);
   if(type==='booking_no_tax'){
     var bkCutoff = DB.booking_tax_cutoff || '2026-06-01';
-    return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2 && (b.checkin||'') >= bkCutoff;
+    return b.canale==='Booking.com' && (!b.tassa_tot || +b.tassa_tot<=0) && +b.notti>=2 && (b.checkin||'') >= bkCutoff && tsCalc(b).stato!=='esente';
   }
   if(type==='cavallo_no_mese') return typeof needsMeseConferma==='function' && needsMeseConferma(b);
   // v96: soggiorno lungo (28+ notti) non ancora impostato come competenza mensile.
@@ -5930,6 +5936,182 @@ function onTransitorioToggle(){
   if(ne&&!ne.value){ var tt=+document.getElementById('p-tot').value||0, cc=+document.getElementById('p-comm-abs').value||0; if(tt>0)ne.value=r2(tt-cc); }
   renderTRPreview();
 }
+// ═══ IMPOSTA DI SOGGIORNO AUTOMATICA — BOOKING (v114) ═══
+// Su Booking l'imposta pagata dall'ospite è inclusa nel payout: va scalata dal
+// lordo. Quando Smoobu non la riporta nei dettagli, il tool la calcola da solo
+// con le regole del comune (Impostazioni) e l'età degli ospiti dal check-in.
+//   • si applica solo ai mesi di report ancora APERTI (prima della chiusura del 16):
+//     i mesi chiusi non cambiano più, lì resta il calcolo proposto da applicare a mano;
+//   • se manca il check-in è una STIMA (pagano gli adulti dichiarati su Booking)
+//     e si ricalcola da sola quando arriva il check-in;
+//   • se la cifra viene cambiata a mano il tool smette di gestirla;
+//   • se poi Smoobu riporta l'imposta di Booking, vale quella.
+// Dati: DB.tassa_regole[chiave comune] = {comune, euro, max_notti, esenti_sotto, conf, nota}
+//       b.tassa_auto = {tot, persone, notti, euro, stimata, motivo, at, manuale}
+//       b.ospiti_eta = [età all'arrivo degli ospiti registrati]   b.n_adulti = adulti Smoobu
+var TS_DEFAULT={
+  'firenze':{comune:'Firenze',euro:6,max_notti:7,esenti_sotto:12,conf:false,nota:'Delibera 535/2024, in vigore dal 01/02/2025: verificare la tariffa 2026'},
+  'loro ciuffenna':{comune:'Loro Ciuffenna',euro:2,max_notti:5,esenti_sotto:'',conf:false,nota:'Locazioni turistiche: delibera G.C. 177 del 15/11/2024, dal 01/01/2025. Verificare l\'età di esenzione (art. 4 del regolamento)'}
+};
+function tsKey(c){ return String(c||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function tsRegole(){
+  if(!DB.tassa_regole){ DB.tassa_regole=JSON.parse(JSON.stringify(TS_DEFAULT)); }
+  return DB.tassa_regole;
+}
+function tsRegolaProp(prop){
+  if(!prop) return null;
+  var k=tsKey(prop.cat_comune); if(!k) return null;
+  var r=tsRegole()[k];
+  return (r&&r.conf)?r:null;
+}
+// Calcolo per una prenotazione → {stato:'ok'|'esente'|'no_regola'|'no_comune', ...}
+function tsCalc(b){
+  var prop=(DB.proprieta||[]).find(function(p){return p.id===b.proprieta_id;});
+  if(!prop||!tsKey(prop.cat_comune)) return {stato:'no_comune'};
+  var r=tsRegolaProp(prop);
+  if(!r) return {stato:'no_regola', comune:prop.cat_comune};
+  var euro=+r.euro||0;
+  if(euro<=0) return {stato:'esente', tot:0, comune:r.comune};
+  var nottiB=+b.notti||0;
+  var notti=(+r.max_notti>0)?Math.min(nottiB,+r.max_notti):nottiB;
+  var es=(r.esenti_sotto!==''&&r.esenti_sotto!=null)?+r.esenti_sotto:0;
+  var n=+b.n_ospiti||1, ages=Array.isArray(b.ospiti_eta)?b.ospiti_eta:[];
+  var paganti, stimata=false, motivo='';
+  if(ages.length>=n){
+    paganti=ages.filter(function(a){return +a>=es;}).length;
+    motivo='età dal check-in';
+  } else if(ages.length){
+    paganti=ages.filter(function(a){return +a>=es;}).length+(n-ages.length);
+    stimata=true; motivo='check-in parziale ('+ages.length+' di '+n+' ospiti)';
+  } else if(+b.n_adulti>0){
+    paganti=Math.min(+b.n_adulti,n);
+    stimata=true; motivo='senza check-in: pagano gli '+paganti+' adulti dichiarati';
+  } else {
+    paganti=n; stimata=true; motivo='senza check-in: tutti gli ospiti';
+  }
+  return {stato:'ok', tot:r2(euro*notti*paganti), persone:paganti, notti:notti, euro:euro, stimata:stimata, motivo:motivo, comune:r.comune};
+}
+function tsMeseReport(b){ return /^\d{4}-\d{2}$/.test(b.meseReportOverride||'')?b.meseReportOverride:(b.checkin||'').slice(0,7); }
+// Prenotazioni che il tool può gestire in automatico
+function tsApplicabile(b){
+  if(!b||b.black||b.transitorio||b.canale!=='Booking.com') return false;
+  var cut=DB.booking_tax_cutoff||'2026-06-01';
+  if((b.checkin||'')<cut) return false;
+  var mk=tsMeseReport(b); if(!mk) return false;
+  if(typeof rtChiuso==='function'&&rtChiuso(mk)) return false;
+  return true;
+}
+function tsGestita(b){
+  if(!b.tassa_tot||+b.tassa_tot<=0) return true;
+  return !!(b.tassa_auto&&!b.tassa_auto.manuale&&r2(+b.tassa_tot)===r2(+b.tassa_auto.tot));
+}
+function tassaAutoApplyAll(){
+  var n=0, now=new Date().toISOString();
+  (DB.prenotazioni||[]).forEach(function(b){
+    if(!tsApplicabile(b)) return;
+    // cifra cambiata a mano dopo il calcolo → non la tocco più
+    if(b.tassa_auto&&!b.tassa_auto.manuale&&+b.tassa_tot>0&&r2(+b.tassa_tot)!==r2(+b.tassa_auto.tot)){ b.tassa_auto.manuale=true; n++; return; }
+    if(!tsGestita(b)) return;
+    var c=tsCalc(b);
+    if(c.stato==='esente'){
+      if(b.tassa_auto&&+b.tassa_tot>0){ b.tassa_tot=null; b.tassa_auto={tot:0,esente:true,at:now}; b.calc=doCalc(b); bkMarkSrc(b.id,'imposta di soggiorno automatica'); n++; }
+      return;
+    }
+    if(c.stato!=='ok') return;
+    var old=b.tassa_auto||{};
+    var stessa=(r2(+b.tassa_tot||0)===c.tot)&&old.stimata===c.stimata&&old.persone===c.persone&&old.notti===c.notti&&old.euro===c.euro;
+    if(stessa) return;
+    b.tassa_tot=c.tot>0?c.tot:null;
+    b.tassa_auto={tot:c.tot,persone:c.persone,notti:c.notti,euro:c.euro,stimata:c.stimata,motivo:c.motivo,at:now};
+    b.calc=doCalc(b);
+    bkMarkSrc(b.id,'imposta di soggiorno automatica');
+    n++;
+  });
+  return n;
+}
+// Comuni delle strutture (per la tabella in Impostazioni)
+function tsComuni(){
+  var m={}, senza=[];
+  (DB.proprieta||[]).forEach(function(p){
+    var k=tsKey(p.cat_comune);
+    if(!k){ senza.push(p.nome); return; }
+    if(!m[k]) m[k]={key:k,comune:String(p.cat_comune).trim(),strutture:[]};
+    m[k].strutture.push(p.nome);
+  });
+  return {lista:Object.keys(m).sort().map(function(k){return m[k];}), senza:senza};
+}
+function renderTassaRegole(){
+  var box=document.getElementById('cfg-tassa-regole'); if(!box) return;
+  var R=tsRegole(), C=tsComuni();
+  var inp='background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;padding:5px 7px;font-family:inherit;font-size:12.5px;box-sizing:border-box';
+  var th='padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap';
+  var td='padding:7px 8px;font-size:12.5px;border-bottom:1px solid var(--border);vertical-align:top';
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="'+th+'">Comune</th><th style="'+th+'">&euro;/persona/notte</th><th style="'+th+'">Max notti</th><th style="'+th+'">Esenti sotto i (anni)</th><th style="'+th+';text-align:center">Confermata</th><th style="'+th+'">Nota / fonte</th></tr></thead><tbody>';
+  C.lista.forEach(function(c,i){
+    var r=R[c.key]||{};
+    h+='<tr data-ts-key="'+escHtml(c.key)+'" data-ts-comune="'+escHtml(c.comune)+'">'
+      +'<td style="'+td+'"><strong>'+escHtml(c.comune)+'</strong><div style="font-size:10.5px;color:var(--text-light);margin-top:2px;max-width:220px">'+escHtml(c.strutture.join(', '))+'</div></td>'
+      +'<td style="'+td+'"><input type="number" step="0.01" min="0" data-f="euro" value="'+(r.euro!=null&&r.euro!==''?r.euro:'')+'" placeholder="—" style="'+inp+';width:80px"></td>'
+      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="max_notti" value="'+(r.max_notti?r.max_notti:'')+'" placeholder="nessun limite" style="'+inp+';width:90px"></td>'
+      +'<td style="'+td+'"><input type="number" step="1" min="0" data-f="esenti_sotto" value="'+(r.esenti_sotto!=null&&r.esenti_sotto!==''?r.esenti_sotto:'')+'" placeholder="nessuna" style="'+inp+';width:80px"></td>'
+      +'<td style="'+td+';text-align:center"><input type="checkbox" data-f="conf" '+(r.conf?'checked ':'')+'style="width:17px;height:17px"></td>'
+      +'<td style="'+td+'"><input type="text" data-f="nota" value="'+escHtml(r.nota||'')+'" style="'+inp+';width:100%;min-width:180px"></td>'
+      +'</tr>';
+  });
+  h+='</tbody></table></div>';
+  if(C.senza.length) h+='<div style="margin-top:8px;font-size:11.5px;color:var(--orange)">&#9888; Strutture senza comune catastale in anagrafica (niente calcolo automatico): '+escHtml(C.senza.join(', '))+'</div>';
+  // stato delle prenotazioni gestite
+  var gest=(DB.prenotazioni||[]).filter(function(b){return b.tassa_auto&&!b.tassa_auto.manuale&&+b.tassa_auto.tot>0;});
+  var stim=gest.filter(function(b){return b.tassa_auto.stimata;});
+  var aperte=(DB.prenotazioni||[]).filter(function(b){return tsApplicabile(b)&&(!b.tassa_tot||+b.tassa_tot<=0)&&tsCalc(b).stato==='no_regola';});
+  h+='<div style="margin-top:10px;font-size:12px;color:var(--text-mid);line-height:1.6">'
+    +'Prenotazioni Booking con imposta calcolata dal tool: <strong>'+gest.length+'</strong>'+(stim.length?' &middot; <span style="color:var(--orange)">'+stim.length+' stimate senza check-in completo</span>':'')
+    +(aperte.length?'<br><span style="color:var(--orange)">'+aperte.length+' prenotazioni Booking di mesi aperti restano senza imposta perché il comune non ha una regola confermata.</span>':'')
+    +'</div>';
+  box.innerHTML=h;
+}
+function saveTassaRegole(){
+  var R=tsRegole();
+  document.querySelectorAll('#cfg-tassa-regole tr[data-ts-key]').forEach(function(tr){
+    var k=tr.getAttribute('data-ts-key'), r={comune:tr.getAttribute('data-ts-comune')};
+    tr.querySelectorAll('[data-f]').forEach(function(el){
+      var f=el.getAttribute('data-f');
+      if(f==='conf') r.conf=el.checked;
+      else if(f==='nota') r.nota=el.value.trim();
+      else r[f]=(el.value===''?'':+el.value);
+    });
+    if(r.conf&&(r.euro===''||r.euro==null)){ r.conf=false; }
+    R[k]=r;
+  });
+  DB.tassa_regole=R;
+  var n=tassaAutoApplyAll();
+  saveDB();
+  toast('Regole imposta di soggiorno salvate'+(n?' · '+n+' prenotazion'+(n===1?'e aggiornata':'i aggiornate'):''),4500);
+  renderTassaRegole();
+}
+// Riquadro nel modulo prenotazione: calcolo proposto e stato
+function tsFormHint(){
+  var el=document.getElementById('p-tassa-auto-hint'); if(!el) return;
+  var canale=(document.getElementById('p-canale')||{}).value;
+  if(canale!=='Booking.com'){ el.innerHTML=''; return; }
+  var eBtn=document.getElementById('btn-save-pren'), eid=eBtn?eBtn.getAttribute('data-edit-id'):null;
+  var src=eid?(DB.prenotazioni||[]).find(function(x){return x.id===eid;}):null;
+  var v=function(id){var e=document.getElementById(id);return e?e.value:'';};
+  var b=Object.assign({},src||{},{proprieta_id:v('p-prop-sel'),notti:+v('p-notti')||0,n_ospiti:+v('p-n-ospiti')||1,canale:'Booking.com',checkin:v('p-checkin')});
+  var c=tsCalc(b);
+  var st='margin-top:6px;padding:7px 10px;border-radius:8px;font-size:11.5px;line-height:1.5;';
+  if(c.stato==='no_comune'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">Imposta automatica: la struttura non ha il comune in anagrafica.</div>'; return; }
+  if(c.stato==='no_regola'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">Imposta automatica: nessuna regola confermata per '+escHtml(c.comune||'')+' (Impostazioni &rarr; Imposta di soggiorno).</div>'; return; }
+  if(c.stato==='esente'){ el.innerHTML='<div style="'+st+'background:var(--surface2);color:var(--text-light)">'+escHtml(c.comune)+': imposta di soggiorno non applicata.</div>'; return; }
+  var cur=v('p-tassa-tot'), applicata=src&&src.tassa_auto&&!src.tassa_auto.manuale&&cur!==''&&r2(+cur)===r2(+src.tassa_auto.tot);
+  el.innerHTML='<div style="'+st+'background:rgba(67,97,238,0.06);border:1px solid rgba(67,97,238,0.2);color:var(--text-mid)">'
+    +'<strong>Imposta calcolata: '+eur(c.tot)+'</strong> &middot; '+c.persone+' person'+(c.persone===1?'a':'e')+' &times; '+c.notti+' nott'+(c.notti===1?'e':'i')+' &times; '+eur(c.euro)+' ('+escHtml(c.comune)+')'
+    +'<br><span style="color:'+(c.stimata?'var(--orange)':'var(--green)')+'">'+(c.stimata?'Stima &mdash; ':'&#10003; ')+escHtml(c.motivo)+'</span>'
+    +(applicata?' &middot; applicata in automatico'
+      :(r2(+cur||0)!==c.tot?' &middot; <a href="#" onclick="document.getElementById(\'p-tassa-tot\').value=\''+c.tot.toFixed(2)+'\';calcScorporo();return false" style="color:var(--blue);font-weight:600">Applica</a>':''))
+    +'</div>';
+}
 // ═══ PAGAMENTO ONLINE DAL SITO (v113) ═══
 // Le prenotazioni pagate con Stripe sul sito arrivano dalla sync con commissione
 // e metodo di pagamento. Da qui si cancellano con il rimborso calcolato dal server.
@@ -6182,6 +6364,7 @@ function onCanaleChange(){
   calcScorporo();
 }
 function calcScorporo(){
+  try{ tsFormHint(); }catch(e){} // v114
   // v101: aggiorna anche il piano payout della locazione transitoria
   var _trEl=document.getElementById('p-transitorio');
   if(_trEl&&_trEl.checked&&typeof renderTRPreview==='function') renderTRPreview();
@@ -15976,9 +16159,12 @@ async function ckiSyncBilling() {
       fill('ospite_prov', it.address_province);
       fill('ospite_email', it.email);
       if (!b.checkin_data_at || b.checkin_data_at !== it.submitted_at) { b.checkin_data_at = it.submitted_at; touched = true; }
+      // v114: età all'arrivo di tutti gli ospiti registrati (imposta di soggiorno)
+      if (Array.isArray(it.guest_ages) && it.guest_ages.length && (b.ospiti_eta || []).join(',') !== it.guest_ages.join(',')) { b.ospiti_eta = it.guest_ages.slice(); touched = true; }
       if (touched) changed++;
     });
-    if (changed) {
+    var nTassa = 0; try { nTassa = tassaAutoApplyAll(); } catch (e) { console.warn('[tassaAuto]', e.message); } // v114
+    if (changed || nTassa) {
       saveDB();
       if (document.getElementById('page-documenti').classList.contains('active')) renderDocumenti();
       toast('Dati del check-in aggiunti a ' + changed + ' prenotazion' + (changed === 1 ? 'e' : 'i'), 3500);
@@ -16286,6 +16472,7 @@ function syncApply(items){
       b={id:uid(),ota_num:String(item.id),ospite_cf:'',ospite_ind:'',tassa_pn:0,
          houzly_perc:cfg.houzly_perc,iva22:(own&&own.tipo==='azienda')?false:cfg.iva22,calc:{}};
       SYNC_FIELDS.forEach(function(f){ b[f]=d.fields[f]; });
+      if(item.res&&item.res.adults!=null) b.n_adulti=+item.res.adults||0; // v114
       if(d.isDiretta&&b.pulizia) b._pul_da_confermare=true;
       if(before) b._sync_recuperata=now;
       b._smoobu={v:d.fields,mod:item.modifiedAt,at:now,created:true};
@@ -16299,9 +16486,12 @@ function syncApply(items){
     // ── Prenotazione esistente: unione campo per campo ──
     if(b._sync_cancelled){ delete b._sync_cancelled; }  // tornata attiva su Smoobu
     var prev=b._smoobu&&b._smoobu.v;
+    if(item.res&&item.res.adults!=null&&+b.n_adulti!==(+item.res.adults||0)) b.n_adulti=+item.res.adults||0; // v114
     var changed=false, conflicts=[], changedFields=[];
     SYNC_FIELDS.forEach(function(f){
       var nv=d.fields[f], cur=b[f];
+      // v114: se Smoobu riporta l'imposta di Booking vale quella, al posto del calcolo automatico
+      if(f==='tassa_tot'&&b.tassa_auto&&!b.tassa_auto.manuale&&+nv>0){ if(!syncSame(cur,nv)){ b[f]=nv; changed=true; changedFields.push(f); } delete b.tassa_auto; return; }
       if(prev){
         var pv=prev[f];
         if(syncSame(cur,pv)){                       // non toccato da te → segue Smoobu
@@ -16350,6 +16540,7 @@ function syncSummaryText(o){
   if(o.cancellate)parts.push(o.cancellate+' cancellat'+(o.cancellate===1?'a':'e'));
   if(o.conflitti)parts.push(o.conflitti+' da verificare');
   if(o.segnalate)parts.push(o.segnalate+' cancellat'+(o.segnalate===1?'a':'e')+' su Smoobu da decidere');
+  if(o.tassa)parts.push(o.tassa+' impost'+(o.tassa===1?'a':'e')+' di soggiorno calcolat'+(o.tassa===1?'a':'e'));
   if(o.recuperate)parts.push(o.recuperate+' recuperat'+(o.recuperate===1?'a':'e')+' (arrivo prima del 1/9)');
   return parts.join(' · ');
 }
@@ -16367,6 +16558,8 @@ async function syncFromSmoobu(full, silent){
     _syncState.syncFrom=data.sync_from||_syncState.syncFrom;
     _syncState.lastSince=data.server_time;
     var o=syncApply(data.items||[]);
+    try{ o.tassa=tassaAutoApplyAll(); }catch(e){ console.warn('[tassaAuto]',e.message); } // v114
+    if(full&&typeof ckiSyncBilling==='function') setTimeout(function(){ ckiSyncBilling(); }, 800); // v114: età ospiti dal check-in
     _syncState.lastSummary={at:new Date().toISOString(),o:o,n:(data.items||[]).length};
     var txt=syncSummaryText(o);
     if(!txt&&o.meta){ saveDB(); if(typeof renderLiveFeed==='function') renderLiveFeed(); }
