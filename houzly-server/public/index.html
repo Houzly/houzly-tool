@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v121 · 17/11 · Analisi: tutto senza IVA</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v122 · 18/11 · Dashboard interattiva</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -947,10 +947,13 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <span style="font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.14em;white-space:nowrap">Proprietà</span>
       <div id="dash-prop-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
+    <div id="dx-filtri"></div>
   </div>
   <!-- STAT GRIDS -->
   <div class="stat-grid" id="stat-grid"></div>
   <div class="stat-grid" id="stat-grid-2" style="margin-top:0"></div>
+  <!-- DASHBOARD INTERATTIVA (v122) -->
+  <div id="dx-root"></div>
   <!-- LIVE DA SMOOBU (v93) -->
   <div id="live-feed-container"></div>
   <!-- CHECK POST-IMPORT (v51) -->
@@ -4031,6 +4034,7 @@ function getDashBks(){
   return DB.prenotazioni.filter(function(b){
     if(b.black)return false;
     if(propIds.length&&propIds.indexOf(b.proprieta_id)<0)return false;
+    if(typeof dxCanale!=='undefined'&&dxCanale&&dxCan(b)!==dxCanale)return false; // v122: filtro canale
     if(meseNum||annoVal){
       // v41: stesso filtro del Report Mensile Proprietari
       // (mese del check-in oppure override manuale meseReportOverride)
@@ -4478,6 +4482,7 @@ function renderImpostaSoggiorno(){
 function renderDash(){
   ripristinaCalcPieni(); // v104
   populateDashFilter();
+  _dxSeriesCache=null; // v122
   var allBks=getDashBks();
   var totOTA=allBks.reduce(function(s,b){return s+b.calc.tot;},0);
   var totHouzly=allBks.reduce(function(s,b){return s+b.calc.houzly;},0);
@@ -4516,21 +4521,27 @@ function renderDash(){
   } else {
     subProps=nPropAttive+' di '+DB.proprieta.length+' proprietà';
   }
+  // v122: card con variazione vs periodo di confronto, mini-andamento e clic → grafico
+  var _dxOk=typeof dxStatCard==='function';
+  var _P=_dxOk?dxPrev():null, _pv=_P?dxAgg(dxBks(_P.m,_P.y)):null, _pl=_P?_P.label:'';
+  var _cu=_dxOk?dxAgg(allBks):{};
+  function C(icon,label,value,sub,accent,k){ return _dxOk?dxStatCard(icon,label,value,sub,accent,k,_cu[k],_pv?_pv[k]:null,_pl):statCard(icon,label,value,sub,accent); }
   document.getElementById('stat-grid').innerHTML=
-    statCard('📅','Prenotazioni',allBks.length,subProps,'var(--blue)')+
-    statCard('💰','Incasso Lordo',eur(totOTA),'Lordo da piattaforme','var(--blue)')+
-    statCard('💼','Compenso Houzly',eur(totHouzly),'Commissioni maturate','var(--orange)')+
-    statCard('🏠','Canone Proprietari',eur(totCanone),'Canone Locazione Puro','var(--green)')+
-    statCard('🧾','Commissioni OTA',eur(totCommOTA),'Trattenute da Booking/Airbnb','var(--red)')+
-    statCard('🏛️','Tasse di Soggiorno',eur(totTasse),'Partita di giro → Comuni','var(--cyan)');
+    C('📅','Prenotazioni',allBks.length,subProps,'var(--blue)','n')+
+    C('💰','Incasso Lordo',eur(totOTA),'Lordo da piattaforme','var(--blue)','lordo')+
+    C('💼','Compenso Houzly',eur(totHouzly),'Commissioni maturate','var(--orange)','comp')+
+    C('🏠','Canone Proprietari',eur(totCanone),'Canone Locazione Puro','var(--green)','canone')+
+    C('🧾','Commissioni OTA',eur(totCommOTA),'Trattenute da Booking/Airbnb','var(--red)','ota')+
+    C('🏛️','Tasse di Soggiorno',eur(totTasse),'Partita di giro → Comuni','var(--cyan)','tasse');
   document.getElementById('stat-grid-2').innerHTML=
-    statCard('👥','Totale Ospiti',totOspiti,(dashPropSelection.length>0?'Proprietà selezionate':'Tutte le proprietà'),'var(--blue)')+
-    statCard('🧹','Pulizie Incassate',eur(totPulizie),'Cumulate nel periodo','var(--blue-mid)')+
+    C('👥','Totale Ospiti',totOspiti,(dashPropSelection.length>0?'Proprietà selezionate':'Tutte le proprietà'),'var(--blue)','ospiti')+
+    C('🧹','Pulizie Incassate',eur(totPulizie),'Cumulate nel periodo','var(--blue-mid)','pul')+
     statCardEditable('🧽','Pulizie In-House',DB.spese_pulizie,'spese_pulizie')+
     statCardEditable('🚚','Pulizie GL Servizi',DB.spese_pulizie_glservizi,'spese_pulizie_glservizi')+
     statCardEditable('🛏️','Spesa Biancheria',DB.spese_biancheria,'spese_biancheria')+
-    statCard('🌙','Totale Notti',totNotti,'Notti prenotate','var(--cyan)')+
+    C('🌙','Totale Notti',totNotti,'Notti prenotate','var(--cyan)','notti')+
     statCard('👤','Proprietari Attivi',DB.proprietari.length,DB.proprietari.filter(function(p){return p.tipo==='persona_fisica';}).length+' PF · '+DB.proprietari.filter(function(p){return p.tipo==='azienda';}).length+' Aziende','var(--blue)');
+  try{ if(_dxOk) dxRender(); }catch(e){ console.error(e); } // v122
   // v51: Check post-import
   renderPostImportCheck();
   if(typeof renderLiveFeed==='function') renderLiveFeed();
@@ -17544,6 +17555,605 @@ function anDelCosto(id){
   if(!confirm('Eliminare questo costo?')) return;
   var A=anDB(); A.costi=A.costi.filter(function(k){return k.id!==id;}); saveDB(); renderAnalisi();
 }
+</script>
+
+<style id="dx-css">
+/* ══ DASHBOARD INTERATTIVA (v122) ══ */
+#dx-filtri{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.dx-flbl{font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.14em;white-space:nowrap}
+.dx-chips{display:flex;flex-wrap:wrap;gap:5px}
+.dx-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text-mid);transition:all .15s;user-select:none;white-space:nowrap}
+.dx-chip:hover{border-color:var(--gold)}
+.dx-chip b{font-weight:700;color:var(--text-light);font-size:10.5px}
+.dx-chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dx-chip.on{background:var(--blue-dark);border-color:var(--blue-dark);color:#fff}
+.dx-chip.on b{color:rgba(255,255,255,.7)}
+.dx-seg{display:inline-flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;background:var(--surface)}
+.dx-seg span{padding:4px 11px;font-size:11.5px;font-weight:600;color:var(--text-mid);cursor:pointer}
+.dx-seg span.on{background:rgba(200,165,91,.18);color:var(--gold-ink)}
+.dx-note{font-size:11.5px;color:var(--text-light)}
+.dx-muted{color:var(--text-light)}
+/* card KPI */
+.stat-card.dx-card{cursor:pointer;transition:border-color .15s,transform .15s}
+.stat-card.dx-card:hover{border-color:rgba(200,165,91,.6)}
+.stat-card.dx-on{border-color:var(--gold)!important;box-shadow:0 0 0 1px var(--gold) inset}
+.dx-delta{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:2px;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif}
+.dx-delta.up{color:var(--green);background:rgba(47,125,92,.10)}
+.dx-delta.down{color:var(--red);background:rgba(176,71,61,.10)}
+.dx-delta.nd{color:var(--gold-ink);background:rgba(200,165,91,.14)}
+.dx-spark{display:flex;align-items:flex-end;gap:2px;height:22px;margin-top:10px;opacity:.9}
+.dx-spark i{flex:1;background:var(--border);border-radius:1.5px;min-height:2px}
+.dx-spark i:last-child{background:var(--text-light)}
+.dx-spark i.on{background:var(--gold)!important}
+/* sezioni */
+.dx-sec{padding:0!important;overflow:hidden;margin-bottom:14px}
+.dx-sec-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid var(--border)}
+.dx-sec-t{display:flex;align-items:baseline;gap:10px;cursor:pointer;flex-wrap:wrap;user-select:none}
+.dx-caret{font-size:11px;color:var(--text-light);transition:transform .2s;display:inline-block}
+.dx-title{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--ink)}
+.dx-sub{font-size:11.5px;color:var(--text-light)}
+.dx-sec-r{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dx-sec-b{padding:14px 18px}
+.dx-sec.dx-closed .dx-sec-b{display:none}
+.dx-sec.dx-closed .dx-sec-h{border-bottom:none}
+.dx-sec.dx-closed .dx-caret{transform:rotate(-90deg)}
+.dx-hint{font-size:11px;color:var(--text-light);margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dx-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-mid);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;white-space:nowrap}
+.dx-pill b{color:var(--ink)}
+.dx-pill.warn{color:var(--orange);border-color:rgba(168,116,29,.4);background:rgba(200,165,91,.10);cursor:pointer}
+/* oggi */
+.dx-days{display:grid;grid-template-columns:repeat(8,minmax(128px,1fr));gap:8px;overflow-x:auto;padding-bottom:2px}
+.dx-day{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px;min-height:92px}
+.dx-day.today{border-color:var(--gold);background:rgba(200,165,91,.08)}
+.dx-day-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.dx-day-h b{font-size:12px;color:var(--ink)}
+.dx-day-h span{font-size:10.5px;color:var(--text-light)}
+.dx-day.we .dx-day-h span{color:var(--gold-ink)}
+.dx-empty{font-size:12px;color:var(--text-light);text-align:center;padding-top:14px}
+.dx-evt{display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:5px;cursor:pointer;margin-bottom:3px;background:var(--surface);border:1px solid transparent;position:relative}
+.dx-evt:hover{border-color:var(--gold)}
+.dx-evt>i{width:3px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.dx-evt-a{font-size:11px;font-weight:700;width:11px;flex-shrink:0}
+.dx-evt.in .dx-evt-a{color:var(--green)}.dx-evt.out .dx-evt-a{color:var(--red)}
+.dx-evt-t{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.dx-evt-t b{font-size:11px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.dx-evt-t span{font-size:10px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dx-evt-t em{color:var(--orange);font-style:normal;font-weight:600}
+.dx-cambio{position:absolute;top:-5px;right:3px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--gold);color:#170046;border-radius:6px;padding:0 4px}
+/* andamento */
+.dx-trend-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.dx-big{font-family:var(--serif);font-size:26px;font-weight:500;color:var(--ink);line-height:1.1}
+.dx-leg{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--text-mid)}
+.dx-leg span{display:inline-flex;align-items:center;gap:5px}
+.dx-leg i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dx-leg i.ln{height:2px;width:14px;background:var(--text);border-radius:0;opacity:.55}
+.dx-chart{position:relative;height:220px;margin:18px 0 26px 38px}
+@media (min-width:1100px){#stat-grid{grid-template-columns:repeat(3,1fr)}}
+.dx-gl{position:absolute;left:0;right:0;border-top:1px dashed var(--border)}
+.dx-gl span{position:absolute;left:-40px;top:-7px;width:34px;text-align:right;font-size:9.5px;color:var(--text-light)}
+.dx-cols{position:absolute;inset:0;display:flex;gap:6px;align-items:stretch;border-bottom:1px solid var(--border)}
+.dx-col{flex:1;position:relative;cursor:pointer;border-radius:4px 4px 0 0;transition:background .15s}
+.dx-col:hover{background:rgba(200,165,91,.10)}
+.dx-col.dim{opacity:.55}
+.dx-col.dim:hover{opacity:.85}
+.dx-col.sel{background:rgba(200,165,91,.14)}
+.dx-stack{position:absolute;left:16%;right:16%;bottom:0;top:0;display:flex;flex-direction:column-reverse}
+.dx-stack i{display:block;width:100%;flex-shrink:0}
+.dx-stack i:last-child{border-radius:3px 3px 0 0}
+.dx-prev{position:absolute;left:6%;right:6%;height:0;border-top:2px solid var(--text);opacity:.45}
+.dx-val{position:absolute;left:0;right:0;text-align:center;font-size:9.5px;color:var(--text-light);font-weight:600;pointer-events:none}
+.dx-lbl{position:absolute;left:-4px;right:-4px;bottom:-20px;text-align:center;font-size:10px;color:var(--text-light);white-space:nowrap}
+.dx-col.sel .dx-lbl{color:var(--gold-ink);font-weight:700}
+/* planning */
+.dx-plan{--pn:168px;font-size:11px;overflow-x:auto}
+.dx-pr{display:flex;min-width:calc(var(--pn) + var(--dxD) * 26px)}
+.dx-pn{width:var(--pn);flex-shrink:0;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 8px 0 0;position:sticky;left:0;background:var(--surface);z-index:2;height:28px;border-bottom:1px solid var(--border)}
+.dx-pn b{font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px}
+.dx-pn span{font-size:10px;color:var(--text-light);flex-shrink:0}
+.dx-pt{flex:1;position:relative;height:28px;border-bottom:1px solid var(--border)}
+.dx-phr .dx-pn,.dx-phr .dx-pt{height:30px;border-bottom:1px solid var(--border)}
+.dx-phs{display:flex}
+.dx-ph{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;color:var(--text-light)}
+.dx-ph span{font-size:8.5px;text-transform:uppercase}
+.dx-ph b{font-size:11px;color:var(--text-mid);font-weight:600}
+.dx-ph.we b,.dx-ph.we span{color:var(--gold-ink)}
+.dx-ph.td{background:var(--gold);border-radius:6px}
+.dx-ph.td b,.dx-ph.td span{color:#170046}
+.dx-pbody{position:relative}
+.dx-pov{position:absolute;top:0;bottom:0;left:var(--pn);right:0;pointer-events:none;min-width:calc(var(--dxD) * 26px)}
+.dx-pov i{position:absolute;top:0;bottom:0}
+.dx-pov i.we{background:rgba(200,165,91,.07)}
+.dx-pov i.td{background:rgba(200,165,91,.16);border-left:1px solid var(--gold);border-right:1px solid var(--gold)}
+.dx-bar{position:absolute;top:4px;bottom:4px;border-radius:5px;color:#fff;cursor:pointer;overflow:hidden;display:flex;align-items:center;padding:0 6px;box-shadow:0 1px 1px rgba(0,0,0,.12);transition:filter .15s;z-index:1}
+.dx-bar:hover{filter:brightness(1.12)}
+.dx-bar span{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dx-bar.off{opacity:.22}
+.dx-bar.agg{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 4px,transparent 4px 8px)}
+.dx-gap,.dx-gap-l{position:absolute;top:8px;bottom:8px;border-radius:4px;border:1.5px dashed var(--red);background:rgba(176,71,61,.08);cursor:help}
+.dx-gap-l{position:static;display:inline-block;width:18px;height:10px}
+.dx-nav{display:flex;gap:4px}
+/* classifica */
+.dx-tab table{width:100%}
+.dx-tab th{cursor:pointer;user-select:none;white-space:nowrap}
+.dx-tab th.on{color:var(--gold-ink)}
+.dx-tab th.r,.dx-tab td.r{text-align:right}
+.dx-tab tbody tr{cursor:pointer}
+.dx-tab tbody tr:hover td{background:rgba(200,165,91,.07)}
+.dx-tab tbody tr.sel td{background:rgba(200,165,91,.14)}
+.dx-rank{display:inline-block;width:20px;color:var(--text-light);font-size:10.5px}
+.dx-occ{display:inline-block;width:42px;height:5px;background:var(--border);border-radius:3px;margin-right:6px;vertical-align:middle;overflow:hidden}
+.dx-occ i{display:block;height:100%;background:var(--gold)}
+.dx-cbar{display:inline-block;width:56px;height:5px;background:transparent;margin-right:8px;vertical-align:middle}
+.dx-cbar i{display:block;height:100%;background:var(--blue-dark);opacity:.55;border-radius:3px;margin-left:auto}
+/* pannello laterale */
+#dx-drawer{position:fixed;inset:0;z-index:400}
+.dx-dr-bg{position:absolute;inset:0;background:rgba(15,10,35,.35);opacity:0;transition:opacity .2s}
+.dx-dr-p{position:absolute;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--border);box-shadow:-16px 0 40px rgba(0,0,0,.18);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+#dx-drawer.open .dx-dr-bg{opacity:1}
+#dx-drawer.open .dx-dr-p{transform:none}
+.dx-dr-h{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 18px 12px;border-bottom:1px solid var(--border)}
+.dx-dr-t{font-family:var(--serif);font-size:20px;color:var(--ink);margin-top:3px}
+.dx-dr-a{padding:10px 18px;border-bottom:1px solid var(--border)}
+.dx-dr-l{flex:1;overflow-y:auto;padding:6px 10px}
+.dx-dr-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:6px;cursor:pointer}
+.dx-dr-row:hover{background:var(--surface2)}
+.dx-dr-row>i{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.dx-dr-m{flex:1;min-width:0;display:flex;flex-direction:column}
+.dx-dr-m b{font-size:12.5px;color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dx-dr-m span,.dx-dr-v span{font-size:10.5px;color:var(--text-light)}
+.dx-dr-v{text-align:right;display:flex;flex-direction:column;flex-shrink:0}
+.dx-dr-v b{font-size:12.5px;color:var(--ink)}
+.dx-dr-f{display:flex;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--text-mid)}
+.dx-dr-f b{color:var(--ink)}
+#dx-tip{position:fixed;z-index:9999;pointer-events:none;display:none;max-width:280px;background:#170046;color:#f3efe6;border:1px solid rgba(200,165,91,.45);border-radius:7px;padding:8px 10px;font-size:11.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#dx-tip b{color:#e2c98a}
+@media (max-width:860px){
+  .dx-sec-h{padding:11px 12px}.dx-sec-b{padding:12px}
+  .dx-plan{--pn:118px}
+  .dx-chart{height:180px;margin-left:30px}
+  .dx-gl span{left:-32px;width:28px}
+  .dx-cols{gap:3px}
+  .dx-val{display:none}
+  .dx-days{grid-template-columns:repeat(8,140px)}
+  #dx-filtri>.dx-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+}
+</style>
+<script id="dx-js">
+// ══ DASHBOARD INTERATTIVA (v122) ══════════════════════════════════════
+// Solo lettura: usa b.calc come le card della Dashboard. Non scrive nel DB
+// e non tocca report, ritenute o Analisi.
+var dxCanale='';            // filtro canale globale ('' = tutti)
+var dxCmp='anno';           // confronto: 'anno' (stesso periodo anno prima) | 'mese' (mese precedente)
+var dxMetric='comp';        // metrica del grafico Andamento
+var dxSort={k:'comp',dir:-1};
+var dxClassAll=false;
+var dxPlanStart=null;       // Date: primo giorno della finestra del planning
+var DX_CANALI=['Airbnb','Booking.com','Diretta','Vrbo','Expedia','Altro'];
+var DX_COL={'Airbnb':'#c4655a','Booking.com':'#3a5596','Diretta':'#c8a55b','Vrbo':'#3f8088','Expedia':'#8a6bb0','Altro':'#8d8a99'};
+var DX_MET={
+  comp:{l:'Compenso Houzly',f:function(b){return +b.calc.houzly||0;},eur:true},
+  lordo:{l:'Incasso lordo',f:function(b){return +b.calc.tot||0;},eur:true},
+  n:{l:'Prenotazioni',f:function(){return 1;}},
+  notti:{l:'Notti',f:function(b){return +b.notti||0;}},
+  ota:{l:'Commissioni OTA',f:function(b){return +b.calc.comm_ota||0;},eur:true},
+  canone:{l:'Canone proprietari',f:function(b){return b.calc.incasso_diretto?0:(+b.calc.canone||0);},eur:true},
+  tasse:{l:'Tasse di soggiorno',f:function(b){return +b.calc.tassa||0;},eur:true},
+  ospiti:{l:'Ospiti',f:function(b){return +b.n_ospiti||0;}},
+  pul:{l:'Pulizie incassate',f:function(b){return +b.calc.pulizia||0;},eur:true}
+};
+function dxE(s){ return esc(esc(String(s==null?'':s))); }
+function dxCan(b){ var c=b.canale||'Altro'; return DX_COL[c]?c:'Altro'; }
+function dxIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dxAddDays(d,n){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n); return x; }
+function dxToday(){ var d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function dxDiff(a,b){ return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000); }
+function dxNum(v){ return Math.round(v).toLocaleString('it-IT'); }
+function dxFmt(k,v){ return DX_MET[k]&&DX_MET[k].eur?eur(v):dxNum(v); }
+function dxShort(v){ var a=Math.abs(v); if(a>=1000) return (v/1000).toFixed(a>=10000?0:1).replace('.',',')+'k'; return String(Math.round(v)); }
+
+// Filtri correnti della Dashboard
+function dxFiltri(){
+  var mv=document.getElementById('dash-mese-filter'), av=document.getElementById('dash-anno-filter');
+  var meseNum=mv&&mv.value?mesiArr().indexOf(mv.value)+1:0;
+  var annoVal=av?(+av.value||0):0;
+  return {m:meseNum,y:annoVal};
+}
+function dxPropIds(){
+  var ids=[];
+  (dashPropSelection||[]).forEach(function(id){
+    var grp=(DB.propGroups||[]).find(function(g){return g.id===id;});
+    if(grp) grp.children.forEach(function(cid){ if(ids.indexOf(cid)<0) ids.push(cid); });
+    else if(ids.indexOf(id)<0) ids.push(id);
+  });
+  return ids;
+}
+// Stesso filtro di getDashBks, parametrizzato su mese/anno
+function dxBks(meseNum,annoVal,noCanale){
+  var ids=dxPropIds();
+  return (DB.prenotazioni||[]).filter(function(b){
+    if(b.black) return false;
+    if(ids.length&&ids.indexOf(b.proprieta_id)<0) return false;
+    if(!noCanale&&dxCanale&&dxCan(b)!==dxCanale) return false;
+    if(meseNum||annoVal){ if(!bkInPeriod(b,meseNum,annoVal,'checkin')) return false; }
+    return true;
+  });
+}
+function dxAgg(bks){
+  var t={}; Object.keys(DX_MET).forEach(function(k){ t[k]=0; });
+  bks.forEach(function(b){ if(!b.calc) return; Object.keys(DX_MET).forEach(function(k){ t[k]+=DX_MET[k].f(b); }); });
+  return t;
+}
+// Periodo di confronto
+function dxPrev(){
+  var F=dxFiltri();
+  if(F.m&&F.y){
+    if(dxCmp==='mese'){ var m=F.m-1,y=F.y; if(m<1){m=12;y--;} return {m:m,y:y,label:anMesiNomi()[m-1]+' '+y}; }
+    return {m:F.m,y:F.y-1,label:anMesiNomi()[F.m-1]+' '+(F.y-1)};
+  }
+  if(F.y&&!F.m) return {m:0,y:F.y-1,label:String(F.y-1)};
+  return null;
+}
+// Finestra di 12 mesi per grafico e mini-andamenti
+function dxWindow(){
+  var F=dxFiltri(), oggi=dxToday(), y, m, out=[];
+  if(F.y&&!F.m){ y=F.y; m=1; }
+  else if(F.y&&F.m){ var d=new Date(F.y,F.m-12,1); y=d.getFullYear(); m=d.getMonth()+1; }
+  else { var d2=new Date(oggi.getFullYear(),oggi.getMonth()-9,1); y=d2.getFullYear(); m=d2.getMonth()+1; }
+  for(var i=0;i<12;i++){ out.push({y:y,m:m}); m++; if(m>12){m=1;y++;} }
+  return out;
+}
+var _dxSeriesCache=null;
+function dxSeries(){
+  if(_dxSeriesCache) return _dxSeriesCache;
+  var W=dxWindow();
+  var rows=W.map(function(p){
+    var bks=dxBks(p.m,p.y), bksP=dxBks(p.m,p.y-1);
+    var byCan={}; DX_CANALI.forEach(function(c){ byCan[c]=[]; });
+    bks.forEach(function(b){ byCan[dxCan(b)].push(b); });
+    var can={}; DX_CANALI.forEach(function(c){ can[c]=dxAgg(byCan[c]); });
+    return {y:p.y,m:p.m,t:dxAgg(bks),p:dxAgg(bksP),can:can,n:bks.length};
+  });
+  _dxSeriesCache=rows; return rows;
+}
+
+// ── Card KPI con variazione e mini-andamento ───────────────────────
+function dxSpark(k){
+  var S=dxSeries(), vals=S.map(function(r){return r.t[k];}), max=Math.max.apply(null,vals.concat([0]))||1;
+  var F=dxFiltri();
+  var h='<div class="dx-spark" title="Ultimi 12 mesi">';
+  S.forEach(function(r){
+    var on=F.m&&r.m===F.m&&(!F.y||r.y===F.y);
+    h+='<i class="'+(on?'on':'')+'" style="height:'+Math.max(4,Math.round(r.t[k]/max*100))+'%"></i>';
+  });
+  return h+'</div>';
+}
+function dxDelta(cur,prev,lbl){
+  if(prev===null||prev===undefined) return '';
+  if(!prev){ return cur?'<span class="dx-delta nd" title="Nessun dato in '+esc(lbl)+'">nuovo</span>':''; }
+  var d=(cur-prev)/Math.abs(prev), s=(d>=0?'+':'')+Math.round(d*100)+'%';
+  return '<span class="dx-delta '+(d>=0?'up':'down')+'" title="'+esc(lbl)+'">'+(d>=0?'▲':'▼')+' '+s+'</span>';
+}
+function dxStatCard(icon,label,value,sub,accent,k,cur,prev,prevLbl){
+  var on=k&&k===dxMetric;
+  return '<div class="stat-card dx-card'+(on?' dx-on':'')+'" style="position:relative;overflow:hidden"'+(k&&DX_MET[k]?' onclick="dxSetMetric(\''+k+'\')" title="Clicca per vedere l\'andamento nel grafico"':'')+'><span class="kpi-rule"></span>'
+    +'<div class="kpi-head"><span class="kpi-emo">'+icon+'</span><div class="stat-label" style="margin:0">'+label+'</div></div>'
+    +'<div class="stat-value" style="color:'+(accent||'var(--blue)')+'">'+value+'</div>'
+    +'<div class="stat-sub">'+sub+(k&&prev!==null&&prev!==undefined?' '+dxDelta(cur,prev,'vs '+prevLbl+': '+dxFmt(k,prev)):'')+'</div>'
+    +(k?dxSpark(k):'')
+    +'</div>';
+}
+function dxSetMetric(k){ dxMetric=k; renderDash(); var el=document.getElementById('dx-trend'); if(el&&el.scrollIntoView&&window.innerWidth<860) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+
+// ── Filtro canale + confronto (barra filtri) ───────────────────────
+function dxRenderFiltri(){
+  var box=document.getElementById('dx-filtri'); if(!box) return;
+  var base=dxBks(dxFiltri().m,dxFiltri().y,true), tot=base.length, cnt={};
+  base.forEach(function(b){ var c=dxCan(b); cnt[c]=(cnt[c]||0)+1; });
+  var h='<span class="dx-flbl">Canale</span><div class="dx-chips">'
+    +'<span class="dx-chip'+(dxCanale===''?' on':'')+'" onclick="dxSetCanale(\'\')">Tutti <b>'+tot+'</b></span>';
+  DX_CANALI.forEach(function(c){
+    if(!cnt[c]&&dxCanale!==c) return;
+    var pc=tot?Math.round((cnt[c]||0)/tot*100):0;
+    h+='<span class="dx-chip'+(dxCanale===c?' on':'')+'" onclick="dxSetCanale(\''+c+'\')"><i style="background:'+DX_COL[c]+'"></i>'+(c==='Booking.com'?'Booking':c)+' <b>'+pc+'%</b></span>';
+  });
+  h+='</div>';
+  var F=dxFiltri();
+  if(F.m&&F.y){
+    h+='<span class="dx-flbl" style="margin-left:8px">Confronta con</span><div class="dx-seg">'
+      +'<span class="'+(dxCmp==='anno'?'on':'')+'" onclick="dxSetCmp(\'anno\')">'+anMesiNomi()[F.m-1]+' '+(F.y-1)+'</span>'
+      +'<span class="'+(dxCmp==='mese'?'on':'')+'" onclick="dxSetCmp(\'mese\')">mese prima</span></div>';
+  } else if(F.y){
+    h+='<span class="dx-flbl" style="margin-left:8px">Confronto</span><span class="dx-note">vs '+(F.y-1)+'</span>';
+  } else {
+    h+='<span class="dx-note" style="margin-left:8px">Scegli un anno (o mese + anno) per vedere le variazioni</span>';
+  }
+  box.innerHTML=h;
+}
+function dxSetCanale(c){ dxCanale=c; renderDash(); }
+function dxSetCmp(c){ dxCmp=c; renderDash(); }
+function dxSetPeriodo(m,y){
+  var ms=document.getElementById('dash-mese-filter'), an=document.getElementById('dash-anno-filter');
+  if(ms) ms.value=m?mesiArr()[m-1]:''; if(an) an.value=y||'';
+  dxCloseDrawer(); renderDash();
+}
+
+// ── Sezioni comprimibili ───────────────────────────────────────────
+function dxColl(){ try{ return JSON.parse(localStorage.getItem('houzly_dx_coll')||'{}')||{}; }catch(e){ return {}; } }
+function dxToggle(id){
+  var c=dxColl(); c[id]=!c[id]; try{ localStorage.setItem('houzly_dx_coll',JSON.stringify(c)); }catch(e){}
+  var el=document.getElementById('dx-sec-'+id); if(el) el.classList.toggle('dx-closed',!!c[id]);
+}
+function dxSection(id,title,sub,right,body){
+  var closed=!!dxColl()[id];
+  return '<div class="card dx-sec'+(closed?' dx-closed':'')+'" id="dx-sec-'+id+'">'
+    +'<div class="dx-sec-h"><div class="dx-sec-t" onclick="dxToggle(\''+id+'\')"><span class="dx-caret">▾</span><span class="dx-title">'+title+'</span>'+(sub?'<span class="dx-sub">'+sub+'</span>':'')+'</div>'
+    +'<div class="dx-sec-r">'+(right||'')+'</div></div>'
+    +'<div class="dx-sec-b">'+body+'</div></div>';
+}
+
+// ── Oggi e prossimi 7 giorni ───────────────────────────────────────
+function dxBksOperative(){
+  var ids=dxPropIds();
+  return (DB.prenotazioni||[]).filter(function(b){
+    if(b._sync_cancelled||!b.checkin||!b.proprieta_id) return false;
+    if(ids.length&&ids.indexOf(b.proprieta_id)<0) return false;
+    return true;
+  });
+}
+function dxOggi(){
+  var oggi=dxToday(), iso=dxIso(oggi), all=dxBksOperative();
+  var days=[]; for(var i=0;i<8;i++) days.push(dxIso(dxAddDays(oggi,i)));
+  var lim=days[7], inCasa=0, senzaCki=[], props={};
+  all.forEach(function(b){
+    var co=b.checkout||b.checkin;
+    if(b.checkin<=iso&&co>iso){ inCasa++; props[b.proprieta_id]=1; }
+    if(b.checkin>=iso&&b.checkin<=lim&&!b.checkin_data_at) senzaCki.push(b);
+  });
+  var gg=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+  var arrOggi=0, parOggi=0;
+  var cols=days.map(function(d,i){
+    var arr=all.filter(function(b){return b.checkin===d;}), par=all.filter(function(b){return (b.checkout||'')===d;});
+    if(i===0){ arrOggi=arr.length; parOggi=par.length; }
+    var parProp={}; par.forEach(function(b){ parProp[b.proprieta_id]=1; });
+    var dt=new Date(d+'T12:00:00');
+    var h='<div class="dx-day'+(i===0?' today':'')+((dt.getDay()===0||dt.getDay()===6)?' we':'')+'"><div class="dx-day-h"><b>'+(i===0?'Oggi':(i===1?'Domani':gg[dt.getDay()]))+'</b><span>'+dt.getDate()+' '+anMesiNomi()[dt.getMonth()]+'</span></div>';
+    if(!arr.length&&!par.length) h+='<div class="dx-empty">—</div>';
+    par.forEach(function(b){ h+=dxEvt(b,'out',false); });
+    arr.forEach(function(b){ h+=dxEvt(b,'in',!!parProp[b.proprieta_id]); });
+    return h+'</div>';
+  }).join('');
+  var sum='<span class="dx-pill">↘ <b>'+arrOggi+'</b> arrivi oggi</span><span class="dx-pill">↗ <b>'+parOggi+'</b> partenze</span><span class="dx-pill">🏠 <b>'+Object.keys(props).length+'</b> case occupate stanotte</span>';
+  if(senzaCki.length) sum+='<span class="dx-pill warn" onclick="dxDrawerSenzaCki()" title="Apri elenco">⚠ <b>'+senzaCki.length+'</b> '+(senzaCki.length===1?'arrivo':'arrivi')+' in 7 gg senza check-in online</span>';
+  _dxSenzaCki=senzaCki;
+  return dxSection('oggi','Oggi e prossimi 7 giorni','',sum,'<div class="dx-days">'+cols+'</div>');
+}
+var _dxSenzaCki=[];
+function dxDrawerSenzaCki(){ dxDrawer('Arrivi nei prossimi 7 giorni senza check-in online',_dxSenzaCki.slice().sort(function(a,b){return a.checkin<b.checkin?-1:1;}),''); }
+function dxEvt(b,tipo,cambio){
+  var ospite=(b.ospite_nome||'').trim().split(/\s+/).slice(-1)[0]||'Ospite';
+  var tip=(tipo==='in'?'Arrivo':'Partenza')+' · '+dxE(nomeProp(b.proprieta_id))+' · '+dxE(b.ospite_nome||'')+' · '+(b.notti||0)+' notti'+(b.n_ospiti?' · '+b.n_ospiti+' ospiti':'')+' · '+dxE(b.canale||'');
+  return '<div class="dx-evt '+tipo+'" data-tip="'+tip+'" onclick="dxOpenPren(\''+b.id+'\')"><i style="background:'+DX_COL[dxCan(b)]+'"></i>'
+    +'<span class="dx-evt-a">'+(tipo==='in'?'↘':'↗')+'</span><span class="dx-evt-t"><b>'+esc(nomeProp(b.proprieta_id))+'</b><span>'+esc(ospite)+(b.n_ospiti&&tipo==='in'?' · '+b.n_ospiti+'p':'')+(tipo==='in'&&!b.checkin_data_at?' · <em>no check-in</em>':'')+'</span></span>'
+    +(cambio?'<span class="dx-cambio" title="Partenza e arrivo lo stesso giorno">cambio</span>':'')+'</div>';
+}
+
+// ── Andamento (grafico a barre per canale) ─────────────────────────
+function dxTrend(){
+  var S=dxSeries(), k=dxMetric, F=dxFiltri();
+  var max=0; S.forEach(function(r){ max=Math.max(max,r.t[k],r.p[k]); }); if(!max) max=1;
+  var step=Math.pow(10,Math.floor(Math.log10(max))); var nice=Math.ceil(max/step)*step; if(nice/step>6) step*=2; max=nice;
+  var chips=['comp','lordo','n','notti','ota','ospiti'].map(function(m){ return '<span class="dx-chip'+(m===k?' on':'')+'" onclick="dxSetMetric(\''+m+'\')">'+DX_MET[m].l+'</span>'; }).join('');
+  var grid='', bars='';
+  for(var g=1;g<=3;g++){ var v=max*g/3; grid+='<div class="dx-gl" style="bottom:'+(g/3*100)+'%"><span>'+(DX_MET[k].eur?'€ ':'')+dxShort(v)+'</span></div>'; }
+  S.forEach(function(r,i){
+    var sel=F.m&&r.m===F.m&&(!F.y||r.y===F.y);
+    var dim=F.m&&!sel;
+    var segs='', hTot=r.t[k]/max*100;
+    DX_CANALI.forEach(function(c){ var v=r.can[c][k]; if(v>0) segs+='<i style="height:'+(v/max*100)+'%;background:'+DX_COL[c]+'"></i>'; });
+    var tip='<b>'+MESI_IT_FULL[r.m-1]+' '+r.y+'</b><br>'+DX_MET[k].l+': '+dxFmt(k,r.t[k])+'<br>'+(r.y-1)+': '+dxFmt(k,r.p[k]);
+    DX_CANALI.forEach(function(c){ var v=r.can[c][k]; if(v>0) tip+='<br><span style=&quot;color:'+DX_COL[c]+'&quot;>●</span> '+c+': '+dxFmt(k,v); });
+    bars+='<div class="dx-col'+(sel?' sel':'')+(dim?' dim':'')+'" data-tip="'+tip.replace(/"/g,'&quot;')+'" onclick="dxDrawerMese('+r.m+','+r.y+')">'
+      +'<div class="dx-stack">'+segs+'</div>'
+      +(r.p[k]>0?'<div class="dx-prev" style="bottom:'+(r.p[k]/max*100)+'%"></div>':'')
+      +'<div class="dx-val" style="bottom:calc('+hTot+'% + 3px)">'+(r.t[k]?dxShort(r.t[k]):'')+'</div>'
+      +'<div class="dx-lbl">'+anMesiNomi()[r.m-1]+(r.m===1||i===0?' '+String(r.y).slice(2):'')+'</div></div>';
+  });
+  var leg=DX_CANALI.filter(function(c){ return S.some(function(r){ return r.can[c][k]>0; }); }).map(function(c){ return '<span><i style="background:'+DX_COL[c]+'"></i>'+c+'</span>'; }).join('')+'<span><i class="ln"></i>Stesso mese anno prima</span>';
+  var tot=S.reduce(function(s,r){return s+r.t[k];},0), totP=S.reduce(function(s,r){return s+r.p[k];},0);
+  var right='<div class="dx-chips">'+chips+'</div>';
+  var body='<div class="dx-trend-top"><div><div class="dx-big">'+dxFmt(k,tot)+'</div><div class="dx-note">'+DX_MET[k].l+' nei 12 mesi mostrati '+dxDelta(tot,totP,'stessi mesi anno prima: '+dxFmt(k,totP))+'</div></div><div class="dx-leg">'+leg+'</div></div>'
+    +'<div class="dx-chart">'+grid+'<div class="dx-cols">'+bars+'</div></div>'
+    +'<div class="dx-hint">Passa sopra una barra per il dettaglio · clicca per l\'elenco delle prenotazioni del mese</div>';
+  return '<div id="dx-trend">'+dxSection('trend','Andamento','',right,body)+'</div>';
+}
+function dxDrawerMese(m,y){
+  var bks=dxBks(m,y).slice().sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+  var F=dxFiltri(), giaFiltrato=F.m===m&&F.y===y;
+  var act=giaFiltrato?'<button class="btn btn-ghost btn-sm" onclick="dxSetPeriodo(0,0)">Togli filtro mese</button>':'<button class="btn btn-primary btn-sm" onclick="dxSetPeriodo('+m+','+y+')">Filtra la dashboard su '+MESI_IT_FULL[m-1]+' '+y+'</button>';
+  dxDrawer(MESI_IT_FULL[m-1]+' '+y+(dxCanale?' · '+dxCanale:''),bks,act);
+}
+
+// ── Classifica strutture ───────────────────────────────────────────
+function dxMesiPeriodo(){
+  var F=dxFiltri(), out=[];
+  if(F.m&&F.y) out.push(anYm(F.y,F.m));
+  else if(F.y) for(var m=1;m<=12;m++) out.push(anYm(F.y,m));
+  return out;
+}
+function dxClassifica(){
+  var F=dxFiltri(), bks=getDashBks(), P=dxPrev(), prevMap={};
+  if(P) dxBks(P.m,P.y).forEach(function(b){ prevMap[b.proprieta_id]=(prevMap[b.proprieta_id]||0)+(+b.calc.houzly||0); });
+  var map={};
+  bks.forEach(function(b){
+    if(!b.calc) return;
+    var X=map[b.proprieta_id]||(map[b.proprieta_id]={pid:b.proprieta_id,nome:nomeProp(b.proprieta_id),n:0,notti:0,lordo:0,comp:0,all:0});
+    X.n++; X.notti+=+b.notti||0; X.lordo+=+b.calc.tot||0; X.comp+=+b.calc.houzly||0;
+    X.all+=Math.max(0,(+b.calc.tot||0)-(+b.calc.pulizia||0)-(+b.calc.tassa||0));
+  });
+  var mesi=dxMesiPeriodo(), A=(DB.analisi&&DB.analisi.prop)||{};
+  var valide=mesi.length?(DB.prenotazioni||[]).filter(function(b){ return !b.black&&!b._sync_cancelled&&b.checkin&&(!dxCanale||dxCan(b)===dxCanale); }):[];
+  var list=Object.keys(map).map(function(pid){
+    var X=map[pid]; X.adr=X.notti?X.all/X.notti:0; X.prev=P?(prevMap[pid]||0):null;
+    X.dComp=(P&&X.prev)?(X.comp-X.prev)/Math.abs(X.prev):null;
+    if(mesi.length){
+      var ap=(A[pid]&&A[pid].mesi)||null, disp=0, occN=0;
+      mesi.forEach(function(ym){ if(!Array.isArray(ap)||ap[+ym.slice(5,7)-1]!==false) disp+=anGiorniMese(ym); });
+      valide.forEach(function(b){ if(b.proprieta_id!==pid) return; mesi.forEach(function(ym){ occN+=anNottiNelMese(b,ym); }); });
+      X.occ=disp?Math.min(1,occN/disp):0;
+    } else X.occ=null;
+    return X;
+  });
+  var k=dxSort.k, dir=dxSort.dir;
+  list.sort(function(a,b){ var va=a[k], vb=b[k]; if(k==='nome') return dir*String(va).localeCompare(String(vb)); va=va===null?-1e15:va; vb=vb===null?-1e15:vb; return dir*(va-vb); });
+  var maxComp=Math.max.apply(null,list.map(function(x){return x.comp;}).concat([1]));
+  var cols=[['nome','Struttura'],['n','Pren.'],['notti','Notti'],['occ','Occupaz.'],['adr','Prezzo/notte'],['lordo','Lordo'],['comp','Compenso']]; if(P) cols.push(['dComp','vs '+P.label]);
+  var h='<div class="table-wrap dx-tab"><table><thead><tr>'+cols.map(function(c){ var on=dxSort.k===c[0]; return '<th class="'+(c[0]==='nome'?'':'r')+(on?' on':'')+'" onclick="dxSortBy(\''+c[0]+'\')">'+c[1]+(on?(dxSort.dir<0?' ↓':' ↑'):'')+'</th>'; }).join('')+'<th></th></tr></thead><tbody>';
+  var shown=dxClassAll?list:list.slice(0,12);
+  shown.forEach(function(X,i){
+    var sel=(dashPropSelection||[]).indexOf(X.pid)>=0;
+    h+='<tr class="'+(sel?'sel':'')+'" onclick="dxFiltraProp(\''+X.pid+'\')" title="Clicca per filtrare la dashboard su questa struttura">'
+      +'<td><span class="dx-rank">'+(i+1)+'</span>'+esc(X.nome)+'</td>'
+      +'<td class="r">'+X.n+'</td><td class="r">'+X.notti+'</td>'
+      +'<td class="r">'+(X.occ===null?'<span class="dx-muted">—</span>':'<span class="dx-occ"><i style="width:'+Math.round(X.occ*100)+'%"></i></span>'+Math.round(X.occ*100)+'%')+'</td>'
+      +'<td class="r">'+(X.adr?eur(X.adr).replace(/,\d\d$/,''):'—')+'</td>'
+      +'<td class="r">'+eur(X.lordo)+'</td>'
+      +'<td class="r"><span class="dx-cbar"><i style="width:'+Math.round(X.comp/maxComp*100)+'%"></i></span><b>'+eur(X.comp)+'</b></td>'
+      +(!P?'':'<td class="r">'+(X.dComp===null?(P&&X.comp?'<span class="dx-delta nd">nuovo</span>':'<span class="dx-muted">—</span>'):dxDelta(X.comp,X.prev,'vs '+P.label+': '+eur(X.prev)))+'</td>')
+      +'<td class="r"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();dxDrawerProp(\''+X.pid+'\')" title="Elenco prenotazioni">≡</button></td></tr>';
+  });
+  if(!list.length) h+='<tr><td colspan="'+(cols.length+1)+'" class="dx-muted" style="text-align:center;padding:18px">Nessuna prenotazione con i filtri attuali</td></tr>';
+  h+='</tbody></table></div>';
+  if(list.length>12) h+='<div style="text-align:center;padding:8px"><button class="btn btn-ghost btn-sm" onclick="dxClassAll=!dxClassAll;dxRender()">'+(dxClassAll?'Mostra le prime 12':'Mostra tutte ('+list.length+')')+'</button></div>';
+  var sub=(mesi.length?'':'occupazione visibile scegliendo un anno o un mese')+'';
+  return dxSection('class','Classifica strutture',sub,'<span class="dx-note">Clicca le colonne per ordinare · la riga per filtrare</span>',h);
+}
+function dxSortBy(k){ if(dxSort.k===k) dxSort.dir*=-1; else dxSort={k:k,dir:k==='nome'?1:-1}; dxRender(); }
+function dxFiltraProp(pid){
+  if(dashPropSelection.length===1&&dashPropSelection[0]===pid) dashPropSelection=[];
+  else dashPropSelection=[pid];
+  renderDashPills(); renderDash();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function dxDrawerProp(pid){
+  var bks=getDashBks().filter(function(b){return b.proprieta_id===pid;}).sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+  dxDrawer(nomeProp(pid),bks,'<button class="btn btn-primary btn-sm" onclick="dxCloseDrawer();dxFiltraProp(\''+pid+'\')">Filtra la dashboard su questa struttura</button>');
+}
+
+// ── Planning occupazione ───────────────────────────────────────────
+function dxPlanDays(){ return window.innerWidth<860?14:28; }
+function dxPlanShift(n){ if(!dxPlanStart) dxPlanStart=dxAddDays(dxToday(),-2); dxPlanStart=n===0?dxAddDays(dxToday(),-2):dxAddDays(dxPlanStart,n); dxRenderPlan(); }
+function dxPlanning(){
+  return '<div id="dx-plan-wrap">'+dxPlanHtml()+'</div>';
+}
+function dxRenderPlan(){ var w=document.getElementById('dx-plan-wrap'); if(w) w.innerHTML=dxPlanHtml(); }
+function dxPlanHtml(){
+  if(!dxPlanStart) dxPlanStart=dxAddDays(dxToday(),-2);
+  var D=dxPlanDays(), s=dxIso(dxPlanStart), e=dxIso(dxAddDays(dxPlanStart,D)), oggi=dxIso(dxToday());
+  var limite=dxIso(dxAddDays(dxToday(),-365));
+  var all=dxBksOperative();
+  // strutture attive: almeno una prenotazione nell'ultimo anno o futura
+  var attive={}; all.forEach(function(b){ if((b.checkout||b.checkin)>=limite) attive[b.proprieta_id]=1; });
+  var ordine=[], childIds={};
+  (DB.propGroups||[]).forEach(function(g){ g.children.forEach(function(cid){ childIds[cid]=1; if(attive[cid]&&ordine.indexOf(cid)<0) ordine.push(cid); }); });
+  (DB.proprieta||[]).forEach(function(p){ if(!childIds[p.id]&&attive[p.id]) ordine.push(p.id); });
+  var head='', overlay='';
+  var gg=['D','L','M','M','G','V','S'];
+  for(var i=0;i<D;i++){
+    var dt=dxAddDays(dxPlanStart,i), iso=dxIso(dt), we=dt.getDay()===0||dt.getDay()===6, td=iso===oggi;
+    head+='<div class="dx-ph'+(we?' we':'')+(td?' td':'')+'"><span>'+gg[dt.getDay()]+'</span><b>'+dt.getDate()+'</b></div>';
+    if(we||td) overlay+='<i class="'+(td?'td':'we')+'" style="left:'+(i/D*100)+'%;width:'+(100/D)+'%"></i>';
+  }
+  var rows='', liberiTot=0, occTot=0;
+  ordine.forEach(function(pid){
+    var bks=all.filter(function(b){ return b.proprieta_id===pid&&(b.checkout||b.checkin)>s&&b.checkin<e; }).sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+    var bars='', occ=0;
+    bks.forEach(function(b){
+      var co=b.checkout||b.checkin;
+      var a=Math.max(0,dxDiff(s,b.checkin)+0.5), z=Math.min(D,dxDiff(s,co)+0.5);
+      if(z<=a) return;
+      var na=Math.max(0,dxDiff(s,b.checkin)), nz=Math.min(D,dxDiff(s,co)); occ+=Math.max(0,nz-na);
+      var off=dxCanale&&dxCan(b)!==dxCanale;
+      var cogn=(b.ospite_nome||'').trim()||'Ospite';
+      var tip='<b>'+dxE(b.ospite_nome||'Ospite')+'</b><br>'+dxE(nomeProp(pid))+'<br>'+dateIt(b.checkin)+' → '+dateIt(co)+' · '+(b.notti||dxDiff(b.checkin,co))+' notti'+(b.n_ospiti?' · '+b.n_ospiti+' ospiti':'')+'<br>'+dxE(b.canale||'')+(b.calc&&b.calc.tot?' · '+eur(b.calc.tot):'');
+      bars+='<div class="dx-bar'+(off?' off':'')+(b.black?' agg':'')+'" style="left:'+(a/D*100)+'%;width:'+((z-a)/D*100)+'%;background:'+DX_COL[dxCan(b)]+'" data-tip="'+tip.replace(/"/g,'&quot;')+'" onclick="dxOpenPren(\''+b.id+'\')"><span>'+esc(cogn)+(b.n_ospiti?' · '+b.n_ospiti:'')+'</span></div>';
+    });
+    // notti orfane: 1-2 notti libere tra due soggiorni
+    for(var j=1;j<bks.length;j++){
+      var prevCo=bks[j-1].checkout||bks[j-1].checkin, gap=dxDiff(prevCo,bks[j].checkin);
+      if(gap>=1&&gap<=2){
+        var ga=Math.max(0,dxDiff(s,prevCo)+0.5), gz=Math.min(D,dxDiff(s,bks[j].checkin)+0.5);
+        if(gz>ga) bars+='<div class="dx-gap" style="left:'+(ga/D*100)+'%;width:'+((gz-ga)/D*100)+'%" data-tip="'+gap+(gap===1?' notte libera':' notti libere')+' tra due soggiorni — difficile da vendere: valuta un prezzo o un minimo notti diverso"></div>';
+      }
+    }
+    var pc=Math.round(occ/D*100); occTot+=occ; liberiTot+=D-occ;
+    rows+='<div class="dx-pr"><div class="dx-pn" title="'+esc(nomeProp(pid))+'"><b>'+esc(nomeProp(pid))+'</b><span>'+pc+'%</span></div><div class="dx-pt">'+bars+'</div></div>';
+  });
+  var tot=ordine.length*D, pcTot=tot?Math.round(occTot/tot*100):0;
+  var dal=dxPlanStart, al=dxAddDays(dxPlanStart,D-1);
+  var right='<div class="dx-nav"><button class="btn btn-ghost btn-sm" onclick="dxPlanShift(-7)">‹ 7 gg</button><button class="btn btn-ghost btn-sm" onclick="dxPlanShift(0)">Oggi</button><button class="btn btn-ghost btn-sm" onclick="dxPlanShift(7)">7 gg ›</button></div>';
+  var sub=dal.getDate()+' '+anMesiNomi()[dal.getMonth()]+' – '+al.getDate()+' '+anMesiNomi()[al.getMonth()]+' · occupazione '+pcTot+'% · '+liberiTot+' notti libere';
+  var body=ordine.length?('<div class="dx-plan" style="--dxD:'+D+'"><div class="dx-pr dx-phr"><div class="dx-pn"></div><div class="dx-pt dx-phs">'+head+'</div></div>'
+    +'<div class="dx-pbody"><div class="dx-pov">'+overlay+'</div>'+rows+'</div></div>'
+    +'<div class="dx-hint"><span class="dx-gap-l"></span> notti orfane (1–2 notti libere tra due soggiorni) · clicca una barra per aprire la prenotazione'+(dxCanale?' · in evidenza: '+esc(dxCanale):'')+'</div>')
+    :'<div class="dx-muted" style="padding:16px">Nessuna struttura attiva con i filtri attuali</div>';
+  return dxSection('plan','Planning occupazione',sub,right,body);
+}
+
+// ── Pannello laterale con elenco prenotazioni ──────────────────────
+function dxDrawer(title,bks,actions){
+  dxCloseDrawer();
+  var T={tot:0,comp:0,notti:0};
+  var rows=bks.map(function(b){
+    var c=b.calc||{}; T.tot+=+c.tot||0; T.comp+=+c.houzly||0; T.notti+=+b.notti||0;
+    return '<div class="dx-dr-row" onclick="dxOpenPren(\''+b.id+'\')"><i style="background:'+DX_COL[dxCan(b)]+'"></i>'
+      +'<div class="dx-dr-m"><b>'+esc(b.ospite_nome||'Ospite')+'</b><span>'+esc(nomeProp(b.proprieta_id))+' · '+dateIt(b.checkin)+' → '+dateIt(b.checkout||'')+' · '+(b.notti||0)+' n.</span></div>'
+      +'<div class="dx-dr-v"><b>'+eur(c.tot||0)+'</b><span>Houzly '+eur(c.houzly||0)+'</span></div></div>';
+  }).join('');
+  var el=document.createElement('div'); el.id='dx-drawer';
+  el.innerHTML='<div class="dx-dr-bg" onclick="dxCloseDrawer()"></div><div class="dx-dr-p"><div class="dx-dr-h"><div><div class="dash-eyebrow">'+bks.length+' prenotazioni · '+T.notti+' notti</div><div class="dx-dr-t">'+esc(title)+'</div></div><button class="modal-close" style="position:static" onclick="dxCloseDrawer()">&#10005;</button></div>'
+    +(actions?'<div class="dx-dr-a">'+actions+'</div>':'')
+    +'<div class="dx-dr-l">'+(rows||'<div class="dx-muted" style="padding:20px">Nessuna prenotazione</div>')+'</div>'
+    +'<div class="dx-dr-f"><span>Lordo <b>'+eur(T.tot)+'</b></span><span>Compenso <b>'+eur(T.comp)+'</b></span></div></div>';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.classList.add('open'); },10);
+}
+function dxCloseDrawer(){ var el=document.getElementById('dx-drawer'); if(el) el.remove(); }
+function dxOpenPren(id){ dxTipHide(); try{ viewPren(id); }catch(e){ console.warn(e); } }
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') dxCloseDrawer(); });
+
+// ── Tooltip ────────────────────────────────────────────────────────
+var _dxTip=null;
+function dxTipHide(){ if(_dxTip) _dxTip.style.display='none'; }
+document.addEventListener('mouseover',function(e){
+  var t=e.target&&e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t){ dxTipHide(); return; }
+  if(!_dxTip){ _dxTip=document.createElement('div'); _dxTip.id='dx-tip'; document.body.appendChild(_dxTip); }
+  _dxTip.innerHTML=t.getAttribute('data-tip'); _dxTip.style.display='block';
+});
+document.addEventListener('mousemove',function(e){
+  if(!_dxTip||_dxTip.style.display!=='block') return;
+  var w=_dxTip.offsetWidth, h=_dxTip.offsetHeight, x=e.clientX+14, y=e.clientY+14;
+  if(x+w>window.innerWidth-8) x=e.clientX-w-14; if(y+h>window.innerHeight-8) y=e.clientY-h-14;
+  _dxTip.style.left=x+'px'; _dxTip.style.top=y+'px';
+});
+document.addEventListener('scroll',dxTipHide,true);
+
+// ── Render principale ──────────────────────────────────────────────
+function dxRender(){
+  var root=document.getElementById('dx-root'); if(!root) return;
+  _dxSeriesCache=null;
+  try{
+    dxRenderFiltri();
+    root.innerHTML=dxOggi()+dxTrend()+dxPlanning()+dxClassifica();
+  }catch(e){ console.error('dashboard interattiva',e); root.innerHTML=''; }
+}
+window.addEventListener('resize',function(){
+  var page=document.getElementById('page-dashboard');
+  if(!page||!page.classList.contains('active')) return;
+  var D=dxPlanDays(), cur=document.querySelector('.dx-plan');
+  if(cur&&+getComputedStyle(cur).getPropertyValue('--dxD')!==D) dxRenderPlan();
+});
+
 </script>
 </body>
 </html>
