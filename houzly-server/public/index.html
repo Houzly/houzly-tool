@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v122 · 18/11 · Dashboard interattiva</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v123 · 24/11 · Strutture tolte da Smoobu</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -2554,6 +2554,18 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
           <button class="btn btn-outline btn-sm" id="cov-btn" onclick="runCoverageCheck()">&#128270; Verifica</button>
         </div>
       </div>
+    </div>
+    <!-- v123: strutture da togliere da Smoobu -->
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title">Togliere una struttura da Smoobu</div>
+      <div style="font-size:12px;color:var(--text-light);line-height:1.6;margin:4px 0 10px">Prima di eliminare un alloggio da Smoobu, controllalo qui. Il controllo &egrave; in sola lettura: confronta tutte le prenotazioni che Smoobu ha per quell'alloggio con quelle del tool e ti dice se manca qualcosa o se ci sono soggiorni futuri. Le prenotazioni, i report, le ritenute e i dati del check-in stanno nel database del tool e <strong>restano anche dopo l'eliminazione da Smoobu</strong>. Dopo l'eliminazione segna la struttura come tolta: la verifica copertura smette di segnalarla.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="sr-apt" style="min-width:260px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:12.5px"><option value="">Carica l'elenco degli alloggi Smoobu…</option></select>
+        <button class="btn btn-outline btn-sm" id="sr-load" onclick="srLoadApts()">&#8635; Carica alloggi</button>
+        <button class="btn btn-primary btn-sm" id="sr-btn" onclick="srCheck()">&#128270; Controlla prima di eliminare</button>
+      </div>
+      <div id="sr-result" style="margin-top:12px"></div>
+      <div id="sr-removed" style="margin-top:12px"></div>
     </div>
     <div class="card" style="grid-column:1/-1">
       <div class="card-title">Imposta di soggiorno per comune</div>
@@ -16394,6 +16406,7 @@ function loadSyncIgnoreField(){
   var f=document.getElementById('cov-from'), t=document.getElementById('cov-to');
   if(f&&!f.value) f.value='2026-06-01';
   if(t&&!t.value) t.value=new Date().toISOString().slice(0,10);
+  if(typeof srRenderRemoved==='function') srRenderRemoved(); // v123
 }
 
 // ── Verifica copertura Smoobu ↔ tool (v91, sola lettura) ──────────
@@ -16429,6 +16442,7 @@ function showCoverageResult(d, from, to){
   var extra=DB.prenotazioni.filter(function(b){
     if(!b.checkin||!b.checkout) return false;
     if(b._coverage_ok) return false;   // già controllata e tenuta
+    if(typeof srPropRimossa==='function'&&srPropRimossa(b.proprieta_id)) return false; // v123: struttura tolta da Smoobu
     if(b.checkin>to||b.checkout<from) return false;
     if(smoobuIds[String(b.ota_num)]) return false;
     if(b.note&&smoobuRefs[String(b.note)]) return false;
@@ -17718,6 +17732,103 @@ function anDelCosto(id){
   #dx-filtri>.dx-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
 }
 </style>
+<style id="sr-css">.alert-danger{background:rgba(176,71,61,.10);border:1px solid rgba(176,71,61,.35);color:var(--red)}</style>
+<script id="sr-js">
+// ══ TOGLIERE UNA STRUTTURA DA SMOOBU (v123) ═══════════════════════════
+// Controllo in sola lettura prima dell'eliminazione + elenco delle strutture già tolte.
+// Le prenotazioni del tool stanno nel database (collection bookings): eliminare un
+// alloggio da Smoobu non le tocca. Il server (v115) riconosce l'eliminazione e non
+// segna le prenotazioni come cancellate, né tocca pulizie e check-in.
+var _srApts=null;
+function srList(){ if(!DB.config) DB.config={}; if(!Array.isArray(DB.config.smoobu_rimosse)) DB.config.smoobu_rimosse=[]; return DB.config.smoobu_rimosse; }
+function srPropRimossa(pid){ if(!pid||!DB.config||!Array.isArray(DB.config.smoobu_rimosse)) return false; return DB.config.smoobu_rimosse.some(function(x){return x.prop_id===pid;}); }
+async function srLoadApts(){
+  var btn=document.getElementById('sr-load'); if(btn){btn.disabled=true;btn.innerHTML='⏳';}
+  try{
+    var r=await fetch('/api/smoobu/apartments-list',{headers:onbHeaders()});
+    if(r.status===401){authRequirePin('Reinserisci la password');return;}
+    var d=await r.json(); if(!d.ok) throw new Error(d.error||'errore');
+    _srApts=d.apartments.sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
+    var sel=document.getElementById('sr-apt');
+    sel.innerHTML='<option value="">Scegli l\'alloggio da controllare ('+_srApts.length+' su Smoobu)</option>'+_srApts.map(function(a){
+      var p=findPropByName(a.name);
+      return '<option value="'+esc(a.id)+'">'+esc(a.name)+(p?'':' — non abbinato a una proprietà del tool')+'</option>';
+    }).join('');
+  }catch(e){ toast('Elenco non caricato: '+e.message,6000); }
+  finally{ if(btn){btn.disabled=false;btn.innerHTML='&#8635; Carica alloggi';} }
+}
+function srInTool(it){
+  var b=DB.prenotazioni.find(function(x){return String(x.ota_num)===it.id;});
+  if(!b&&it.ref) b=DB.prenotazioni.find(function(x){return String(x.note||'')===String(it.ref)||String(x.ota_num||'')===String(it.ref);});
+  return b||null;
+}
+async function srCheck(){
+  var sel=document.getElementById('sr-apt'), id=sel&&sel.value;
+  if(!id){ if(!_srApts) srLoadApts(); toast('Scegli prima l\'alloggio'); return; }
+  var apt=(_srApts||[]).find(function(a){return a.id===id;})||{id:id,name:''};
+  var box=document.getElementById('sr-result'), btn=document.getElementById('sr-btn');
+  btn.disabled=true; btn.innerHTML='⏳ Controllo…';
+  box.innerHTML='<div class="dx-note">Leggo tutte le prenotazioni di '+esc(apt.name)+' su Smoobu…</div>';
+  try{
+    var r=await fetch('/api/smoobu/pre-delete-check?apartmentId='+encodeURIComponent(id),{headers:onbHeaders()});
+    if(r.status===401){authRequirePin('Reinserisci la password');return;}
+    var d=await r.json(); if(!d.ok) throw new Error(d.error||'errore');
+    srShow(apt,d);
+  }catch(e){ box.innerHTML='<div class="alert alert-danger">Controllo non riuscito: '+esc(e.message)+'. Non eliminare finché il controllo non va a buon fine.</div>'; }
+  finally{ btn.disabled=false; btn.innerHTML='&#128270; Controlla prima di eliminare'; }
+}
+function srShow(apt,d){
+  var prop=findPropByName(apt.name);
+  var mancanti=[], abbinate=0;
+  d.items.forEach(function(it){ if(srInTool(it)) abbinate++; else mancanti.push(it); });
+  var bksProp=prop?DB.prenotazioni.filter(function(b){return b.proprieta_id===prop.id;}):[];
+  var perAnno={}; bksProp.forEach(function(b){ var y=(b.checkin||'').slice(0,4); if(!y) return; var X=perAnno[y]||(perAnno[y]={n:0,tot:0}); X.n++; X.tot+=(+b.tot||0); });
+  var dt=function(x){return x?x.split('-').reverse().join('/'):'';};
+  var verdetto;
+  if(!prop) verdetto='<div class="alert alert-warning">&#9888; Questo alloggio Smoobu non è abbinato a nessuna proprietà del tool. Controlla il nome (campo "Nome su Smoobu" nella scheda Proprietà) prima di eliminarlo.</div>';
+  else if(d.future.length) verdetto='<div class="alert alert-danger">&#9940; <strong>Non eliminarlo ora.</strong> Ha '+d.future.length+' soggiorn'+(d.future.length===1?'o':'i')+' in corso o futur'+(d.future.length===1?'o':'i')+': eliminando l\'alloggio Smoobu smette di sincronizzare il calendario con i portali, ma gli ospiti arrivano lo stesso. Aspetta che siano passati, oppure chiudi prima il calendario sui portali.</div>';
+  else if(mancanti.length) verdetto='<div class="alert alert-warning">&#9888; <strong>Prima di eliminarlo, recupera le prenotazioni mancanti.</strong> '+mancanti.length+' prenotazion'+(mancanti.length===1?'e':'i')+' di Smoobu non '+(mancanti.length===1?'è':'sono')+' nel tool (elenco qui sotto). Se sono di mesi chiusi vanno inserite a mano o con un import CSV del periodo; se sono state tenute fuori apposta, ignora l\'avviso.</div>';
+  else verdetto='<div class="alert alert-success">&#10003; <strong>Puoi eliminarlo da Smoobu.</strong> Tutte le '+d.items.length+' prenotazioni che Smoobu ha per questo alloggio sono nel tool e non ci sono soggiorni futuri.</div>';
+  var h=verdetto
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0">'
+    +covBox('Su Smoobu',d.items.length,'dal '+dt(d.from),'var(--blue)')
+    +covBox('Già nel tool',abbinate,'abbinate','var(--green)')
+    +covBox('Mancanti nel tool',mancanti.length,'da recuperare',mancanti.length?'var(--red)':'var(--green)')
+    +covBox('Future',d.future.length,'soggiorni da fare',d.future.length?'var(--red)':'var(--green)')
+    +covBox('Check-in salvati',d.server.checkin_completati,'su '+d.server.checkin_sessions+' schede · restano','var(--blue)')
+    +'</div>';
+  if(prop){
+    var anni=Object.keys(perAnno).sort();
+    h+='<div style="font-size:12.5px;color:var(--text-mid);margin-bottom:8px"><strong>Nel tool per '+esc(prop.nome)+':</strong> '+(anni.length?anni.map(function(y){return y+': '+perAnno[y].n+' prenotazioni, '+eur(perAnno[y].tot);}).join(' · '):'nessuna prenotazione')+'. Restano tutte dopo l\'eliminazione, con report, ritenute e documenti.</div>';
+  }
+  var th='style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px"', td='style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px"';
+  var lista=function(titolo,arr){ return '<div class="card-title" style="margin:10px 0 6px">'+titolo+' ('+arr.length+')</div><div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2)"><th '+th+'>Arrivo</th><th '+th+'>Partenza</th><th '+th+'>Ospite</th><th '+th+'>Canale</th><th '+th+'>Prezzo</th><th '+th+'>ID Smoobu</th></tr></thead><tbody>'
+    +arr.map(function(it){return '<tr><td '+td+'>'+dt(it.arrival)+'</td><td '+td+'>'+dt(it.departure)+'</td><td '+td+'>'+esc(it.guest||'')+'</td><td '+td+'>'+esc(it.channel||'')+'</td><td '+td+'>'+eur(+it.price||0)+'</td><td '+td+' style="font-family:monospace;font-size:11px">'+esc(it.id)+'</td></tr>';}).join('')+'</tbody></table></div>'; };
+  if(d.future.length) h+=lista('Soggiorni in corso o futuri',d.future);
+  if(mancanti.length) h+=lista('Su Smoobu ma non nel tool',mancanti);
+  h+='<div style="font-size:11.5px;color:var(--text-light);margin-top:10px;line-height:1.6">Prima di eliminare, per archivio: scarica un <strong>backup del tool</strong> (Import Smoobu → Scarica Backup) e su Smoobu esporta le prenotazioni dell\'alloggio. Poi elimina l\'alloggio da Smoobu e torna qui per segnarlo come tolto.</div>';
+  if(prop&&!d.future.length) h+='<div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="srMark(\''+esc(apt.id)+'\',\''+esc(String(apt.name).replace(/\'/g,'’'))+'\',\''+prop.id+'\')">&#10003; Segna come tolta da Smoobu</button></div>';
+  document.getElementById('sr-result').innerHTML=h;
+}
+function srMark(aptId,nome,pid){
+  var L=srList();
+  if(L.some(function(x){return x.apt_id===aptId;})){ toast('Già segnata'); return; }
+  L.push({apt_id:aptId,nome:nome,prop_id:pid,at:new Date().toISOString().slice(0,10)});
+  saveDB(); srRenderRemoved();
+  toast('✓ Segnata come tolta da Smoobu');
+}
+function srUnmark(aptId){
+  var L=srList(), i=L.findIndex(function(x){return x.apt_id===aptId;});
+  if(i<0) return; L.splice(i,1); saveDB(); srRenderRemoved();
+}
+function srRenderRemoved(){
+  var box=document.getElementById('sr-removed'); if(!box) return;
+  var L=(DB.config&&DB.config.smoobu_rimosse)||[];
+  if(!L.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div style="font-weight:600;color:var(--text);font-size:12.5px;margin-bottom:6px">Strutture tolte da Smoobu ('+L.length+')</div>'
+    +L.map(function(x){ return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span><strong>'+esc(nomeProp(x.prop_id))+'</strong> <span style="color:var(--text-light)">· Smoobu "'+esc(x.nome)+'" · tolta il '+esc(String(x.at).split('-').reverse().join('/'))+'</span></span><button class="btn btn-ghost btn-sm" onclick="srUnmark(\''+esc(x.apt_id)+'\')" title="Togli il segno (non cambia nient\'altro)">Annulla</button></div>'; }).join('');
+}
+</script>
 <script id="dx-js">
 // ══ DASHBOARD INTERATTIVA (v122) ══════════════════════════════════════
 // Solo lettura: usa b.calc come le card della Dashboard. Non scrive nel DB
