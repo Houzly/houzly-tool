@@ -275,6 +275,42 @@ function createContractsAdminRouter(deps) {
     }
   });
 
+  // GET /api/contracts/:riferimento/anteprima — contratto allo stato attuale
+  //
+  // Serve a vedere dal backoffice cosa ha compilato il proprietario prima che
+  // firmi: il token del link non è recuperabile dal database, quindi senza
+  // questa route l'unico modo sarebbe chiedere il PDF a lui.
+  //
+  // Per una pratica già firmata rigenera dallo snapshot salvato, non dal
+  // template corrente: il documento deve restare quello che è stato firmato
+  // anche dopo un aggiornamento del contratto-tipo. Resta comunque una copia
+  // di cortesia — l'originale con valore è il PDF archiviato su R2, servito
+  // dalla route /pdf qui sopra.
+  router.get('/:riferimento/anteprima', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+
+      const firmata = caso.stato === 'firmata';
+      const snapshot = firmata && caso.templateSnapshot
+        ? caso.templateSnapshot
+        : risolviTemplate(getTemplate(caso.templateVersione || VERSIONE_ATTIVA), caso);
+
+      const { buffer } = await generaPdf(snapshot, caso, { bozza: !firmata });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${caso.riferimento}${firmata ? '' : '-bozza'}.pdf"`
+      );
+      res.send(buffer);
+    } catch (e) {
+      console.error('[contracts/anteprima]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   return router;
 }
 
