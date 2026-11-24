@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v123 · 24/11 · Strutture tolte da Smoobu</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v124 · 24/11 · Controllo Smoobu per date + CSV</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -17779,21 +17779,36 @@ async function srCheck(){
 }
 function srShow(apt,d){
   var prop=findPropByName(apt.name);
-  var mancanti=[], abbinate=0;
-  d.items.forEach(function(it){ if(srInTool(it)) abbinate++; else mancanti.push(it); });
+  // v123b: abbinamento per ID Smoobu/codice portale e, per le prenotazioni importate
+  // da CSV (senza ID), per struttura + date. Le prenotazioni a prezzo zero
+  // (blocchi, soggiorni del proprietario) sono elencate a parte.
+  var mancanti=[], zero=[], abbinate=0, perDate=0, usati={};
+  d.items.forEach(function(it){
+    var b=srInTool(it);
+    if(b){ usati[b.id]=1; abbinate++; it._tool='ID'; return; }
+    if(prop){
+      var c=DB.prenotazioni.find(function(x){return !usati[x.id]&&x.proprieta_id===prop.id&&x.checkin===it.arrival&&x.checkout===it.departure;})
+         || DB.prenotazioni.find(function(x){return !usati[x.id]&&x.proprieta_id===prop.id&&x.checkin===it.arrival;});
+      if(c){ usati[c.id]=1; abbinate++; perDate++; it._tool='date'; return; }
+    }
+    it._tool='';
+    if(!(+it.price>0)) zero.push(it); else mancanti.push(it);
+  });
+  _srLast={apt:apt,d:d};
   var bksProp=prop?DB.prenotazioni.filter(function(b){return b.proprieta_id===prop.id;}):[];
   var perAnno={}; bksProp.forEach(function(b){ var y=(b.checkin||'').slice(0,4); if(!y) return; var X=perAnno[y]||(perAnno[y]={n:0,tot:0}); X.n++; X.tot+=(+b.tot||0); });
   var dt=function(x){return x?x.split('-').reverse().join('/'):'';};
   var verdetto;
   if(!prop) verdetto='<div class="alert alert-warning">&#9888; Questo alloggio Smoobu non è abbinato a nessuna proprietà del tool. Controlla il nome (campo "Nome su Smoobu" nella scheda Proprietà) prima di eliminarlo.</div>';
   else if(d.future.length) verdetto='<div class="alert alert-danger">&#9940; <strong>Non eliminarlo ora.</strong> Ha '+d.future.length+' soggiorn'+(d.future.length===1?'o':'i')+' in corso o futur'+(d.future.length===1?'o':'i')+': eliminando l\'alloggio Smoobu smette di sincronizzare il calendario con i portali, ma gli ospiti arrivano lo stesso. Aspetta che siano passati, oppure chiudi prima il calendario sui portali.</div>';
-  else if(mancanti.length) verdetto='<div class="alert alert-warning">&#9888; <strong>Prima di eliminarlo, recupera le prenotazioni mancanti.</strong> '+mancanti.length+' prenotazion'+(mancanti.length===1?'e':'i')+' di Smoobu non '+(mancanti.length===1?'è':'sono')+' nel tool (elenco qui sotto). Se sono di mesi chiusi vanno inserite a mano o con un import CSV del periodo; se sono state tenute fuori apposta, ignora l\'avviso.</div>';
-  else verdetto='<div class="alert alert-success">&#10003; <strong>Puoi eliminarlo da Smoobu.</strong> Tutte le '+d.items.length+' prenotazioni che Smoobu ha per questo alloggio sono nel tool e non ci sono soggiorni futuri.</div>';
+  else if(mancanti.length) verdetto='<div class="alert alert-warning">&#9888; <strong>'+mancanti.length+' prenotazion'+(mancanti.length===1?'e':'i')+' a pagamento di Smoobu non '+(mancanti.length===1?'risulta':'risultano')+' nel tool</strong> (elenco qui sotto). Decidi tu: se Houzly le ha incassate o rendicontate al proprietario vanno inserite nel tool prima di eliminare (servono per report e dichiarazioni); se sono soggiorni gestiti dal proprietario o fuori dal mandato, non servono. In ogni caso scarica il <strong>CSV di archivio</strong>: contiene tutte le prenotazioni Smoobu di questo alloggio.</div>';
+  else verdetto='<div class="alert alert-success">&#10003; <strong>Puoi eliminarlo da Smoobu.</strong> Tutte le prenotazioni a pagamento che Smoobu ha per questo alloggio sono nel tool e non ci sono soggiorni futuri.'+(zero.length?' Restano fuori solo '+zero.length+' a prezzo zero (blocchi o soggiorni del proprietario).':'')+'</div>';
   var h=verdetto
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0">'
     +covBox('Su Smoobu',d.items.length,'dal '+dt(d.from),'var(--blue)')
-    +covBox('Già nel tool',abbinate,'abbinate','var(--green)')
-    +covBox('Mancanti nel tool',mancanti.length,'da recuperare',mancanti.length?'var(--red)':'var(--green)')
+    +covBox('Già nel tool',abbinate,perDate?perDate+' riconosciute dalle date':'abbinate','var(--green)')
+    +covBox('Non nel tool',mancanti.length,'a pagamento, da valutare',mancanti.length?'var(--red)':'var(--green)')
+    +covBox('Prezzo zero',zero.length,'blocchi / proprietario','var(--text-light)')
     +covBox('Future',d.future.length,'soggiorni da fare',d.future.length?'var(--red)':'var(--green)')
     +covBox('Check-in salvati',d.server.checkin_completati,'su '+d.server.checkin_sessions+' schede · restano','var(--blue)')
     +'</div>';
@@ -17805,10 +17820,24 @@ function srShow(apt,d){
   var lista=function(titolo,arr){ return '<div class="card-title" style="margin:10px 0 6px">'+titolo+' ('+arr.length+')</div><div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2)"><th '+th+'>Arrivo</th><th '+th+'>Partenza</th><th '+th+'>Ospite</th><th '+th+'>Canale</th><th '+th+'>Prezzo</th><th '+th+'>ID Smoobu</th></tr></thead><tbody>'
     +arr.map(function(it){return '<tr><td '+td+'>'+dt(it.arrival)+'</td><td '+td+'>'+dt(it.departure)+'</td><td '+td+'>'+esc(it.guest||'')+'</td><td '+td+'>'+esc(it.channel||'')+'</td><td '+td+'>'+eur(+it.price||0)+'</td><td '+td+' style="font-family:monospace;font-size:11px">'+esc(it.id)+'</td></tr>';}).join('')+'</tbody></table></div>'; };
   if(d.future.length) h+=lista('Soggiorni in corso o futuri',d.future);
-  if(mancanti.length) h+=lista('Su Smoobu ma non nel tool',mancanti);
-  h+='<div style="font-size:11.5px;color:var(--text-light);margin-top:10px;line-height:1.6">Prima di eliminare, per archivio: scarica un <strong>backup del tool</strong> (Import Smoobu → Scarica Backup) e su Smoobu esporta le prenotazioni dell\'alloggio. Poi elimina l\'alloggio da Smoobu e torna qui per segnarlo come tolto.</div>';
+  if(mancanti.length) h+=lista('A pagamento, su Smoobu ma non nel tool',mancanti);
+  if(zero.length) h+=lista('A prezzo zero (blocchi o soggiorni del proprietario)',zero);
+  h+='<div style="font-size:11.5px;color:var(--text-light);margin-top:10px;line-height:1.6">Per archivio: scarica il <strong>CSV di questo alloggio</strong> (tutte le prenotazioni Smoobu, con l\'indicazione se sono nel tool) e un <strong>backup del tool</strong> (Import Smoobu → Scarica Backup: è completo, contiene anche questa struttura). Poi elimina l\'alloggio da Smoobu e torna qui per segnarlo come tolto.</div>';
+  h+='<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="srCsv()">&#11015; CSV di archivio dell\'alloggio</button></div>';
   if(prop&&!d.future.length) h+='<div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="srMark(\''+esc(apt.id)+'\',\''+esc(String(apt.name).replace(/\'/g,'’'))+'\',\''+prop.id+'\')">&#10003; Segna come tolta da Smoobu</button></div>';
   document.getElementById('sr-result').innerHTML=h;
+}
+var _srLast=null;
+function srCsv(){
+  if(!_srLast) return;
+  var q=function(v){ v=String(v==null?'':v); return /[";\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  var rows=[['ID Smoobu','Codice portale','Alloggio','Arrivo','Partenza','Ospite','Canale','Prezzo','Nel tool']];
+  _srLast.d.items.forEach(function(it){ rows.push([it.id,it.ref||'',it.apartment||_srLast.apt.name,it.arrival,it.departure,it.guest||'',it.channel||'',String(+it.price||0).replace('.',','),it._tool==='ID'?'sì (ID)':(it._tool==='date'?'sì (date)':'no')]); });
+  var csv='﻿'+rows.map(function(r){return r.map(q).join(';');}).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='smoobu-archivio-'+String(_srLast.apt.name||_srLast.apt.id).toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 function srMark(aptId,nome,pid){
   var L=srList();
