@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v124 · 24/11 · Controllo Smoobu per date + CSV</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v125 · 24/11 · Strutture tolte da Smoobu (elenco)</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -17850,12 +17850,43 @@ function srUnmark(aptId){
   var L=srList(), i=L.findIndex(function(x){return x.apt_id===aptId;});
   if(i<0) return; L.splice(i,1); saveDB(); srRenderRemoved();
 }
+// v125: strutture già eliminate da Smoobu il 24/11/2026 senza passare dal controllo
+// (La Capannina di Azzurra, le 8 unità de Il Pino, Tenuta La Bandita, San Niccolò a Olmeto).
+// Inserite una sola volta; dopo si gestiscono dall'elenco (Annulla / Aggiungi a mano).
+var SR_SEED_V125=['mn6n8i06pnx','mn6n0v9ku7l','mn6n17xthtr','mn6n1gbdgyb','mn6n1zktvko','mn6n25nq542','mn6n2bi23lz','mn6n2k23i4w','mn6n3l8fwiy','mpwjadp2b6f','mn6n7r36n36'];
+function srSeed(){
+  if(!DB||!Array.isArray(DB.proprieta)||!DB.proprieta.length) return;
+  if(DB.config&&DB.config.smoobu_rimosse_seed_v125) return;
+  var L=srList(), n=0;
+  SR_SEED_V125.forEach(function(pid){
+    var p=DB.proprieta.find(function(x){return x.id===pid;});
+    if(!p||L.some(function(x){return x.prop_id===pid;})) return;
+    L.push({apt_id:'manuale-'+pid,nome:p.nome,prop_id:pid,at:'2026-11-24',manuale:true}); n++;
+  });
+  DB.config.smoobu_rimosse_seed_v125=new Date().toISOString();
+  saveDB();
+}
+function srAddManual(){
+  var sel=document.getElementById('sr-man'); var pid=sel&&sel.value; if(!pid) return;
+  var L=srList();
+  if(L.some(function(x){return x.prop_id===pid;})){ toast('Già nell\'elenco'); return; }
+  var p=DB.proprieta.find(function(x){return x.id===pid;});
+  L.push({apt_id:'manuale-'+pid,nome:p?p.nome:'',prop_id:pid,at:new Date().toISOString().slice(0,10),manuale:true});
+  saveDB(); srRenderRemoved(); toast('✓ Aggiunta alle strutture tolte da Smoobu');
+}
 function srRenderRemoved(){
   var box=document.getElementById('sr-removed'); if(!box) return;
+  srSeed();
   var L=(DB.config&&DB.config.smoobu_rimosse)||[];
-  if(!L.length){ box.innerHTML=''; return; }
+  var giaIn={}; L.forEach(function(x){ giaIn[x.prop_id]=1; });
+  var opts=(DB.proprieta||[]).filter(function(p){return !giaIn[p.id];}).sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));})
+    .map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>';}).join('');
+  var add='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><span style="font-size:11.5px;color:var(--text-light)">Già eliminata da Smoobu senza controllo?</span>'
+    +'<select id="sr-man" style="min-width:220px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-family:inherit;font-size:12.5px"><option value="">Scegli la proprietà…</option>'+opts+'</select>'
+    +'<button class="btn btn-outline btn-sm" onclick="srAddManual()">+ Aggiungi a mano</button></div>';
+  if(!L.length){ box.innerHTML=add; return; }
   box.innerHTML='<div style="font-weight:600;color:var(--text);font-size:12.5px;margin-bottom:6px">Strutture tolte da Smoobu ('+L.length+')</div>'
-    +L.map(function(x){ return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span><strong>'+esc(nomeProp(x.prop_id))+'</strong> <span style="color:var(--text-light)">· Smoobu "'+esc(x.nome)+'" · tolta il '+esc(String(x.at).split('-').reverse().join('/'))+'</span></span><button class="btn btn-ghost btn-sm" onclick="srUnmark(\''+esc(x.apt_id)+'\')" title="Togli il segno (non cambia nient\'altro)">Annulla</button></div>'; }).join('');
+    +L.map(function(x){ return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span><strong>'+esc(nomeProp(x.prop_id))+'</strong> <span style="color:var(--text-light)">· '+(x.manuale?'aggiunta a mano':'Smoobu "'+esc(x.nome)+'" · controllata')+' · tolta il '+esc(String(x.at).split('-').reverse().join('/'))+'</span></span><button class="btn btn-ghost btn-sm" onclick="srUnmark(\''+esc(x.apt_id)+'\')" title="Togli il segno (non cambia nient\'altro)">Annulla</button></div>'; }).join('')+add;
 }
 </script>
 <script id="dx-js">
