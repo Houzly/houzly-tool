@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v128 · 24/11 · Briefing vocale IT/EN</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v129 · 24/11 · HUD leggibile in Report e Documenti</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -18384,7 +18384,7 @@ html[data-hud] .topbar{background:rgba(2,9,17,.78)!important;-webkit-backdrop-fi
   border-image:linear-gradient(90deg,transparent,rgba(63,216,255,.55),transparent) 1!important}
 
 /* Card con angoli a staffa */
-html[data-hud] .card,html[data-hud] .stat-card{
+html[data-hud] .card:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] .stat-card{
   border:1px solid rgba(63,216,255,.15)!important;border-radius:3px!important;
   background:
     linear-gradient(var(--hc),var(--hc)) left top/13px 1.5px no-repeat,
@@ -18416,10 +18416,10 @@ html[data-hud] .btn-primary{background:rgba(63,216,255,.12)!important;color:#7fe
 html[data-hud] .btn-primary:hover{background:rgba(63,216,255,.22)!important;box-shadow:0 0 22px rgba(63,216,255,.35)}
 html[data-hud] .btn-ghost,html[data-hud] .btn-outline{background:rgba(63,216,255,.04)!important;border:1px solid rgba(63,216,255,.22)!important;color:#a9e7f8!important}
 html[data-hud] .btn-ghost:hover,html[data-hud] .btn-outline:hover{border-color:rgba(63,216,255,.6)!important;color:#eafcff!important}
-html[data-hud] input,html[data-hud] select,html[data-hud] textarea{background-color:rgba(3,16,28,.9)!important;color:#d3f3ff!important;border-color:rgba(63,216,255,.22)!important}
-html[data-hud] input:focus,html[data-hud] select:focus,html[data-hud] textarea:focus{border-color:#3fd8ff!important;box-shadow:0 0 0 3px rgba(63,216,255,.12)!important;outline:none}
-html[data-hud] table thead tr,html[data-hud] table thead th{background:rgba(63,216,255,.07)!important;color:#7fdcf5!important;font-family:var(--hud-mono);letter-spacing:.08em;border-bottom:1px solid rgba(63,216,255,.25)!important}
-html[data-hud] table tbody tr:hover td{background:rgba(63,216,255,.05)!important}
+html[data-hud] input:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] select:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] textarea:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){background-color:rgba(3,16,28,.9)!important;color:#d3f3ff!important;border-color:rgba(63,216,255,.22)!important}
+html[data-hud] input:focus:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] select:focus:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] textarea:focus:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){border-color:#3fd8ff!important;box-shadow:0 0 0 3px rgba(63,216,255,.12)!important;outline:none}
+html[data-hud] table thead tr:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] table thead th:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){background:rgba(63,216,255,.07)!important;color:#7fdcf5!important;font-family:var(--hud-mono);letter-spacing:.08em;border-bottom:1px solid rgba(63,216,255,.25)!important}
+html[data-hud] table tbody tr:hover td:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){background:rgba(63,216,255,.05)!important}
 html[data-hud] .modal{background:linear-gradient(180deg,#071b2e,#030f1b)!important;border:1px solid rgba(63,216,255,.25);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 50px rgba(0,170,255,.12)!important}
 html[data-hud] .modal-overlay{background:rgba(0,4,10,.72)!important;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 
@@ -18708,6 +18708,70 @@ html[data-hud] .br-wave.on i{background:#3fd8ff;box-shadow:0 0 6px #3fd8ff}
 @keyframes hudTalk{50%{box-shadow:inset 0 0 80px rgba(0,190,255,.16),0 0 50px rgba(0,190,255,.25)}}
 .hud-core.hud-speaking .hud-arc{animation:hudArcPulse .9s ease-in-out infinite}
 @keyframes hudArcPulse{50%{stroke-width:10}}
+</style>
+
+<style id="dark-fix">
+/* ══ v129: leggibilità dei temi scuri (Notte e HUD) in Report, Documenti, Adempimenti, Anticipi ══
+   I documenti (.doc, #pm-body, .ric-doc) restano bianchi come in stampa. */
+@media (min-width:861px){ .mobile-only.mc-list{display:none!important} } /* doppio elenco "da telefono" anche su computer */
+html[data-tema="notte"] .rpt-summary,html[data-tema="notte"] .scorporo-box{background:#1d1640!important;color:var(--text)!important;border:1px solid rgba(157,143,240,.25)}
+html[data-tema="notte"] #toast{background:#1d1640;color:#f1edf9}
+html[data-tema="notte"] .rpt-summary .rpt-sum-row span:first-child{color:var(--text-mid)}
+html[data-tema="notte"] .rpt-summary [style*="rgba(255,255,255,0.4)"]{color:var(--text-light)!important}
+/* chip e card degli Adempimenti */
+html[data-tema="notte"] .adem-deadline-card.urgent{background:linear-gradient(135deg,rgba(236,138,127,.10),rgba(236,138,127,.03))!important}
+html[data-tema="notte"] .adem-alert-card.severity-high{background:linear-gradient(90deg,rgba(236,138,127,.14) 0%,transparent 40%)!important}
+html[data-tema="notte"] .adem-alert-card.severity-medium{background:linear-gradient(90deg,rgba(226,174,88,.14) 0%,transparent 40%)!important}
+html[data-tema="notte"] .adem-alert-card.severity-low{background:linear-gradient(90deg,rgba(120,160,255,.12) 0%,transparent 40%)!important}
+html[data-tema="notte"] .adem-warning-chip,html[data-tema="notte"] .ctr-warnbox{background:rgba(226,174,88,.12)!important;color:var(--orange)!important;border-color:rgba(226,174,88,.4)!important}
+html[data-tema="notte"] .adem-error-chip{background:rgba(236,138,127,.12)!important;color:var(--red)!important;border-color:rgba(236,138,127,.4)!important}
+html[data-tema="notte"] .adem-ok-chip{background:rgba(108,199,156,.12)!important;color:var(--green)!important;border-color:rgba(108,199,156,.4)!important}
+html[data-tema="notte"] .tot-row td,html[data-tema="notte"] .adem-quarter-table .tot-row,html[data-tema="notte"] .adem-quarter-table .tot-row td{background:rgba(157,143,240,.08)!important;color:var(--ink)!important}
+html[data-tema="notte"] .toggle-slider{background:rgba(255,255,255,.14)}
+html[data-tema="notte"] .onb-task-check,html[data-tema="notte"] .onb-subtask-check{background:var(--surface2)}
+html[data-tema="notte"] .field input:focus,html[data-tema="notte"] .field select:focus,html[data-tema="notte"] #modal-contratto :is(input,select,textarea):focus{background:var(--surface2)!important}
+/* sfondi chiari scritti direttamente negli elementi */
+html[data-tema="notte"] :is(.page,.modal) :is([style*="background:#eff6ff"],[style*="background:#dde3f8"],[style*="background:#e9f7fb"],[style*="background:#eef0f4"],[style*="background:#eef2ff"],[style*="background:#e0e7ff"],[style*="background:#e8f0ff"],[style*="background:#dbeafe"],[style*="background:#f5f4f8"],[style*="background:#ede9fe"],[style*="background:#cfd5e8"],[style*="linear-gradient(135deg,#f5f3ff"],[style*="linear-gradient(135deg,#fdf4ff"],[style*="linear-gradient(90deg,#eff6ff"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){background:rgba(120,160,255,.08)!important;border-color:rgba(120,160,255,.3)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="background:#dcfce7"],[style*="background:#d1fae5"],[style*="background:#e8f4e8"],[style*="background:#e8fff4"],[style*="linear-gradient(135deg,#f0fdf4"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){background:rgba(108,199,156,.12)!important;border-color:rgba(108,199,156,.4)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="linear-gradient(135deg,#fef3c7"],[style*="linear-gradient(135deg,#fffbeb"],[style*="linear-gradient(90deg,#fffbeb"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){background:rgba(226,174,88,.12)!important;border-color:rgba(226,174,88,.4)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="linear-gradient(135deg,#fef2f2"],[style*="linear-gradient(90deg,#fef2f2"],[style*="linear-gradient(135deg,#fff,#fef2f2"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){background:rgba(236,138,127,.12)!important;border-color:rgba(236,138,127,.4)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="color:#1a3a8f"],[style*="color:#1e40af"],[style*="color:#3730a3"],[style*="color:#1f3a73"],[style*="color:#5b21b6"],[style*="color:#6b21a8"],[style*="color:#5b4ab8"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){color:#a9b8ff!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="color:#1a6b2a"],[style*="color:#1a5c2a"]):not(.doc *):not(.doc):not(#pm-body *){color:var(--green)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="color:#7f1d1d"],[style*="color:#c00"],[style*="color:#b3323a"],[style*="color:#a33c40"],[style*="color:#a52647"],[style*="color:#cc2020"]):not(.doc *):not(.doc):not(#pm-body *){color:var(--red)!important}
+html[data-tema="notte"] :is(.page,.modal) :is([style*="color:#555"],[style*="color:#4b5563"],[style*="color:#444"],[style*="color:#333"],[style*="color:#334"],[style*="color:#111"],[style*="color:#1a1a2e"],[style*="color:#1a1a1a"],[style*="color:#7a5000"],[style*="color:#3d2f10"]):not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){color:var(--text-mid)!important}
+
+/* Documenti e anteprime di stampa: colori "su carta" anche nei temi scuri */
+html[data-tema="notte"] :is(#pm-body,#pm-body-adem,.doc,.ric-doc){
+  --blue-dark:#170046;--blue:#2c2168;--blue-mid:#4a3f8e;--cyan:#94753a;
+  --grad:linear-gradient(135deg,#170046 0%,#2c2168 100%);
+  --bg:#f5f3ee;--surface:#ffffff;--surface2:#faf8f4;--border:#e6e1d6;
+  --text:#1a1730;--text-mid:#4b4862;--text-light:#8a8799;
+  --green:#2f7d5c;--red:#b0473d;--orange:#a8741d;--gold:#c8a55b;--gold-ink:#94753a;--ink:#1a1730;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;font-family:'Plus Jakarta Sans',sans-serif}
+/* ── HUD: stesse correzioni con i colori ciano ── */
+html[data-hud] .rpt-summary,html[data-hud] .scorporo-box{
+  background:linear-gradient(var(--hc),var(--hc)) left top/14px 1.5px no-repeat,linear-gradient(var(--hc),var(--hc)) left top/1.5px 14px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right bottom/14px 1.5px no-repeat,linear-gradient(var(--hc),var(--hc)) right bottom/1.5px 14px no-repeat,
+    linear-gradient(180deg,rgba(8,34,56,.92),rgba(3,15,27,.92))!important;
+  border:1px solid rgba(63,216,255,.28)!important;border-radius:3px!important;box-shadow:inset 0 0 40px rgba(0,160,230,.07),0 0 24px rgba(0,170,255,.08)}
+html[data-hud] .rpt-summary .rpt-sum-row{border-bottom:1px dashed rgba(63,216,255,.1)}
+html[data-hud] .rpt-summary .rpt-sum-row span:first-child{color:#8fc3d6;font-family:var(--hud-mono);font-size:12px}
+html[data-hud] .rpt-summary .rpt-sum-row span:last-child{font-family:var(--hud-num);letter-spacing:.03em}
+html[data-hud] .rpt-sum-total{color:#3fd8ff!important;text-shadow:0 0 12px rgba(63,216,255,.6)}
+html[data-hud] #toast{background:rgba(3,15,27,.96);color:#d3f3ff;border:1px solid rgba(63,216,255,.4);border-left:3px solid #3fd8ff;box-shadow:0 0 24px rgba(63,216,255,.2);font-family:var(--hud-mono)}
+html[data-hud] .page :is(h1,h2,.page-title,.section-title):not(.doc *){font-family:var(--hud-num)!important;letter-spacing:.06em}
+html[data-hud] .page [style*="font-family:Fraunces"]:not(.doc *):not(.doc):not(#pm-body *):not(.ric-doc *){font-family:'Rajdhani',sans-serif!important;font-weight:600!important;letter-spacing:.1em}
+html[data-hud] .adem-deadline-card{background:linear-gradient(180deg,rgba(9,31,50,.86),rgba(3,13,24,.86))!important;border:1px solid rgba(63,216,255,.16)!important;border-radius:3px!important}
+html[data-hud] .adem-deadline-card:hover{border-color:rgba(63,216,255,.5)!important;box-shadow:0 0 22px rgba(63,216,255,.15)}
+html[data-hud] .adem-deadline-card.urgent{background:linear-gradient(135deg,rgba(255,90,110,.16),rgba(3,13,24,.86))!important;border-color:rgba(255,90,110,.45)!important}
+html[data-hud] .adem-deadline-card .dl-title{font-family:'Rajdhani',sans-serif!important;font-size:18px!important;letter-spacing:.06em;color:#eafcff!important}
+html[data-hud] .adem-deadline-card.urgent .dl-title{color:#ff8a98!important}
+html[data-hud] .adem-deadline-card .dl-icon{filter:grayscale(1) brightness(1.5) sepia(1) hue-rotate(150deg) saturate(2.4)}
+html[data-hud] .adem-tab-label{font-family:var(--hud-mono);font-size:11.5px}
+html[data-hud] .table-wrap:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){border-color:rgba(63,216,255,.15)!important}
+html[data-hud] table td:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){border-bottom-color:rgba(63,216,255,.08)!important}
+html[data-hud] .badge:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data-hud] [class*="badge-"]:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *){filter:saturate(1.2) brightness(1.1)}
+html[data-hud] :is(.page,.modal) [style*="background:var(--surface2)"]:not(.doc *):not(#pm-body *){background:rgba(8,32,52,.75)!important}
 </style>
 
 <script id="br-js">
