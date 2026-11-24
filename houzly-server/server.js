@@ -1306,6 +1306,18 @@ app.post('/api/smoobu/webhook', async (req, res) => {
     const action = event.action || '';
     const bookingId = String(b.id || b.reservationId || '');
 
+    // v115: eventi generati dall'eliminazione di un alloggio da Smoobu (struttura non più
+    // in gestione). Non devono toccare né le pulizie né le schede del check-in (dati ospiti
+    // necessari per Alloggiati, ISTAT e dichiarazioni): si segna solo lo specchio.
+    if (action === 'deleteReservation' || action === 'cancelledReservation') {
+      const gone = await webhookAptRimosso(b);
+      if (gone === true || (gone === null && action === 'deleteReservation')) {
+        try { await mirrorFromWebhook(b, action); } catch (e) { console.error('[Mirror] error:', e.message); }
+        console.log('[Smoobu Webhook] alloggio eliminato o non verificabile: pulizie e check-in non toccati', bookingId, action);
+        return res.json({ ok: true, skipped: 'apartment_removed' });
+      }
+    }
+
     // ──────────────────────────────────────────────────────────────
     // PARTE 1: CLEANING (logica esistente preservata 1:1)
     // ──────────────────────────────────────────────────────────────
@@ -1443,8 +1455,10 @@ async function mirrorMarkCancelled(id, reason) {
 // l'alloggio è stato eliminato da Smoobu (proprietà chiusa): in quel caso la
 // prenotazione resta valida nel tool e non va segnata come cancellata.
 let _aptCache = { t: 0, ids: null };
-async function smoobuApartmentIds() {
-  if (_aptCache.ids && (Date.now() - _aptCache.t) < 10 * 60 * 1000) return _aptCache.ids;
+// v115: force=true rilegge sempre l'elenco (serve subito dopo un'eliminazione,
+// quando la cache potrebbe contenere ancora l'alloggio appena cancellato)
+async function smoobuApartmentIds(force) {
+  if (!force && _aptCache.ids && (Date.now() - _aptCache.t) < 10 * 60 * 1000) return _aptCache.ids;
   const d = await smoobuGetJson('/api/apartments');
   const list = Array.isArray(d) ? d : (d.apartments || (d._embedded && d._embedded.apartments) || []);
   const ids = new Set(list.map(a => String(a.id)).filter(Boolean));
@@ -1454,10 +1468,32 @@ async function smoobuApartmentIds() {
 }
 function mirrorAptId(m) { return m && m.res && m.res.apartment && m.res.apartment.id != null ? String(m.res.apartment.id) : null; }
 // true se l'alloggio della prenotazione non esiste più su Smoobu
-async function aptRimosso(aptId) {
+async function aptRimosso(aptId, force) {
   if (!aptId) return false;
-  const ids = await smoobuApartmentIds();
+  const ids = await smoobuApartmentIds(force);
   return !ids.has(String(aptId));
+}
+// v115: per il sito. true se l'alloggio esiste ancora su Smoobu; se l'elenco non
+// si riesce a leggere risponde true (non blocchiamo le ricerche per un errore temporaneo)
+async function aptPrenotabile(aptId) {
+  try { return (await smoobuApartmentIds()).has(String(aptId)); }
+  catch (e) { return true; }
+}
+// v115: un evento del webhook riguarda un alloggio eliminato da Smoobu?
+// Rilegge l'elenco senza cache. Se non si riesce a verificare -> null (sconosciuto).
+async function webhookAptRimosso(b) {
+  let apt = b && b.apartment && b.apartment.id != null ? String(b.apartment.id) : null;
+  try {
+    if (!apt) {
+      const id = String((b && (b.id || b.reservationId)) || '');
+      if (id) {
+        const m = await (await getCollection(MIRROR_COL)).findOne({ _id: id }, { projection: { 'res.apartment': 1 } });
+        apt = mirrorAptId(m);
+      }
+    }
+    if (!apt) return false;
+    return await aptRimosso(apt, true);
+  } catch (e) { return null; }
 }
 
 // Dal webhook Smoobu: nuove/modificate → scarica dettaglio prezzi; cancellate → segna
@@ -1466,21 +1502,24 @@ async function mirrorFromWebhook(b, action) {
   if (!id) return;
   const arrival = (b.arrival || '').slice(0, 10);
   if (action === 'cancelledReservation' || action === 'deleteReservation') {
-    // v114: se l'alloggio è stato eliminato da Smoobu non è una cancellazione vera
-    if (action === 'deleteReservation') {
+    // v114/v115: se l'alloggio è stato eliminato da Smoobu non è una cancellazione vera
+    // (vale sia per deleteReservation sia per cancelledReservation; elenco riletto senza cache)
+    {
       try {
         const col = await getCollection(MIRROR_COL);
         const m = await col.findOne({ _id: id }, { projection: { 'res.apartment': 1 } });
         const apt = mirrorAptId(m) || (b.apartment && b.apartment.id != null ? String(b.apartment.id) : null);
-        if (await aptRimosso(apt)) {
+        if (await aptRimosso(apt, true)) {
           await col.updateOne({ _id: id }, { $set: { apartment_removed: true, synced_at: new Date().toISOString() } });
           console.log('[Mirror] delete ignorata: alloggio eliminato da Smoobu', id, apt);
           return;
         }
       } catch (e) {
-        // senza l'elenco alloggi non posso distinguere: per sicurezza non segno nulla
-        console.warn('[Mirror] delete non verificabile, ignorata', id, e.message);
-        return;
+        // senza l'elenco alloggi non posso distinguere: per una delete per sicurezza non segno
+        // nulla; una cancellazione esplicita invece la registro (il tool la segnala soltanto,
+        // non elimina mai nulla da solo)
+        console.warn('[Mirror] eliminazione non verificabile', id, action, e.message);
+        if (action === 'deleteReservation') return;
       }
     }
     await mirrorMarkCancelled(id, 'webhook:' + action);
@@ -1554,7 +1593,7 @@ async function reconcileMirror(trigger) {
       const missing = activeInMirror.filter(m => !active.has(m._id) && !m.apartment_removed);
       let aptIds = null;
       if (missing.length) {
-        try { aptIds = await smoobuApartmentIds(); }
+        try { aptIds = await smoobuApartmentIds(true); }
         catch (e) { out.warning = 'Elenco alloggi Smoobu non disponibile: cancellazioni saltate per sicurezza (' + e.message + ')'; }
       }
       out.apartment_removed = 0;
@@ -1631,6 +1670,52 @@ app.get('/api/bookings/coverage', requireAdminAuth, async (req, res) => {
     console.error('[bookings/coverage]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// -- v115: CONTROLLO PRIMA DI ELIMINARE UNA STRUTTURA DA SMOOBU (sola lettura) --
+// GET /api/smoobu/pre-delete-check?apartmentId=123
+// Elenca tutte le prenotazioni Smoobu dell'alloggio (dal 2024) e le future, più
+// i dati che il server conserva da solo (specchio, check-in). Il confronto con le
+// prenotazioni del tool lo fa la dashboard (Impostazioni > Strutture da togliere da Smoobu).
+app.get('/api/smoobu/pre-delete-check', requireAdminAuth, async (req, res) => {
+  try {
+    const apt = String(req.query.apartmentId || '').replace(/\D/g, '');
+    if (!apt) return res.status(400).json({ ok: false, error: 'missing_apartmentId' });
+    const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : '2024-01-01';
+    const today = new Date().toISOString().slice(0, 10);
+    const items = [];
+    for (let page = 1; page <= 30; page++) {
+      const d = await smoobuGetJson('/api/reservations', { pageSize: 100, page, apartmentId: apt, departureFrom: from });
+      const list = (d._embedded && d._embedded.bookings) || d.bookings || [];
+      for (const b of list) {
+        if (String(b.apartment && b.apartment.id) !== apt) continue;
+        if (b['is-blocked-booking'] === true || b.type === 'cancellation') continue;
+        items.push({ id: String(b.id), ref: b['reference-id'] || null, arrival: (b.arrival || '').slice(0, 10), departure: (b.departure || '').slice(0, 10),
+          channel: (b.channel && b.channel.name) || '', guest: b['guest-name'] || [b.firstname, b.lastname].filter(Boolean).join(' '), price: b.price,
+          apartment: (b.apartment && b.apartment.name) || '' });
+      }
+      if (page >= (d.page_count || 1) || !list.length) break;
+      await sleep(80);
+    }
+    const future = items.filter(x => x.departure >= today);
+    const mirror = await (await getCollection(MIRROR_COL)).countDocuments({ 'res.apartment.id': Number(apt) });
+    const ck = await getCollection('checkin_sessions');
+    const checkin = await ck.countDocuments({ 'property.smoobu_id': apt });
+    const checkinDone = await ck.countDocuments({ 'property.smoobu_id': apt, 'guests.0.submitted_at': { $ne: null } });
+    res.json({ ok: true, apartmentId: apt, from, items, future, server: { mirror, checkin_sessions: checkin, checkin_completati: checkinDone } });
+  } catch (e) {
+    console.error('[pre-delete-check]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/smoobu/apartments-list -> alloggi presenti ora su Smoobu (id + nome)
+app.get('/api/smoobu/apartments-list', requireAdminAuth, async (req, res) => {
+  try {
+    const d = await smoobuGetJson('/api/apartments');
+    const list = Array.isArray(d) ? d : (d.apartments || (d._embedded && d._embedded.apartments) || []);
+    res.json({ ok: true, apartments: list.map(a => ({ id: String(a.id), name: a.name })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // GET /api/bookings/sync-status
@@ -1742,6 +1827,7 @@ function dbEuro(n) { return '€ ' + Number(n || 0).toLocaleString('it-IT', { mi
 async function quoteDirectStay(aptId, arrival, departure) {
   const cat = BOOKING_CATALOG[aptId];
   if (!cat) return { ok: false, error: 'not_bookable' };
+  if (!(await aptPrenotabile(aptId))) return { ok: false, error: 'not_bookable' }; // v115: alloggio tolto da Smoobu
   const [ratesResp, smoobuCleaning] = await Promise.all([
     smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': aptId, start_date: arrival, end_date: departure } }),
     getSmoobuCleaningFee(aptId)
@@ -2173,6 +2259,8 @@ app.post('/api/booking/availability', bookingCors, async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, arrival, departure' });
   }
   try {
+    // v115: struttura tolta da Smoobu -> resta sul sito ma non è prenotabile
+    if (!(await aptPrenotabile(apartmentId))) return res.json({ ok: true, available: false, reason: 'not_bookable', nights: null, price: null, cleaningFee: 0, minStay: 1 });
     // Rates da Smoobu + costo pulizie Smoobu (in cache 24h, vedi getSmoobuCleaningFee)
     const [ratesResp, cleaningFee] = await Promise.all([
       smoobuFetch('GET', '/api/rates', { query: { 'apartments[]': apartmentId, start_date: arrival, end_date: departure } }),
@@ -2255,6 +2343,20 @@ app.get('/api/booking/ping', bookingCors, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── GET /api/booking/bookable ─────────────────────────────────────
+// v115: ID degli alloggi presenti ora su Smoobu. Il sito mette in "vetrina"
+// (visibili, senza prenotazione online) le strutture il cui smoobuId non c'è più.
+// Se l'elenco non è leggibile risponde ok:false e il sito non cambia nulla.
+app.get('/api/booking/bookable', bookingCors, async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  try {
+    const ids = await smoobuApartmentIds();
+    res.json({ ok: true, ids: Array.from(ids) });
+  } catch (e) {
+    res.json({ ok: false });
+  }
+});
+
 // ── POST /api/booking/search ──────────────────────────────────────
 // Disponibilità e prezzo di più appartamenti con UNA richiesta a Smoobu
 // (a blocchi di 20), invece di una richiesta per appartamento.
@@ -2267,10 +2369,17 @@ app.post('/api/booking/search', bookingCors, async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentIds[], arrival, departure' });
   }
   // ID numerici, unici, ordinati (stesso ordine nella firma HMAC e nella URL)
-  const ids = Array.from(new Set(apartmentIds.map(x => parseInt(x, 10)).filter(x => x > 0))).sort((a, b) => a - b).slice(0, 80);
+  let ids = Array.from(new Set(apartmentIds.map(x => parseInt(x, 10)).filter(x => x > 0))).sort((a, b) => a - b).slice(0, 80);
   if (!ids.length) return res.status(400).json({ ok: false, error: 'apartmentIds non validi' });
 
   const results = {};
+  // v115: strutture tolte da Smoobu -> "non prenotabile", senza chiedere nulla a Smoobu
+  try {
+    const present = await smoobuApartmentIds();
+    ids.filter(id => !present.has(String(id))).forEach(id => { results[id] = { available: false, reason: 'not_bookable', nights: null, price: null, cleaningFee: 0, minStay: 1 }; });
+    ids = ids.filter(id => present.has(String(id)));
+  } catch (e) { /* elenco non disponibile: si procede come prima */ }
+  if (!ids.length) return res.json({ ok: true, results });
   try {
     const fees = await Promise.all(ids.map(id => getSmoobuCleaningFee(id)));
     const feeOf = {}; ids.forEach((id, i) => { feeOf[id] = fees[i]; });
@@ -2316,6 +2425,8 @@ app.get('/api/booking/rates', bookingCors, async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Campi obbligatori: apartmentId, start, end' });
   }
   try {
+    // v115: struttura tolta da Smoobu -> calendario vuoto (nessun giorno prenotabile)
+    if (!(await aptPrenotabile(apartmentId))) return res.json({ data: {}, not_bookable: true });
     const r = await smoobuFetch('GET', '/api/rates', {
       query: { 'apartments[]': apartmentId, start_date: start, end_date: end }
     });
