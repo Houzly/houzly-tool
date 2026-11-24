@@ -320,6 +320,7 @@ function disegnaElenco(){
           : chiusa ? ''
           : `<button class="az forte" onclick="rigenera('${p.riferimento}')">Nuovo link e invio</button>
              <button class="az rischio" onclick="annulla('${p.riferimento}')">Annulla</button>`}
+        ${firmata ? '' : `<button class="az" onclick="anteprima('${p.riferimento}')">Vedi il contratto</button>`}
         <button class="az" onclick="dettaglio('${p.riferimento}')">Dettagli</button>
       </div>
     </div>`;
@@ -400,6 +401,35 @@ async function scaricaPdf(rif){
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 60000);
   }catch(e){ mostra('Errore nello scaricamento'); }
+}
+
+async function anteprima(rif){
+  // La scheda si apre PRIMA della fetch: aperta dopo l'await, Safari la
+  // considera non originata da un click e la blocca come popup.
+  const scheda = window.open('', '_blank');
+  mostra('Generazione del contratto…');
+  try{
+    const pin = sessionStorage.getItem(PIN_KEY) || '';
+    const r = await fetch('/api/contracts/' + rif + '/anteprima', {headers:{'X-Admin-PIN':pin}});
+    if(!r.ok){
+      if(scheda) scheda.close();
+      const d = await r.json().catch(()=>({}));
+      return mostra('Non disponibile' + (d.error ? ': ' + d.error : ''));
+    }
+    const url = URL.createObjectURL(await r.blob());
+    if(scheda){
+      scheda.location = url;
+    }else{
+      // Popup bloccato: ripiego sullo scaricamento.
+      const a = document.createElement('a');
+      a.href = url; a.download = rif + '-bozza.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    setTimeout(()=>URL.revokeObjectURL(url), 120000);
+  }catch(e){
+    if(scheda) scheda.close();
+    mostra('Errore nella generazione');
+  }
 }
 
 async function dettaglio(rif){
