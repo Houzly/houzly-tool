@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v129 · 24/11 · HUD leggibile in Report e Documenti</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v130 · 24/11 · Mappa, radar, calore, flussi</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -18327,7 +18327,7 @@ function dxRender(){
   try{ if(typeof srSeed==='function') srSeed(); }catch(e){} // v127: elenco strutture tolte da Smoobu
   try{
     dxRenderFiltri();
-    root.innerHTML=dxOggi()+dxTrend()+dxPlanning()+dxClassifica();
+    root.innerHTML=dxOggi()+dxTrend()+(typeof vzRenderAll==='function'?vzRenderAll():'')+dxPlanning()+dxClassifica();
   }catch(e){ console.error('dashboard interattiva',e); root.innerHTML=''; }
   if(typeof hudRender==='function') hudRender(); // v126
 }
@@ -18774,6 +18774,387 @@ html[data-hud] .badge:not(:is(#pm-body,#pm-body-adem,.doc,.ric-doc) *),html[data
 html[data-hud] :is(.page,.modal) [style*="background:var(--surface2)"]:not(.doc *):not(#pm-body *){background:rgba(8,32,52,.75)!important}
 </style>
 
+<style id="vz-css">
+/* ══ GRAFICI AVANZATI (v130) ══ */
+:root{--vz-a:#2c2168;--vz-heat:#2c2168;--vz-grid:rgba(26,23,48,.12)}
+html[data-tema="notte"]{--vz-a:#9d8ff0;--vz-heat:#9d8ff0;--vz-grid:rgba(255,255,255,.08)}
+html[data-hud]{--vz-a:#3fd8ff;--vz-heat:#3fd8ff;--vz-grid:rgba(63,216,255,.12)}
+.vz-kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-mid)}
+.vz-kv b{font-family:var(--serif);font-size:17px;color:var(--ink);font-weight:600}
+html[data-hud] .vz-kv b{font-family:var(--hud-num);font-size:15px;color:#eafcff;text-shadow:0 0 10px rgba(63,216,255,.4)}
+html[data-hud] .vz-kv span{font-family:var(--hud-mono);font-size:10.5px;letter-spacing:.06em}
+/* mappa */
+.vz-mapwrap{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:start}
+.vz-mapbox{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(circle at 60% 55%,#0a2a44 0%,#051726 60%,#030d18 100%);border:1px solid rgba(63,216,255,.25);box-shadow:inset 0 0 60px rgba(0,140,220,.18)}
+.vz-map{display:block;width:100%;height:auto;max-height:560px}
+.vz-grid{stroke:rgba(63,216,255,.08);stroke-width:1}
+.vz-reg{fill:rgba(63,216,255,.035);stroke:rgba(63,216,255,.25);stroke-width:.7}
+.vz-reg.tos{fill:rgba(63,216,255,.09);stroke:#3fd8ff;stroke-width:1.4;filter:drop-shadow(0 0 4px rgba(63,216,255,.6))}
+.vz-ring{fill:none;stroke:rgba(255,181,71,.45);stroke-width:1;stroke-dasharray:3 4}
+.vz-ringl{fill:rgba(255,181,71,.8);font-family:'JetBrains Mono',monospace}
+.vz-sweep{animation:vzSweep 7s linear infinite}
+.vz-sweepw{fill:url(#none);fill:rgba(63,216,255,.07)}
+@keyframes vzSweep{to{transform:rotate(360deg)}}
+.vz-lbl{fill:rgba(220,245,255,.8);font-family:'JetBrains Mono',monospace;paint-order:stroke;stroke:rgba(4,20,34,.85);stroke-linejoin:round}
+.vz-hq{fill:#ffb547;filter:drop-shadow(0 0 4px #ffb547)}
+.vz-hql{fill:#ffc46b;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;paint-order:stroke;stroke:rgba(4,20,34,.85);stroke-linejoin:round}
+.vz-pt{cursor:pointer}
+.vz-pt:hover circle{filter:brightness(1.4) drop-shadow(0 0 6px currentColor)}
+.vz-pulse{animation:vzPulse 2.2s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes vzPulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.vz-attr{position:absolute;right:8px;bottom:5px;font-size:8.5px;color:rgba(200,230,245,.35)}
+.vz-side{display:flex;flex-direction:column;gap:2px}
+.vz-leg{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:10px;font-size:11px;color:var(--text-mid)}
+.vz-leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.vz-leg-n{grid-column:1/-1;font-size:10.5px;color:var(--text-light);margin-top:2px}
+.vz-out{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px;align-items:center}
+.vz-out>span:first-child{width:100%;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-light)}
+/* confronto */
+.vz-cmp{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+.vz-rgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;max-height:430px;overflow-y:auto;padding:2px}
+.vz-rg{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:all .15s}
+.vz-rg:hover{background:var(--surface2);border-color:var(--border)}
+.vz-rg.sel{border-color:var(--vzc);background:color-mix(in srgb,var(--vzc) 10%,transparent);box-shadow:0 0 14px color-mix(in srgb,var(--vzc) 25%,transparent)}
+.vz-rg svg{width:58px;height:58px}
+.vz-rg-bg{fill:none;stroke:var(--vz-grid);stroke-width:5}
+.vz-rg-arc{transition:stroke-dashoffset 1s cubic-bezier(.2,.7,.2,1)}
+.vz-rg-t{font-size:12px;font-weight:700;fill:var(--ink)}
+html[data-hud] .vz-rg-t{font-family:'Orbitron',sans-serif;font-size:11px;fill:#eafcff}
+.vz-rg span{font-size:10px;color:var(--text-mid);text-align:center;line-height:1.2;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vz-rd svg{width:100%;height:auto;overflow:visible}
+.vz-rd-grid{fill:none;stroke:var(--vz-grid);stroke-width:1}
+.vz-rd-ax{font-size:10px;fill:var(--text-mid);font-weight:600}
+html[data-hud] .vz-rd-ax{font-family:'JetBrains Mono',monospace;fill:#7fdcf5;font-weight:500}
+.vz-rd-avg polygon{stroke-dasharray:4 4}
+.vz-rd-s polygon{filter:drop-shadow(0 0 6px rgba(63,216,255,.25))}
+.vz-rd circle{cursor:pointer}
+.vz-rd-leg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;color:var(--text-mid);margin-top:6px}
+.vz-rd-leg>span:not(.dx-chip){display:inline-flex;align-items:center;gap:5px}
+.vz-rd-leg i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.vz-rd-leg i.avg{border:1.5px dashed #8a93a8}
+.vz-rd-leg i.band{background:color-mix(in srgb,var(--vz-a) 22%,transparent);border:1px dashed var(--vz-a)}
+.vz-rd-leg i.ly{height:2px;background:#ffb547}
+/* calendario di calore */
+.vz-hm-wrap{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;align-items:start}
+.vz-hm-box{overflow-x:auto}
+.vz-hm-svg{width:100%;min-width:640px;height:auto}
+.vz-hm-m{font-size:9px;fill:var(--text-light)}
+html[data-hud] .vz-hm-m{font-family:'JetBrains Mono',monospace}
+.vz-hm{fill:var(--vz-heat);cursor:pointer;transition:filter .1s}
+rect.vz-hm.l0{fill:var(--vz-grid)}
+rect.vz-hm.l1{fill-opacity:.25}rect.vz-hm.l2{fill-opacity:.45}rect.vz-hm.l3{fill-opacity:.7}rect.vz-hm.l4{fill-opacity:1}
+html[data-hud] rect.vz-hm.l4{filter:drop-shadow(0 0 3px #3fd8ff)}
+rect.vz-hm:hover{stroke:var(--gold);stroke-width:1.5}
+rect.vz-hm.today{stroke:#ffb547;stroke-width:1.5}
+.vz-hm-scale{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-light);margin-top:6px;justify-content:flex-end}
+.vz-hm-scale i{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--vz-heat)}
+.vz-hm-scale i.l0{background:var(--vz-grid)}.vz-hm-scale i.l1{opacity:.25}.vz-hm-scale i.l2{opacity:.45}.vz-hm-scale i.l3{opacity:.7}
+.vz-dw{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.vz-dw-r{display:grid;grid-template-columns:30px 1fr 52px;gap:6px;align-items:center;font-size:11px;color:var(--text-mid)}
+.vz-dw-r i{height:6px;background:var(--vz-grid);border-radius:3px;overflow:hidden}
+.vz-dw-r b{display:block;height:100%;background:var(--vz-a);border-radius:3px}
+html[data-hud] .vz-dw-r b{box-shadow:0 0 8px #3fd8ff}
+.vz-dw-r em{font-style:normal;text-align:right;color:var(--ink);font-weight:600}
+/* flusso + previsione */
+.vz-flow{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+.vz-sk{width:100%;height:auto;overflow:visible}
+.vz-sk-src{fill:var(--vz-a);rx:3}
+.vz-sk-lead{stroke:var(--text-light);stroke-width:1;fill:none}
+.vz-sk-band{fill-opacity:.32;transition:fill-opacity .15s;cursor:pointer}
+.vz-sk-band:hover{fill-opacity:.6}
+.vz-sk-t{font-size:11px;fill:var(--text);font-weight:600}
+.vz-sk-v{font-size:11px;fill:var(--text-mid);font-weight:700}
+html[data-hud] .vz-sk-t{font-family:'JetBrains Mono',monospace;font-weight:500;fill:#bfefff;font-size:10.5px}
+html[data-hud] .vz-sk-v{font-family:'Orbitron',sans-serif;font-weight:600}
+.vz-fc-h{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-light);margin-bottom:6px}
+.vz-fc svg{width:100%;height:auto;overflow:visible}
+.vz-fc-gl{stroke:var(--vz-grid);stroke-dasharray:3 4}
+.vz-fc-ax{font-size:9.5px;fill:var(--text-light)}
+.vz-fc-otb{fill:var(--vz-a);fill-opacity:.85}
+.vz-fc-band{fill:var(--vz-a);fill-opacity:.12;stroke:var(--vz-a);stroke-opacity:.5;stroke-dasharray:3 3}
+.vz-fc-ly{stroke:#ffb547;stroke-width:2.5;stroke-linecap:round}
+.vz-fc-line{fill:none;stroke:var(--vz-a);stroke-width:1.5;stroke-dasharray:4 4;opacity:.8}
+.vz-fc-dot{fill:var(--surface);stroke:var(--vz-a);stroke-width:2}
+.vz-fc-col:hover .vz-fc-otb{fill-opacity:1}
+.vz-fc-col{cursor:pointer}
+html[data-hud] .vz-fc-otb{filter:drop-shadow(0 0 6px rgba(63,216,255,.45))}
+html[data-hud] .vz-fc-ax,html[data-hud] .vz-fc-h{font-family:'JetBrains Mono',monospace}
+@media (max-width:1100px){ .vz-cmp,.vz-flow{grid-template-columns:1fr} }
+@media (max-width:860px){ .vz-mapwrap,.vz-hm-wrap{grid-template-columns:1fr} .vz-rd{max-width:420px;margin:0 auto} }
+@media (prefers-reduced-motion:reduce){ .vz-sweep,.vz-pulse{animation:none} }
+</style>
+
+<script id="vz-js">
+// ══ GRAFICI AVANZATI DASHBOARD (v130) ════════════════════════════════
+// Mappa operativa, confronto strutture (anelli + radar), calendario di calore,
+// flusso dell'incasso e previsione. Solo lettura: stessi dati della Dashboard.
+// Mappa: confini regionali da "SVG Maps" (github.com/VictorCazanave/svg-maps), licenza CC BY 4.0.
+var VZ_MAP={"emilia-romagna":"m 314.31,228.18 -1.17,3.09 0.23,4.13 -2.52,0.99 -0.54,2.1 -2.92,-0.36 0.19,-1.04 -0.8,-0.31 -0.69,-2.51 -2.72,1.13 0,-2.14 -2.27,-1.32 0,0 1.13,-1.56 -0.32,-3.75 -3.7,2.48 -1.66,0.04 0.28,3.6 0,0 0,0 0,0 1.21,2.22 -1.62,-0.01 -0.34,-0.82 -1.99,0.79 -1.01,3.47 -2.6,2.09 -0.2,2.17 0,0 -0.04,-0.03 0,0 -1.64,0.89 -2.03,-0.37 -0.83,1.97 -1.55,-2.31 -1.44,0.8 -1.41,-0.16 0,0 -1.72,0.9 -1.11,-1.27 0,0 -0.92,0.25 -1.46,-0.9 -1.06,0.42 0,0 -1.63,-1.05 -0.21,-0.97 0,0 -1.35,-0.18 -0.52,-1.29 -4.66,-0.21 -2,-2.41 -3.58,-2 0.27,-3.06 -1.82,-1.22 0.33,-1.63 -2.17,-2.08 0.25,-1.15 0.67,0.09 -0.2,-1.09 1.68,-0.64 0.43,-1.99 2.03,-2.19 0.34,-2.69 -5.47,1.1 -2.65,-0.36 1.45,-2.1 -0.19,-1.04 -2.6,-0.53 -1.03,1 -1.2,-0.26 -1.73,-1.97 -1.39,-0.38 -0.34,-2.14 -1.33,-1.2 -2.46,2.39 -2.49,0.26 -0.2,1.07 -2.28,2.07 -3.99,0.14 -0.11,0.94 2.93,1.7 0.25,1.08 -2.54,0.16 -3.09,-0.89 -3.34,1.45 -2.76,-0.32 -1.55,-1.15 0.62,-1.04 -0.4,-0.91 -4.86,5.46 -0.66,-0.3 0.32,-0.95 -0.68,-0.91 -2.28,-0.5 -4.97,-4.03 -5.57,-0.13 -1,1.23 0.07,1.35 -1.67,0.42 -3.42,-3.05 -0.24,-1.55 -1.74,-1.6 0.05,-1.38 -1.22,-0.67 -1.67,0.29 -2.95,-3.04 -1.6,-0.03 -2.19,-1.23 -2.38,1.19 -5.63,-5.95 -2.44,0.51 -4.28,-2.94 -1.13,-1.26 0.54,-2.62 -1.05,-0.21 -0.5,-1.24 -2.43,-0.87 -5.35,0.59 -3.41,5.37 -3.6,2.09 0,0 -1.42,-3.32 -2.7,-1.99 -1.05,0.65 -1.41,-0.87 -0.35,0.96 -2.78,0.27 -0.94,1.13 -0.26,-1.17 -1.65,0.39 1.54,-4.51 1.32,-0.21 0.48,-3.42 -0.86,-2.09 -3.23,-1.11 -0.79,-1.73 -2.44,1.79 -3.15,-2.55 -0.44,1.05 -2.1,-0.35 0.34,-0.84 -0.59,-0.63 -2.26,0.44 0,0 -0.03,-5.08 0.49,0.19 0,0 1.75,-0.11 -0.32,-2.02 1.31,2.51 3.23,-0.85 -0.71,-1.39 0.89,-1.04 -0.15,-1.22 -1.74,-0.93 -0.3,-1.1 3.85,-3.88 -1.07,-3.25 -0.97,-0.82 -0.73,0.4 -1.75,-1.61 1.25,-1.64 -0.6,-1.02 1.66,-0.42 1.37,-4.05 1.64,-1.75 -0.12,-2.18 2.05,-1.84 -0.11,-0.67 1.23,0.18 0.32,-0.81 2.84,-0.72 1.57,1.86 1.13,-1.03 -0.63,-2.73 0.73,-0.12 1.6,2.14 1.28,-0.54 0.65,-1.91 0.92,1.25 -0.15,2.5 4.18,1.79 1.62,-1.42 0.5,-1.01 -0.75,-1.09 0.87,-0.27 0.83,1.54 1.85,0.95 0.37,1.86 0.93,-3.21 1,0.03 1.01,1.48 0.88,-0.39 0.2,-1.16 -1.13,-1.59 1.8,-1.46 0.73,0.61 -0.38,2.19 2.88,-2.21 0.89,0.09 1.88,2.45 -0.44,1.49 1.52,1.23 0.07,1.22 1.49,-0.35 0.8,1.74 3.33,-1.56 0.53,0.93 2.22,-0.06 3,2.37 1.6,0.04 2.83,2.27 2.45,-1.34 1.47,2.92 4.57,2.23 3.94,-0.17 1.45,-0.84 2.86,-4.12 0.45,1.62 1.8,-2.07 0.97,3.12 4.41,0.72 0.75,0.79 0.88,-0.16 0.08,0.75 1.34,-0.17 -0.2,0.58 1.46,-0.9 1.35,0.22 0.23,-1.15 2.32,-1.19 3.12,0.26 0.93,-0.79 2.65,0.64 1.22,1.55 0.55,-0.65 3.89,-0.31 0.36,-0.66 1.48,1.05 1.67,-1.59 6.23,0.92 0,0 0.16,1.49 5.7,-0.37 2.1,1.41 0.43,1.62 0.71,0.25 1.24,-0.12 2.02,-1.9 3.19,-0.89 0.74,-2.22 2.92,-1.36 6.27,0.08 2.21,-0.78 6.7,1.07 2.29,3.08 1.48,-0.97 0.81,1.05 2.15,0.17 1.46,-1.29 1.08,-0.01 0.83,1.08 -0.63,1.24 0.33,2.89 0.64,0.95 1.99,0.51 0.6,2.18 0,0 -0.65,0.17 -1.19,-1.84 -1.19,-0.36 -1.73,2.28 1.26,-0.5 -1.66,4.37 -0.59,4.98 0.48,3.31 1.96,3.83 -0.11,8.84 1.77,4.76 0.21,3.39 2.05,7.15 1.76,3.53 6.71,7.82 2.52,1.69 5.97,6.43 2.79,1.02 z m -29.42,11.31 -0.27,1.13 1.37,1.59 2.18,-1.12 -0.3,-1.1 0,0 -0.21,-0.47 -2.77,-0.03 z","lazio":"m 325.37,439.63 -0.25,1.32 0.57,0.19 -1,1.15 -0.18,-2.82 2.24,-1.01 -1.38,1.17 z m 51.61,-39.34 1.01,0.85 -0.76,1.3 -0.75,-0.03 -3.04,2.77 -2.15,0.37 1.32,2.22 -0.81,1.5 1.03,4.47 -3.11,1.12 -0.1,1.03 0.65,0.24 -0.5,0.77 -3,0.58 -0.55,1.32 -2.81,-2.02 -1.22,0.6 -2.81,-1.15 -2.95,1.66 0.11,1.46 0.9,0.6 -2.04,0.07 -8.94,-5.21 -4.34,-1.04 -1.64,1 -2.32,-0.12 -2.92,0.93 -3.31,3.15 -2.41,-0.19 -2.93,-6.73 -3.66,-3.89 -3.6,-1.99 -3.37,-0.34 -0.81,0.63 -4.82,-3.23 -1.7,0.28 -0.14,0.71 -0.87,-0.37 -3.32,-5.86 -7.08,-8.45 -3.68,-3.12 -6.21,-2.83 -0.93,-5.9 -3.13,-5.75 -4.83,-2.83 -1.3,-1.94 -2.56,-0.98 -0.57,-1.21 -2.34,-1.48 -4.27,0.63 -1.67,-3.89 -3.04,-4.01 -0.18,-1.88 -2.12,-4.27 -2.25,-3.16 -5.44,-4.43 -5.13,-2.45 1.86,-4.15 6.8,-0.08 -0.09,-3.43 -2.79,-1.91 1.37,-1.94 -0.45,-1.76 0.62,-0.33 1.14,1.05 0.67,-0.89 0.81,0.23 1.74,-0.88 0.21,-1.08 1.5,-1.11 1.29,0.25 0.91,-2.14 1.37,0.19 1.4,-0.92 -0.08,-1.08 -1.05,-0.48 -0.41,-2.62 1.23,0.01 1.04,-2.36 -3.78,-2.96 1.16,-2.44 1.21,0.47 0.7,1.32 0.51,-2.01 1.63,-1.07 2.48,0.14 1.62,3.89 2.78,1.8 -1.01,1.98 -1.85,1.04 1.29,2.11 4.14,2.56 3.68,-1.31 1.01,1.07 0.12,-0.75 0.67,0.22 1.38,-1.19 1.63,0.68 1.67,2.06 0.55,4.47 1.67,0.78 -0.21,1.96 1.04,0.85 -0.75,0.67 1.52,0.8 -0.69,0.46 1.87,-0.21 1.23,1.26 2,-1.62 1.47,0.16 -0.25,1.86 0.74,0.68 -0.68,0.23 -0.01,2.06 2.29,0.8 -0.97,1.42 3.64,-0.52 -0.05,1.68 0.87,1 4.33,-3.36 0.22,-3.88 1.19,-0.08 0.89,1.86 1.21,-0.05 2.99,-1.97 -1.37,-2.04 3.06,-0.88 0.17,-1.33 2.05,0.1 1.85,-1.63 2.09,-0.67 -0.62,-2.55 0.58,-1.17 2.02,0.99 0.8,-0.97 3.25,0.04 0.71,-1.53 2.06,1.08 2.8,-1.72 0.05,-0.78 1.62,0.64 1.33,-1.28 0.75,-4.45 3.28,0.79 0.54,-1.17 1.09,-0.1 3.68,3.16 -0.54,1.69 1.15,1.36 1.99,0.63 -0.76,3.44 -1.35,1.17 -2.26,-0.32 -1.5,0.77 -0.58,-0.97 -1.35,-0.01 -0.61,0.73 -2.75,-1.03 -0.76,2.76 -1.03,0.57 1,1.86 0.1,2.38 -3.18,2.42 3.99,3.74 -2.09,2.34 3.74,2.47 0.65,3.29 2.58,2.54 2.42,0.83 0.3,1.63 1.94,1.22 -1.83,0.33 0.52,0.7 -1.49,0.29 -1.07,2.23 -1.69,-0.62 -1.24,0.77 -6.56,-3.53 -1.73,0.13 -0.05,2.4 -2.08,1.78 -0.77,-0.36 -0.15,4.92 1.4,2.25 2.39,0.64 0.02,-1.24 2.03,0.72 7.65,4.49 0.89,-0.37 1.98,2.28 1.02,-0.19 1,1.41 -1.28,2.29 1,3.63 1.4,-1.36 1.73,0.7 1.48,1.43 1.84,0.43 0.74,1.81 1.48,0.93 4.05,-1.36 1.07,-2.09 1.77,0.49 1.07,1.18 1.33,-0.73 1.75,3.31 1.33,0.4 1.02,-0.66 2.4,1.42 1.96,-0.19 2.5,3.27 1.99,1.72 1.4,3.59 0.1,1.37 -0.68,0.64 1.37,1.51 -0.22,0.95 -0.85,0.18 1.22,1.06 -2.93,2.01 z m -77.65,-27.89 -0.04,-0.08 0.01,-0.18 -0.11,-0.11 -0.09,0.03 -0.17,0.04 -0.16,0.26 -0.03,0.06 0.07,0.08 0.06,-0.02 0.26,0.06 0.2,-0.08 0,-0.06 z","liguria":"m 165.81,222.60 -0.4,0.99 -0.62,-0.99 1.02,0 z m -109.83,-1.17 0.79,0.27 1.55,-1.67 -1.31,0.02 -0.91,-1.44 0.47,-1.54 1.94,-1.07 9,2.88 1.64,-0.87 1.96,0.69 0.44,-0.73 -0.56,-0.87 -1.31,-0.61 1.84,-1.52 1.53,1.02 1.42,-0.49 1.18,-1.54 -0.05,-1.94 -1.46,-1.28 0.73,-1.7 -0.86,-1.1 1.25,-1.23 -1.27,-1.31 0,-1 0.43,-0.54 1.46,0.65 0.3,-2.17 1.29,0.16 0.98,-1.61 -0.24,-1.99 3.19,-1.76 0.75,-1.93 -1.37,-3.28 1.38,-0.45 -0.04,-1.9 1.55,-1.24 0.98,1.53 1.85,0.19 3.08,2.61 1.31,-0.71 0.56,-2.2 0.81,-0.38 1.47,1.05 1.14,-1.71 0.35,0.86 3.2,-0.12 1,0.75 2.74,-3.03 -0.79,-0.91 1.23,-1.93 3.56,0.2 1.62,0.24 1.79,2.94 -0.3,0.9 0.86,-0.04 0.38,2.2 1.27,-0.46 -0.36,-1.48 1.74,-1.46 -0.02,-1.47 2.28,-0.29 0.88,1.18 1.44,-0.77 -0.3,-3.72 -1.44,-1.56 1.56,-1.26 0.64,-1.66 1.61,-0.24 0.72,1.02 2.28,-0.25 1.6,3.43 1.44,-0.29 1.46,0.85 -0.05,1.48 1.63,1.21 3.52,-1.46 -0.06,-1.46 0,0 2.26,-0.44 0.6,0.63 -0.34,0.84 2.1,0.35 0.44,-1.05 3.15,2.55 2.44,-1.79 0.79,1.73 3.23,1.11 0.86,2.09 -0.48,3.42 -1.32,0.21 -1.54,4.51 1.65,-0.39 0.26,1.17 0.94,-1.13 2.78,-0.27 0.35,-0.96 1.42,0.87 1.05,-0.65 2.7,1.99 1.42,3.32 0,0 1.32,-0.19 1.01,2.58 4.03,3.13 2.59,1.06 0.09,2.57 0.81,0.7 -0.43,2.73 2.08,-1.75 1.47,1.02 -0.75,0.06 -1.24,1.98 3.93,-0.13 0.2,2.36 0.94,1.39 -0.49,1.23 1.78,-1.5 2.37,1.47 -0.27,1.38 -2.22,2.55 0,0 -1.58,-0.27 -1.19,0.87 -2.95,-2.2 0.05,-0.92 -1.35,-0.01 -1.99,-2 -1.29,0.79 1.3,1.62 -0.24,0.59 0.75,-0.13 -1.05,1.4 -4.76,-3.11 -1.9,-2.46 -2.44,-1.28 -1.12,0.82 -1.35,-2.56 -2.04,-0.9 -0.91,-1.69 -2.12,-0.8 -0.93,-1.42 -2.36,-0.08 -1.4,-1.45 -0.66,0.47 -1.62,-2.79 -7.03,-3.96 -1.09,1.04 0.12,2.41 -3.64,-1.69 0.52,-1.78 -0.69,-0.96 -10.67,-2.7 -0.65,-1.06 -0.59,0.44 0.41,0.67 -4.54,-1.23 1.17,-0.21 -0.92,-0.37 -2.38,-0.11 0.27,0.52 -2.06,-0.48 -2.07,0.8 -1.53,1.47 -1.83,0.35 -1.47,1.54 -5.94,3.02 -0.77,1.01 0.7,-0.14 -3,2.75 0.76,1.01 -1.92,2.55 0.38,2.04 -8,4 -1.99,3.46 -0.27,3.34 -3.14,3.53 -0.22,1.41 0.74,1.36 -4.29,2.89 -0.91,1.67 -2.31,0.5 -4.2,2.75 -4.44,0.9 -1.44,1.21 -1.54,-0.46 -3.33,1.96 -1.81,-0.3 -1.53,1.59 -4.69,-1.07 -1.24,1.01 -1.02,-0.22 -2.15,-5.17 0.09,-1.54 0.75,-0.94 2.45,-0.75 0.38,-3.17 4.37,-2.29 0.79,-1.75 -0.25,-2.12 2.17,-0.93 0.29,-1.73 z","marche":"m 359.22,257.90 -2.77,-1.61 -1.18,-2.32 -2.08,-1.73 -0.84,1.52 -2.06,-0.25 -7.56,-4.21 -20.49,-17.97 -5.49,-2.9 -2.43,-0.24 0,0 -1.17,3.09 0.23,4.13 -2.52,0.99 -0.54,2.1 -2.92,-0.36 0.19,-1.04 -0.8,-0.31 -0.69,-2.51 -2.72,1.13 0,-2.14 -2.27,-1.32 0,0 -0.4,1.35 -3.82,-0.43 0,0 -0.04,-0.1 0,0 1.21,2.22 -1.62,-0.01 -0.34,-0.82 -1.99,0.79 -1.01,3.47 -2.6,2.09 -0.2,2.17 0,0 0.13,0.1 0,0 2.15,0.86 2.29,3.08 -2.1,0.02 0.3,2.18 -0.92,-0.06 -0.61,-3.72 -0.44,3.12 -1.23,0.66 -1.46,-0.28 0.2,0.81 -0.94,1.05 -2.31,0.83 1.45,2.23 0,0 0.71,1.17 3.09,-0.04 0.35,0.56 2.08,-1.68 1.88,-0.12 -0.51,0.78 0.48,1.44 -2.92,2.7 1.36,1.42 1.43,-0.73 1.27,1.73 1.42,-2.09 0.99,0.13 0.83,1.42 0.92,0.05 0.29,-0.86 0.91,0.42 6.36,7.29 2.13,-1.29 2.23,0.82 1.32,-2.69 2.08,0.56 -0.37,2.01 0.9,0.84 -1.8,1.69 0.05,0.84 2.27,2.96 0.38,2.91 -0.62,0.7 1.88,1.34 0.67,3.42 1.39,0.69 -0.14,2.9 -1.62,1.55 0.67,1.54 2.07,0.42 0.57,1.71 -0.24,2.77 0.75,2.11 -0.87,0.66 0.94,1.95 -0.56,1.49 2.69,1.61 0.2,0.87 1.11,0.13 0.12,4.04 1.21,-1.36 0.02,-1.71 1.3,0.77 1.4,-1.39 3.01,2.3 2.5,3.94 2.67,-0.61 1.25,-1.82 1.41,3.62 -0.25,1.82 -0.92,1.9 -0.38,-0.77 -1.92,0.78 -0.25,2 0,0 3.28,0.79 0.54,-1.17 1.09,-0.1 3.68,3.16 0,0 1.67,0.49 1.88,-1.33 0.56,0.46 0.6,-2.38 2.37,-0.39 0.3,-2.49 1.33,-1.48 0.25,-1.45 2.08,1.14 2.36,-1.11 0.67,0.95 1.35,-0.17 2.01,-0.94 0.46,-2.21 0.68,-0.38 2.78,-0.19 2.12,-1.41 4.99,-1.07 0,0 -2.2,-6.7 -1.54,-8.13 -11.26,-27.91 0.17,-3.25 z m -61.18,-3.24 -0.74,-0.26 0,0 -0.19,-0.06 0,0 0.32,-0.7 0.57,0.33 0,0 0.1,0.53 0,0 -0.06,0.16 z","tuscany":"m 189.44,341.50 0.86,1.8 -0.76,0.73 -1.01,-0.17 -0.16,-2.15 1.07,-0.21 z m 29.33,-2.75 1.97,2.03 -0.22,3.02 -1.97,-2.44 -0.82,-0.13 1.04,-2.48 z m -41.31,-15.88 1.08,2.11 -0.65,1.48 -2.22,-0.98 1.43,-0.67 0.36,-1.94 z m 17.33,-17.27 1.33,1.4 -0.77,2.13 0.32,2.67 -2.52,1.36 2.45,1.7 -0.55,1.88 -2.47,-0.8 -0.92,-2.73 -0.77,-0.37 -1.22,0.24 0.07,1.67 -0.9,-1.6 -0.83,1.66 -2.23,-0.99 -0.22,1.65 -2.72,-0.74 -1.65,0.26 0.19,0.53 -1.81,-1.11 -1.03,-1.75 0.1,-1.58 1.84,-1.41 2.85,-0.07 2.54,1.55 0.17,-0.79 1.07,-0.28 -0.36,-0.57 0.65,-0.47 -0.61,-0.84 3.63,0.87 -0.76,0.97 1.9,0.34 2.67,-5.01 0.56,0.23 z m -30.08,-13.75 0.69,1.98 -1.83,2.42 -0.92,-1.33 0.51,-2.3 1.23,-1.3 0.32,0.53 z m 123.09,-52.03 0.08,0.16 0,0 0.3,1.1 -2.18,1.13 -1.37,-1.59 0.27,-1.12 2.77,0.02 0,0 0.13,0.3 z m -130.75,-39.65 3.6,-2.09 3.41,-5.36 5.35,-0.59 2.44,0.87 0.5,1.24 1.05,0.22 -0.54,2.63 1.13,1.26 4.28,2.94 2.44,-0.51 5.63,5.96 2.38,-1.19 2.19,1.23 1.6,0.03 2.95,3.04 1.67,-0.29 1.22,0.67 -0.05,1.38 1.74,1.6 0.24,1.55 3.42,3.05 1.67,-0.42 -0.07,-1.34 1,-1.23 5.57,0.13 4.97,4.03 2.28,0.51 0.68,0.91 -0.32,0.95 0.66,0.3 4.86,-5.46 0.4,0.91 -0.61,1.04 1.55,1.15 2.76,0.32 3.34,-1.45 3.09,0.89 2.54,-0.16 -0.25,-1.08 -2.93,-1.7 0.11,-0.94 3.99,-0.14 2.28,-2.07 0.2,-1.07 2.49,-0.26 2.46,-2.39 1.33,1.21 0.34,2.15 1.4,0.38 1.73,1.97 1.21,0.26 1.03,-1 2.6,0.53 0.2,1.04 -1.45,2.1 2.66,0.36 5.47,-1.1 -0.34,2.69 -2.03,2.19 -0.43,1.99 -1.68,0.64 0.2,1.09 -0.67,-0.09 -0.25,1.15 2.17,2.08 -0.33,1.63 1.82,1.22 -0.27,3.06 3.58,2 2,2.41 4.67,0.21 0.52,1.3 1.35,0.18 0,0 0.21,0.97 1.64,1.05 0,0 1.06,-0.42 1.46,0.9 0.92,-0.25 0,0 1.11,1.27 1.72,-0.9 0,0 1.42,0.16 1.44,-0.8 1.55,2.31 0.83,-1.97 2.04,0.38 1.64,-0.89 0,0 0.17,0.13 0,0 2.15,0.86 2.29,3.08 -2.1,0.02 0.3,2.18 -0.92,-0.06 -0.61,-3.72 -0.44,3.12 -1.23,0.66 -1.46,-0.28 0.2,0.81 -0.94,1.05 -2.31,0.83 1.45,2.23 0,0 -2.48,3.13 -0.77,2.59 -2.19,-0.18 -0.55,0.56 -0.17,1.76 2.61,1.48 -0.1,0.56 -2.13,0.9 -1.01,1.7 -1.09,-0.34 -1.71,1.74 0.33,1 2.14,-0.22 0.11,2.66 1.43,-0.54 0.65,0.6 1.01,2.29 -0.59,1.71 0.4,0.9 2.23,0.84 0.9,-2.23 1.54,1.26 -6.67,4.18 -2.2,-1.23 -0.82,0.37 0.5,1.33 -0.99,2.73 -5.18,3.05 -0.49,1.32 0.88,2.44 -0.33,1.22 0.79,1.57 0.84,-1.05 1.27,1.36 -2.42,9.85 1.09,0.75 0.15,1.81 -1.28,0.08 -1.95,2.34 0,0 -2.48,-0.14 -1.62,1.07 -0.51,2.01 -0.7,-1.32 -1.2,-0.47 -1.16,2.44 3.78,2.96 -1.04,2.36 -1.23,-0.01 0.41,2.62 1.05,0.48 0.08,1.08 -1.4,0.92 -1.37,-0.19 -0.91,2.14 -1.29,-0.25 -1.5,1.11 -0.2,1.08 -1.74,0.88 -0.81,-0.23 -0.67,0.89 -1.14,-1.05 -0.62,0.33 0.45,1.76 -1.37,1.94 2.79,1.91 0.09,3.43 -6.8,0.08 -1.85,4.15 0,0 -8.37,-1.95 -1.17,-0.95 -2.73,0.72 0.13,1.48 -0.99,0.48 -0.23,1.22 -1.82,0.15 -1.36,-1.7 -1.62,-0.51 -0.44,-2.58 0.98,-1.23 0.85,0.87 2.24,-0.19 1.01,-2.06 0.31,-3.12 -1.73,-3.57 -1.76,0.36 -0.98,-2.88 -1.1,-1.07 0.21,-0.98 -4.14,-1.77 -0.93,-3.72 -2.21,-2.29 -4.43,-1.78 -3.39,-0.4 -3.08,-2.02 1.84,-1.13 0.14,-3.65 0.89,-1.29 -0.66,-1.47 -1.79,-1.34 -3.2,-1.49 -2.86,-0.31 -3.73,0.58 -0.39,1.77 -2.31,-0.78 -0.59,-3.94 1.69,-0.8 1.12,-6.21 -0.66,-11.12 -1.17,-2.9 -2.16,-2.26 -1.83,-5.45 -1.08,-0.1 -1.15,-3.16 -2.62,-1.98 -1.62,-4.33 0.32,-2.36 -1.86,-7.72 0.6,-0.88 -0.25,-4.01 -1.84,-8.73 -5.04,-7.69 -4.12,-3.65 -2.16,-1.04 0,0 2.23,-2.54 0.27,-1.38 -2.37,-1.47 -1.78,1.5 0.49,-1.23 -0.94,-1.39 -0.19,-2.36 -3.93,0.14 1.24,-1.98 0.75,-0.06 -1.47,-1.02 -2.08,1.75 0.43,-2.73 -0.81,-0.7 -0.09,-2.57 -2.59,-1.06 -4.03,-3.13 -1.01,-2.58 -1.46,0.03 z","umbria":"m 297.82,254.98 -0.52,-0.58 0,0 -0.19,-0.06 0,0 0.24,-0.68 0.66,0.31 0,0 0.1,0.53 0,0 -0.29,0.48 z m -11.03,-1.48 0.71,1.17 3.09,-0.04 0.35,0.56 2.08,-1.68 1.88,-0.12 -0.51,0.78 0.48,1.44 -2.92,2.7 1.36,1.42 1.43,-0.73 1.27,1.73 1.42,-2.09 0.99,0.13 0.83,1.42 0.92,0.05 0.29,-0.86 0.91,0.42 6.36,7.29 2.13,-1.29 2.23,0.82 1.32,-2.69 2.08,0.56 -0.37,2.01 0.9,0.84 -1.8,1.69 0.05,0.84 2.27,2.96 0.38,2.91 -0.62,0.7 1.88,1.34 0.67,3.42 1.39,0.69 -0.14,2.9 -1.62,1.55 0.67,1.54 2.07,0.42 0.57,1.71 -0.24,2.77 0.75,2.11 -0.87,0.66 0.94,1.95 -0.56,1.49 2.69,1.61 0.2,0.87 1.11,0.13 0.12,4.04 1.21,-1.36 0.02,-1.71 1.3,0.77 1.4,-1.39 3.01,2.3 2.5,3.94 2.67,-0.61 1.25,-1.82 1.41,3.62 -0.25,1.82 -0.92,1.9 -0.38,-0.77 -1.92,0.78 -0.25,2 0,0 -0.75,4.46 -1.33,1.28 -1.62,-0.64 -0.05,0.78 -2.8,1.72 -2.06,-1.08 -0.71,1.53 -3.25,-0.04 -0.79,0.97 -2.01,-0.99 -0.58,1.17 0.62,2.55 -2.09,0.67 -1.85,1.63 -2.05,-0.1 -0.17,1.33 -3.06,0.88 1.37,2.04 -2.99,1.97 -1.2,0.05 -0.89,-1.85 -1.19,0.08 -0.22,3.88 -4.33,3.36 -0.87,-1 0.05,-1.68 -3.64,0.53 0.97,-1.42 -2.29,-0.79 0.02,-2.06 0.68,-0.23 -0.74,-0.68 0.25,-1.86 -1.47,-0.16 -2,1.62 -1.23,-1.26 -1.87,0.22 0.69,-0.46 -1.52,-0.8 0.75,-0.67 -1.04,-0.85 0.21,-1.95 -1.67,-0.78 -0.55,-4.47 -1.67,-2.06 -1.62,-0.68 -1.38,1.19 -0.67,-0.21 -0.12,0.75 -1.01,-1.07 -3.68,1.31 -4.14,-2.56 -1.29,-2.11 1.85,-1.04 1.01,-1.98 -2.78,-1.79 -1.62,-3.88 0,0 1.95,-2.34 1.28,-0.08 -0.15,-1.81 -1.09,-0.75 2.42,-9.85 -1.27,-1.36 -0.84,1.05 -0.78,-1.57 0.33,-1.22 -0.88,-2.43 0.49,-1.32 5.18,-3.05 1,-2.73 -0.5,-1.32 0.83,-0.36 2.2,1.23 6.67,-4.18 -1.54,-1.26 -0.9,2.23 -2.23,-0.84 -0.39,-0.9 0.59,-1.71 -1.01,-2.29 -0.65,-0.6 -1.42,0.54 -0.11,-2.66 -2.14,0.22 -0.33,-1 1.71,-1.74 1.09,0.34 1.01,-1.7 2.13,-0.9 0.1,-0.56 -2.61,-1.48 0.17,-1.76 0.55,-0.56 2.19,0.18 0.77,-2.59 2.38,-3.25 z"};
+var VZ_COMUNI={
+  'terranuova bracciolini':[43.551,11.586],'loro ciuffenna':[43.593,11.630],'bucine':[43.478,11.616],'reggello':[43.682,11.531],
+  'san giovanni valdarno':[43.565,11.530],'chitignano':[43.660,11.880],'figline e incisa valdarno':[43.620,11.470],'figline valdarno':[43.620,11.470],
+  'montevarchi':[43.525,11.570],'impruneta':[43.686,11.254],'greve in chianti':[43.584,11.316],'firenze':[43.769,11.256],
+  'monte san savino':[43.331,11.729],'laterina pergine valdarno':[43.507,11.719],'laterina':[43.507,11.719],'pergine valdarno':[43.471,11.686],
+  'siena':[43.318,11.331],'castel san gimignano':[43.392,11.039],'colle di val d\'elsa':[43.421,11.127],'cavriglia':[43.521,11.488],
+  'castelfranco piandisco':[43.623,11.560],'castelfranco piandiscò':[43.623,11.560],'arezzo':[43.463,11.880],'pian di sco':[43.640,11.548],
+  'budoni':[40.705,9.703],'novara':[45.446,8.622]
+};
+var VZ_HQ=[43.551,11.586];
+var VZ_COL=['#3fd8ff','#ffb547','#3cf2a5','#ff5a6e'];
+var _vzZoom='valdarno', _vzSel=null, _vzHeatMet='occ', _vzHeatYear=null;
+function vzProj(lat,lon){ var M=Math.log(Math.tan(Math.PI/4+lat*Math.PI/360)); return [51.25*lon-339.2, -2928.9035*M+2735.6807]; }
+function vzHash(s){ var h=0; s=String(s); for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
+function vzPropComune(p){ return String((p&&p.cat_comune)||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+// ── Periodo dei grafici = filtri della Dashboard ──
+function vzRange(){
+  var F=dxFiltri(), oggi=dxToday(), y=F.y||oggi.getFullYear();
+  if(F.m){ var s=y+'-'+String(F.m).padStart(2,'0')+'-01', e=dxIso(new Date(y,F.m,1)); return {s:s,e:e,label:MESI_IT_FULL[F.m-1]+' '+y}; }
+  if(F.y) return {s:F.y+'-01-01',e:(F.y+1)+'-01-01',label:String(F.y)};
+  return {s:dxIso(dxAddDays(oggi,-365)),e:dxIso(oggi),label:'ultimi 12 mesi'};
+}
+function vzRevBks(R){
+  var F=dxFiltri(), L=getDashBks();
+  if(!F.m&&!F.y) L=L.filter(function(b){ return b.checkin>=R.s&&b.checkin<R.e; });
+  return L.filter(function(b){ return b.calc; });
+}
+function vzProps(){
+  var a=brAttive(), ids=dxPropIds();
+  return Object.keys(a).filter(function(pid){ return !ids.length||ids.indexOf(pid)>=0; });
+}
+function vzOverlap(b,s,e){ var ci=b.checkin, co=b.checkout||b.checkin; var a=ci>s?ci:s, z=co<e?co:e; return z>a?dxDiff(a,z):0; }
+function vzStats(R){
+  var props=vzProps(), days=Math.max(1,dxDiff(R.s,R.e)), st={};
+  props.forEach(function(pid){ st[pid]={pid:pid,notti:0,occ:0,comp:0,lordo:0,n:0,nottiRev:0,adrBase:0,ospiti:0,stanotte:false}; });
+  var oggi=dxIso(dxToday());
+  dxBksOperative().forEach(function(b){
+    var X=st[b.proprieta_id]; if(!X) return;
+    X.notti+=vzOverlap(b,R.s,R.e);
+    var co=b.checkout||b.checkin; if(b.checkin<=oggi&&co>oggi) X.stanotte=true;
+  });
+  vzRevBks(R).forEach(function(b){
+    var X=st[b.proprieta_id]; if(!X) return; var c=b.calc;
+    X.n++; X.comp+=+c.houzly||0; X.lordo+=+c.tot||0; X.nottiRev+=+b.notti||0; X.ospiti+=+b.n_ospiti||0;
+    X.adrBase+=Math.max(0,(+c.tot||0)-(+c.pulizia||0)-(+c.tassa||0));
+  });
+  return props.map(function(pid){ var X=st[pid]; X.occ=Math.min(1,X.notti/days); X.adr=X.nottiRev?X.adrBase/X.nottiRev:0; X.stay=X.n?X.nottiRev/X.n:0; X.gpb=X.n?X.ospiti/X.n:0; return X; });
+}
+function vzOccCol(o){ return o>=0.75?'#3cf2a5':(o>=0.5?'#3fd8ff':(o>=0.25?'#ffb547':'#ff5a6e')); }
+function vzShortName(n){ n=String(n||''); return n.length>16?n.slice(0,15)+'…':n; }
+
+// ══ 1. MAPPA OPERATIVA ══
+function vzMappa(R,S){
+  var byCom={}, fuori=[], senza=[], pts=[];
+  S.forEach(function(X){
+    var p=(DB.proprieta||[]).find(function(q){return q.id===X.pid;}); var c=vzPropComune(p), ll=VZ_COMUNI[c];
+    if(!ll){ senza.push(X); return; }
+    if(ll[0]<42.2||ll[0]>44.6||ll[1]<9.6||ll[1]>12.5){ fuori.push({X:X,com:p.cat_comune}); return; }
+    (byCom[c]=byCom[c]||[]).push(X);
+  });
+  var zoom=_vzZoom==='valdarno';
+  var a=vzProj(zoom?43.86:44.56,zoom?11.10:9.62), z=vzProj(zoom?43.22:42.18,zoom?11.98:12.45);
+  var vbW=z[0]-a[0], vbH=z[1]-a[1], k=vbW/760;
+  var pxKm=0.635;
+  var maxComp=Math.max.apply(null,S.map(function(x){return x.comp;}).concat([1]));
+  Object.keys(byCom).forEach(function(c){
+    var ll=VZ_COMUNI[c], base=vzProj(ll[0],ll[1]), L=byCom[c].sort(function(x,y){return y.comp-x.comp;});
+    L.forEach(function(X,i){
+      var ang=i*2.399+vzHash(c)%7, rad=(zoom?1.25:2.2)*Math.sqrt(i)*pxKm;
+      pts.push({X:X,x:base[0]+Math.cos(ang)*rad*(i?1:0),y:base[1]+Math.sin(ang)*rad*(i?1:0),com:c});
+    });
+  });
+  var g='';
+  var stp=zoom?0.1:0.5;
+  for(var lo=Math.ceil((zoom?11.10:9.62)/stp)*stp;lo<(zoom?11.98:12.45);lo+=stp){ var gx=vzProj(43.5,lo)[0]; g+='<line x1="'+gx+'" y1="'+a[1]+'" x2="'+gx+'" y2="'+z[1]+'" class="vz-grid" vector-effect="non-scaling-stroke"/>'; }
+  for(var la2=Math.ceil((zoom?43.22:42.18)/stp)*stp;la2<(zoom?43.86:44.56);la2+=stp){ var gy=vzProj(la2,11)[1]; g+='<line x1="'+a[0]+'" y1="'+gy+'" x2="'+z[0]+'" y2="'+gy+'" class="vz-grid" vector-effect="non-scaling-stroke"/>'; }
+  var reg='';
+  Object.keys(VZ_MAP).forEach(function(id){ reg+='<path d="'+VZ_MAP[id]+'" class="vz-reg'+(id==='tuscany'?' tos':'')+'" vector-effect="non-scaling-stroke"/>'; });
+  var hq=vzProj(VZ_HQ[0],VZ_HQ[1]), rings='';
+  [10,25,50].forEach(function(km){ rings+='<circle cx="'+hq[0]+'" cy="'+hq[1]+'" r="'+(km*pxKm)+'" class="vz-ring" vector-effect="non-scaling-stroke"/><text x="'+(hq[0]+km*pxKm*0.71+1*k)+'" y="'+(hq[1]-km*pxKm*0.71)+'" class="vz-ringl" font-size="'+(9*k)+'">'+km+' km</text>'; });
+  var sweep='<g class="vz-sweep" style="transform-origin:'+hq[0]+'px '+hq[1]+'px"><path d="M'+hq[0]+' '+hq[1]+' L'+(hq[0]+50*pxKm)+' '+hq[1]+' A'+(50*pxKm)+' '+(50*pxKm)+' 0 0 0 '+(hq[0]+50*pxKm*Math.cos(-0.5))+' '+(hq[1]+50*pxKm*Math.sin(-0.5))+' Z" class="vz-sweepw"/></g>';
+  var dots='';
+  pts.sort(function(p1,p2){return p2.X.comp-p1.X.comp;}).forEach(function(P){
+    var X=P.X, r=(3+9*Math.sqrt(X.comp/maxComp))*k, col=vzOccCol(X.occ), nm=nomeProp(X.pid);
+    var tip='<b>'+dxE(nm)+'</b><br>'+dxE((DB.proprieta.find(function(q){return q.id===X.pid;})||{}).cat_comune||'')+'<br>Occupazione '+Math.round(X.occ*100)+'% · '+X.n+' pren.<br>Compenso '+eur(X.comp)+'<br>'+(X.stanotte?'● occupata stanotte':'○ libera stanotte');
+    dots+='<g class="vz-pt" data-tip="'+tip.replace(/"/g,'&quot;')+'" onclick="dxDrawerProp(\''+X.pid+'\')">'
+      +(X.stanotte?'<circle cx="'+P.x+'" cy="'+P.y+'" r="'+r+'" fill="none" stroke="'+col+'" class="vz-pulse" vector-effect="non-scaling-stroke"/>':'')
+      +'<circle cx="'+P.x+'" cy="'+P.y+'" r="'+r+'" fill="'+col+'" fill-opacity=".28" stroke="'+col+'" stroke-width="1.4" vector-effect="non-scaling-stroke"/>'
+      +'<circle cx="'+P.x+'" cy="'+P.y+'" r="'+(1.6*k)+'" fill="'+col+'"/></g>';
+  });
+  var labels='';
+  Object.keys(byCom).forEach(function(c){
+    var ll=VZ_COMUNI[c], q=vzProj(ll[0],ll[1]), nome=(DB.proprieta.find(function(p){return vzPropComune(p)===c;})||{}).cat_comune||c;
+    if(!zoom) return;
+    labels+='<text x="'+(q[0]+7*k)+'" y="'+(q[1]-9*k)+'" class="vz-lbl" font-size="'+(10*k)+'" stroke-width="'+(3*k)+'">'+esc(nome)+' · '+byCom[c].length+'</text>';
+  });
+  var hqm='<g><rect x="'+(hq[0]-3*k)+'" y="'+(hq[1]-3*k)+'" width="'+(6*k)+'" height="'+(6*k)+'" class="vz-hq" transform="rotate(45 '+hq[0]+' '+hq[1]+')"/><text x="'+(hq[0]-8*k)+'" y="'+(hq[1]+16*k)+'" class="vz-hql" font-size="'+(9*k)+'" stroke-width="'+(3*k)+'" text-anchor="end">HQ HOUZLY</text></g>';
+  var svg='<svg class="vz-map" viewBox="'+a[0].toFixed(2)+' '+a[1].toFixed(2)+' '+vbW.toFixed(2)+' '+vbH.toFixed(2)+'" preserveAspectRatio="xMidYMid meet">'+g+reg+rings+sweep+labels+dots+hqm+'</svg>';
+  var occT=S.length?S.reduce(function(s,x){return s+x.occ;},0)/S.length:0, stan=S.filter(function(x){return x.stanotte;}).length;
+  var side='<div class="vz-side">'
+    +'<div class="vz-kv"><span>Strutture in mappa</span><b>'+pts.length+'</b></div>'
+    +'<div class="vz-kv"><span>Occupate stanotte</span><b>'+stan+'</b></div>'
+    +'<div class="vz-kv"><span>Occupazione media · '+esc(R.label)+'</span><b>'+Math.round(occT*100)+'%</b></div>'
+    +'<div class="vz-leg"><div><i style="background:#3cf2a5"></i>oltre 75%</div><div><i style="background:#3fd8ff"></i>50–75%</div><div><i style="background:#ffb547"></i>25–50%</div><div><i style="background:#ff5a6e"></i>sotto 25%</div><div class="vz-leg-n">Grandezza del punto = compenso Houzly · anello pulsante = occupata stanotte</div></div>'
+    +(fuori.length?'<div class="vz-out"><span>Fuori Toscana</span>'+fuori.map(function(f){return '<span class="dx-chip" onclick="dxDrawerProp(\''+f.X.pid+'\')"><i style="background:'+vzOccCol(f.X.occ)+'"></i>'+esc(vzShortName(nomeProp(f.X.pid)))+' · '+esc(f.com||'')+' '+Math.round(f.X.occ*100)+'%</span>';}).join('')+'</div>':'')
+    +(senza.length?'<div class="vz-out"><span>Senza comune · aggiungilo nella scheda Proprietà (Comune catastale)</span>'+senza.map(function(X){return '<span class="dx-chip" onclick="dxDrawerProp(\''+X.pid+'\')">'+esc(vzShortName(nomeProp(X.pid)))+'</span>';}).join('')+'</div>':'')
+    +'</div>';
+  var right='<div class="dx-seg"><span class="'+(zoom?'on':'')+'" onclick="_vzZoom=\'valdarno\';dxRender()">Area operativa</span><span class="'+(!zoom?'on':'')+'" onclick="_vzZoom=\'toscana\';dxRender()">Toscana</span></div>';
+  return dxSection('vzmap','Mappa operativa',esc(R.label),right,'<div class="vz-mapwrap"><div class="vz-mapbox">'+svg+'<div class="vz-attr">Confini: SVG Maps, CC BY 4.0</div></div>'+side+'</div><div class="dx-hint">Passa sopra un punto per i numeri · clicca per l\'elenco delle prenotazioni</div>');
+}
+
+// ══ 2. CONFRONTO STRUTTURE: anelli + radar ══
+function vzToggleSel(pid){
+  if(!_vzSel) _vzSel=[];
+  var i=_vzSel.indexOf(pid);
+  if(i>=0) _vzSel.splice(i,1); else { if(_vzSel.length>=4) _vzSel.shift(); _vzSel.push(pid); }
+  dxRender();
+}
+function vzConfronto(R,S){
+  if(!S.length) return '';
+  var valid=S.map(function(x){return x.pid;});
+  if(!_vzSel) _vzSel=S.slice().sort(function(a,b){return b.comp-a.comp;}).slice(0,3).map(function(x){return x.pid;});
+  _vzSel=_vzSel.filter(function(p){return valid.indexOf(p)>=0;});
+  var rings=S.slice().sort(function(a,b){return b.occ-a.occ;}).map(function(X){
+    var si=_vzSel.indexOf(X.pid), col=si>=0?VZ_COL[si]:vzOccCol(X.occ), C=2*Math.PI*24, off=C*(1-X.occ);
+    return '<div class="vz-rg'+(si>=0?' sel':'')+'" onclick="vzToggleSel(\''+X.pid+'\')" data-tip="<b>'+dxE(nomeProp(X.pid))+'</b><br>Occupazione '+Math.round(X.occ*100)+'%<br>'+X.n+' prenotazioni · '+eur(X.comp).replace(/"/g,'')+'<br>'+(si>=0?'Clic per togliere dal radar':'Clic per aggiungere al radar')+'"'+(si>=0?' style="--vzc:'+col+'"':'')+'>'
+      +'<svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" class="vz-rg-bg"/><circle cx="30" cy="30" r="24" fill="none" stroke="'+col+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 30 30)" class="vz-rg-arc"/><text x="30" y="34" text-anchor="middle" class="vz-rg-t">'+Math.round(X.occ*100)+'%</text></svg>'
+      +'<span>'+esc(vzShortName(nomeProp(X.pid)))+'</span></div>';
+  }).join('');
+  var AX=[['occ','Occupazione',function(v){return Math.round(v*100)+'%';}],['adr','Prezzo/notte',function(v){return eur(v).replace(/,\d\d$/,'');}],['comp','Compenso',function(v){return eur(v).replace(/,\d\d$/,'');}],['n','Prenotazioni',function(v){return Math.round(v);}],['stay','Notti medie',function(v){return v.toFixed(1).replace('.',',');}],['gpb','Ospiti per pren.',function(v){return v.toFixed(1).replace('.',',');}]];
+  var max={}; AX.forEach(function(a){ max[a[0]]=Math.max.apply(null,S.map(function(x){return x[a[0]];}).concat([0.0001])); });
+  var avg={}; AX.forEach(function(a){ avg[a[0]]=S.reduce(function(s,x){return s+x[a[0]];},0)/S.length; });
+  var cx=170, cy=165, Rr=108, n=AX.length;
+  var pt=function(i,f){ var t=-Math.PI/2+i*2*Math.PI/n; return [cx+Rr*f*Math.cos(t), cy+Rr*f*Math.sin(t)]; };
+  var grid='';
+  [0.25,0.5,0.75,1].forEach(function(f){ grid+='<polygon points="'+AX.map(function(a,i){return pt(i,f).join(',');}).join(' ')+'" class="vz-rd-grid"/>'; });
+  AX.forEach(function(a,i){ var p=pt(i,1), q=pt(i,1.16); grid+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0]+'" y2="'+p[1]+'" class="vz-rd-grid"/><text x="'+q[0]+'" y="'+(q[1]+4)+'" text-anchor="'+(Math.abs(q[0]-cx)<10?'middle':(q[0]>cx?'start':'end'))+'" class="vz-rd-ax">'+a[1]+'</text>'; });
+  var poly=function(vals,col,cls,nome){
+    var pts=AX.map(function(a,i){ return pt(i,Math.max(0.02,vals[a[0]]/max[a[0]])); });
+    var dots=pts.map(function(p,i){ return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="'+col+'" data-tip="<b>'+dxE(nome)+'</b><br>'+AX[i][1]+': '+dxE(AX[i][2](vals[AX[i][0]]))+'"/>'; }).join('');
+    return '<g class="'+cls+'"><polygon points="'+pts.map(function(p){return p.join(',');}).join(' ')+'" fill="'+col+'" fill-opacity=".14" stroke="'+col+'" stroke-width="2"/>'+dots+'</g>';
+  };
+  var series=poly(avg,'#8a93a8','vz-rd-avg','Media del portafoglio');
+  _vzSel.forEach(function(pid,i){ var X=S.find(function(x){return x.pid===pid;}); if(X) series+=poly(X,VZ_COL[i],'vz-rd-s',nomeProp(pid)); });
+  var leg='<div class="vz-rd-leg"><span><i class="avg"></i>Media portafoglio</span>'+_vzSel.map(function(pid,i){ return '<span class="dx-chip" onclick="vzToggleSel(\''+pid+'\')"><i style="background:'+VZ_COL[i]+'"></i>'+esc(vzShortName(nomeProp(pid)))+' ✕</span>'; }).join('')+'</div>';
+  var radar='<div class="vz-rd"><svg viewBox="-30 0 400 335">'+grid+series+'</svg>'+leg+'</div>';
+  return dxSection('vzcmp','Confronto strutture','occupazione '+esc(R.label)+' · scegli fino a 4 strutture','',
+    '<div class="vz-cmp"><div class="vz-rgs">'+rings+'</div>'+radar+'</div><div class="dx-hint">Ogni anello è l\'occupazione della struttura nel periodo · clicca per metterla a confronto nel radar (valori rispetto alla struttura migliore su ogni asse)</div>');
+}
+
+// ══ 3. CALENDARIO DI CALORE ══
+function vzHeat(){
+  var F=dxFiltri(), Y=_vzHeatYear||F.y||dxToday().getFullYear();
+  var s=Y+'-01-01', e=(Y+1)+'-01-01', N=dxDiff(s,e);
+  var occ=new Array(N).fill(0), rev=new Array(N).fill(0), arr=new Array(N).fill(0), props={};
+  var ids=dxPropIds();
+  dxBksOperative().forEach(function(b){
+    if(ids.length&&ids.indexOf(b.proprieta_id)<0) return;
+    var co=b.checkout||b.checkin; if(co<=s||b.checkin>=e) return;
+    var a=b.checkin>s?b.checkin:s, z=co<e?co:e, i0=dxDiff(s,a), i1=dxDiff(s,z);
+    for(var i=i0;i<i1;i++) occ[i]++;
+    props[b.proprieta_id]=1;
+    if(b.checkin>=s&&b.checkin<e) arr[dxDiff(s,b.checkin)]++;
+    if(!b.black&&b.calc&&(!dxCanale||dxCan(b)===dxCanale)){ var nn=Math.max(1,+b.notti||dxDiff(b.checkin,co)); var pn=(+b.calc.tot||0)/nn; var j0=dxDiff(s,b.checkin); for(var j=Math.max(0,j0);j<Math.min(N,j0+nn);j++) rev[j]+=pn; }
+  });
+  var nP=Math.max(1,Object.keys(props).length);
+  var met=_vzHeatMet, vals=met==='occ'?occ.map(function(v){return v/nP;}):(met==='rev'?rev:arr);
+  var mx=Math.max.apply(null,vals.concat([0.0001]));
+  var first=new Date(Y,0,1), off=(first.getDay()+6)%7, cs=13, gp=3, cols=Math.ceil((N+off)/7);
+  var oggi=dxIso(dxToday()), cells='', mesiLbl='', lastM=-1;
+  for(var i=0;i<N;i++){
+    var d=dxAddDays(first,i), iso=dxIso(d), w=Math.floor((i+off)/7), dw=(i+off)%7, v=vals[i];
+    var lvl=v<=0?0:Math.min(4,Math.ceil(v/mx*4));
+    var x=26+w*(cs+gp), y=18+dw*(cs+gp);
+    if(d.getMonth()!==lastM){ lastM=d.getMonth(); mesiLbl+='<text x="'+x+'" y="11" class="vz-hm-m">'+anMesiNomi()[lastM]+'</text>'; }
+    var tip='<b>'+d.getDate()+' '+MESI_IT_FULL[d.getMonth()]+' '+Y+'</b><br>'+occ[i]+' strutture occupate ('+Math.round(occ[i]/nP*100)+'%)<br>Incasso della notte '+eur(rev[i])+'<br>'+arr[i]+' arrivi';
+    cells+='<rect x="'+x+'" y="'+y+'" width="'+cs+'" height="'+cs+'" rx="2.5" class="vz-hm l'+lvl+(iso===oggi?' today':'')+'" data-tip="'+tip.replace(/"/g,'&quot;')+'" onclick="vzDrawerNotte(\''+iso+'\')"/>';
+  }
+  var gg=['L','M','M','G','V','S','D'], wl='';
+  [0,2,4,6].forEach(function(k){ wl+='<text x="0" y="'+(18+k*(cs+gp)+10)+'" class="vz-hm-m">'+gg[k]+'</text>'; });
+  var W=26+cols*(cs+gp), H=18+7*(cs+gp);
+  // media per giorno della settimana e per mese
+  var dws=[0,0,0,0,0,0,0], dwc=[0,0,0,0,0,0,0], ms=new Array(12).fill(0), mc=new Array(12).fill(0);
+  for(var j=0;j<N;j++){ var dd=dxAddDays(first,j), k2=(dd.getDay()+6)%7; dws[k2]+=vals[j]; dwc[k2]++; ms[dd.getMonth()]+=vals[j]; mc[dd.getMonth()]++; }
+  var fmt=function(v){ return met==='occ'?Math.round(v*100)+'%':(met==='rev'?eur(v).replace(/,\d\d$/,''):(Math.round(v*10)/10).toString().replace('.',',')); };
+  var dwAvg=dws.map(function(v,i){return dwc[i]?v/dwc[i]:0;}), dwMax=Math.max.apply(null,dwAvg.concat([0.0001]));
+  var bars='<div class="vz-dw">'+['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(function(n,i){ return '<div class="vz-dw-r"><span>'+n+'</span><i><b style="width:'+Math.round(dwAvg[i]/dwMax*100)+'%"></b></i><em>'+fmt(dwAvg[i])+'</em></div>'; }).join('')+'</div>';
+  var mAvg=ms.map(function(v,i){return mc[i]?v/mc[i]:0;}), best=mAvg.indexOf(Math.max.apply(null,mAvg)), tot=met==='rev'?rev.reduce(function(a,b){return a+b;},0):null;
+  var met3=[['occ','Occupazione'],['rev','Incasso per notte'],['arr','Arrivi']].map(function(m){return '<span class="'+(met===m[0]?'on':'')+'" onclick="_vzHeatMet=\''+m[0]+'\';dxRender()">'+m[1]+'</span>';}).join('');
+  var right='<div class="dx-seg">'+met3+'</div><div class="dx-nav"><button class="btn btn-ghost btn-sm" onclick="_vzHeatYear='+(Y-1)+';dxRender()">‹ '+(Y-1)+'</button><button class="btn btn-ghost btn-sm" onclick="_vzHeatYear='+(Y+1)+';dxRender()">'+(Y+1)+' ›</button></div>';
+  var side='<div class="vz-hm-side"><div class="vz-kv"><span>Mese più forte</span><b>'+MESI_IT_FULL[best]+'</b></div>'+(tot!==null?'<div class="vz-kv"><span>Incasso dell\'anno (notti)</span><b>'+eur(tot).replace(/,\d\d$/,'')+'</b></div>':'')+'<div class="vz-kv"><span>Media per giorno della settimana</span></div>'+bars+'</div>';
+  return dxSection('vzheat','Calendario di calore',String(Y)+' · '+nP+' strutture',right,
+    '<div class="vz-hm-wrap"><div class="vz-hm-box"><svg viewBox="0 0 '+W+' '+H+'" class="vz-hm-svg">'+mesiLbl+wl+cells+'</svg>'
+    +'<div class="vz-hm-scale">meno <i class="vz-hm l0"></i><i class="vz-hm l1"></i><i class="vz-hm l2"></i><i class="vz-hm l3"></i><i class="vz-hm l4"></i> più</div></div>'+side+'</div>'
+    +'<div class="dx-hint">Ogni quadratino è una notte · clicca per vedere chi c\'era</div>');
+}
+function vzDrawerNotte(iso){
+  var ids=dxPropIds();
+  var L=dxBksOperative().filter(function(b){ var co=b.checkout||b.checkin; return b.checkin<=iso&&co>iso&&(!ids.length||ids.indexOf(b.proprieta_id)>=0); }).sort(function(a,b){return nomeProp(a.proprieta_id)<nomeProp(b.proprieta_id)?-1:1;});
+  var d=new Date(iso+'T12:00:00');
+  dxDrawer('Notte del '+d.getDate()+' '+MESI_IT_FULL[d.getMonth()]+' '+d.getFullYear(),L,'');
+}
+
+// ══ 4. FLUSSO DELL'INCASSO + PREVISIONE ══
+function vzFlusso(R){
+  var L=vzRevBks(R), T={tot:0,ota:0,tassa:0,pul:0,hz:0,can:0};
+  L.forEach(function(b){ var c=b.calc; T.tot+=+c.tot||0; T.ota+=+c.comm_ota||0; T.tassa+=+c.tassa||0; T.pul+=+c.pulizia||0; T.hz+=(+c.houzly||0)+(+c.iva22||0); T.can+=+c.canone||0; });
+  var nodes=[['Proprietari',T.can,'#3cf2a5'],['Compenso Houzly (con IVA)',T.hz,'#3fd8ff'],['Commissioni portali',T.ota,'#ff5a6e'],['Pulizie',T.pul,'#ffb547'],['Tasse di soggiorno',T.tassa,'#b48cff']];
+  var altro=T.tot-nodes.reduce(function(s,n){return s+n[1];},0); if(Math.abs(altro)>1) nodes.push(['Altro / rettifiche',altro,'#8a93a8']);
+  nodes=nodes.filter(function(n){return n[1]>0.5;});
+  var H=250, W=640, gap=10, x0=150, x1=W-230, tot=Math.max(1,T.tot), usable=H-gap*(nodes.length-1);
+  var sank='<rect x="'+(x0-14)+'" y="0" width="14" height="'+H+'" class="vz-sk-src"/><text x="'+(x0-22)+'" y="'+(H/2-6)+'" text-anchor="end" class="vz-sk-t">Incasso lordo</text><text x="'+(x0-22)+'" y="'+(H/2+12)+'" text-anchor="end" class="vz-sk-v">'+eur(T.tot).replace(/,\d\d$/,'')+'</text>';
+  var yl=0, yr=0, lblY=[], lastL=-99;
+  nodes.forEach(function(n){ var hr=Math.max(1.5,n[1]/tot*usable); var c=yr+hr/2; c=Math.max(c,lastL+30); lblY.push(c); lastL=c; yr+=hr+gap; });
+  yr=0; var Hs=Math.max(H,lastL+18);
+  nodes.forEach(function(n,i){
+    var h=Math.max(1.5,n[1]/tot*H), hr=Math.max(1.5,n[1]/tot*usable);
+    var a1=yl, a2=yl+h, b1=yr, b2=yr+hr, mx=(x0+x1)/2;
+    var tip='<b>'+n[0]+'</b><br>'+eur(n[1])+' · '+(n[1]/tot*100).toFixed(1).replace('.',',')+'% del lordo';
+    sank+='<path d="M'+x0+' '+a1+' C'+mx+' '+a1+' '+mx+' '+b1+' '+x1+' '+b1+' L'+x1+' '+b2+' C'+mx+' '+b2+' '+mx+' '+a2+' '+x0+' '+a2+' Z" fill="'+n[2]+'" class="vz-sk-band" data-tip="'+tip.replace(/"/g,'&quot;')+'"/>'
+      +'<rect x="'+x1+'" y="'+b1+'" width="10" height="'+hr+'" fill="'+n[2]+'" rx="2"/>'
+      +(Math.abs(lblY[i]-(b1+hr/2))>2?'<path d="M'+(x1+11)+' '+(b1+hr/2)+' L'+(x1+16)+' '+lblY[i]+'" class="vz-sk-lead"/>':'')
+      +'<text x="'+(x1+18)+'" y="'+(lblY[i]-3)+'" class="vz-sk-t">'+n[0]+'</text><text x="'+(x1+18)+'" y="'+(lblY[i]+12)+'" class="vz-sk-v" fill="'+n[2]+'">'+eur(n[1]).replace(/,\d\d$/,'')+' · '+Math.round(n[1]/tot*100)+'%</text>';
+    yl=a2; yr=b2+gap;
+  });
+  var sankey='<svg viewBox="0 0 '+W+' '+Hs+'" class="vz-sk">'+sank+'</svg>';
+  // previsione: prossimi 6 mesi
+  var all=brBks(), oggi=dxToday(), rows=[];
+  var tr={a:0,b:0}; for(var q=1;q<=3;q++){ var dq=new Date(oggi.getFullYear(),oggi.getMonth()-q,1); tr.a+=brTot(brMese(all,dq.getMonth()+1,dq.getFullYear())).comp; tr.b+=brTot(brMese(all,dq.getMonth()+1,dq.getFullYear()-1)).comp; }
+  var trend=tr.b?Math.max(0.5,Math.min(1.8,tr.a/tr.b)):1;
+  for(var i=0;i<6;i++){
+    var d=new Date(oggi.getFullYear(),oggi.getMonth()+i,1), m=d.getMonth()+1, y=d.getFullYear();
+    var otb=brTot(brMese(all,m,y)).comp, ly=brTot(brMese(all,m,y-1)).comp, proj=ly?Math.max(otb,ly*trend):otb;
+    rows.push({m:m,y:y,otb:otb,ly:ly,proj:proj,lo:Math.max(otb,proj*0.85),hi:Math.max(otb,proj*1.15)});
+  }
+  var mx=Math.max.apply(null,rows.map(function(r){return Math.max(r.hi,r.ly);}).concat([1]));
+  var FH=200, FW=420, bw=FW/6, fc='';
+  [0.5,1].forEach(function(f){ fc+='<line x1="0" x2="'+FW+'" y1="'+(FH-FH*f)+'" y2="'+(FH-FH*f)+'" class="vz-fc-gl"/><text x="2" y="'+(FH-FH*f-4)+'" class="vz-fc-ax">€ '+dxShort(mx*f)+'</text>'; });
+  var pts=[];
+  rows.forEach(function(r,i){
+    var cx=i*bw+bw/2, w=bw*0.42;
+    var tip='<b>'+MESI_IT_FULL[r.m-1]+' '+r.y+'</b><br>Già prenotato: '+eur(r.otb)+'<br>Previsione: '+eur(r.lo).replace(/,\d\d$/,'')+' – '+eur(r.hi).replace(/,\d\d$/,'')+'<br>Anno scorso (finale): '+eur(r.ly);
+    fc+='<g data-tip="'+tip.replace(/"/g,'&quot;')+'" class="vz-fc-col"><rect x="'+(cx-bw/2)+'" y="0" width="'+bw+'" height="'+FH+'" fill="transparent"/>'
+      +'<rect x="'+(cx-w/2-6)+'" y="'+(FH-r.hi/mx*FH)+'" width="'+(w+12)+'" height="'+((r.hi-r.lo)/mx*FH)+'" class="vz-fc-band" rx="3"/>'
+      +'<rect x="'+(cx-w/2)+'" y="'+(FH-r.otb/mx*FH)+'" width="'+w+'" height="'+(r.otb/mx*FH)+'" class="vz-fc-otb" rx="2"/>'
+      +(r.ly?'<line x1="'+(cx-w/2-8)+'" x2="'+(cx+w/2+8)+'" y1="'+(FH-r.ly/mx*FH)+'" y2="'+(FH-r.ly/mx*FH)+'" class="vz-fc-ly"/>':'')
+      +'<text x="'+cx+'" y="'+(FH+15)+'" text-anchor="middle" class="vz-fc-ax">'+anMesiNomi()[r.m-1]+'</text></g>';
+    pts.push([cx,FH-r.proj/mx*FH]);
+  });
+  fc+='<polyline points="'+pts.map(function(p){return p.join(',');}).join(' ')+'" class="vz-fc-line"/>'+pts.map(function(p){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" class="vz-fc-dot"/>';}).join('');
+  var fcast='<div class="vz-fc"><div class="vz-fc-h">Previsione compenso · prossimi 6 mesi</div><svg viewBox="0 -6 '+FW+' '+(FH+24)+'">'+fc+'</svg>'
+    +'<div class="vz-rd-leg"><span><i style="background:var(--vz-a)"></i>Già prenotato</span><span><i class="band"></i>Previsione</span><span><i class="ly"></i>Anno scorso</span></div>'
+    +'<div class="dx-note" style="margin-top:4px">Previsione = mese dell\'anno scorso × andamento degli ultimi 3 mesi ('+(trend>=1?'+':'')+Math.round((trend-1)*100)+'%), mai sotto il già prenotato · fascia ±15%.</div></div>';
+  return dxSection('vzflow','Dove va ogni euro',esc(R.label)+(dxCanale?' · '+esc(dxCanale):''),'',
+    '<div class="vz-flow"><div class="vz-sk-wrap">'+sankey+'</div>'+fcast+'</div><div class="dx-hint">Passa sopra le fasce e le colonne per i dettagli</div>');
+}
+
+function vzRenderAll(){
+  try{
+    var R=vzRange(), S=vzStats(R);
+    return vzMappa(R,S)+vzConfronto(R,S)+vzHeat()+vzFlusso(R);
+  }catch(e){ console.error('grafici avanzati',e); return ''; }
+}
+
+</script>
 <script id="br-js">
 // ══ BRIEFING VOCALE (v127, inglese da v128) ═══════════════════════════
 // Recap della settimana o del mese letto ad alta voce con la sintesi vocale
