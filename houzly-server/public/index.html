@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v125 · 24/11 · Strutture tolte da Smoobu (elenco)</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v128 · 24/11 · Briefing vocale IT/EN</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -930,6 +930,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div><div class="dash-eyebrow">Houzly &middot; Gestione</div><div class="dash-h1">Panoramica</div></div>
         <button class="btn btn-ghost" onclick="openRegistroModifiche()" style="font-size:12px;padding:6px 12px;align-self:flex-end">Registro modifiche</button>
+        <button class="btn btn-ghost" onclick="brOpen('settimana')" style="font-size:12px;padding:6px 12px;align-self:flex-end" title="Recap della settimana o del mese letto ad alta voce">&#127897; Briefing</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:40px;padding:5px 8px 5px 14px;box-shadow:var(--shadow)">
         <select id="dash-mese-filter" onchange="renderDash()" style="background:transparent;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer">
@@ -949,6 +950,8 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     </div>
     <div id="dx-filtri"></div>
   </div>
+  <!-- NUCLEO HUD (v126, solo con il tema HUD) -->
+  <div id="hud-core"></div>
   <!-- STAT GRIDS -->
   <div class="stat-grid" id="stat-grid"></div>
   <div class="stat-grid" id="stat-grid-2" style="margin-top:0"></div>
@@ -17189,18 +17192,26 @@ document.addEventListener('DOMContentLoaded',function(){ try{applyNavIcons();}ca
 </script>
 <script>
 // v117: tema (Chiaro / Penombra / Notte), scelto per dispositivo
+// v126: + HUD (stile "Jarvis"): usa il tema Notte come base e aggiunge data-hud
 function temaGet(){ try{ return localStorage.getItem('houzly_tema')||'penombra'; }catch(e){ return 'penombra'; } }
+function temaApply(t){
+  var h=document.documentElement;
+  h.setAttribute('data-tema',t==='hud'?'notte':t);
+  if(t==='hud') h.setAttribute('data-hud','1'); else h.removeAttribute('data-hud');
+}
 function temaSet(t){
-  document.documentElement.setAttribute('data-tema',t);
+  var era=document.documentElement.hasAttribute('data-hud');
+  temaApply(t);
   try{ localStorage.setItem('houzly_tema',t); }catch(e){}
   document.querySelectorAll('.tema-switch button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t')===t); });
+  if(era!==(t==='hud')&&typeof renderDash==='function'){ try{ if(DB&&DB.prenotazioni) renderDash(); }catch(e){} }
 }
 (function(){
-  document.documentElement.setAttribute('data-tema',temaGet());
+  temaApply(temaGet());
   function mount(){
     var bar=document.querySelector('.topbar-actions-desktop'); if(!bar||document.querySelector('.tema-switch')) return;
     var w=document.createElement('div'); w.className='tema-switch'; w.title='Tema';
-    w.innerHTML='<button type="button" data-t="chiaro">Chiaro</button><button type="button" data-t="penombra">Penombra</button><button type="button" data-t="notte">Notte</button>';
+    w.innerHTML='<button type="button" data-t="chiaro">Chiaro</button><button type="button" data-t="penombra">Penombra</button><button type="button" data-t="notte">Notte</button><button type="button" data-t="hud" title="Interfaccia tecnologica stile HUD">HUD</button>';
     w.addEventListener('click',function(e){ var t=e.target.getAttribute('data-t'); if(t) temaSet(t); });
     bar.insertBefore(w,bar.firstChild); temaSet(temaGet());
   }
@@ -18223,7 +18234,7 @@ function dxPlanHtml(){
   var limite=dxIso(dxAddDays(dxToday(),-365));
   var all=dxBksOperative();
   // strutture attive: almeno una prenotazione nell'ultimo anno o futura
-  var attive={}; all.forEach(function(b){ if((b.checkout||b.checkin)>=limite) attive[b.proprieta_id]=1; });
+  var attive={}; all.forEach(function(b){ if((b.checkout||b.checkin)>=limite&&!(typeof srPropRimossa==='function'&&srPropRimossa(b.proprieta_id))) attive[b.proprieta_id]=1; });
   var ordine=[], childIds={};
   (DB.propGroups||[]).forEach(function(g){ g.children.forEach(function(cid){ childIds[cid]=1; if(attive[cid]&&ordine.indexOf(cid)<0) ordine.push(cid); }); });
   (DB.proprieta||[]).forEach(function(p){ if(!childIds[p.id]&&attive[p.id]) ordine.push(p.id); });
@@ -18313,10 +18324,12 @@ document.addEventListener('scroll',dxTipHide,true);
 function dxRender(){
   var root=document.getElementById('dx-root'); if(!root) return;
   _dxSeriesCache=null;
+  try{ if(typeof srSeed==='function') srSeed(); }catch(e){} // v127: elenco strutture tolte da Smoobu
   try{
     dxRenderFiltri();
     root.innerHTML=dxOggi()+dxTrend()+dxPlanning()+dxClassifica();
   }catch(e){ console.error('dashboard interattiva',e); root.innerHTML=''; }
+  if(typeof hudRender==='function') hudRender(); // v126
 }
 window.addEventListener('resize',function(){
   var page=document.getElementById('page-dashboard');
@@ -18324,6 +18337,601 @@ window.addEventListener('resize',function(){
   var D=dxPlanDays(), cur=document.querySelector('.dx-plan');
   if(cur&&+getComputedStyle(cur).getPropertyValue('--dxD')!==D) dxRenderPlan();
 });
+
+</script>
+<link id="hud-fonts" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style id="hud-css">
+/* ══ TEMA HUD (v126) — interfaccia "alla Jarvis" ══════════════════════
+   Si attiva con data-hud sull'elemento <html>, sopra il tema Notte
+   (che resta la base per tutte le correzioni dei colori scuri).
+   Solo grafica: nessun calcolo cambia. I documenti restano bianchi. */
+html[data-hud]{
+  --bg:#02060d;--surface:#06182a;--surface2:#08203a;--border:rgba(63,216,255,.17);
+  --text:#d3f3ff;--text-mid:#9cc6d8;--text-light:#5d8ca2;--ink:#eafcff;
+  --blue-dark:#0d7fae;--blue:#3fd8ff;--blue-mid:#29b6e6;--cyan:#3fd8ff;
+  --gold:#ffb547;--gold-ink:#ffc46b;--green:#3cf2a5;--red:#ff5a6e;--orange:#ffb547;
+  --grad:linear-gradient(135deg,#0b6f99 0%,#14a9d9 100%);
+  --shadow:0 0 0 rgba(0,0,0,0);--shadow-lg:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(0,170,255,.08);
+  --serif:'Rajdhani','Plus Jakarta Sans',sans-serif;
+  --hc:rgba(63,216,255,.9);
+  --hud-mono:'JetBrains Mono',ui-monospace,monospace;
+  --hud-num:'Orbitron','Rajdhani',sans-serif;
+  background:
+    radial-gradient(1100px 650px at 72% -12%,rgba(0,150,215,.20),transparent 60%),
+    radial-gradient(900px 600px at -8% 110%,rgba(0,95,170,.18),transparent 60%),
+    #02060d;
+  background-attachment:fixed;
+}
+html[data-hud] body{background:transparent!important}
+html[data-hud] body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(63,216,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(63,216,255,.045) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(ellipse at 60% 30%,#000 30%,transparent 85%);mask-image:radial-gradient(ellipse at 60% 30%,#000 30%,transparent 85%)}
+html[data-hud] body::after{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px)}
+html[data-hud] ::selection{background:rgba(63,216,255,.35);color:#fff}
+html[data-hud] ::-webkit-scrollbar{width:9px;height:9px}
+html[data-hud] ::-webkit-scrollbar-thumb{background:rgba(63,216,255,.22);border-radius:6px}
+html[data-hud] ::-webkit-scrollbar-track{background:transparent}
+
+/* Barra laterale e barra in alto */
+html[data-hud] #sidebar{background:linear-gradient(180deg,rgba(3,13,24,.97),rgba(1,7,14,.99))!important;border-right:1px solid rgba(63,216,255,.16)!important;box-shadow:inset -1px 0 0 rgba(63,216,255,.05),8px 0 40px rgba(0,0,0,.35)}
+html[data-hud] .nav-item{color:rgba(190,235,250,.55);font-family:var(--hud-mono);font-size:11.8px;letter-spacing:.02em}
+html[data-hud] .nav-item:hover{color:#eafcff;background:rgba(63,216,255,.06)}
+html[data-hud] .nav-item.active{color:#3fd8ff!important;background:linear-gradient(90deg,rgba(63,216,255,.16),rgba(63,216,255,0))!important;border-left-color:#3fd8ff!important;text-shadow:0 0 10px rgba(63,216,255,.6)}
+html[data-hud] .nav-emo{filter:grayscale(1) brightness(1.5) sepia(1) hue-rotate(150deg) saturate(2.6)!important;opacity:.85}
+html[data-hud] .topbar{background:rgba(2,9,17,.78)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid transparent!important;
+  border-image:linear-gradient(90deg,transparent,rgba(63,216,255,.55),transparent) 1!important}
+
+/* Card con angoli a staffa */
+html[data-hud] .card,html[data-hud] .stat-card{
+  border:1px solid rgba(63,216,255,.15)!important;border-radius:3px!important;
+  background:
+    linear-gradient(var(--hc),var(--hc)) left top/13px 1.5px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) left top/1.5px 13px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right top/13px 1.5px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right top/1.5px 13px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) left bottom/13px 1.5px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) left bottom/1.5px 13px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right bottom/13px 1.5px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right bottom/1.5px 13px no-repeat,
+    linear-gradient(180deg,rgba(9,31,50,.86),rgba(3,13,24,.86))!important;
+  box-shadow:inset 0 0 30px rgba(0,160,230,.05),0 0 22px rgba(0,170,255,.05)!important}
+html[data-hud] .stat-card:hover{border-color:rgba(63,216,255,.45)!important;box-shadow:inset 0 0 30px rgba(0,160,230,.08),0 0 26px rgba(0,190,255,.14)!important}
+html[data-hud] .stat-card.dx-on{border-color:rgba(255,181,71,.7)!important;box-shadow:inset 0 0 0 1px rgba(255,181,71,.35),0 0 26px rgba(255,181,71,.12)!important}
+html[data-hud] .stat-label,html[data-hud] .card-title,html[data-hud] .dash-eyebrow,html[data-hud] .dx-flbl{font-family:var(--hud-mono)!important;letter-spacing:.16em!important;color:#5fc4e6!important}
+html[data-hud] .stat-value{font-family:var(--hud-num)!important;font-weight:600!important;letter-spacing:.02em;filter:drop-shadow(0 0 9px rgba(63,216,255,.32))}
+html[data-hud] .stat-sub{font-family:var(--hud-mono);font-size:10.5px;color:#6f9fb4}
+html[data-hud] .kpi-rule{background:linear-gradient(90deg,#3fd8ff,transparent)!important;box-shadow:0 0 10px #3fd8ff;height:2px!important}
+html[data-hud] .kpi-emo{filter:grayscale(1) brightness(1.5) sepia(1) hue-rotate(150deg) saturate(2.4);background:rgba(63,216,255,.07)!important;border:1px solid rgba(63,216,255,.2)!important}
+html[data-hud] .dash-h1{font-family:var(--hud-num)!important;font-size:24px!important;letter-spacing:.12em;text-transform:uppercase;color:#eafcff;text-shadow:0 0 18px rgba(63,216,255,.45)}
+html[data-hud] .dx-spark i{background:rgba(63,216,255,.22)}
+html[data-hud] .dx-spark i:last-child{background:rgba(63,216,255,.55)}
+html[data-hud] .dx-spark i.on{background:#ffb547!important;box-shadow:0 0 8px rgba(255,181,71,.7)}
+html[data-hud] .dx-delta.up{color:#3cf2a5;background:rgba(60,242,165,.08);border:1px solid rgba(60,242,165,.25)}
+html[data-hud] .dx-delta.down{color:#ff5a6e;background:rgba(255,90,110,.08);border:1px solid rgba(255,90,110,.25)}
+
+/* Pulsanti, campi, tabelle */
+html[data-hud] .btn-primary{background:rgba(63,216,255,.12)!important;color:#7fe6ff!important;border:1px solid rgba(63,216,255,.55)!important;box-shadow:0 0 14px rgba(63,216,255,.15);text-shadow:0 0 8px rgba(63,216,255,.5)}
+html[data-hud] .btn-primary:hover{background:rgba(63,216,255,.22)!important;box-shadow:0 0 22px rgba(63,216,255,.35)}
+html[data-hud] .btn-ghost,html[data-hud] .btn-outline{background:rgba(63,216,255,.04)!important;border:1px solid rgba(63,216,255,.22)!important;color:#a9e7f8!important}
+html[data-hud] .btn-ghost:hover,html[data-hud] .btn-outline:hover{border-color:rgba(63,216,255,.6)!important;color:#eafcff!important}
+html[data-hud] input,html[data-hud] select,html[data-hud] textarea{background-color:rgba(3,16,28,.9)!important;color:#d3f3ff!important;border-color:rgba(63,216,255,.22)!important}
+html[data-hud] input:focus,html[data-hud] select:focus,html[data-hud] textarea:focus{border-color:#3fd8ff!important;box-shadow:0 0 0 3px rgba(63,216,255,.12)!important;outline:none}
+html[data-hud] table thead tr,html[data-hud] table thead th{background:rgba(63,216,255,.07)!important;color:#7fdcf5!important;font-family:var(--hud-mono);letter-spacing:.08em;border-bottom:1px solid rgba(63,216,255,.25)!important}
+html[data-hud] table tbody tr:hover td{background:rgba(63,216,255,.05)!important}
+html[data-hud] .modal{background:linear-gradient(180deg,#071b2e,#030f1b)!important;border:1px solid rgba(63,216,255,.25);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 50px rgba(0,170,255,.12)!important}
+html[data-hud] .modal-overlay{background:rgba(0,4,10,.72)!important;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+
+/* Dashboard interattiva */
+html[data-hud] .dx-title{font-family:'Rajdhani',sans-serif!important;font-weight:600!important;font-size:18px!important;text-transform:uppercase;letter-spacing:.14em;color:#eafcff;text-shadow:0 0 12px rgba(63,216,255,.4)}
+html[data-hud] .dx-caret{color:#3fd8ff}
+html[data-hud] .dx-sec-h{border-bottom:1px solid rgba(63,216,255,.12)!important;background:linear-gradient(90deg,rgba(63,216,255,.06),transparent 60%)}
+html[data-hud] .dx-chip{background:rgba(63,216,255,.04);border-color:rgba(63,216,255,.2);color:#9cd9ec;font-family:var(--hud-mono);font-size:11px}
+html[data-hud] .dx-chip.on{background:rgba(63,216,255,.85);border-color:#3fd8ff;color:#021018;box-shadow:0 0 14px rgba(63,216,255,.45)}
+html[data-hud] .dx-chip.on b{color:rgba(2,16,24,.7)}
+html[data-hud] .dx-seg span.on{background:rgba(255,181,71,.16);color:#ffc46b}
+html[data-hud] .dx-big{font-family:var(--hud-num)!important;font-weight:600!important;text-shadow:0 0 16px rgba(63,216,255,.4)}
+html[data-hud] .dx-gl{border-top-color:rgba(63,216,255,.1)}
+html[data-hud] .dx-gl span,html[data-hud] .dx-lbl,html[data-hud] .dx-val{font-family:var(--hud-mono)}
+html[data-hud] .dx-cols{border-bottom-color:rgba(63,216,255,.35)}
+html[data-hud] .dx-stack i{filter:saturate(1.35) brightness(1.15);box-shadow:0 0 12px rgba(63,216,255,.12)}
+html[data-hud] .dx-col:hover,html[data-hud] .dx-col.sel{background:rgba(63,216,255,.08)}
+html[data-hud] .dx-prev{border-top-color:#ffb547;opacity:.8;box-shadow:0 0 6px rgba(255,181,71,.6)}
+html[data-hud] .dx-col.sel .dx-lbl{color:#ffc46b}
+html[data-hud] .dx-day{background:rgba(4,20,34,.7);border-color:rgba(63,216,255,.14)}
+html[data-hud] .dx-day.today{border-color:#3fd8ff;background:rgba(63,216,255,.07);box-shadow:0 0 18px rgba(63,216,255,.15)}
+html[data-hud] .dx-evt{background:rgba(2,12,22,.85)}
+html[data-hud] .dx-cambio{background:#ffb547}
+html[data-hud] .dx-pill{background:rgba(63,216,255,.05);border-color:rgba(63,216,255,.2);font-family:var(--hud-mono);font-size:11px}
+html[data-hud] .dx-pill b{color:#3fd8ff}
+html[data-hud] .dx-pill.warn{color:#ffc46b;border-color:rgba(255,181,71,.45);background:rgba(255,181,71,.07)}
+html[data-hud] .dx-pn{background:#051526!important}
+html[data-hud] .dx-pt,html[data-hud] .dx-pn{border-bottom-color:rgba(63,216,255,.08)!important}
+html[data-hud] .dx-ph.td{background:#3fd8ff;box-shadow:0 0 12px rgba(63,216,255,.6)}
+html[data-hud] .dx-ph.td b,html[data-hud] .dx-ph.td span{color:#021018}
+html[data-hud] .dx-pov i.td{background:rgba(63,216,255,.10);border-color:rgba(63,216,255,.6)}
+html[data-hud] .dx-pov i.we{background:rgba(255,181,71,.04)}
+html[data-hud] .dx-bar{border-radius:2px;filter:saturate(1.3) brightness(1.1);box-shadow:0 0 10px rgba(63,216,255,.18)}
+html[data-hud] .dx-occ i{background:#3fd8ff;box-shadow:0 0 6px #3fd8ff}
+html[data-hud] .dx-cbar i{background:#3fd8ff;opacity:.6}
+html[data-hud] .dx-dr-p{background:linear-gradient(180deg,#071b2e,#030f1b)!important;border-left:1px solid rgba(63,216,255,.3)!important}
+html[data-hud] #dx-tip{background:rgba(2,12,22,.96);border-color:rgba(63,216,255,.5);color:#d3f3ff;box-shadow:0 0 24px rgba(63,216,255,.2);font-family:var(--hud-mono);font-size:11px}
+html[data-hud] #dx-tip b{color:#3fd8ff}
+html[data-hud] .tema-switch button.on{background:rgba(63,216,255,.15);color:#3fd8ff}
+
+/* Riquadri con sfondo = colore del testo (es. Canone Proprietario): nei temi scuri diventavano chiari */
+html[data-tema="notte"] .page [style*="background:var(--text)"],html[data-tema="notte"] .modal [style*="background:var(--text)"]{background:#2a1f57!important}
+html[data-hud] .page [style*="background:var(--text)"],html[data-hud] .modal [style*="background:var(--text)"]{background:linear-gradient(90deg,rgba(63,216,255,.18),rgba(63,216,255,.05))!important;border:1px solid rgba(63,216,255,.45);box-shadow:0 0 18px rgba(63,216,255,.12)}
+/* Ingresso animato */
+@keyframes hudIn{from{opacity:0;transform:translateY(10px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+html[data-hud] #page-dashboard.active .stat-card,html[data-hud] #page-dashboard.active .dx-sec{animation:hudIn .45s cubic-bezier(.2,.7,.2,1) both}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(2){animation-delay:.04s}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(3){animation-delay:.08s}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(4){animation-delay:.12s}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(5){animation-delay:.16s}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(6){animation-delay:.2s}
+html[data-hud] #page-dashboard.active .stat-card:nth-child(7){animation-delay:.24s}
+
+/* ── NUCLEO HUD in testa alla Dashboard ── */
+#hud-core{display:none}
+html[data-hud] #hud-core{display:block;margin-bottom:16px}
+.hud-core{position:relative;overflow:hidden;border:1px solid rgba(63,216,255,.2);border-radius:4px;padding:14px 18px 18px;
+  background:
+    linear-gradient(var(--hc),var(--hc)) left top/18px 2px no-repeat,linear-gradient(var(--hc),var(--hc)) left top/2px 18px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right top/18px 2px no-repeat,linear-gradient(var(--hc),var(--hc)) right top/2px 18px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) left bottom/18px 2px no-repeat,linear-gradient(var(--hc),var(--hc)) left bottom/2px 18px no-repeat,
+    linear-gradient(var(--hc),var(--hc)) right bottom/18px 2px no-repeat,linear-gradient(var(--hc),var(--hc)) right bottom/2px 18px no-repeat,
+    radial-gradient(600px 260px at 50% 55%,rgba(0,170,255,.13),transparent 70%),
+    linear-gradient(180deg,rgba(6,24,40,.92),rgba(2,10,19,.92));
+  box-shadow:inset 0 0 60px rgba(0,150,230,.07),0 0 40px rgba(0,170,255,.07)}
+.hud-core::after{content:'';position:absolute;left:0;right:0;top:-40%;height:40%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(63,216,255,.07),transparent);animation:hudScan 6s linear infinite}
+@keyframes hudScan{to{top:110%}}
+.hud-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--hud-mono);font-size:11px;color:#5fc4e6;letter-spacing:.12em;border-bottom:1px dashed rgba(63,216,255,.18);padding-bottom:10px;margin-bottom:12px}
+.hud-brand{font-family:var(--hud-num);font-weight:700;font-size:13px;color:#eafcff;letter-spacing:.3em;text-shadow:0 0 12px rgba(63,216,255,.7)}
+.hud-brand i{font-style:normal;color:#3fd8ff;font-family:var(--hud-mono);font-weight:500;font-size:10.5px;letter-spacing:.18em}
+.hud-dot{width:7px;height:7px;border-radius:50%;background:#3cf2a5;box-shadow:0 0 8px #3cf2a5;display:inline-block;animation:hudBlink 1.6s ease-in-out infinite}
+.hud-dot.warn{background:#ffb547;box-shadow:0 0 8px #ffb547}
+@keyframes hudBlink{50%{opacity:.25}}
+.hud-msg{flex:1;min-width:200px;color:#bfefff;letter-spacing:.04em;text-transform:none;font-size:11.5px}
+.hud-msg::after{content:'▍';color:#3fd8ff;animation:hudBlink 1s steps(1) infinite;margin-left:2px}
+.hud-clock{font-family:var(--hud-num);font-size:15px;color:#eafcff;letter-spacing:.12em;text-shadow:0 0 10px rgba(63,216,255,.6)}
+.hud-clock small{font-family:var(--hud-mono);font-size:10px;color:#5fc4e6;margin-left:8px;letter-spacing:.14em}
+.hud-grid{display:grid;grid-template-columns:1fr 250px 1fr;gap:18px;align-items:center}
+.hud-col{display:grid;gap:9px}
+.hud-ro{position:relative;padding:8px 12px 9px;border:1px solid rgba(63,216,255,.14);background:linear-gradient(90deg,rgba(63,216,255,.06),rgba(63,216,255,.01));clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.hud-col.r .hud-ro{background:linear-gradient(270deg,rgba(63,216,255,.06),rgba(63,216,255,.01));text-align:right}
+.hud-ro.clk{cursor:pointer}
+.hud-ro.clk:hover{border-color:rgba(63,216,255,.5);background:rgba(63,216,255,.09)}
+.hud-ro-l{font-family:var(--hud-mono);font-size:9.5px;letter-spacing:.18em;color:#5fc4e6;text-transform:uppercase}
+.hud-ro-v{font-family:var(--hud-num);font-size:21px;font-weight:600;color:#eafcff;line-height:1.25;text-shadow:0 0 12px rgba(63,216,255,.45)}
+.hud-ro-v.warn{color:#ffc46b;text-shadow:0 0 12px rgba(255,181,71,.5)}
+.hud-ro-v.ok{color:#3cf2a5;text-shadow:0 0 12px rgba(60,242,165,.45)}
+.hud-ro-s{font-family:var(--hud-mono);font-size:10px;color:#6f9fb4;margin-top:1px}
+.hud-ro-bar{height:3px;background:rgba(63,216,255,.1);margin-top:6px;overflow:hidden}
+.hud-ro-bar i{display:block;height:100%;background:linear-gradient(90deg,#1aa6d6,#3fd8ff);box-shadow:0 0 8px #3fd8ff}
+.hud-col.r .hud-ro-bar i{margin-left:auto;background:linear-gradient(270deg,#1aa6d6,#3fd8ff)}
+.hud-reactor{position:relative;width:250px;height:250px;margin:0 auto}
+.hud-reactor svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.hud-spin{transform-origin:125px 125px;animation:hudSpin 24s linear infinite}
+.hud-spin.rev{animation-duration:16s;animation-direction:reverse}
+.hud-spin.fast{animation-duration:9s}
+@keyframes hudSpin{to{transform:rotate(360deg)}}
+.hud-arc{transition:stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)}
+.hud-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.hud-center b{font-family:var(--hud-num);font-size:36px;font-weight:700;color:#eafcff;text-shadow:0 0 18px rgba(63,216,255,.8);line-height:1}
+.hud-center b small{font-size:18px;margin-left:2px;color:#7fe6ff}
+.hud-center span{font-family:var(--hud-mono);font-size:8.5px;letter-spacing:.2em;color:#5fc4e6;margin-top:6px;line-height:1.4}
+.hud-center em{font-style:normal;font-family:var(--hud-mono);font-size:9.5px;color:#9cd9ec;margin-top:3px}
+@media (max-width:980px){
+  .hud-grid{grid-template-columns:1fr 1fr}
+  .hud-reactor{grid-column:1/-1;grid-row:1;width:220px;height:220px}
+  .hud-center b{font-size:34px}
+}
+@media (max-width:560px){
+  .hud-grid{grid-template-columns:1fr}
+  .hud-col{grid-template-columns:1fr 1fr;gap:7px}
+  .hud-ro{padding:7px 9px}
+  .hud-ro-v{font-size:16px}
+  .hud-ro-l{font-size:8.5px;letter-spacing:.12em}
+  .hud-ro-s{font-size:9px}
+  .hud-col.r .hud-ro{text-align:left}
+  .hud-col.r .hud-ro-bar i{margin-left:0}
+  .hud-clock small{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  html[data-hud] *{animation:none!important;transition:none!important}
+}
+</style>
+
+<script id="hud-js">
+// ══ TEMA HUD (v126) — nucleo "alla Jarvis" in testa alla Dashboard ══════
+// Solo lettura: legge gli stessi dati della Dashboard (getDashBks, dxAgg,
+// dxBksOperative). Non scrive nel DB e non cambia nessun calcolo.
+function hudOn(){ return document.documentElement.hasAttribute('data-hud'); }
+var _hudMsgFull='', _hudMsgTimer=null, _hudClockTimer=null;
+function hudPad(n){ return String(n).padStart(2,'0'); }
+function hudClock(){
+  var el=document.getElementById('hud-clock'); if(!el) return;
+  var d=new Date(), gg=['DOM','LUN','MAR','MER','GIO','VEN','SAB'];
+  el.innerHTML=hudPad(d.getHours())+':'+hudPad(d.getMinutes())+':'+hudPad(d.getSeconds())+'<small>'+gg[d.getDay()]+' '+hudPad(d.getDate())+'.'+hudPad(d.getMonth()+1)+'.'+d.getFullYear()+'</small>';
+}
+function hudType(text){
+  var el=document.getElementById('hud-msg'); if(!el) return;
+  if(text===_hudMsgFull&&el.textContent===text) return;
+  _hudMsgFull=text; if(_hudMsgTimer) clearInterval(_hudMsgTimer);
+  var i=0; el.textContent='';
+  _hudMsgTimer=setInterval(function(){ i+=2; el.textContent=text.slice(0,i); if(i>=text.length){ clearInterval(_hudMsgTimer); _hudMsgTimer=null; } },22);
+}
+// Conteggio animato dei numeri ("€ 33.057,46", "68", "72%")
+function hudCount(el,dur){
+  if(!el||el._hudCounting) return;
+  var txt=el.textContent, m=txt.match(/-?[\d.]+(,\d+)?/);
+  if(!m) return;
+  var raw=m[0], dec=m[1]?m[1].length-1:0;
+  var val=parseFloat(raw.replace(/\./g,'').replace(',','.'));
+  if(!isFinite(val)||Math.abs(val)<2) return;
+  var pre=txt.slice(0,m.index), post=txt.slice(m.index+raw.length), t0=null;
+  el._hudCounting=true;
+  function step(ts){
+    if(!t0) t0=ts; var k=Math.min(1,(ts-t0)/(dur||700)); k=1-Math.pow(1-k,3);
+    el.textContent=pre+(val*k).toLocaleString('it-IT',{minimumFractionDigits:dec,maximumFractionDigits:dec})+post;
+    if(k<1) requestAnimationFrame(step); else { el.textContent=txt; el._hudCounting=false; }
+  }
+  requestAnimationFrame(step);
+}
+function hudRo(label,value,sub,cls,bar,onclick){
+  return '<div class="hud-ro'+(onclick?' clk':'')+'"'+(onclick?' onclick="'+onclick+'"':'')+'><div class="hud-ro-l">'+label+'</div><div class="hud-ro-v '+(cls||'')+'" data-hudn>'+value+'</div>'
+    +(sub?'<div class="hud-ro-s">'+sub+'</div>':'')+(bar!=null?'<div class="hud-ro-bar"><i style="width:'+Math.max(2,Math.min(100,Math.round(bar)))+'%"></i></div>':'')+'</div>';
+}
+function hudData(){
+  var oggi=dxToday(), iso=dxIso(oggi), dom=dxIso(dxAddDays(oggi,1)), lim7=dxIso(dxAddDays(oggi,7)), lim30=dxIso(dxAddDays(oggi,30));
+  var all=dxBksOperative(), limite=dxIso(dxAddDays(oggi,-365));
+  var attive={}; all.forEach(function(b){ if((b.checkout||b.checkin)>=limite&&!(typeof srPropRimossa==='function'&&srPropRimossa(b.proprieta_id))) attive[b.proprieta_id]=1; });
+  var nAttive=Object.keys(attive).length||1;
+  var occ={}, arr=0, par=0, arrDom=0, cambi=0, senza=0, parProp={}, arrProp={}, notti30=0;
+  all.forEach(function(b){
+    var co=b.checkout||b.checkin;
+    if(b.checkin<=iso&&co>iso) occ[b.proprieta_id]=1;
+    if(b.checkin===iso){ arr++; arrProp[b.proprieta_id]=1; }
+    if(co===iso){ par++; parProp[b.proprieta_id]=1; }
+    if(b.checkin===dom) arrDom++;
+    if(b.checkin>=iso&&b.checkin<=lim7&&!b.checkin_data_at) senza++;
+    if(attive[b.proprieta_id]&&co>iso&&b.checkin<lim30){
+      var a=b.checkin>iso?b.checkin:iso, z=co<lim30?co:lim30; notti30+=Math.max(0,dxDiff(a,z));
+    }
+  });
+  Object.keys(arrProp).forEach(function(p){ if(parProp[p]) cambi++; });
+  var nOcc=Object.keys(occ).length;
+  return {nAttive:nAttive,nOcc:nOcc,pct:Math.round(nOcc/nAttive*100),arr:arr,par:par,arrDom:arrDom,cambi:cambi,senza:senza,occ30:Math.round(notti30/(nAttive*30)*100)};
+}
+function hudSyncInfo(){
+  try{
+    var s=(typeof _syncState!=='undefined')?_syncState:null;
+    if(s&&s.lastSummary&&s.lastSummary.at){
+      var min=Math.round((Date.now()-new Date(s.lastSummary.at).getTime())/60000);
+      return {ok:min<90,txt:min<1?'adesso':(min<60?min+' min fa':Math.round(min/60)+' h fa')};
+    }
+  }catch(e){}
+  return {ok:true,txt:'in attesa'};
+}
+function hudRender(){
+  var box=document.getElementById('hud-core'); if(!box) return;
+  if(!hudOn()){ box.innerHTML=''; return; }
+  try{
+    var D=hudData(), F=dxFiltri(), cur=dxAgg(getDashBks()), P=dxPrev(), pv=P?dxAgg(dxBks(P.m,P.y)):null;
+    var per=F.m&&F.y?(MESI_IT_FULL[F.m-1]+' '+F.y):(F.y?String(F.y):(F.m?MESI_IT_FULL[F.m-1]+' (tutti gli anni)':'Tutto il periodo'));
+    var sy=hudSyncInfo();
+    var dComp=pv&&pv.comp?Math.round((cur.comp-pv.comp)/Math.abs(pv.comp)*100):null;
+    var R=97, C=2*Math.PI*R, off=C*(1-D.pct/100);
+    var ticks=''; for(var i=0;i<60;i++){ var a=i*6*Math.PI/180, r1=i%5===0?109:113, r2=118; ticks+='<line x1="'+(125+r1*Math.cos(a)).toFixed(1)+'" y1="'+(125+r1*Math.sin(a)).toFixed(1)+'" x2="'+(125+r2*Math.cos(a)).toFixed(1)+'" y2="'+(125+r2*Math.sin(a)).toFixed(1)+'" stroke="rgba(63,216,255,'+(i%5===0?'.7':'.3')+')" stroke-width="'+(i%5===0?1.6:1)+'"/>'; }
+    var seg=''; for(var j=0;j<12;j++){ seg+='<path d="'+hudArcPath(125,125,84,j*30+3,j*30+24)+'" stroke="rgba(63,216,255,.35)" stroke-width="4" fill="none"/>'; }
+    var svg='<svg viewBox="0 0 250 250" aria-hidden="true">'
+      +'<defs><radialGradient id="hudGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(63,216,255,.35)"/><stop offset=".55" stop-color="rgba(63,216,255,.06)"/><stop offset="1" stop-color="rgba(63,216,255,0)"/></radialGradient></defs>'
+      +'<circle cx="125" cy="125" r="118" fill="url(#hudGlow)"/>'
+      +'<g class="hud-spin"><circle cx="125" cy="125" r="123" fill="none" stroke="rgba(63,216,255,.35)" stroke-width="1" stroke-dasharray="2 6"/>'+ticks+'</g>'
+      +'<g class="hud-spin rev">'+seg+'</g>'
+      +'<circle cx="125" cy="125" r="'+R+'" fill="none" stroke="rgba(63,216,255,.12)" stroke-width="7"/>'
+      +'<circle class="hud-arc" cx="125" cy="125" r="'+R+'" fill="none" stroke="#3fd8ff" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 125 125)" style="filter:drop-shadow(0 0 6px #3fd8ff)"/>'
+      +'<g class="hud-spin fast"><path d="'+hudArcPath(125,125,75,0,70)+'" stroke="#ffb547" stroke-width="2" fill="none" style="filter:drop-shadow(0 0 4px #ffb547)"/><path d="'+hudArcPath(125,125,75,180,250)+'" stroke="#ffb547" stroke-width="2" fill="none" style="filter:drop-shadow(0 0 4px #ffb547)"/></g>'
+      +'<circle cx="125" cy="125" r="68" fill="rgba(2,12,22,.88)" stroke="rgba(63,216,255,.4)" stroke-width="1"/>'
+      +'</svg>';
+    var h='<div class="hud-core">'
+      +'<div class="hud-top"><span class="hud-dot'+(D.senza||!sy.ok?' warn':'')+'"></span><span class="hud-brand">J.A.R.V.I.S. <i>// HOUZLY OPERATIONS</i></span><span class="hud-msg" id="hud-msg"></span><button class="hud-br-btn" onclick="brOpen(\'settimana\')" title="Briefing vocale">&#9654; BRIEFING</button><span class="hud-clock" id="hud-clock"></span></div>'
+      +'<div class="hud-grid">'
+      +'<div class="hud-col">'
+        +hudRo('Arrivi oggi',D.arr,'domani '+D.arrDom+(D.cambi?' · '+D.cambi+' cambi oggi':''),'',D.arr/Math.max(1,D.nAttive)*100*4,"dxScroll('oggi')")
+        +hudRo('Partenze oggi',D.par,D.par?'pulizie da fare oggi':'nessuna pulizia oggi','',D.par/Math.max(1,D.nAttive)*100*4,"dxScroll('oggi')")
+        +hudRo('Check-in da sollecitare',D.senza,'arrivi nei prossimi 7 giorni',D.senza?'warn':'ok',null,D.senza?'dxDrawerSenzaCki()':'')
+        +hudRo('Sync Smoobu',sy.ok?'ONLINE':'VERIFICA','ultimo aggiornamento '+sy.txt,sy.ok?'ok':'warn',null,'')
+      +'</div>'
+      +'<div class="hud-reactor">'+svg+'<div class="hud-center"><b data-hudn>'+D.pct+'<small>%</small></b><span>OCCUPAZIONE<br>STANOTTE</span><em>'+D.nOcc+' / '+D.nAttive+' strutture</em></div></div>'
+      +'<div class="hud-col r">'
+        +hudRo('Compenso Houzly',eur(cur.comp),per+(dComp!=null?' · '+(dComp>=0?'▲ +':'▼ ')+dComp+'% vs '+P.label:''),dComp!=null&&dComp<0?'warn':'',null,"dxSetMetric('comp')")
+        +hudRo('Incasso lordo',eur(cur.lordo),per,'',null,"dxSetMetric('lordo')")
+        +hudRo('Prenotazioni',dxNum(cur.n),dxNum(cur.notti)+' notti · '+dxNum(cur.ospiti)+' ospiti','',null,"dxSetMetric('n')")
+        +hudRo('Occupazione 30 giorni',D.occ30+'%','prenotato sulle strutture attive','',D.occ30,"dxScroll('plan')")
+      +'</div></div></div>';
+    box.innerHTML=h;
+    hudClock();
+    if(!_hudClockTimer) _hudClockTimer=setInterval(function(){ if(hudOn()) hudClock(); },1000);
+    var ora=new Date().getHours(), saluto=ora<6?'Buonanotte':(ora<13?'Buongiorno':(ora<18?'Buon pomeriggio':'Buonasera'));
+    var parts=[saluto+'.', D.arr+' '+(D.arr===1?'arrivo':'arrivi')+' e '+D.par+' '+(D.par===1?'partenza':'partenze')+' oggi, '+D.nOcc+' strutture occupate stanotte.'];
+    if(D.senza) parts.push(D.senza+' '+(D.senza===1?'ospite non ha':'ospiti non hanno')+' ancora fatto il check-in online.');
+    if(!sy.ok) parts.push('Sincronizzazione Smoobu da verificare.');
+    if(!D.senza&&sy.ok) parts.push('Tutti i sistemi operativi.');
+    hudType(parts.join(' '));
+    box.querySelectorAll('[data-hudn]').forEach(function(el){ hudCount(el,800); });
+    document.querySelectorAll('#stat-grid .stat-value,#stat-grid-2 .stat-value').forEach(function(el){ hudCount(el,700); });
+  }catch(e){ console.error('hud',e); box.innerHTML=''; }
+}
+function hudArcPath(cx,cy,r,a0,a1){
+  var p=function(a){ var t=(a-90)*Math.PI/180; return (cx+r*Math.cos(t)).toFixed(1)+' '+(cy+r*Math.sin(t)).toFixed(1); };
+  return 'M '+p(a0)+' A '+r+' '+r+' 0 '+(a1-a0>180?1:0)+' 1 '+p(a1);
+}
+function dxScroll(id){ var el=document.getElementById('dx-sec-'+id); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+
+</script>
+<style id="br-css">
+/* ══ BRIEFING VOCALE (v127) ══ */
+#br-panel{position:fixed;inset:0;z-index:450}
+.br-bg{position:absolute;inset:0;background:rgba(10,8,25,.45);opacity:0;transition:opacity .2s}
+.br-box{position:absolute;right:0;top:0;bottom:0;width:min(520px,100%);background:var(--surface);border-left:1px solid var(--border);box-shadow:-20px 0 50px rgba(0,0,0,.25);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;padding:0}
+#br-panel.open .br-bg{opacity:1}#br-panel.open .br-box{transform:none}
+.br-h{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 20px 12px;border-bottom:1px solid var(--border)}
+.br-eye{font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--text-light)}
+.br-t{font-family:var(--serif);font-size:21px;color:var(--ink);margin-top:3px}
+.br-ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 20px}
+.br-set{display:flex;gap:10px;flex-wrap:wrap;padding:0 20px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-light)}
+.br-set label{display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px}
+.br-set input,.br-set select{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:inherit;font-size:12.5px;color:var(--text)}
+.br-txt{flex:1;overflow-y:auto;padding:14px 20px 30px}
+.br-txt p{font-size:14px;line-height:1.65;color:var(--text-mid);margin:0 0 10px;padding:6px 10px;border-left:2px solid transparent;border-radius:4px;transition:all .25s}
+.br-txt p.on{color:var(--ink);background:rgba(200,165,91,.12);border-left-color:var(--gold)}
+.br-wave{display:inline-flex;align-items:center;gap:3px;height:22px;margin-left:auto}
+.br-wave i{width:3px;height:4px;border-radius:2px;background:var(--text-light);transition:height .2s}
+.br-wave.on i{background:var(--gold);animation:brWave 1s ease-in-out infinite}
+.br-wave.on i:nth-child(2){animation-delay:.1s}.br-wave.on i:nth-child(3){animation-delay:.2s}.br-wave.on i:nth-child(4){animation-delay:.3s}.br-wave.on i:nth-child(5){animation-delay:.2s}.br-wave.on i:nth-child(6){animation-delay:.1s}
+@keyframes brWave{0%,100%{height:4px}50%{height:20px}}
+/* HUD */
+html[data-hud] .br-box{background:linear-gradient(180deg,#071b2e,#030f1b);border-left:1px solid rgba(63,216,255,.35);box-shadow:-20px 0 60px rgba(0,0,0,.6),0 0 40px rgba(0,170,255,.1)}
+html[data-hud] .br-bg{background:rgba(0,4,10,.6)}
+html[data-hud] .br-eye{font-family:var(--hud-mono);color:#3fd8ff}
+html[data-hud] .br-t{font-family:var(--hud-num);font-size:17px;letter-spacing:.1em;text-transform:uppercase;color:#eafcff;text-shadow:0 0 12px rgba(63,216,255,.5)}
+html[data-hud] .br-txt p{font-family:var(--hud-mono);font-size:12.5px;color:#7fb3c7}
+html[data-hud] .br-txt p.on{color:#eafcff;background:rgba(63,216,255,.08);border-left-color:#3fd8ff;text-shadow:0 0 8px rgba(63,216,255,.4)}
+html[data-hud] .br-wave.on i{background:#3fd8ff;box-shadow:0 0 6px #3fd8ff}
+.hud-br-btn{font-family:var(--hud-mono);font-size:10.5px;letter-spacing:.16em;color:#021018;background:#3fd8ff;border:none;border-radius:2px;padding:5px 10px;cursor:pointer;box-shadow:0 0 14px rgba(63,216,255,.5)}
+.hud-br-btn:hover{background:#7fe6ff}
+.hud-core.hud-speaking{animation:hudTalk 1.2s ease-in-out infinite}
+@keyframes hudTalk{50%{box-shadow:inset 0 0 80px rgba(0,190,255,.16),0 0 50px rgba(0,190,255,.25)}}
+.hud-core.hud-speaking .hud-arc{animation:hudArcPulse .9s ease-in-out infinite}
+@keyframes hudArcPulse{50%{stroke-width:10}}
+</style>
+
+<script id="br-js">
+// ══ BRIEFING VOCALE (v127, inglese da v128) ═══════════════════════════
+// Recap della settimana o del mese letto ad alta voce con la sintesi vocale
+// del browser (gratuita, nessun servizio esterno). Testo costruito con regole
+// fisse sui dati del tool, in italiano o in inglese. Solo lettura.
+var _brQueue=[], _brIdx=0, _brPlaying=false, _brPaused=false, _brTipo='settimana';
+function brLS(k,d){ try{ return localStorage.getItem(k)||d; }catch(e){ return d; } }
+function brLSset(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function brNome(){ return brLS('houzly_nome',''); }
+function brSetNome(v){ brLSset('houzly_nome',String(v||'').trim()); }
+function brLang(){ return brLS('houzly_br_lang','it')==='en'?'en':'it'; }
+function brVoices(lang){
+  if(!('speechSynthesis' in window)) return [];
+  var rx=lang==='en'?/^en/i:/^it/i;
+  return speechSynthesis.getVoices().filter(function(v){ return rx.test(v.lang); });
+}
+if('speechSynthesis' in window){ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged=function(){ brFillVoices(); }; }
+function brVoce(){
+  var lang=brLang(), v=brVoices(lang), s=brLS('houzly_voce_'+lang,'')||(lang==='it'?brLS('houzly_voce',''):'');
+  if(s){ var f=v.find(function(x){return x.name===s;}); if(f) return f; }
+  var pref=lang==='en'
+    ? [/ryan.*natural/i,/thomas.*natural/i,/natural.*(en-gb|united kingdom)/i,/^daniel/i,/uk english male/i,/arthur/i,/george/i,/oliver/i,/natural/i]
+    : [/natural/i,/neural/i,/premium/i,/enhanced/i,/federica/i,/alice/i,/elsa/i,/isabella/i,/google/i];
+  if(lang==='en'){ var gb=v.filter(function(x){return /en-GB/i.test(x.lang);}); for(var j=0;j<pref.length;j++){ var g=gb.find(function(x){return pref[j].test(x.name);}); if(g) return g; } if(gb.length) return gb[0]; }
+  for(var i=0;i<pref.length;i++){ var m=v.find(function(x){return pref[i].test(x.name);}); if(m) return m; }
+  return v[0]||null;
+}
+// ── Formati pronunciabili ──
+function brEur(n,en){ n=Math.round(+n||0); return en?n.toLocaleString('en-GB')+' euros':n.toLocaleString('it-IT')+' euro'; }
+function brPct(a,b){ if(!b) return null; return Math.round((a-b)/Math.abs(b)*100); }
+function brVoc(n){ var t=String(Math.abs(Math.round(n))); return t[0]==='8'||/^11(\d{0,1}|\d{3})$/.test(t); }
+function brDel(n){ return brVoc(n)?'dell\'':'del '; }
+function brIl(n){ return brVoc(n)?'l\'':'il '; }
+function brVar(p,en){
+  if(p===null||p===undefined) return '';
+  if(p===0) return en?'flat':'in linea';
+  if(en) return (p>0?'up ':'down ')+Math.abs(p)+' percent';
+  return (p>0?'in crescita ':'in calo ')+brDel(p)+Math.abs(p)+' per cento';
+}
+function brMesi(en){ return en?['January','February','March','April','May','June','July','August','September','October','November','December']:['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre']; }
+function brList(arr,en){ if(arr.length<2) return arr.join(''); return arr.slice(0,-1).join(', ')+(en?' and ':' e ')+arr[arr.length-1]; }
+// ── Dati ──
+function brBks(){ return (DB.prenotazioni||[]).filter(function(b){ return !b.black&&!b._sync_cancelled&&b.checkin&&b.calc; }); }
+function brTot(list){ var t={n:0,lordo:0,comp:0,notti:0}; list.forEach(function(b){ t.n++; t.lordo+=+b.calc.tot||0; t.comp+=+b.calc.houzly||0; t.notti+=+b.notti||0; }); return t; }
+function brMese(all,m,y){ return all.filter(function(b){ return bkInPeriod(b,m,y,'checkin'); }); }
+function brAttive(){
+  var lim=dxIso(dxAddDays(dxToday(),-365)), a={};
+  (DB.prenotazioni||[]).forEach(function(b){ if(!b._sync_cancelled&&b.checkin&&(b.checkout||b.checkin)>=lim&&!(typeof srPropRimossa==='function'&&srPropRimossa(b.proprieta_id))) a[b.proprieta_id]=1; });
+  return a;
+}
+function brOccMese(all,attive,ym){
+  var n=Object.keys(attive).length; if(!n) return 0;
+  var notti=0; all.forEach(function(b){ if(attive[b.proprieta_id]) notti+=anNottiNelMese(b,ym); });
+  return Math.round(notti/(n*anGiorniMese(ym))*100);
+}
+function brPerStruttura(list){
+  var m={}; list.forEach(function(b){ var X=m[b.proprieta_id]||(m[b.proprieta_id]={pid:b.proprieta_id,comp:0,n:0}); X.comp+=+b.calc.houzly||0; X.n++; });
+  return Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.comp-a.comp;});
+}
+function brNomeProp(pid){ var p=(DB.proprieta||[]).find(function(x){return x.id===pid;}); return p?p.nome:'—'; }
+function brVuote(all,attive,giorni){
+  var oggi=dxIso(dxToday()), lim=dxIso(dxAddDays(dxToday(),giorni)), occ={};
+  Object.keys(attive).forEach(function(p){ occ[p]=0; });
+  all.forEach(function(b){
+    if(!attive[b.proprieta_id]) return; var co=b.checkout||b.checkin;
+    if(co<=oggi||b.checkin>=lim) return;
+    var a=b.checkin>oggi?b.checkin:oggi, z=co<lim?co:lim; occ[b.proprieta_id]+=Math.max(0,dxDiff(a,z));
+  });
+  return Object.keys(occ).map(function(p){ return {pid:p,pct:Math.round(occ[p]/giorni*100)}; }).sort(function(a,b){return a.pct-b.pct;});
+}
+function brOrfane(all,attive,giorni){
+  var oggi=dxIso(dxToday()), lim=dxIso(dxAddDays(dxToday(),giorni)), byP={}, n=0;
+  all.forEach(function(b){ if(attive[b.proprieta_id]&&(b.checkout||b.checkin)>=oggi&&b.checkin<=lim) (byP[b.proprieta_id]=byP[b.proprieta_id]||[]).push(b); });
+  Object.keys(byP).forEach(function(p){
+    var l=byP[p].sort(function(a,b){return a.checkin<b.checkin?-1:1;});
+    for(var i=1;i<l.length;i++){ var g=dxDiff(l[i-1].checkout||l[i-1].checkin,l[i].checkin); if(g>=1&&g<=2) n++; }
+  });
+  return n;
+}
+// ── Testo ──
+function brTesto(tipo,lang){
+  var en=(lang||brLang())==='en';
+  var all=brBks(), attive=brAttive(), oggi=dxToday(), M=brMesi(en), S=[];
+  var nome=brNome(), h=new Date().getHours();
+  var saluto=en?((h<12?'Good morning':(h<18?'Good afternoon':'Good evening'))+(nome?', '+nome:'')+'.')
+                :((h<13?'Buongiorno':(h<18?'Buon pomeriggio':'Buonasera'))+(nome?' '+nome:'')+'.');
+  var mC=oggi.getMonth()+1, yC=oggi.getFullYear(), mN=mC===12?1:mC+1, yN=mC===12?yC+1:yC;
+  var curr=brTot(brMese(all,mC,yC)), currAP=brTot(brMese(all,mC,yC-1));
+  var next=brTot(brMese(all,mN,yN)), nextAP=brTot(brMese(all,mN,yN-1));
+  var vuote=brVuote(all,attive,30).filter(function(x){return x.pct<25;});
+  var orf=brOrfane(all,attive,30);
+  var inizio=dxIso(oggi), lim7=dxIso(dxAddDays(oggi,7));
+  var arr7=all.filter(function(b){return b.checkin>=inizio&&b.checkin<lim7;}).length;
+  var senza=dxBksOperative().filter(function(b){return b.checkin>=inizio&&b.checkin<=lim7&&!b.checkin_data_at;}).length;
+  var consigli=[];
+  if(tipo==='settimana'){
+    S.push(saluto+(en?' Here is your weekly briefing.':' Ecco il punto della settimana.'));
+    var d7=dxAddDays(oggi,-7), d14=dxAddDays(oggi,-14);
+    var nuove=all.filter(function(b){ var d=lvParseDate(b.prenotata_il); return d&&d>=d7; });
+    var prima=all.filter(function(b){ var d=lvParseDate(b.prenotata_il); return d&&d>=d14&&d<d7; });
+    var tn=brTot(nuove), tp=brTot(prima), pv=brPct(tn.comp,tp.comp);
+    if(tn.n){
+      S.push(en
+        ? 'In the last seven days we received '+tn.n+' new booking'+(tn.n===1?'':'s')+', worth '+brEur(tn.lordo,1)+' in revenue and '+brEur(tn.comp,1)+' in Houzly fees'+(pv!==null?', '+brVar(pv,1)+' on the previous week':'')+'.'
+        : 'Negli ultimi sette giorni sono arrivate '+tn.n+' nuove prenotazioni, per '+brEur(tn.lordo)+' di incasso e '+brEur(tn.comp)+' di compenso Houzly'+(pv!==null?', '+brVar(pv)+' rispetto alla settimana prima':'')+'.');
+      if(pv!==null&&pv<=-25) consigli.push(en?'new bookings are slowing down, so review prices for the coming weeks':'le nuove prenotazioni stanno rallentando: conviene rivedere i prezzi delle prossime settimane');
+    } else S.push(en?'No new bookings were recorded in the last seven days.':'Negli ultimi sette giorni non sono arrivate nuove prenotazioni registrate nel tool.');
+    S.push(en
+      ? 'In the next seven days '+(arr7===1?'there is one arrival':'there are '+arr7+' arrivals')+(senza?', and '+(senza===1?'one guest still has':senza+' guests still have')+' to complete the online check-in':'')+'.'
+      : 'Nei prossimi sette giorni '+(arr7===1?'c\'è un arrivo':'ci sono '+arr7+' arrivi')+(senza?', e '+senza+(senza===1?' ospite deve':' ospiti devono')+' ancora fare il check-in online':'')+'.');
+    if(senza) consigli.push(en?('chase '+(senza===1?'the guest who hasn\'t':'the '+senza+' guests who haven\'t')+' checked in online'):('sollecitare '+(senza===1?'l\'ospite che non ha':'i '+senza+' ospiti che non hanno')+' fatto il check-in'));
+    S.push(en
+      ? M[mC-1]+' already has '+brEur(curr.comp,1)+' in Houzly fees on the books'+(currAP.comp?', '+brVar(brPct(curr.comp,currAP.comp),1)+' on the same month last year':'')+'.'
+      : 'Il mese di '+M[mC-1]+' ha già '+brEur(curr.comp)+' di compenso prenotato'+(currAP.comp?', '+brVar(brPct(curr.comp,currAP.comp))+' sullo stesso mese dell\'anno scorso':'')+'.');
+    if(next.comp||nextAP.comp) S.push(en
+      ? 'For '+M[mN-1]+' we are at '+brEur(next.comp,1)+(nextAP.comp?', against '+brEur(nextAP.comp,1)+' for the whole month last year':'')+'.'
+      : 'Per '+M[mN-1]+' siamo a '+brEur(next.comp)+(nextAP.comp?', contro '+brEur(nextAP.comp)+' dello scorso anno a fine mese':'')+'.');
+  } else {
+    var mP=mC===1?12:mC-1, yP=mC===1?yC-1:yC;
+    var lp=brMese(all,mP,yP), tP=brTot(lp), tAP=brTot(brMese(all,mP,yP-1)), pc=brPct(tP.comp,tAP.comp);
+    var oP=brOccMese(all,attive,anYm(yP,mP)), oAP=brOccMese(all,attive,anYm(yP-1,mP));
+    S.push(saluto+(en?' Here is the strategic recap for '+M[mP-1]+'.':' Ecco il recap strategico del mese di '+M[mP-1]+'.'));
+    S.push(en
+      ? 'We closed '+M[mP-1]+' with '+tP.n+' bookings and '+tP.notti+' nights, for '+brEur(tP.lordo,1)+' in gross revenue.'
+      : 'Abbiamo chiuso '+M[mP-1]+' con '+tP.n+' prenotazioni e '+tP.notti+' notti, per '+brEur(tP.lordo)+' di incasso lordo.');
+    S.push(en
+      ? 'Houzly fees came to '+brEur(tP.comp,1)+(pc!==null?', '+brVar(pc,1)+' on '+M[mP-1]+' last year':'')+'.'
+      : 'Il compenso Houzly è di '+brEur(tP.comp)+(pc!==null?', '+brVar(pc)+' rispetto a '+M[mP-1]+' dell\'anno scorso':'')+'.');
+    S.push(en
+      ? 'Average occupancy across active properties was '+oP+' percent'+(oAP?', compared with '+oAP+' percent a year ago':'')+'.'
+      : 'L\'occupazione media delle strutture attive è stata '+brDel(oP)+oP+' per cento'+(oAP?', contro '+brIl(oAP)+oAP+' per cento di un anno fa':'')+'.');
+    var top=brPerStruttura(lp).slice(0,3);
+    if(top.length) S.push(en
+      ? 'The top performers were '+top.map(function(x){return brNomeProp(x.pid)+', with '+brEur(x.comp,1);}).join('; ')+'.'
+      : 'Le strutture che hanno reso di più sono '+top.map(function(x){return brNomeProp(x.pid)+', con '+brEur(x.comp);}).join('; ')+'.');
+    if(pc!==null&&pc<=-10) consigli.push(en?'look into the drop in '+M[mP-1]+': the ranking shows which properties lost the most':'capire il calo di '+M[mP-1]+': guarda nella classifica quali strutture hanno perso di più');
+    S.push(en
+      ? 'Looking ahead, '+M[mC-1]+' already has '+brEur(curr.comp,1)+' in fees on the books'+(currAP.comp?', '+brVar(brPct(curr.comp,currAP.comp),1)+' on last year':'')+', and '+M[mN-1]+' stands at '+brEur(next.comp,1)+'.'
+      : 'Guardando avanti, '+M[mC-1]+' ha già '+brEur(curr.comp)+' di compenso prenotato'+(currAP.comp?', '+brVar(brPct(curr.comp,currAP.comp))+' sull\'anno scorso':'')+', e '+M[mN-1]+' è a '+brEur(next.comp)+'.');
+    if(nextAP.comp&&next.comp<nextAP.comp*0.6) consigli.push(en?'push '+M[mN-1]+', which is well behind last year':'spingere '+M[mN-1]+', che per ora è molto sotto lo scorso anno');
+  }
+  if(vuote.length){
+    var nomi=vuote.slice(0,3).map(function(x){return brNomeProp(x.pid);}), nAtt=Object.keys(attive).length;
+    if(en) S.push(vuote.length>5
+      ? 'Over the next thirty days occupancy is low: '+vuote.length+' of '+nAtt+' properties are below 25 percent. The emptiest are '+brList(nomi,1)+'.'
+      : 'Over the next thirty days '+vuote.length+(vuote.length===1?' property is':' properties are')+' nearly empty: '+brList(nomi,1)+'.');
+    else S.push(vuote.length>5
+      ? 'Nei prossimi trenta giorni l\'occupazione è bassa: '+vuote.length+' strutture su '+nAtt+' sono sotto il 25 per cento. Le più scoperte sono '+brList(nomi)+'.'
+      : 'Nei prossimi trenta giorni '+vuote.length+(vuote.length===1?' struttura è':' strutture sono')+' quasi vuot'+(vuote.length===1?'a':'e')+': '+brList(nomi)+'.');
+    consigli.push(en?'consider a last-minute offer on '+brList(nomi.slice(0,2),1):'valutare una promozione last minute su '+brList(nomi.slice(0,2)));
+  }
+  if(orf){
+    S.push(en?'There '+(orf===1?'is one orphan gap':'are '+orf+' orphan gaps')+': one or two free nights between two stays.':'Ci sono '+orf+' notti orfane, cioè una o due notti libere tra due soggiorni.');
+    consigli.push(en?'lower the minimum stay where there are orphan nights':'abbassare il minimo notti dove ci sono notti orfane');
+  }
+  if(consigli.length){
+    var ord=en?['first, ','second, ','third, ']:['primo, ','secondo, ','terzo, '];
+    S.push((en?'My recommendations: ':'I miei consigli: ')+consigli.slice(0,3).map(function(c,i){return ord[i]+c;}).join('; ')+'.');
+  } else S.push(en?'I see no issues. All systems are operational.':'Non vedo criticità: tutti i sistemi sono operativi.');
+  S.push(en?'End of briefing.':'Fine del briefing.');
+  return S;
+}
+// ── Pannello ──
+function brOpen(tipo){
+  if(tipo) _brTipo=tipo;
+  var en=brLang()==='en';
+  var el=document.getElementById('br-panel'), nuovo=!el;
+  if(!el){ el=document.createElement('div'); el.id='br-panel'; document.body.appendChild(el); }
+  var supp='speechSynthesis' in window;
+  el.innerHTML='<div class="br-bg" onclick="brClose()"></div><div class="br-box">'
+    +'<div class="br-h"><div><div class="br-eye">J.A.R.V.I.S. · '+(en?'VOICE BRIEFING':'BRIEFING VOCALE')+'</div><div class="br-t">'+(_brTipo==='settimana'?(en?'Weekly briefing':'Punto della settimana'):(en?'Monthly recap':'Recap del mese'))+'</div></div><button class="modal-close" style="position:static" onclick="brClose()">&#10005;</button></div>'
+    +'<div class="br-ctrl"><div class="dx-seg"><span class="'+(_brTipo==='settimana'?'on':'')+'" onclick="brStop();brOpen(\'settimana\')">'+(en?'Week':'Settimana')+'</span><span class="'+(_brTipo==='mese'?'on':'')+'" onclick="brStop();brOpen(\'mese\')">'+(en?'Month':'Mese')+'</span></div>'
+    +'<div class="dx-seg"><span class="'+(!en?'on':'')+'" onclick="brStop();brLSset(\'houzly_br_lang\',\'it\');brOpen()">IT</span><span class="'+(en?'on':'')+'" onclick="brStop();brLSset(\'houzly_br_lang\',\'en\');brOpen()">EN</span></div>'
+    +'<button class="btn btn-primary btn-sm" id="br-play" onclick="brPlay()">▶ '+(en?'Play':'Ascolta')+'</button><button class="btn btn-ghost btn-sm" onclick="brStop()">■ Stop</button>'
+    +'<div class="br-wave" id="br-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>'
+    +'<div class="br-set"><label>'+(en?'Your name':'Come ti chiamo')+' <input id="br-nome" value="'+esc(brNome())+'" placeholder="es. Daniele" onchange="brSetNome(this.value);brOpen()"></label>'
+    +'<label>'+(en?'Voice':'Voce')+' <select id="br-voce" onchange="brLSset(\'houzly_voce_\'+brLang(),this.value)"></select></label></div>'
+    +(supp?'':'<div class="alert alert-warning">'+(en?'This browser has no speech synthesis: you can read the briefing below.':'Questo browser non ha la sintesi vocale: puoi leggere il briefing qui sotto.')+'</div>')
+    +'<div class="br-txt" id="br-txt">'+brTesto(_brTipo).map(function(s,i){return '<p data-i="'+i+'">'+esc(s)+'</p>';}).join('')+'</div></div>';
+  brFillVoices();
+  if(nuovo) setTimeout(function(){ el.classList.add('open'); },10); else el.classList.add('open');
+}
+function brFillVoices(){
+  var sel=document.getElementById('br-voce'); if(!sel) return;
+  var lang=brLang(), v=brVoices(lang), cur=brVoce();
+  sel.innerHTML=v.length?v.map(function(x){return '<option value="'+esc(x.name)+'"'+(cur&&cur.name===x.name?' selected':'')+'>'+esc(x.name.replace(/Microsoft |Google /,'')+(lang==='en'?' · '+x.lang:''))+'</option>';}).join(''):'<option>'+(lang==='en'?'Default English voice':'Voce italiana predefinita')+'</option>';
+}
+function brClose(){ brStop(); var el=document.getElementById('br-panel'); if(el) el.remove(); }
+function brSetSpeaking(on){
+  var en=brLang()==='en';
+  var w=document.getElementById('br-wave'); if(w) w.classList.toggle('on',on);
+  var c=document.querySelector('.hud-core'); if(c) c.classList.toggle('hud-speaking',on);
+  var b=document.getElementById('br-play'); if(b) b.textContent=on?(_brPaused?(en?'▶ Resume':'▶ Riprendi'):(en?'❚❚ Pause':'❚❚ Pausa')):(en?'▶ Play':'▶ Ascolta');
+}
+function brPlay(){
+  if(!('speechSynthesis' in window)) return;
+  if(_brPlaying){
+    if(_brPaused){ speechSynthesis.resume(); _brPaused=false; } else { speechSynthesis.pause(); _brPaused=true; }
+    brSetSpeaking(true); return;
+  }
+  speechSynthesis.cancel();
+  _brQueue=Array.prototype.map.call(document.querySelectorAll('#br-txt p'),function(p){return p.textContent;});
+  _brIdx=0; _brPlaying=true; _brPaused=false; brSetSpeaking(true); brNext();
+}
+function brNext(){
+  document.querySelectorAll('#br-txt p').forEach(function(p){ p.classList.toggle('on',+p.getAttribute('data-i')===_brIdx); });
+  if(!_brPlaying||_brIdx>=_brQueue.length){ brStop(); return; }
+  var u=new SpeechSynthesisUtterance(_brQueue[_brIdx]);
+  var v=brVoce(); if(v) u.voice=v; u.lang=(v&&v.lang)||(brLang()==='en'?'en-GB':'it-IT');
+  u.rate=brLang()==='en'?0.98:1.02; u.pitch=brLang()==='en'?0.9:0.95;
+  u.onend=function(){ if(!_brPlaying) return; _brIdx++; brNext(); };
+  u.onerror=function(){ if(!_brPlaying) return; _brIdx++; brNext(); };
+  var p=document.querySelector('#br-txt p[data-i="'+_brIdx+'"]'); if(p&&p.scrollIntoView) p.scrollIntoView({block:'nearest',behavior:'smooth'});
+  speechSynthesis.speak(u);
+}
+function brStop(){
+  _brPlaying=false; _brPaused=false;
+  try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
+  document.querySelectorAll('#br-txt p').forEach(function(p){ p.classList.remove('on'); });
+  brSetSpeaking(false);
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&document.getElementById('br-panel')) brClose(); });
 
 </script>
 </body>
