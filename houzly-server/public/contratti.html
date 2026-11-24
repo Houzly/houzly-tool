@@ -407,29 +407,80 @@ async function anteprima(rif){
   // La scheda si apre PRIMA della fetch: aperta dopo l'await, Safari la
   // considera non originata da un click e la blocca come popup.
   const scheda = window.open('', '_blank');
+  if(scheda) scheda.document.write(paginaAttesa(rif));
   mostra('Generazione del contratto…');
+
   try{
     const pin = sessionStorage.getItem(PIN_KEY) || '';
     const r = await fetch('/api/contracts/' + rif + '/anteprima', {headers:{'X-Admin-PIN':pin}});
+
     if(!r.ok){
+      const testo = await r.text();
+      let msg = 'HTTP ' + r.status;
+      try{ const d = JSON.parse(testo); if(d.error) msg = d.error; }catch(e){}
       if(scheda) scheda.close();
-      const d = await r.json().catch(()=>({}));
-      return mostra('Non disponibile' + (d.error ? ': ' + d.error : ''));
+      return mostra('Non disponibile: ' + msg);
     }
-    const url = URL.createObjectURL(await r.blob());
-    if(scheda){
-      scheda.location = url;
-    }else{
-      // Popup bloccato: ripiego sullo scaricamento.
-      const a = document.createElement('a');
-      a.href = url; a.download = rif + '-bozza.pdf';
-      document.body.appendChild(a); a.click(); a.remove();
+
+    const blob = await r.blob();
+    if(!blob.size){
+      if(scheda) scheda.close();
+      return mostra('Il server ha restituito un file vuoto');
     }
-    setTimeout(()=>URL.revokeObjectURL(url), 120000);
+
+    const url = URL.createObjectURL(blob);
+
+    if(!scheda){
+      // Popup bloccato dal browser: si ripiega sullo scaricamento.
+      scaricaBlob(url, rif);
+      mostra('Popup bloccato — contratto scaricato');
+      return;
+    }
+
+    // Il PDF si mostra dentro un <embed> scritto nella scheda, invece di
+    // navigarla su un indirizzo blob:. Chrome blocca quella navigazione da
+    // qualche versione e il risultato è esattamente una pagina bianca.
+    scheda.document.open();
+    scheda.document.write(paginaPdf(url, rif));
+    scheda.document.close();
+
+    setTimeout(()=>URL.revokeObjectURL(url), 10 * 60 * 1000);
   }catch(e){
     if(scheda) scheda.close();
     mostra('Errore nella generazione');
   }
+}
+
+function scaricaBlob(url, rif){
+  const a = document.createElement('a');
+  a.href = url; a.download = rif + '.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function paginaAttesa(rif){
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8">
+    <title>${esc(rif)} · Houzly</title></head>
+    <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;
+      font-family:system-ui,sans-serif;color:#170046;background:#f0f4fa">
+      Generazione del contratto…</body></html>`;
+}
+
+function paginaPdf(url, rif){
+  // Oltre all'anteprima c'è sempre un link di scaricamento: su iOS Safari
+  // l'<embed> di un PDF spesso non renderizza e resterebbe solo il bianco.
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${esc(rif)} · Houzly</title></head>
+    <body style="margin:0;background:#525659;font-family:system-ui,sans-serif">
+      <div style="background:#170046;color:#fff;padding:10px 16px;display:flex;
+        justify-content:space-between;align-items:center;gap:16px">
+        <span style="font-size:14px">${esc(rif)}</span>
+        <a href="${url}" download="${esc(rif)}.pdf"
+          style="color:#fff;font-size:13px;text-decoration:underline">Scarica il PDF</a>
+      </div>
+      <embed src="${url}" type="application/pdf"
+        style="width:100%;height:calc(100vh - 41px);border:0">
+    </body></html>`;
 }
 
 async function dettaglio(rif){
