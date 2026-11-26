@@ -43,6 +43,69 @@ function poni(destinazione, chiave, valore) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Dati ricavati dal codice fiscale
+ * ------------------------------------------------------------------ */
+
+/**
+ * Sesso, data di nascita e codice Belfiore letti dal codice fiscale.
+ *
+ * Il codice Belfiore (campo 8 della CU, "Codice Comune cat." in anagrafica)
+ * non si chiede a nessuno: nessun proprietario lo conosce e nessun modulo
+ * ragionevole lo domanda. Ma sta dentro al codice fiscale, che è
+ * obbligatorio, insieme a sesso e data di nascita. Ricavarlo qui è l'unico
+ * modo perché quel campo non resti vuoto per sempre — ed è esattamente la
+ * fonte che usa l'Agenzia delle Entrate.
+ *
+ * Gestisce l'omocodia: quando due persone otterrebbero lo stesso codice,
+ * alcune cifre vengono sostituite da lettere secondo una tabella fissa, e
+ * una lettura ingenua darebbe una data senza senso.
+ */
+const OMOCODIA = { L: '0', M: '1', N: '2', P: '3', Q: '4', R: '5', S: '6', T: '7', U: '8', V: '9' };
+const MESI_CF = { A: 1, B: 2, C: 3, D: 4, E: 5, H: 6, L: 7, M: 8, P: 9, R: 10, S: 11, T: 12 };
+
+function cifra(carattere) {
+  if (/\d/.test(carattere)) return carattere;
+  return OMOCODIA[carattere] !== undefined ? OMOCODIA[carattere] : null;
+}
+
+function datiDaCodiceFiscale(cfGrezzo) {
+  const cf = maiuscolo(cfGrezzo).replace(/\s+/g, '');
+  if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(cf.replace(/[LMNPQRSTUV]/g, (c, i) =>
+    [6, 7, 9, 10, 12, 13, 14].includes(i) ? OMOCODIA[c] : c))) {
+    // Non è un codice fiscale di persona fisica: niente da ricavare.
+    if (cf.length !== 16) return {};
+  }
+
+  const num = (i) => cifra(cf[i]);
+  const aa = [num(6), num(7)];
+  const gg = [num(9), num(10)];
+  const mese = MESI_CF[cf[8]];
+  if (aa.includes(null) || gg.includes(null) || !mese) return {};
+
+  let giorno = parseInt(gg.join(''), 10);
+  const sesso = giorno > 40 ? 'F' : 'M';
+  if (giorno > 40) giorno -= 40;
+  if (giorno < 1 || giorno > 31) return {};
+
+  // Secolo: il codice fiscale porta solo due cifre. Si sceglie il 1900
+  // salvo che l'anno nel 2000 dia una persona di almeno diciotto anni —
+  // un minore non può essere parte di un contratto di mandato.
+  const annoCorrente = new Date().getFullYear();
+  const aaNum = parseInt(aa.join(''), 10);
+  const anno = aaNum <= (annoCorrente % 100) - 18 ? 2000 + aaNum : 1900 + aaNum;
+
+  // Belfiore: quattro caratteri, una lettera e tre cifre (anche omocodiche).
+  const belfiore = cf[11] + [12, 13, 14].map(num).join('');
+  const codiceComune = /^[A-Z]\d{3}$/.test(belfiore) ? belfiore : '';
+
+  return {
+    sesso,
+    dataNascita: `${anno}-${String(mese).padStart(2, '0')}-${String(giorno).padStart(2, '0')}`,
+    codiceComune,
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * Mappature: nostri campi → campi dell'anagrafica
  * ------------------------------------------------------------------ */
 
@@ -63,13 +126,16 @@ function campiProprietario(m = {}, condizioni = {}) {
     poni(out, 'legale_rapp', testo(m.legaleRapp));
     poni(out, 'sdi', maiuscolo(m.sdi));
   } else {
+    const da = datiDaCodiceFiscale(m.cf);
     poni(out, 'nome', testo(m.nome));
     poni(out, 'cognome', testo(m.cognome));
     poni(out, 'cf', maiuscolo(m.cf));
-    poni(out, 'sesso', maiuscolo(m.sesso));
-    poni(out, 'data_nascita', testo(m.dataNascita));
+    poni(out, 'sesso', maiuscolo(m.sesso) || da.sesso);
+    poni(out, 'data_nascita', testo(m.dataNascita) || da.dataNascita);
     poni(out, 'comune_nascita', testo(m.comuneNascita));
     poni(out, 'prov_nascita', maiuscolo(m.provNascita));
+    // Belfiore di nascita, campo 8 della CU: non lo si chiede, sta nel CF.
+    poni(out, 'codice_comune', da.codiceComune);
   }
 
   poni(out, 'via', testo(m.via));
@@ -148,13 +214,19 @@ function campiProprieta(i = {}, ownerId, caso = {}) {
  */
 function campiCoproprietario(c = {}) {
   const out = {};
+  // Dal codice fiscale si ricava ciò che il modulo non chiede o che il
+  // proprietario ha lasciato in bianco: così nella scheda del comproprietario
+  // non resta vuoto niente di utile a DAC7, CU e 770.
+  const da = datiDaCodiceFiscale(c.cf);
+
   poni(out, 'nome', testo(c.nome));
   poni(out, 'cognome', testo(c.cognome));
   poni(out, 'cf', maiuscolo(c.cf));
-  poni(out, 'sesso', maiuscolo(c.sesso));
-  poni(out, 'data_nascita', testo(c.dataNascita));
+  poni(out, 'sesso', maiuscolo(c.sesso) || da.sesso);
+  poni(out, 'data_nascita', testo(c.dataNascita) || da.dataNascita);
   poni(out, 'comune_nascita', testo(c.comuneNascita));
   poni(out, 'prov_nascita', maiuscolo(c.provNascita));
+  poni(out, 'codice_comune', da.codiceComune);
   poni(out, 'via', testo(c.via));
   poni(out, 'cap', testo(c.cap));
   poni(out, 'comune', testo(c.comune));
@@ -193,6 +265,59 @@ async function aggiornaElemento(col, array, id, campi) {
 async function aggiungiElemento(col, array, elemento) {
   await col.updateOne({ _id: DOC_STATO }, { $push: { [array]: elemento } });
   return elemento.id;
+}
+
+/* Forma completa di un comproprietario in anagrafica: sono le chiavi che il
+ * gestionale mostra nella scheda del proprietario. Si scrivono tutte, anche
+ * vuote, perché la scheda le vuole presenti per poterle compilare a mano. */
+const COPROP_VUOTO = {
+  nome: '', cognome: '', cf: '', sesso: '', data_nascita: '',
+  comune_nascita: '', prov_nascita: '', via: '', cap: '', comune: '',
+  provincia: '', codice_comune: '', email: '', iban: '', perc: 0,
+};
+
+/**
+ * Comproprietari nella scheda del proprietario.
+ *
+ * Non basta scriverli sulla riga di contratto. `getPropertyCoprops()` legge
+ * da lì, ma la sezione Proprietari, la ripartizione della CU e l'elenco per
+ * DAC7 leggono `proprietari[].coprops`: senza questa scrittura la scheda del
+ * proprietario resterebbe senza comproprietari e andrebbero ricompilati a
+ * mano, uno per uno, con tutti i dati fiscali.
+ *
+ * Si fondono con quelli che ci sono già: lo stesso comproprietario si
+ * riconosce dal codice fiscale, e in mancanza da nome e cognome. Di chi è
+ * già censito si aggiornano solo i campi che arrivano pieni — un comune di
+ * nascita inserito a mano in anagrafica non viene cancellato da una pratica
+ * in cui quel campo era vuoto.
+ */
+async function scriviCopropsProprietario(col, ownerId, coprops) {
+  if (!coprops.length) return 0;
+
+  const stato = await col.findOne({ _id: DOC_STATO }, { projection: { proprietari: 1 } });
+  const owner = (stato?.proprietari || []).find((o) => o.id === ownerId);
+  if (!owner) return 0;
+
+  const elenco = (owner.coprops || []).map((c) => ({ ...c }));
+  const cf = (c) => String(c.cf || '').toUpperCase().trim();
+  const nomeDi = (c) => `${c.nome || ''} ${c.cognome || ''}`.replace(/\s+/g, ' ').trim().toUpperCase();
+
+  let aggiunti = 0;
+  for (const nuovo of coprops) {
+    const gia = elenco.find((c) =>
+      (cf(nuovo) && cf(c) === cf(nuovo)) ||
+      (!cf(nuovo) && nomeDi(nuovo) && nomeDi(c) === nomeDi(nuovo)));
+
+    if (gia) {
+      Object.assign(gia, nuovo); // `nuovo` contiene solo campi pieni
+    } else {
+      elenco.push({ ...COPROP_VUOTO, ...nuovo });
+      aggiunti += 1;
+    }
+  }
+
+  await aggiornaElemento(col, 'proprietari', ownerId, { coprops: elenco });
+  return aggiunti;
 }
 
 /**
@@ -284,13 +409,20 @@ async function applicaWriteBack(getDb, caso) {
    *
    * Per questo il write-back crea anche la riga in `DB.contratti`: non è un
    * duplicato della pratica, è il record che il gestionale legge per sapere
-   * condizioni economiche e cointestazioni di quell'immobile. */
+   * condizioni economiche e cointestazioni di quell'immobile.
+   *
+   * E li scrive una seconda volta nella scheda del proprietario, perché la
+   * sezione Proprietari e la ripartizione per CU e DAC7 leggono da lì. Sono
+   * due usi diversi degli stessi dati, non una duplicazione per sbaglio: il
+   * contratto dice chi è cointestato di quell'immobile, l'anagrafica tiene i
+   * dati fiscali delle persone. */
   const coprops = (caso.comproprietari || [])
     .map(campiCoproprietario)
     .filter((c) => c.nome || c.cognome);
   esito.coprops = coprops.length;
 
   esito.contrattoId = await scriviRigaContratto(col, caso, ownerId, propertyId, coprops);
+  esito.copropsNuovi = await scriviCopropsProprietario(col, ownerId, coprops);
 
   return esito;
 }
@@ -376,14 +508,35 @@ function campiFiscaliMancanti(caso) {
     chiedi(m.piva || m.cf, 'partita IVA');
     chiedi(m.legaleRapp, 'legale rappresentante');
   } else {
+    // Sesso e data di nascita si ricavano dal codice fiscale: si segnalano
+    // solo se manca anche quello, altrimenti sarebbe un allarme per un dato
+    // che il write-back ha già scritto.
+    const da = datiDaCodiceFiscale(m.cf);
     chiedi(m.nome, 'nome');
     chiedi(m.cognome, 'cognome');
     chiedi(m.cf, 'codice fiscale');
-    chiedi(m.sesso, 'sesso');
-    chiedi(m.dataNascita, 'data di nascita');
+    chiedi(m.sesso || da.sesso, 'sesso');
+    chiedi(m.dataNascita || da.dataNascita, 'data di nascita');
     chiedi(m.comuneNascita, 'comune di nascita');
     chiedi(m.provNascita, 'provincia di nascita');
   }
+
+  // Comproprietari: gli stessi dati servono alla loro CU e alla DAC7.
+  (caso.comproprietari || []).forEach((c, k) => {
+    if (!c || (!c.nome && !c.cognome)) return;
+    const chi = [c.nome, c.cognome].filter(Boolean).join(' ') || `comproprietario ${k + 1}`;
+    const da = datiDaCodiceFiscale(c.cf);
+    const suo = (valore, etichetta) => { if (vuoto(valore)) mancanti.push(`${etichetta} di ${chi}`); };
+    suo(c.cf, 'codice fiscale');
+    suo(c.sesso || da.sesso, 'sesso');
+    suo(c.dataNascita || da.dataNascita, 'data di nascita');
+    suo(c.comuneNascita, 'comune di nascita');
+    suo(c.via, 'indirizzo');
+    suo(c.cap, 'CAP');
+    suo(c.comune, 'comune');
+    suo(c.provincia, 'provincia');
+    suo(c.iban, 'IBAN');
+  });
   chiedi(m.via, 'indirizzo');
   chiedi(m.cap, 'CAP');
   chiedi(m.comune, 'comune');
