@@ -13,6 +13,10 @@ const express = require('express');
 const { getTemplate, VERSIONE_ATTIVA } = require('../templates');
 const { risolviTemplate, generaPdf } = require('./pdf-generator');
 const store = require('./contracts-store');
+const { applicaWriteBack, campiFiscaliMancanti } = require('./contracts-writeback');
+
+/** Sede di Houzly: luogo di conclusione di ogni contratto. */
+const LUOGO_FIRMA_STANDARD = 'Terranuova Bracciolini';
 
 /** Giorni di validità del link di firma. */
 const GIORNI_VALIDITA = 30;
@@ -35,18 +39,86 @@ const TIPI_ALLEGATO = [
  */
 const ALLEGATI_OBBLIGATORI = ['documento_fronte', 'documento_retro', 'visura'];
 
+/**
+ * Campi anagrafici, separati e non accorpati.
+ * È l'anagrafica che li vuole così — DAC7, CU e il 770 leggono `nome` e
+ * `cognome` distinti, `via`/`cap`/`comune`/`provincia` distinti — e spezzare
+ * a posteriori una stringa unica funziona quasi sempre, che in un file
+ * destinato all'Agenzia delle Entrate non basta.
+ */
 const CAMPI_COMPROPRIETARIO = [
-  'nomeCognome', 'luogoNascita', 'dataNascita', 'residenza', 'cfPiva', 'quota', 'iban',
+  'nome', 'cognome', 'sesso', 'dataNascita', 'comuneNascita', 'provNascita',
+  'cf', 'via', 'cap', 'comune', 'provincia', 'email', 'iban', 'quota',
 ];
 
 const CAMPI_MANDANTE = [
-  'nomeCognome', 'luogoNascita', 'dataNascita', 'residenza', 'cfPiva',
-  'iban', 'pec', 'telefono', 'tipoSoggetto', 'quota',
+  // persona fisica
+  'nome', 'cognome', 'sesso', 'dataNascita', 'comuneNascita', 'provNascita', 'cf',
+  // azienda
+  'ragioneSociale', 'piva', 'legaleRapp', 'sdi',
+  // comuni
+  'via', 'cap', 'comune', 'provincia', 'email', 'pec', 'telefono', 'iban', 'quota',
+  // deciso da Houzly alla creazione, non dal proprietario
+  'tipoSoggetto',
 ];
+
 const CAMPI_IMMOBILE = [
-  'indirizzo', 'piano', 'interno', 'foglio', 'particella', 'subalterno',
-  'categoria', 'cin',
+  'nome', 'tipoVia', 'viaNome', 'civico', 'scala', 'interno', 'piano',
+  'cap', 'comune', 'provincia',
+  'catComune', 'catFoglio', 'catPart', 'catSub', 'catCat', 'cin',
 ];
+
+/** Condizioni economiche e clausole variabili: le fissa Houzly alla creazione. */
+const CAMPI_CONDIZIONI = [
+  'commissione', 'compensoPerc', 'regimeIva', 'regimeIvaCodice', 'ritenuta',
+  'durata', 'durataAnni', 'preavvisoRecesso', 'sogliaSpesa', 'pattuizioni',
+  'verde', 'piscina',
+];
+
+/** Il tipo soggetto arriva dal backoffice: il proprietario non lo cambia. */
+const CAMPI_MANDANTE_CLIENTE = CAMPI_MANDANTE.filter((c) => c !== 'tipoSoggetto');
+
+const PAROLE_PERC = {
+  10: 'dieci', 12: 'dodici', 15: 'quindici', 16: 'sedici', 18: 'diciotto', 20: 'venti',
+  22: 'ventidue', 24: 'ventiquattro', 25: 'venticinque', 26: 'ventisei', 28: 'ventotto',
+  30: 'trenta', 32: 'trentadue', 33: 'trentatré', 35: 'trentacinque', 38: 'trentotto',
+  40: 'quaranta',
+};
+const PAROLE_ANNI = { 1: 'uno', 2: 'due', 3: 'tre', 4: 'quattro', 5: 'cinque' };
+
+/**
+ * Dalle scelte numeriche del backoffice ricava le formule che il contratto
+ * stampa. La percentuale resta anche come numero, perché è quella che il
+ * write-back porta in `houzly_perc`.
+ */
+function normalizzaCondizioni(c = {}, template) {
+  const d = template.defaults;
+  const perc = c.compensoPerc != null && c.compensoPerc !== '' ? +c.compensoPerc : null;
+  const anni = c.durataAnni != null && c.durataAnni !== '' ? +c.durataAnni : 1;
+  const ivaEsclusa = c.regimeIvaCodice === 'esclusa';
+  const mesi = c.preavvisoRecesso != null && c.preavvisoRecesso !== ''
+    ? +c.preavvisoRecesso : 6;
+  const soglia = c.sogliaSpesa != null && c.sogliaSpesa !== '' ? +c.sogliaSpesa : 50;
+
+  const inLettere = (n, tabella) => (tabella[n] ? ` (${tabella[n]})` : '');
+
+  return {
+    compensoPerc: perc,
+    commissione: perc != null
+      ? `${perc}%${PAROLE_PERC[perc] ? ` (${PAROLE_PERC[perc]} per cento)` : ''}`
+      : (c.commissione || d.commissione),
+    regimeIvaCodice: ivaEsclusa ? 'esclusa' : 'inclusa',
+    regimeIva: ivaEsclusa ? 'oltre IVA di legge (22%)' : 'IVA inclusa',
+    ritenuta: c.ritenuta !== undefined ? !!c.ritenuta : true,
+    durataAnni: anni,
+    durata: anni === 1 ? '1 (uno) anno' : `${anni}${inLettere(anni, PAROLE_ANNI)} anni`,
+    preavvisoRecesso: `${mesi}${inLettere(mesi, { 1:'uno',2:'due',3:'tre',4:'quattro',5:'cinque',6:'sei',9:'nove',12:'dodici' })} mesi`,
+    sogliaSpesa: `€ ${soglia.toFixed(2).replace('.', ',')}`,
+    pattuizioni: String(c.pattuizioni || '').trim().slice(0, 4000),
+    verde: !!c.verde,
+    piscina: !!c.piscina,
+  };
+}
 
 /** Copia solo i campi previsti: il client non decide cosa finisce in DB. */
 function filtra(oggetto, campiAmmessi) {
@@ -74,11 +146,15 @@ function vistaPubblica(caso) {
     })),
     clausole1341: caso.clausole1341 || {},
     clausoleRichieste: elencoClausole(caso),
+    // Al proprietario si mostra solo ciò che lo riguarda: non il regime IVA
+    // né il flag ritenuta, che sono scelte fiscali già risolte nel testo.
     condizioni: {
       commissione: caso.condizioni?.commissione,
+      durata: caso.condizioni?.durata,
       verde: !!caso.condizioni?.verde,
       piscina: !!caso.condizioni?.piscina,
     },
+    tipoSoggetto: caso.mandante?.tipoSoggetto || 'persona_fisica',
     firmato: caso.stato === 'firmata',
     scadenzaAt: caso.scadenzaAt,
   };
@@ -102,7 +178,10 @@ function createContractsAdminRouter(deps) {
   // POST /api/contracts — crea la pratica e invia l'invito
   router.post('/', async (req, res) => {
     try {
-      const { email, nomeStruttura, propertyId, condizioni, mandante, immobile, inviaSubito } = req.body || {};
+      const {
+        email, nomeStruttura, ownerId, propertyId,
+        condizioni, mandante, immobile, comproprietari, inviaSubito,
+      } = req.body || {};
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         return res.status(400).json({ ok: false, error: 'email_non_valida' });
       }
@@ -116,20 +195,19 @@ function createContractsAdminRouter(deps) {
         stato: 'bozza',
         email: String(email).trim().toLowerCase(),
         nomeStruttura: nomeStruttura || null,
+        // Legame con l'anagrafica: è su questi id che scriverà il write-back
+        // alla firma. Vuoti per un cliente nuovo: i record si creano allora.
+        ownerId: ownerId || null,
         propertyId: propertyId || null,
         templateVersione: VERSIONE_ATTIVA,
         tokenHash,
         scadenzaAt: new Date(Date.now() + GIORNI_VALIDITA * 86400000).toISOString(),
-        // La commissione è unica e totale: comprende già gli eventuali
-        // servizi accessori attivati qui sotto.
-        condizioni: {
-          commissione: condizioni?.commissione || template.defaults.commissione,
-          verde: !!condizioni?.verde,
-          piscina: !!condizioni?.piscina,
-        },
+        condizioni: normalizzaCondizioni(condizioni, template),
         mandante: filtra(mandante, CAMPI_MANDANTE),
         immobile: filtra(immobile, CAMPI_IMMOBILE),
-        comproprietari: [],
+        comproprietari: Array.isArray(comproprietari)
+          ? comproprietari.slice(0, 9).map((c) => filtra(c, CAMPI_COMPROPRIETARIO))
+          : [],
         pagamento: { modalita: 'unico' },
         allegati: [],
         clausole1341: {},
@@ -169,6 +247,46 @@ function createContractsAdminRouter(deps) {
       res.json({ ok: true, riferimento, link, emailInviata: inviata, stato: inviata ? 'inviata' : 'bozza' });
     } catch (e) {
       console.error('[contracts/create]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/contracts/anagrafiche — elenco ridotto per le tendine
+  //
+  // Non si usa /api/db: quello restituisce l'intero documento di stato, che
+  // pesa, e qui servono solo nome e id. Su Render la banda è una risorsa
+  // contata, quindi passa solo ciò che serve a riempire due select.
+  router.get('/anagrafiche', async (req, res) => {
+    try {
+      const db = await getDb();
+      const stato = await db.collection('db').findOne(
+        { _id: 'main' },
+        { projection: { proprietari: 1, proprieta: 1 } }
+      );
+      if (!stato) return res.json({ ok: true, proprietari: [], proprieta: [] });
+
+      const proprietari = (stato.proprietari || []).map((o) => ({
+        id: o.id,
+        tipo: o.tipo || 'persona_fisica',
+        etichetta: o.tipo === 'azienda'
+          ? (o.ragione_sociale || '(senza ragione sociale)')
+          : [o.cognome, o.nome].filter(Boolean).join(' ') || '(senza nome)',
+        email: o.email || '',
+        houzlyPerc: o.houzly_perc != null ? o.houzly_perc : null,
+        ivaEsclusa: !!o.fisc_iva22,
+        ritenuta: o.fisc_cedolare !== false,
+      })).sort((a, b) => a.etichetta.localeCompare(b.etichetta, 'it'));
+
+      const proprieta = (stato.proprieta || []).map((p) => ({
+        id: p.id,
+        nome: p.nome || '(senza nome)',
+        ownerId: p.proprietario_id || null,
+        indirizzo: p.indirizzo || '',
+      })).sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+
+      res.json({ ok: true, proprietari, proprieta });
+    } catch (e) {
+      console.error('[contracts/anagrafiche]', e);
       res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -364,7 +482,7 @@ function createContractsPublicRouter(deps) {
       if (caso.stato === 'firmata') return res.status(409).json({ ok: false, error: 'gia_firmata' });
 
       const set = { updatedAt: new Date().toISOString() };
-      const mandante = filtra(req.body?.mandante, CAMPI_MANDANTE);
+      const mandante = filtra(req.body?.mandante, CAMPI_MANDANTE_CLIENTE);
       const immobile = filtra(req.body?.immobile, CAMPI_IMMOBILE);
       for (const [k, v] of Object.entries(mandante)) set[`mandante.${k}`] = v;
       for (const [k, v] of Object.entries(immobile)) set[`immobile.${k}`] = v;
@@ -374,7 +492,7 @@ function createContractsPublicRouter(deps) {
         set.comproprietari = req.body.comproprietari
           .slice(0, 9)
           .map((c) => filtra(c, CAMPI_COMPROPRIETARIO))
-          .filter((c) => c.nomeCognome || c.cfPiva);
+          .filter((c) => c.nome || c.cognome || c.cf);
       }
       if (req.body?.pagamento?.modalita === 'unico' || req.body?.pagamento?.modalita === 'suddiviso') {
         set['pagamento.modalita'] = req.body.pagamento.modalita;
@@ -502,7 +620,13 @@ function createContractsPublicRouter(deps) {
         return res.status(400).json({ ok: false, error: 'clausole_non_approvate', mancanti });
       }
 
-      const obbligatori = ['nomeCognome', 'residenza', 'cfPiva', 'iban'];
+      // Minimo indispensabile perché il contratto identifichi le parti.
+      // È volutamente più corto della lista fiscale: un contratto non può
+      // essere invalidato da un campo che serve alla CU, non al consenso.
+      const azienda = caso.mandante?.tipoSoggetto === 'azienda';
+      const obbligatori = azienda
+        ? ['ragioneSociale', 'legaleRapp', 'via', 'comune', 'iban']
+        : ['nome', 'cognome', 'via', 'comune', 'cf', 'iban'];
       const mancantiAnagrafica = obbligatori.filter((k) => !caso.mandante?.[k]);
       if (mancantiAnagrafica.length) {
         return res.status(400).json({ ok: false, error: 'dati_mancanti', campi: mancantiAnagrafica });
@@ -519,7 +643,7 @@ function createContractsPublicRouter(deps) {
       // chiudere a 100, altrimenti l'art. 9 ripartirebbe su una base sbagliata.
       const comprop = caso.comproprietari || [];
       if (comprop.length) {
-        const incompleti = comprop.filter((c) => !c.nomeCognome || !c.cfPiva || !c.quota);
+        const incompleti = comprop.filter((c) => !c.nome || !c.cognome || !c.cf || !c.quota);
         if (incompleti.length) {
           return res.status(400).json({ ok: false, error: 'comproprietari_incompleti' });
         }
@@ -538,7 +662,9 @@ function createContractsPublicRouter(deps) {
       const casoFirmato = {
         ...caso,
         clausole1341: spunte,
-        luogoFirma: luogoFirma || caso.immobile?.indirizzo || '',
+        // Il luogo è standardizzato sulla sede di Houzly: il contratto si
+        // conclude lì, coerentemente col foro competente dell'art. 19.3.
+        luogoFirma: luogoFirma || caso.luogoFirma || LUOGO_FIRMA_STANDARD,
         dataFirma: new Date().toLocaleDateString('it-IT'),
         firme: {
           contratto: { dataUrl: firmaContratto, ts: ora },
@@ -593,12 +719,53 @@ function createContractsPublicRouter(deps) {
         return res.status(409).json({ ok: false, error: 'gia_firmata' });
       }
 
+      /* — write-back nelle anagrafiche —
+       * Solo adesso: il contratto è firmato, quindi il dato è ufficiale.
+       * Non è dentro il blocco try principale perché un errore qui non deve
+       * annullare una firma già perfezionata e già archiviata su R2: si
+       * registra nell'audit e si segnala al backoffice, non si butta via
+       * il contratto. */
+      let writeBack = null;
+      try {
+        writeBack = await applicaWriteBack(getDb, casoFirmato);
+        const mancanti = campiFiscaliMancanti(casoFirmato);
+        await col.updateOne(
+          { _id: caso._id },
+          {
+            $set: {
+              ownerId: writeBack.ownerId,
+              propertyId: writeBack.propertyId,
+              writeBack: { ...writeBack, eseguitoIl: ora, campiFiscaliMancanti: mancanti },
+            },
+            $push: {
+              audit: store.eventoAudit(
+                `Anagrafiche aggiornate: proprietario ${writeBack.ownerCreato ? 'creato' : 'aggiornato'}` +
+                `, immobile ${writeBack.propCreata ? 'creato' : 'aggiornato'}` +
+                (writeBack.coprops ? `, ${writeBack.coprops} comproprietari` : '') +
+                (mancanti.length ? ` — restano da completare: ${mancanti.join(', ')}` : ''),
+                req
+              ),
+            },
+          }
+        );
+        console.log(`[sign/firma] write-back ${caso.riferimento} → owner ${writeBack.ownerId}, prop ${writeBack.propertyId}`);
+      } catch (err) {
+        console.error('[sign/firma] write-back FALLITO:', err.message);
+        await store.pushAudit(getDb, { _id: caso._id },
+          store.eventoAudit(`Aggiornamento anagrafiche FALLITO: ${err.message}`, req));
+        await col.updateOne({ _id: caso._id },
+          { $set: { writeBack: { errore: err.message, tentatoIl: ora } } });
+      }
+
       inviaCopie({ resend, caso, buffer }).catch((err) =>
         console.error('[sign/firma] invio copie fallito:', err.message)
       );
 
       console.log(`[sign/firma] ${caso.riferimento} firmato — ${bytes} byte, sha256 ${sha256.slice(0, 16)}…`);
-      res.json({ ok: true, riferimento: caso.riferimento, sha256, firmatoIl: ora });
+      res.json({
+        ok: true, riferimento: caso.riferimento, sha256, firmatoIl: ora,
+        anagraficheAggiornate: !!(writeBack && writeBack.ownerId),
+      });
     } catch (e) {
       console.error('[sign/firma]', e);
       res.status(500).json({ ok: false, error: e.message });
