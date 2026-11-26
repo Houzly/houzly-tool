@@ -446,6 +446,50 @@ function createContractsAdminRouter(deps) {
     }
   });
 
+  // GET /api/contracts/:riferimento/allegati — elenco dei documenti raccolti
+  //
+  // Senza questa rotta i documenti d'identità sarebbero raggiungibili solo
+  // dall'email interna: se quella si perde, l'unica copia resta su R2 senza
+  // un modo per aprirla.
+  router.get('/:riferimento/allegati', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+
+      const allegati = (caso.allegati || []).map((a, i) => ({
+        indice: i,
+        tipo: a.tipo,
+        nome: NOME_TIPO[a.tipo] || a.tipo,
+        soggetto: soggettoAllegato(a),
+        chi: a.soggettoNome || null,
+        valido: combaciaSoggetto(a, personaDelSoggetto(soggettoAllegato(a), caso)),
+        kb: Math.round((a.bytes || 0) / 1024),
+        caricatoIl: a.uploadedAt,
+      }));
+      res.json({ ok: true, riferimento: caso.riferimento, allegati });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/contracts/:riferimento/allegato/:indice — apre il documento
+  router.get('/:riferimento/allegato/:indice', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+
+      const a = (caso.allegati || [])[Number(req.params.indice)];
+      if (!a || !a.r2Key) return res.status(404).json({ ok: false, error: 'allegato_non_trovato' });
+
+      const url = await r2GetSignedUrl(a.r2Key, 300);
+      res.redirect(url);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/contracts/:riferimento/write-back — riallinea le anagrafiche
   //
   // Il write-back gira alla firma, una volta sola. Serve poterlo rilanciare
@@ -606,7 +650,7 @@ function createContractsAdminRouter(deps) {
  * ══════════════════════════════════════════════════════════════════ */
 
 function createContractsPublicRouter(deps) {
-  const { getDb, r2Upload, resend, validateTaxCode } = deps;
+  const { getDb, r2Upload, resend, validateTaxCode, r2GetSignedUrl } = deps;
   const router = express.Router();
 
   /** Carica la pratica dal token e blocca scadute, annullate, inesistenti. */
@@ -970,9 +1014,14 @@ function createContractsPublicRouter(deps) {
           { $set: { writeBack: { errore: err.message, tentatoIl: ora } } });
       }
 
-      inviaCopie({ resend, caso, buffer }).catch((err) =>
-        console.error('[sign/firma] invio copie fallito:', err.message)
-      );
+      // `casoFirmato` e non `caso`: porta i dati come sono stati firmati, e
+      // con pdfFinale l'email interna può riportare l'impronta del PDF.
+      inviaCopie({
+        resend,
+        caso: { ...casoFirmato, pdfFinale: { r2Key: key, sha256, bytes, generatoIl: ora } },
+        buffer,
+        r2GetSignedUrl,
+      }).catch((err) => console.error('[sign/firma] invio copie fallito:', err.message));
 
       console.log(`[sign/firma] ${caso.riferimento} firmato — ${bytes} byte, sha256 ${sha256.slice(0, 16)}…`);
       res.json({
@@ -1035,11 +1084,97 @@ async function inviaInvito({ resend, email, link, caso, baseUrl }) {
   }
 }
 
-async function inviaCopie({ resend, caso, buffer }) {
-  const allegato = [{
+/* Nomi leggibili dei documenti, per i file in allegato e per l'elenco
+   nell'email: "documento_fronte" su un allegato non dice di chi è. */
+const NOME_TIPO = {
+  documento_fronte: 'documento identità fronte',
+  documento_retro: 'documento identità retro',
+  documento: 'documento identità',
+  visura: 'visura catastale',
+  planimetria: 'planimetria',
+  conformita: 'conformità impianti',
+  altro: 'altro documento',
+};
+
+/* Resend accetta fino a 40 MB per messaggio, contando la codifica. Si sta
+   larghi: oltre questo tetto i documenti restanti vanno come link invece di
+   essere allegati, così l'email parte comunque. */
+const TETTO_ALLEGATI_BYTE = 18 * 1024 * 1024;
+
+const ORDINE_TIPO = ['documento_fronte', 'documento_retro', 'documento', 'visura',
+  'planimetria', 'conformita', 'altro'];
+
+function nomeFileAllegato(caso, a) {
+  const chi = a.soggettoNome
+    ? '-' + String(a.soggettoNome).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')
+    : '';
+  const est = (a.nomeFile || '').split('.').pop();
+  const estensione = est && est.length <= 5 ? est.toLowerCase() : 'jpg';
+  return `${caso.riferimento}-${a.tipo}${chi}.${estensione}`;
+}
+
+/**
+ * Prepara i documenti raccolti perchè arrivino a info@houzly.it insieme al
+ * contratto: sono la prova dell'identità di chi ha firmato e di chi è
+ * stato rappresentato, e la verifica della titolarità.
+ *
+ * Si allegano per riferimento (Resend scarica l'URL firmato al momento
+ * dell'invio) invece di passare dalla nostra memoria: con quattro titolari
+ * sono nove file, e tenerli tutti in RAM per poi codificarli in base64
+ * costerebbe tre volte il loro peso.
+ */
+async function allegatiDocumenti({ caso, r2GetSignedUrl }) {
+  const allegati = (caso.allegati || []).filter((a) => a.r2Key);
+  if (!allegati.length || typeof r2GetSignedUrl !== 'function') {
+    return { attachments: [], elenco: [], nonAllegati: [] };
+  }
+
+  const ordinati = allegati.slice().sort((a, b) => {
+    const s = String(a.soggetto || 'mandante').localeCompare(String(b.soggetto || 'mandante'));
+    return s || ORDINE_TIPO.indexOf(a.tipo) - ORDINE_TIPO.indexOf(b.tipo);
+  });
+
+  const attachments = [];
+  const elenco = [];
+  const nonAllegati = [];
+  let peso = 0;
+
+  for (const a of ordinati) {
+    const chi = a.soggettoNome ? ` — ${a.soggettoNome}` : '';
+    const voce = `${NOME_TIPO[a.tipo] || a.tipo}${chi}`;
+    const kb = Math.round((a.bytes || 0) / 1024);
+
+    if (peso + (a.bytes || 0) > TETTO_ALLEGATI_BYTE && attachments.length) {
+      // Oltre il tetto: link valido una settimana invece dell'allegato.
+      try {
+        nonAllegati.push({ voce, url: await r2GetSignedUrl(a.r2Key, 604800) });
+      } catch (e) {
+        nonAllegati.push({ voce, url: null });
+      }
+      continue;
+    }
+
+    try {
+      const path = await r2GetSignedUrl(a.r2Key, 3600);
+      attachments.push({ filename: nomeFileAllegato(caso, a), path });
+      peso += a.bytes || 0;
+      elenco.push(`${voce} (${kb} KB)`);
+    } catch (e) {
+      console.error('[sign/firma] allegato non recuperabile:', a.r2Key, e.message);
+      nonAllegati.push({ voce, url: null });
+    }
+  }
+
+  return { attachments, elenco, nonAllegati };
+}
+
+async function inviaCopie({ resend, caso, buffer, r2GetSignedUrl }) {
+  const contratto = {
     filename: `contratto-${caso.riferimento}.pdf`,
     content: buffer.toString('base64'),
-  }];
+  };
+
+  /* — copia al proprietario: solo il contratto — */
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;color:#1a1a1a;max-width:560px">
       <p>Buongiorno,</p>
@@ -1053,15 +1188,52 @@ async function inviaCopie({ resend, caso, buffer }) {
   await resend.emails.send({
     from: FROM, to: caso.email,
     subject: `Contratto di mandato Houzly ${caso.riferimento} — copia firmata`,
-    html, attachments: allegato,
+    html, attachments: [contratto],
   });
+
+  /* — copia interna: contratto più tutti i documenti raccolti — */
+  const { attachments, elenco, nonAllegati } =
+    await allegatiDocumenti({ caso, r2GetSignedUrl });
+
+  const m = caso.mandante || {};
+  const cop = (caso.comproprietari || [])
+    .filter((c) => c.nome || c.cognome)
+    .map((c) => `${[c.nome, c.cognome].filter(Boolean).join(' ')} — CF ${c.cf || 'mancante'}, quota ${c.quota || '?'}%`);
+
+  const riga = (etichetta, valore) =>
+    valore ? `<tr><td style="padding:2px 10px 2px 0;color:#666">${etichetta}</td><td>${valore}</td></tr>` : '';
+
+  const htmlInterno = `
+    <div style="font-family:Helvetica,Arial,sans-serif;color:#1a1a1a;max-width:620px">
+      <p><strong>${caso.riferimento}</strong> firmato da
+         ${nomeMandante(m) || caso.email}.</p>
+      <table style="font-size:13px;border-collapse:collapse">
+        ${riga('Struttura', caso.nomeStruttura)}
+        ${riga('Email', caso.email)}
+        ${riga('CF / P.IVA', m.cf || m.piva || '')}
+        ${riga('IBAN', m.iban)}
+        ${riga('Immobile', [caso.immobile?.viaNome, caso.immobile?.comune].filter(Boolean).join(', '))}
+        ${riga('CIN', caso.immobile?.cin)}
+        ${riga('Quota del firmatario', m.quota ? m.quota + '%' : '')}
+      </table>
+      ${cop.length ? `<p style="font-size:13px"><strong>Comproprietari</strong><br>${cop.join('<br>')}</p>` : ''}
+      ${elenco.length
+        ? `<p style="font-size:13px"><strong>Documenti in allegato</strong><br>· ${elenco.join('<br>· ')}</p>`
+        : '<p style="font-size:13px;color:#9c2231"><strong>Nessun documento allegato</strong> — da verificare in archivio.</p>'}
+      ${nonAllegati.length
+        ? `<p style="font-size:13px"><strong>Troppo grandi per l’allegato</strong>, link valido una settimana:<br>${
+            nonAllegati.map((x) => x.url
+              ? `· <a href="${x.url}">${x.voce}</a>`
+              : `· ${x.voce} (link non disponibile)`).join('<br>')}</p>`
+        : ''}
+      <p style="font-size:12px;color:#666">SHA-256 del PDF: ${caso.pdfFinale?.sha256 || ''}</p>
+    </div>`;
 
   await resend.emails.send({
     from: FROM, to: 'info@houzly.it',
-    subject: `[Contratti] ${caso.riferimento} firmato — ${nomeMandante(caso.mandante) || caso.email}`,
-    html: `<p>Contratto ${caso.riferimento} firmato da ${nomeMandante(caso.mandante) || caso.email}.</p>
-           <p>Struttura: ${caso.nomeStruttura || 'non indicata'}</p>`,
-    attachments: allegato,
+    subject: `[Contratti] ${caso.riferimento} firmato — ${nomeMandante(m) || caso.email}`,
+    html: htmlInterno,
+    attachments: [contratto, ...attachments],
   });
 }
 
