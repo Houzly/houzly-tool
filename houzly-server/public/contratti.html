@@ -160,6 +160,7 @@ label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
       <div class="header-sub">Contratti</div>
       <div style="display:flex;gap:9px;align-items:center">
         <a class="torna-btn" href="/" title="Torna a Houzly Tool">← Houzly Tool</a>
+        <button class="icon-btn" onclick="pulizia()" title="Riallinea anagrafica">🧹</button>
         <button class="icon-btn" onclick="carica()" title="Aggiorna">↻</button>
         <button class="logout-btn" onclick="esci()">🔒 Esci</button>
       </div>
@@ -735,6 +736,73 @@ async function documenti(rif){
  * e una prova fatta su un proprietario vero non deve portarselo via.
  * La conferma è il riferimento battuto a mano, non un sì.
  */
+/**
+ * Riallinea l'anagrafica dopo che sono state eliminate delle pratiche.
+ *
+ * L'eliminazione di una pratica si porta via quello che aveva creato, ma
+ * qualcosa può restare indietro: una riga di contratto cancellata a mano
+ * dal gestionale, un immobile che al momento dell'eliminazione risultava
+ * ancora usato da una prenotazione poi rimossa. Questo tasto li ritrova.
+ *
+ * Due gruppi, tenuti distinti apposta: i residui con la firma di una pratica
+ * sparita, di cui si sa la provenienza, e le schede che semplicemente non
+ * usa nessuno — che potrebbero anche essere un proprietario inserito a
+ * mano e non ancora attivo. Il secondo gruppo si elenca e basta.
+ */
+async function pulizia(){
+  const a = await api('/pulizia');
+  if(!a.ok) return mostra('Errore: ' + a.error);
+  const p = a.anteprima || {};
+
+  const nomi = (v, max) => v.slice(0, max || 6).map(x => x.nome || x.proprietario || x.id).join(', ')
+    + (v.length > (max || 6) ? ' e altri ' + (v.length - (max || 6)) : '');
+
+  const certi = [];
+  if(p.contrattiOrfani.length)
+    certi.push(p.contrattiOrfani.length + ' righe di contratto senza pratica — ' + nomi(p.contrattiOrfani));
+  if(p.immobiliOrfani.length)
+    certi.push(p.immobiliOrfani.length + ' immobili creati da pratiche eliminate — ' + nomi(p.immobiliOrfani));
+  if(p.proprietariOrfani.length)
+    certi.push(p.proprietariOrfani.length + ' proprietari creati da pratiche eliminate — ' + nomi(p.proprietariOrfani));
+
+  const dubbi = [].concat(p.immobiliInutilizzati, p.proprietariInutilizzati);
+
+  if(!certi.length && !dubbi.length) return mostra('Anagrafica in ordine, nessun residuo');
+
+  let testo = '';
+  if(certi.length) testo += 'Residui di pratiche eliminate:\n\n· ' + certi.join('\n· ') + '\n\n';
+  else testo += 'Nessun residuo di pratiche eliminate.\n\n';
+
+  if(dubbi.length){
+    testo += 'Ci sono anche ' + dubbi.length + ' schede che non usa nessuno, ma senza traccia '
+      + 'di una pratica: ' + nomi(dubbi, 8) + '.\nPotrebbero essere prove vecchie oppure '
+      + 'anagrafiche inserite a mano e non ancora attive, quindi NON vengono toccate.\n\n';
+  }
+  if(!certi.length) return alert(testo + 'Non c’è niente da rimuovere in automatico.');
+
+  testo += 'Niente di tutto questo è usato da prenotazioni, ricevute o altri contratti: '
+    + 'quello che risulta ancora in uso viene saltato.\n\nProcedere con la rimozione?';
+  if(!confirm(testo)) return;
+
+  mostra('Pulizia in corso…');
+  const d = await api('/pulizia', {method:'POST', body: JSON.stringify({
+    conferma: 'PULISCI',
+    contratti: p.contrattiOrfani.map(x => x.id),
+    immobili: p.immobiliOrfani.map(x => x.id),
+    proprietari: p.proprietariOrfani.map(x => x.id),
+  })});
+  if(!d.ok) return mostra('Errore: ' + d.error);
+
+  const fatto = [];
+  if(d.contratti) fatto.push(d.contratti + ' righe di contratto');
+  if(d.immobili) fatto.push(d.immobili + ' immobili');
+  if(d.proprietari) fatto.push(d.proprietari + ' proprietari');
+  mostra(fatto.length ? 'Rimossi: ' + fatto.join(', ') : 'Niente da rimuovere');
+  if(d.rifiutati && d.rifiutati.length)
+    setTimeout(()=>alert(d.rifiutati.length + ' elementi non sono stati rimossi perché nel '
+      + 'frattempo risultano usati da qualcos’altro.'), 500);
+}
+
 async function elimina(rif){
   const a = await api('/' + rif + '/eliminazione');
   if(!a.ok) return mostra('Errore: ' + a.error);
