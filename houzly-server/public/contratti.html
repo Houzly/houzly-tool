@@ -88,11 +88,21 @@ main{max-width:900px;margin:0 auto;padding:18px 18px calc(var(--safe-bottom) + 4
 .nuovo h2{font-family:'Cormorant Garamond',serif;font-size:23px;margin:0 0 14px;font-weight:600}
 label{display:block;margin-bottom:13px}
 label>span{display:block;font-size:12.5px;font-weight:500;color:var(--text-mid);margin-bottom:5px}
-input[type=text],input[type=email]{width:100%;padding:12px 13px;border:1px solid var(--border);
+input[type=text],input[type=email],input[type=number]{width:100%;padding:12px 13px;border:1px solid var(--border);
   border-radius:var(--radius-sm);font:inherit;font-size:16px;background:var(--bg);color:var(--text)}
 input:focus{outline:none;border-color:var(--accent)}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-@media(max-width:480px){.duo{grid-template-columns:1fr}}
+.tris{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
+@media(max-width:560px){.duo,.tris{grid-template-columns:1fr}}
+select{width:100%;padding:12px 13px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  font:inherit;font-size:16px;background:var(--bg);color:var(--text);appearance:none}
+textarea{width:100%;padding:12px 13px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  font:inherit;font-size:15px;background:var(--bg);color:var(--text);resize:vertical}
+select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
+.hint{font-size:12px;color:var(--text-dim);margin-top:5px;line-height:1.45}
+.sezione{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;
+  font-weight:600;margin:18px 0 10px;border-top:1px solid var(--border);padding-top:13px}
 .check{display:flex;align-items:center;gap:11px;margin-bottom:15px;cursor:pointer}
 .check input{width:21px;height:21px;accent-color:var(--navy);margin:0}
 .check span{font-size:14px}
@@ -149,24 +159,73 @@ input:focus{outline:none;border-color:var(--accent)}
 
   <main>
     <div class="nuovo">
-      <h2>Nuova pratica</h2>
-      <label><span>Email del proprietario *</span>
+      <h2>Nuovo contratto di mandato</h2>
+
+      <label><span>Mandante (proprietario)</span>
+        <select id="n-owner" onchange="ownerScelto()">
+          <option value="">— Nuovo proprietario, non ancora in anagrafica —</option>
+        </select>
+        <div class="hint" id="n-owner-hint">Scegliendo un proprietario esistente,
+          compenso e profilo fiscale si precompilano dal suo profilo.</div></label>
+
+      <label><span>Immobile</span>
+        <select id="n-prop" onchange="propScelta()">
+          <option value="">— Nuovo immobile, non ancora in anagrafica —</option>
+        </select>
+        <div class="hint">I dati catastali già noti arriveranno precompilati nel
+          form del proprietario.</div></label>
+
+      <label><span>Email a cui inviare il link *</span>
         <input type="email" id="n-email" autocapitalize="none" spellcheck="false"
           placeholder="proprietario@esempio.it"></label>
       <label><span>Nome della struttura</span>
         <input type="text" id="n-struttura" placeholder="es. Villa La Poggetta"></label>
-      <label><span>Commissione di gestione (totale, come concordata)</span>
-        <input type="text" id="n-commissione" value="30% (trenta per cento)">
-        <div style="font-size:12px;color:var(--text-dim);margin-top:5px">
-          È l'unica commissione del contratto: se attivi i servizi qui sotto,
-          indica qui la percentuale già concordata comprensiva di quelli.
-        </div></label>
-      <div style="font-size:12.5px;font-weight:500;color:var(--text-mid);margin-bottom:8px">
-        Servizi accessori inclusi nel mandato (art. 11-bis)</div>
+
+      <div class="sezione">Condizioni economiche e clausole variabili</div>
+
+      <div class="duo">
+        <label><span>Compenso Houzly (%) *</span>
+          <input type="number" id="n-perc" step="0.5" min="0" max="50" value="30"></label>
+        <label><span>Regime IVA del compenso</span>
+          <select id="n-iva">
+            <option value="inclusa">IVA inclusa nella %</option>
+            <option value="esclusa">% + IVA 22%</option>
+          </select></label>
+      </div>
+
+      <label><span>Tipo di soggetto e ritenuta</span>
+        <select id="n-soggetto" onchange="soggettoCambiato()">
+          <option value="persona_fisica">Persona fisica — ritenuta 21% (Houzly sostituto d'imposta)</option>
+          <option value="azienda">Società o ditta — nessuna ritenuta, fattura in proprio</option>
+        </select>
+        <div class="hint" id="n-soggetto-hint"></div></label>
+
+      <div class="tris">
+        <label><span>Durata (anni)</span>
+          <input type="number" id="n-durata" min="1" max="5" value="1"></label>
+        <label><span>Preavviso recesso (mesi)</span>
+          <input type="number" id="n-preavviso" min="1" max="12" value="6"></label>
+        <label><span>Soglia spesa autonoma (€)</span>
+          <input type="number" id="n-soglia" min="0" step="10" value="50"></label>
+      </div>
+
+      <div class="sezione">Servizi accessori inclusi nel mandato (art. 11-bis)</div>
       <label class="check"><input type="checkbox" id="n-verde">
         <span>Gestione del verde — giardino, prato, siepi, irrigazione</span></label>
       <label class="check"><input type="checkbox" id="n-piscina">
         <span>Gestione della piscina — acque, pulizia, apertura e chiusura</span></label>
+
+      <label><span>Pattuizioni particolari <em>— diventano l'Art. 20</em></span>
+        <textarea id="n-extra" rows="3"
+          placeholder="Es. decorrenza differita, scadenza fissa senza rinnovo, deroghe concordate…"></textarea>
+        <div class="hint">Testo libero, scritto da voi. Nel contratto compare come
+          articolo finale, con la clausola che lo fa prevalere sulle condizioni
+          generali in caso di contrasto.</div></label>
+
+      <div class="hint" style="margin:14px 0 10px">
+        Luogo della firma: <strong>Terranuova Bracciolini</strong> (sede Houzly).
+        La data è quella in cui il proprietario firma davvero.</div>
+
       <button class="primario" id="n-btn" onclick="crea()">Crea e invia l'invito</button>
     </div>
 
@@ -236,6 +295,8 @@ function entra(){
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   disegnaPills();
+  soggettoCambiato();
+  caricaAnagrafiche();
   carica();
 }
 
@@ -329,6 +390,74 @@ function disegnaElenco(){
 
 /* ── azioni ────────────────────────────────────────────────────── */
 
+/* ── anagrafiche: tendine mandante e immobile ───────────────────── */
+
+const V = (id) => { const e = document.getElementById(id); return e ? String(e.value).trim() : ''; };
+
+let ANAG = { proprietari: [], proprieta: [] };
+
+async function caricaAnagrafiche(){
+  try{
+    const d = await api('/anagrafiche');
+    if(!d.ok) return;
+    ANAG = d;
+    const so = document.getElementById('n-owner');
+    so.innerHTML = '<option value="">— Nuovo proprietario, non ancora in anagrafica —</option>' +
+      d.proprietari.map(o => `<option value="${esc(o.id)}">${esc(o.etichetta)}` +
+        (o.tipo === 'azienda' ? ' (azienda)' : '') + '</option>').join('');
+    propScelta();
+  }catch(e){ /* la pagina resta usabile: si crea tutto da zero */ }
+}
+
+/**
+ * Scelto il mandante, si precompila ciò che il suo profilo già sa e si
+ * restringe l'elenco immobili ai suoi: così non si lega per sbaglio la casa
+ * di un proprietario al contratto di un altro.
+ */
+function ownerScelto(){
+  const id = V('n-owner');
+  const o = ANAG.proprietari.find(x => x.id === id);
+  const hint = document.getElementById('n-owner-hint');
+
+  if(o){
+    if(o.houzlyPerc != null) document.getElementById('n-perc').value = o.houzlyPerc;
+    document.getElementById('n-iva').value = o.ivaEsclusa ? 'esclusa' : 'inclusa';
+    document.getElementById('n-soggetto').value = o.tipo === 'azienda' ? 'azienda' : 'persona_fisica';
+    if(o.email && !V('n-email')) document.getElementById('n-email').value = o.email;
+    hint.textContent = 'Compenso e profilo fiscale precompilati dall\u2019anagrafica. Puoi modificarli: il contratto fa fede.';
+  }else{
+    hint.textContent = 'Il proprietario verrà creato in anagrafica al momento della firma.';
+  }
+  soggettoCambiato();
+  riempiImmobili();
+}
+
+function riempiImmobili(){
+  const ownerId = V('n-owner');
+  const sel = document.getElementById('n-prop');
+  const precedente = sel.value;
+  const lista = ownerId
+    ? ANAG.proprieta.filter(p => p.ownerId === ownerId)
+    : ANAG.proprieta;
+  sel.innerHTML = '<option value="">— Nuovo immobile, non ancora in anagrafica —</option>' +
+    lista.map(p => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('');
+  if(lista.some(p => p.id === precedente)) sel.value = precedente;
+  propScelta();
+}
+
+function propScelta(){
+  const p = ANAG.proprieta.find(x => x.id === V('n-prop'));
+  const nome = document.getElementById('n-struttura');
+  if(p && !nome.value.trim()) nome.value = p.nome;
+}
+
+function soggettoCambiato(){
+  const azienda = V('n-soggetto') === 'azienda';
+  document.getElementById('n-soggetto-hint').textContent = azienda
+    ? 'Art. 8 nella versione per soggetti d\u2019impresa: niente ritenuta, Houzly predispone la prefattura e il commercialista emette la fattura elettronica.'
+    : 'Art. 8 standard: Houzly opera la ritenuta del 21%, versa con F24 e trasmette CU e 770.';
+}
+
 async function crea(){
   const email = document.getElementById('n-email').value.trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return mostra('Email non valida');
@@ -337,11 +466,23 @@ async function crea(){
   btn.disabled = true; btn.textContent = 'Creazione…';
 
   try{
+    const soggetto = V('n-soggetto');
     const d = await api('', {method:'POST', body: JSON.stringify({
       email,
-      nomeStruttura: document.getElementById('n-struttura').value.trim() || null,
+      nomeStruttura: V('n-struttura') || null,
+      ownerId: V('n-owner') || null,
+      propertyId: V('n-prop') || null,
+      // Il tipo soggetto lo decide il backoffice: comanda la ritenuta e
+      // quale versione dell'art. 8 finisce nel contratto.
+      mandante: { tipoSoggetto: soggetto },
       condizioni:{
-        commissione: document.getElementById('n-commissione').value.trim(),
+        compensoPerc: V('n-perc'),
+        regimeIvaCodice: V('n-iva'),
+        ritenuta: soggetto === 'persona_fisica',
+        durataAnni: V('n-durata'),
+        preavvisoRecesso: V('n-preavviso'),
+        sogliaSpesa: V('n-soglia'),
+        pattuizioni: V('n-extra'),
         verde: document.getElementById('n-verde').checked,
         piscina: document.getElementById('n-piscina').checked,
       },
@@ -358,10 +499,11 @@ async function crea(){
       mostra('Creata, ma email NON inviata — link copiato negli appunti');
     }
 
-    document.getElementById('n-email').value = '';
-    document.getElementById('n-struttura').value = '';
-    document.getElementById('n-verde').checked = false;
-    document.getElementById('n-piscina').checked = false;
+    ['n-email','n-struttura','n-extra'].forEach(id => { document.getElementById(id).value = ''; });
+    ['n-verde','n-piscina'].forEach(id => { document.getElementById(id).checked = false; });
+    document.getElementById('n-owner').value = '';
+    document.getElementById('n-prop').value = '';
+    propScelta();
     carica();
   }catch(e){ /* reload già partito */ }
   finally{ btn.disabled = false; btn.textContent = 'Crea e invia l\u2019invito'; }
