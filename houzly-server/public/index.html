@@ -1186,15 +1186,22 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
     <div class="section-title">&#128220; Contratti di Mandato</div>
     <div style="display:flex;gap:8px">
       <label class="btn btn-outline" style="cursor:pointer;margin:0">&#8613; Import Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="ctrImportExcel(event)"></label>
-      <button class="btn btn-primary" onclick="ctrNew()">+ Nuovo Contratto</button>
+      <button class="btn btn-primary" onclick="apriModuloContratti()">+ Nuovo Contratto</button>
     </div>
   </div>
   <div class="card" style="margin-bottom:14px;padding:12px 16px;font-size:12px;color:var(--text-mid);line-height:1.5">
-    Generatore basato sul <strong>Contratto Master v1.5</strong> (mandato con rappresentanza + mandato all'incasso).
-    I dati inseriti qui <strong>completano le anagrafiche</strong> di Proprietari e Proprietà, e alimentano DAC7 / CU / 770.
+    I contratti si creano e si firmano nel <strong>modulo Contratti</strong>: si manda un link al
+    proprietario, lui compila i suoi dati, carica i documenti e firma dal telefono. Alla firma le
+    anagrafiche di Proprietari e Proprietà si aggiornano da sole, ed è da lì che DAC7, CU e 770 leggono.
+    <div style="margin-top:10px">
+      <button class="btn btn-primary btn-sm" onclick="apriModuloContratti()">Apri il modulo Contratti</button>
+    </div>
   </div>
   <div id="ctr-import-report"></div>
-  <div class="card">
+  <div class="card" id="ctr-archivio-box" style="display:none">
+    <div style="padding:12px 16px 0;font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;font-weight:600">
+      Archivio del modulo precedente — sola consultazione
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Mandante</th><th>Immobili</th><th>Compenso</th><th>Regime</th><th>Data firma</th><th>Stato</th><th>Azioni</th></tr></thead>
@@ -14298,13 +14305,30 @@ function ctrPercLabel(p){
 }
 
 // ─── LISTA ──────────────────────────────────────────────────────────
+// Creazione e firma vivono in /contratti.html. Il PIN già in sessione è
+// condiviso fra le due pagine, che stanno sullo stesso dominio, quindi non va
+// ridigitato. Il generatore vecchio resta nel file ma non è più raggiungibile
+// dall'interfaccia: si rimuove quando l'archivio sarà stato travasato.
+function apriModuloContratti(){
+  location.href = '/contratti.html';
+}
+
 function renderContratti(){
   ctrEnsure();
   var tb=document.getElementById('tbody-contratti');
   var empty=document.getElementById('ctr-empty');
   if(!tb)return;
-  if(!DB.contratti.length){tb.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
+  // L'archivio compare solo se contiene davvero qualcosa: a modulo nuovo
+  // attivo, una tabella vuota accanto al pulsante confonderebbe e basta.
+  var box=document.getElementById('ctr-archivio-box');
+  if(!DB.contratti.length){
+    tb.innerHTML='';
+    if(empty)empty.style.display='none';
+    if(box)box.style.display='none';
+    return;
+  }
+  if(box)box.style.display='block';
+  if(empty)empty.style.display='none';
   tb.innerHTML=DB.contratti.slice().sort(function(a,b){return (b.created||'').localeCompare(a.created||'');}).map(function(c){
     var owner=DB.proprietari.find(function(o){return o.id===c.owner_id;});
     var nProps=(c.prop_ids||[]).length;
