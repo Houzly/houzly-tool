@@ -241,6 +241,17 @@ label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
 
 const AUTH_KEY = 'houzly_auth_v2';
 const PIN_KEY  = 'houzly_contratti_pin';   // sessionStorage: si svuota alla chiusura della scheda
+const PIN_TOOL = 'onbPin';                 // stessa chiave usata da index.html
+
+/**
+ * Il PIN può arrivare da qui o dalla sessione già aperta nel gestionale:
+ * le due pagine stanno sullo stesso dominio, quindi condividono
+ * sessionStorage. Chi arriva dal pulsante "Contratti" non lo ridigita.
+ */
+function leggiPin(){
+  try{ return sessionStorage.getItem(PIN_KEY) || sessionStorage.getItem(PIN_TOOL) || ''; }
+  catch(e){ return ''; }
+}
 
 const STATI = [
   ['', 'Tutte'], ['inviata','Inviate'], ['in_compilazione','In compilazione'],
@@ -302,6 +313,7 @@ function entra(){
 
 function esci(){
   sessionStorage.removeItem(PIN_KEY);
+  try{ sessionStorage.removeItem(PIN_TOOL); }catch(e){}
   localStorage.removeItem(AUTH_KEY);
   location.reload();
 }
@@ -309,7 +321,7 @@ function esci(){
 /* ── chiamate API ──────────────────────────────────────────────── */
 
 async function api(percorso, opzioni = {}){
-  const pin = sessionStorage.getItem(PIN_KEY);
+  const pin = leggiPin();
   const r = await fetch('/api/contracts' + percorso, {
     ...opzioni,
     headers: {'Content-Type':'application/json', 'X-Admin-PIN': pin || '', ...(opzioni.headers||{})},
@@ -317,6 +329,7 @@ async function api(percorso, opzioni = {}){
   if(r.status === 401){
     // Sessione persa (scheda riaperta, PIN cambiato): si rientra dal PIN.
     sessionStorage.removeItem(PIN_KEY);
+    try{ sessionStorage.removeItem(PIN_TOOL); }catch(e){}
     localStorage.removeItem(AUTH_KEY);
     location.reload();
     throw new Error('non autorizzato');
@@ -533,7 +546,7 @@ async function scaricaPdf(rif){
   // nei log di Render. Il blob viene poi aperto in una scheda nuova.
   mostra('Preparazione del PDF…');
   try{
-    const pin = sessionStorage.getItem(PIN_KEY) || '';
+    const pin = leggiPin();
     const r = await fetch('/api/contracts/' + rif + '/pdf', {headers:{'X-Admin-PIN':pin}});
     if(!r.ok) return mostra('PDF non disponibile');
     const blob = await r.blob();
@@ -553,7 +566,7 @@ async function anteprima(rif){
   mostra('Generazione del contratto…');
 
   try{
-    const pin = sessionStorage.getItem(PIN_KEY) || '';
+    const pin = leggiPin();
     const r = await fetch('/api/contracts/' + rif + '/anteprima', {headers:{'X-Admin-PIN':pin}});
 
     if(!r.ok){
@@ -671,7 +684,8 @@ function esc(s){
 
 // Il flag in localStorage non basta: senza il PIN in sessionStorage le
 // chiamate protette fallirebbero, quindi si torna alla schermata del PIN.
-if(localStorage.getItem(AUTH_KEY) === '1' && sessionStorage.getItem(PIN_KEY)) entra();
+// Si entra diretti se il PIN c'è già, da questa pagina o dal gestionale.
+if(leggiPin()) entra();
 </script>
 </body>
 </html>
