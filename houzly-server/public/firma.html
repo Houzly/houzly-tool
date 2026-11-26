@@ -365,10 +365,13 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
       <p class="occhio">Può fotografarli direttamente con il telefono. Le immagini vengono
         ridotte automaticamente prima dell'invio.</p>
       <div id="documenti"></div>
-      <div class="nota"><b>Tre sono indispensabili</b>
-        Documento d'identità fronte e retro e visura catastale servono per firmare: il
-        documento identifica chi sottoscrive, la visura ci permette di verificare la
-        proprietà. Planimetria e conformità impianti può mandarcele anche più avanti.</div>
+      <div class="nota"><b>Quali servono per firmare</b>
+        Il documento d'identità, fronte e retro, di <b>ogni titolare</b> e la visura
+        catastale. Il documento identifica chi sottoscrive e chi è rappresentato, la
+        visura ci permette di verificare la proprietà. In comproprietarietà può
+        caricare lei anche i documenti degli altri titolari: basta una foto leggibile,
+        anche di un documento che le hanno girato per messaggio. Planimetria e
+        conformità impianti può mandarcele anche più avanti.</div>
       <div class="barra">
         <button class="second" onclick="vai(2)">Indietro</button>
         <button class="primario" onclick="vai(4)">Continua</button>
@@ -474,17 +477,51 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const API = '/api/sign/' + encodeURIComponent(TOKEN);
 
-const DOCUMENTI = [
-  {tipo:'documento_fronte', nome:"Documento d'identità — fronte", obbl:true,
+/* Documento d'identità: si chiede a OGNI titolare, non solo a chi firma.
+   Chi firma dichiara di agire anche in nome degli altri comproprietari, e
+   quella dichiarazione va verificata persona per persona: senza il documento
+   di ciascuno non si può sapere se chi è indicato in visura è davvero
+   la persona dichiarata. */
+const DOC_IDENTITA = [
+  {tipo:'documento_fronte', nome:"Documento d'identità — fronte",
    desc:'Il lato con la fotografia'},
-  {tipo:'documento_retro',  nome:"Documento d'identità — retro", obbl:true,
+  {tipo:'documento_retro',  nome:"Documento d'identità — retro",
    desc:'Il lato con scadenza e luogo di rilascio'},
+];
+
+/* Documenti dell'immobile: uno solo, qualunque sia il numero di titolari. */
+const DOC_IMMOBILE = [
   {tipo:'visura',      nome:'Visura catastale',     obbl:true,
    desc:'Serve a verificare la titolarità — anche una foto leggibile va bene'},
   {tipo:'planimetria', nome:'Planimetria',          obbl:false, desc:'La piantina catastale'},
   {tipo:'conformita',  nome:'Conformità impianti',  obbl:false,
-   desc:'Dichiarazione dell\u2019installatore'},
+   desc:'Dichiarazione dell’installatore'},
 ];
+
+/* La visura non appartiene a una persona: si archivia sotto il firmatario. */
+const SOGG_IMMOBILE = 'mandante';
+
+const chiaveDoc = (soggetto, tipo) => soggetto + '|' + tipo;
+
+/**
+ * I titolari di oggi, nell'ordine in cui il server li numera (mandante, cp0,
+ * cp1 …). Si leggono dal modulo e non dalla pratica salvata, così il passo
+ * documenti resta giusto anche subito dopo aver aggiunto una persona.
+ */
+function titolari(){
+  const v = id => { const e=document.getElementById(id); return e ? e.value.trim() : ''; };
+  const nomeMandante = stato.azienda
+    ? (v('legaleRapp') || 'Firmatario')
+    : [v('nome'), v('cognome')].filter(Boolean).join(' ');
+  const elenco = [{soggetto:'mandante', etichetta: nomeMandante || 'Lei (firmatario)'}];
+  leggiComproprietari().forEach((c,i)=>{
+    elenco.push({
+      soggetto:'cp'+i,
+      etichetta:[c.nome,c.cognome].filter(Boolean).join(' ') || ('Comproprietario '+(i+2)),
+    });
+  });
+  return elenco;
+}
 
 const ETICHETTE = ['Dati personali','Immobile','Documenti','Contratto','Firma','Completato'];
 
@@ -500,7 +537,11 @@ async function avvia(){
     if(!d.ok) return bloccaPerErrore(d.error);
     stato.pratica = d.pratica;
     stato.azienda = d.pratica.tipoSoggetto === 'azienda';
-    stato.caricati = (d.pratica.allegati || []).map(a => a.tipo);
+    // Chiavi 'soggetto|tipo'. Un allegato con valido:false è stato caricato
+    // per una posizione che ora è di un'altra persona: va rifatto.
+    stato.caricati = (d.pratica.allegati || [])
+      .filter(a => a.valido !== false)
+      .map(a => chiaveDoc(a.soggetto || 'mandante', a.tipo));
 
     if(d.pratica.firmato){
       return blocca('Contratto già firmato',
@@ -542,9 +583,15 @@ function blocca(titolo,testo){
 
 /* ── navigazione ───────────────────────────────────────────────── */
 
-function vai(n){
+async function vai(n){
   if(n>stato.passo && !convalida(stato.passo)) return;
-  if(n>stato.passo || n<stato.passo) salva();
+  // Entrando nei documenti il salvataggio si attende: il server deve già
+  // conoscere i comproprietari, altrimenti rifiuta i loro documenti.
+  if(n===3 && n>stato.passo) await salva();
+  else if(n!==stato.passo) salva();
+  // I titolari possono essere cambiati al passo 1: i blocchi si rifanno ogni
+  // volta, conservando le spunte di ciò che è già stato caricato.
+  if(n===3) creaDocumenti();
   stato.passo = n;
   document.querySelectorAll('section').forEach(s=>s.classList.remove('viva'));
   document.getElementById('s'+n).classList.add('viva');
@@ -721,13 +768,28 @@ function convalida(passo){
   if(passo===2) obbligatori=['viaNome','immComune'];
   if(passo===3){
     const caricati=(stato.caricati||[]);
-    const mancanti=DOCUMENTI.filter(d=>d.obbl && !caricati.includes(d.tipo));
+    const mancanti=[];
+    // Il documento si conta per titolare: con tre comproprietari servono sei
+    // facciate, non due.
+    titolari().forEach(t=>{
+      DOC_IDENTITA.forEach(d=>{
+        if(!caricati.includes(chiaveDoc(t.soggetto,d.tipo)))
+          mancanti.push({soggetto:t.soggetto, tipo:d.tipo, nome:d.nome, chi:t.etichetta});
+      });
+    });
+    DOC_IMMOBILE.filter(d=>d.obbl).forEach(d=>{
+      if(!caricati.includes(chiaveDoc(SOGG_IMMOBILE,d.tipo)))
+        mancanti.push({soggetto:SOGG_IMMOBILE, tipo:d.tipo, nome:d.nome, chi:null});
+    });
     if(mancanti.length){
-      const d=document.getElementById('doc-'+mancanti[0].tipo);
-      d.scrollIntoView({block:'center',behavior:'smooth'});
-      d.style.borderColor='var(--errore)';
+      const m=mancanti[0];
+      const d=document.getElementById('doc-'+m.soggetto+'-'+m.tipo);
+      if(d){
+        d.scrollIntoView({block:'center',behavior:'smooth'});
+        d.style.borderColor='var(--errore)';
+      }
       mostraToast(mancanti.length===1
-        ? 'Manca ancora: '+mancanti[0].nome
+        ? 'Manca ancora: '+m.nome+(m.chi?' di '+m.chi:'')
         : 'Mancano '+mancanti.length+' documenti obbligatori');
       return false;
     }
@@ -836,24 +898,54 @@ function applicaTipoSoggetto(){
 
 function creaDocumenti(){
   const c=document.getElementById('documenti');
-  const gia=stato.caricati;
-  c.innerHTML = DOCUMENTI.map(d=>`
-    <div class="doc${gia.includes(d.tipo)?' caricato':''}" id="doc-${d.tipo}">
+  const fatto = ch => stato.caricati.includes(ch);
+
+  const riga = (soggetto, d, obbligatorio) => {
+    const ch = chiaveDoc(soggetto, d.tipo), ok = fatto(ch);
+    return `
+    <div class="doc${ok?' caricato':''}" id="doc-${soggetto}-${d.tipo}">
       <div class="segno"></div>
-      <div class="doc-testo"><b>${d.nome}${d.obbl?' <i style="color:var(--oro);font-style:normal">*</i>':''}</b>
-        <small id="st-${d.tipo}">${gia.includes(d.tipo)?'Caricato':d.desc}</small></div>
-      <label class="scegli">${gia.includes(d.tipo)?'Sostituisci':'Scegli'}
-        <input type="file" accept="image/*,application/pdf" data-tipo="${d.tipo}">
+      <div class="doc-testo"><b>${d.nome}${obbligatorio?' <i style="color:var(--oro);font-style:normal">*</i>':''}</b>
+        <small id="st-${soggetto}-${d.tipo}">${ok?'Caricato':d.desc}</small></div>
+      <label class="scegli">${ok?'Sostituisci':'Scegli'}
+        <input type="file" accept="image/*,application/pdf"
+               data-tipo="${d.tipo}" data-soggetto="${soggetto}">
       </label>
-    </div>`).join('');
+    </div>`;
+  };
+
+  const tit = titolari();
+  let html = '';
+
+  tit.forEach((t, i) => {
+    // Con un solo titolare non serve intestare il gruppo: si capisce da solo.
+    if (tit.length > 1) {
+      html += `<div style="margin:${i?18:4}px 0 8px;font-size:13px;font-weight:600;color:var(--inchiostro)">
+        ${i===0 ? 'Suo documento' : 'Documento di ' + esc(t.etichetta)}</div>`;
+    }
+    html += DOC_IDENTITA.map(d => riga(t.soggetto, d, true)).join('');
+  });
+
+  html += `<div style="margin:18px 0 8px;font-size:13px;font-weight:600;color:var(--inchiostro)">
+    Documenti dell’immobile</div>`;
+  html += DOC_IMMOBILE.map(d => riga(SOGG_IMMOBILE, d, d.obbl)).join('');
+
+  c.innerHTML = html;
   c.querySelectorAll('input[type=file]').forEach(i=>
     i.addEventListener('change',ev=>caricaFile(ev.target)));
+}
+
+function esc(t){
+  return String(t==null?'':t).replace(/[&<>"]/g,
+    s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
 }
 
 async function caricaFile(input){
   const file=input.files[0]; if(!file) return;
   const tipo=input.dataset.tipo;
-  const st=document.getElementById('st-'+tipo);
+  const soggetto=input.dataset.soggetto||'mandante';
+  const ch=chiaveDoc(soggetto,tipo);
+  const st=document.getElementById('st-'+soggetto+'-'+tipo);
   st.textContent='Preparazione…';
 
   try{
@@ -864,15 +956,25 @@ async function caricaFile(input){
       : await leggiBase64(file);
 
     st.textContent='Invio…';
-    const r=await fetch(API+'/allegato',{method:'POST',
+    const invia = () => fetch(API+'/allegato',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tipo,nomeFile:file.name,
+      body:JSON.stringify({tipo, soggetto, nomeFile:file.name,
         contentType:file.type.startsWith('image/')?'image/jpeg':file.type, dataBase64:dati})});
-    const d=await r.json();
+
+    let r=await invia();
+    let d=await r.json();
+
+    // Il server non conosce ancora quel comproprietario: lo si salva e si
+    // riprova una volta sola. Capita se si passa ai documenti prima che il
+    // salvataggio automatico del passo precedente sia arrivato.
+    if(!d.ok && d.error==='soggetto_non_valido'){
+      await salva();
+      r=await invia(); d=await r.json();
+    }
 
     if(d.ok){
-      if(!stato.caricati.includes(tipo)) stato.caricati.push(tipo);
-      const box=document.getElementById('doc-'+tipo);
+      if(!stato.caricati.includes(ch)) stato.caricati.push(ch);
+      const box=document.getElementById('doc-'+soggetto+'-'+tipo);
       box.classList.add('caricato');
       box.style.borderColor='';
       st.textContent='Caricato · '+Math.round(d.bytes/1024)+' KB';
@@ -1090,8 +1192,17 @@ async function firma(){
     if(d.error==='clausole_non_approvate')
       return mostraErrore('<b>Clausole non approvate</b>Deve spuntarle tutte.');
     if(d.error==='allegati_mancanti'){
-      const nomi=d.tipi.map(t=>(DOCUMENTI.find(x=>x.tipo===t)||{}).nome||t).join(', ');
-      return mostraErrore('<b>Documenti mancanti</b>Torni al passo 3 e carichi: '+nomi+'.');
+      // Si dice chi e cosa: 'manca il documento' con quattro titolari non aiuta.
+      const nomiTipo={documento_fronte:"documento d'identità (fronte)",
+        documento_retro:"documento d'identità (retro)", visura:'visura catastale'};
+      const voci=(d.mancanti||d.tipi||[]).map(m=>{
+        if(typeof m==='string') return nomiTipo[m]||m;
+        const nome=nomiTipo[m.tipo]||m.tipo;
+        return m.soggetto&&m.soggetto!=='mandante'&&m.etichetta
+          ? nome+' di '+m.etichetta : nome;
+      });
+      return mostraErrore('<b>Documenti mancanti</b>Torni al passo 3 e carichi: '+
+        voci.join('; ')+'.');
     }
     if(d.error==='comproprietari_incompleti')
       return mostraErrore('<b>Dati dei comproprietari incompleti</b>Per ciascuno servono nome, codice fiscale e quota.');
