@@ -419,6 +419,7 @@ function disegnaElenco(){
         ${firmata ? '' : `<button class="az" onclick="anteprima('${p.riferimento}')">Vedi il contratto</button>`}
         ${nAll ? `<button class="az" onclick="documenti('${p.riferimento}')">Documenti</button>` : ''}
         <button class="az" onclick="dettaglio('${p.riferimento}')">Dettagli</button>
+        <button class="az rischio" onclick="elimina('${p.riferimento}')">Elimina</button>
       </div>
     </div>`;
   }).join('');
@@ -724,6 +725,70 @@ async function documenti(rif){
     + 'se uno non funziona più, torni qui e lo riapra.</p>'
     + '<ul>' + righe + '</ul></body></html>');
   w.document.close();
+}
+
+/**
+ * Elimina una pratica e tutto quello che ha scritto in anagrafica.
+ *
+ * Prima si chiede al server cosa sparirebbe davvero e lo si mette nero su
+ * bianco: "elimina il contratto" non dice se se ne va anche il proprietario,
+ * e una prova fatta su un proprietario vero non deve portarselo via.
+ * La conferma è il riferimento battuto a mano, non un sì.
+ */
+async function elimina(rif){
+  const a = await api('/' + rif + '/eliminazione');
+  if(!a.ok) return mostra('Errore: ' + a.error);
+  const p = a.anteprima || {};
+
+  const voci = ['la pratica ' + rif + ' e la sua cronologia'];
+  if(p.fileR2) voci.push(p.fileR2 + (p.fileR2 === 1 ? ' file archiviato' : ' file archiviati')
+    + ' (contratto firmato e documenti)');
+  if(p.rigaContratto) voci.push('la riga nella sezione Contratti');
+  if(p.coprops && p.coprops.length)
+    voci.push('i co-proprietari aggiunti da questa pratica: ' + p.coprops.join(', '));
+  if(p.immobile && p.immobile.eliminabile) voci.push('l’immobile “' + p.immobile.nome + '”');
+  if(p.proprietario && p.proprietario.eliminabile)
+    voci.push('il proprietario “' + p.proprietario.nome + '”');
+
+  const tenuti = [];
+  if(p.immobile && !p.immobile.eliminabile)
+    tenuti.push('l’immobile “' + p.immobile.nome + '”, perché è usato altrove');
+  if(p.proprietario && !p.proprietario.eliminabile)
+    tenuti.push('il proprietario “' + p.proprietario.nome + '”, perché è usato altrove');
+
+  let testo = 'Verranno eliminati:\n\n· ' + voci.join('\n· ');
+  if(tenuti.length) testo += '\n\nRestano invece:\n· ' + tenuti.join('\n· ');
+  if(!p.immobile && !p.proprietario)
+    testo += '\n\nProprietario e immobile non vengono toccati: erano già in anagrafica prima di questa pratica.';
+  testo += '\n\nL’operazione non si può annullare.';
+
+  if(p.stato === 'firmata'){
+    testo = '⚠ Questa pratica è FIRMATA: sta per cancellare un contratto sottoscritto '
+      + 'e la sua copia archiviata.\n\n' + testo
+      + '\n\nPer confermare scriva il riferimento: ' + rif;
+    const scritto = prompt(testo, '');
+    if((scritto || '').trim().toUpperCase() !== rif.toUpperCase()) return mostra('Eliminazione annullata');
+  } else {
+    if(!confirm(testo)) return;
+  }
+
+  mostra('Eliminazione in corso…');
+  const d = await api('/' + rif, {method:'DELETE', body: JSON.stringify({conferma: rif})});
+  if(!d.ok){
+    return mostra(d.error === 'conferma_mancante' ? 'Conferma non valida' : 'Errore: ' + d.error);
+  }
+
+  const fatto = ['pratica eliminata'];
+  if(d.fileTotali) fatto.push(d.fileRimossi + '/' + d.fileTotali + ' file');
+  if(d.rigaContratto) fatto.push('riga di contratto');
+  if(d.coprops) fatto.push(d.coprops + ' co-proprietari');
+  if(d.immobile) fatto.push('immobile');
+  if(d.proprietario) fatto.push('proprietario');
+  mostra(fatto.join(', '));
+  if(d.tenuti && d.tenuti.length)
+    setTimeout(()=>alert('Non è stato rimosso:\n\n· ' + d.tenuti.join('\n· ')
+      + '\n\nSono dati usati anche altrove: vanno tolti a mano da houzly-tool, se serve.'), 500);
+  carica();
 }
 
 async function dettaglio(rif){
