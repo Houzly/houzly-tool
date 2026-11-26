@@ -50,6 +50,14 @@ body{margin:0;background:var(--bg);color:var(--text);
   background:var(--surface);color:var(--text);font-size:17px;cursor:pointer}
 .logout-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-mid);
   border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+/* Il modulo contratti vive su una pagina a sé: senza questo non c'è modo
+   di tornare al gestionale se non riscrivendo l'indirizzo a mano. */
+.torna-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-mid);
+  border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;
+  text-decoration:none;white-space:nowrap;display:inline-block}
+.torna-btn:hover{background:var(--bg)}
+@media(max-width:420px){.torna-btn{padding:8px 11px}
+  .logout-btn{padding:8px 11px}}
 
 main{max-width:900px;margin:0 auto;padding:18px 18px calc(var(--safe-bottom) + 40px)}
 
@@ -151,6 +159,7 @@ label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
     <div class="header-row">
       <div class="header-sub">Contratti</div>
       <div style="display:flex;gap:9px;align-items:center">
+        <a class="torna-btn" href="/" title="Torna a Houzly Tool">← Houzly Tool</a>
         <button class="icon-btn" onclick="carica()" title="Aggiorna">↻</button>
         <button class="logout-btn" onclick="esci()">🔒 Esci</button>
       </div>
@@ -324,7 +333,10 @@ function esci(){
   sessionStorage.removeItem(PIN_KEY);
   try{ sessionStorage.removeItem(PIN_TOOL); }catch(e){}
   localStorage.removeItem(AUTH_KEY);
-  location.reload();
+  // Si torna al gestionale invece di ricaricare questa pagina: uscire dai
+  // contratti vuol dire uscire da tutto, e ricaricando qui si restava davanti
+  // alla richiesta del PIN del modulo, senza una via d'uscita.
+  location.href = '/';
 }
 
 /* ── chiamate API ──────────────────────────────────────────────── */
