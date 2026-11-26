@@ -399,7 +399,8 @@ function disegnaElenco(){
       <div class="meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
       <div class="azioni">
         ${firmata
-          ? `<button class="az forte" onclick="scaricaPdf('${p.riferimento}')">Scarica il PDF</button>`
+          ? `<button class="az forte" onclick="scaricaPdf('${p.riferimento}')">Scarica il PDF</button>
+             <button class="az" onclick="riallinea('${p.riferimento}')">Riallinea anagrafiche</button>`
           : chiusa ? ''
           : `<button class="az forte" onclick="rigenera('${p.riferimento}')">Nuovo link e invio</button>
              <button class="az rischio" onclick="annulla('${p.riferimento}')">Annulla</button>`}
@@ -538,6 +539,34 @@ async function rigenera(rif){
   if(d.emailInviata) mostra('Nuovo invito inviato');
   else { await copia(d.link); mostra('Email non inviata — link copiato negli appunti'); }
   carica();
+}
+
+/* Rilancia il write-back su una pratica già firmata.
+   Serve quando l'anagrafica è rimasta indietro: write-back fallito, oppure
+   girato con una versione che scriveva i comproprietari nel posto sbagliato.
+   Si può premere più volte senza duplicare niente. */
+async function riallinea(rif){
+  if(!confirm('Riscrivere proprietario, immobile e riga di contratto in anagrafica da questa pratica firmata?\n\nNon cancella niente e non crea doppioni: aggiorna quello che c\u2019e\u0300 e aggiunge quello che manca.')) return;
+  mostra('Riallineamento in corso\u2026');
+  const d = await api('/' + rif + '/write-back', {method:'POST'});
+  if(!d.ok){
+    return mostra(d.error==='pratica_non_firmata'
+      ? 'Si riallinea solo da una pratica firmata'
+      : 'Errore: ' + d.error);
+  }
+  const e = d.esito || {};
+  const pezzi = [
+    e.ownerCreato ? 'proprietario creato' : 'proprietario aggiornato',
+    e.propCreata ? 'immobile creato' : 'immobile aggiornato',
+  ];
+  if(e.coprops) pezzi.push(e.coprops + (e.coprops===1?' comproprietario':' comproprietari'));
+  pezzi.push('riga di contratto scritta');
+  mostra('Fatto: ' + pezzi.join(', '));
+  const m = d.campiFiscaliMancanti || [];
+  if(m.length) setTimeout(()=>alert(
+    'Riallineamento fatto.\n\nRestano vuoti alcuni campi che servono a DAC7, CU o 770:\n\n· '
+    + m.join('\n· ')
+    + '\n\nSi completano a mano in houzly-tool, nella scheda del proprietario o dell\u2019immobile.'), 600);
 }
 
 async function annulla(rif){
