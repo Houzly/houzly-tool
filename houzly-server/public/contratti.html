@@ -405,6 +405,7 @@ function disegnaElenco(){
           : `<button class="az forte" onclick="rigenera('${p.riferimento}')">Nuovo link e invio</button>
              <button class="az rischio" onclick="annulla('${p.riferimento}')">Annulla</button>`}
         ${firmata ? '' : `<button class="az" onclick="anteprima('${p.riferimento}')">Vedi il contratto</button>`}
+        ${nAll ? `<button class="az" onclick="documenti('${p.riferimento}')">Documenti</button>` : ''}
         <button class="az" onclick="dettaglio('${p.riferimento}')">Dettagli</button>
       </div>
     </div>`;
@@ -674,6 +675,43 @@ function paginaPdf(url, rif){
       <embed src="${url}" type="application/pdf"
         style="width:100%;height:calc(100vh - 41px);border:0">
     </body></html>`;
+}
+
+/* Apre l'elenco dei documenti raccolti in una scheda a parte.
+   I link passano dal server, che firma l'URL al momento: non si mettono in
+   pagina URL di R2 a lunga scadenza per dei documenti d'identità. */
+async function documenti(rif){
+  const d = await api('/' + rif + '/allegati');
+  if(!d.ok) return mostra('Errore: ' + d.error);
+  const a = d.allegati || [];
+  if(!a.length) return mostra('Nessun documento caricato');
+
+  const pin = encodeURIComponent(leggiPin());
+  const righe = a.map(x => {
+    const url = '/api/contracts/' + encodeURIComponent(rif) + '/allegato/' + x.indice + '?pin=' + pin;
+    const chi = x.chi ? ' — ' + esc(x.chi) : '';
+    const avviso = x.valido === false
+      ? ' <span style="color:#9c2231;font-size:12px">(caricato per un’altra persona: da rifare)</span>'
+      : '';
+    return '<li style="margin:7px 0"><a href="' + url + '" target="_blank" rel="noopener">'
+      + esc(x.nome) + chi + '</a> <span style="color:#777;font-size:12px">' + x.kb + ' KB</span>'
+      + avviso + '</li>';
+  }).join('');
+
+  const w = window.open('', '_blank');
+  if(!w) return mostra('Il browser ha bloccato la finestra');
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>Documenti ' + esc(rif) + '</title>'
+    + '<style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;'
+    + 'margin:0;padding:28px 20px;color:#1a1a1a;max-width:620px}'
+    + 'h1{font-size:18px;margin:0 0 4px}p{color:#666;font-size:13px;margin:0 0 18px}'
+    + 'ul{padding-left:20px}a{color:#0b6b5e}</style></head><body>'
+    + '<h1>Documenti — ' + esc(rif) + '</h1>'
+    + '<p>I link si aprono in una scheda nuova e scadono dopo pochi minuti: '
+    + 'se uno non funziona più, torni qui e lo riapra.</p>'
+    + '<ul>' + righe + '</ul></body></html>');
+  w.document.close();
 }
 
 async function dettaglio(rif){
