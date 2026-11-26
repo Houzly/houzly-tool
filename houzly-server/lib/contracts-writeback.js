@@ -106,10 +106,23 @@ function componiIndirizzo(i = {}) {
     (vuoto(i.provincia) ? '' : ` (${maiuscolo(i.provincia)})`);
 }
 
+/**
+ * Nome della proprietà. Senza, nell'elenco Proprietà comparirebbe una riga
+ * vuota e il proprietario non la riconoscerebbe. Si usa, in ordine: il nome
+ * dato all'immobile, il nome struttura indicato alla creazione della pratica,
+ * e in mancanza d'altro "Villa" più il comune. Resta modificabile a mano.
+ */
+function nomeProprieta(i = {}, caso = {}) {
+  const n = testo(i.nome) || testo(caso.nomeStruttura);
+  if (n) return n;
+  const comune = testo(i.comune) || testo(i.catComune);
+  return comune ? `Villa ${comune}` : '';
+}
+
 /** Immobile. `codice_comune` resta escluso: è il codice Belfiore, non lo sa il proprietario. */
-function campiProprieta(i = {}, ownerId) {
+function campiProprieta(i = {}, ownerId, caso = {}) {
   const out = {};
-  poni(out, 'nome', testo(i.nome));
+  poni(out, 'nome', nomeProprieta(i, caso));
   poni(out, 'indirizzo', componiIndirizzo(i));
   poni(out, 'cin', maiuscolo(i.cin));
   poni(out, 'cat_comune', testo(i.catComune));
@@ -204,6 +217,20 @@ async function applicaWriteBack(getDb, caso) {
   let ownerId = caso.ownerId || null;
   if (ownerId && !proprietari.some((o) => o.id === ownerId)) ownerId = null; // cancellato nel frattempo
 
+  // Nessun id dal backoffice: prima di creare si guarda se quella persona è
+  // già in anagrafica, riconoscendola dal codice fiscale o dalla partita IVA.
+  // Senza questo controllo un proprietario già censito, ma non selezionato
+  // nella tendina, finirebbe duplicato — e un duplicato spezza in due la sua
+  // CU e la sua DAC7.
+  if (!ownerId) {
+    const chiave = (campiOwner.cf || campiOwner.cf_az || campiOwner.piva || '').toUpperCase();
+    if (chiave) {
+      const gia = proprietari.find((o) =>
+        [o.cf, o.cf_az, o.piva].some((x) => x && String(x).toUpperCase() === chiave));
+      if (gia) ownerId = gia.id;
+    }
+  }
+
   if (ownerId) {
     await aggiornaElemento(col, 'proprietari', ownerId, campiOwner);
   } else {
@@ -221,9 +248,17 @@ async function applicaWriteBack(getDb, caso) {
   esito.ownerId = ownerId;
 
   /* — immobile — */
-  const campiImm = campiProprieta(caso.immobile, ownerId);
+  const campiImm = campiProprieta(caso.immobile, ownerId, caso);
   let propertyId = caso.propertyId || null;
   if (propertyId && !proprieta.some((p) => p.id === propertyId)) propertyId = null;
+
+  // Stessa logica per l'immobile: il CIN è un identificativo nazionale unico,
+  // quindi se c'è già una proprietà con quel CIN è la stessa casa.
+  if (!propertyId && campiImm.cin) {
+    const gia = proprieta.find((p) => p.cin &&
+      String(p.cin).toUpperCase() === String(campiImm.cin).toUpperCase());
+    if (gia) propertyId = gia.id;
+  }
 
   if (propertyId) {
     await aggiornaElemento(col, 'proprieta', propertyId, campiImm);
@@ -239,24 +274,87 @@ async function applicaWriteBack(getDb, caso) {
   }
   esito.propertyId = propertyId;
 
-  /* — comproprietari —
-   * Stanno sulla proprietà, non sul proprietario. Si sostituisce l'elenco
-   * intero perché è quello che il proprietario ha appena dichiarato e
-   * sottoscritto: è la versione buona, non un'integrazione della precedente. */
+  /* — comproprietari e riga di contratto —
+   *
+   * I comproprietari NON stanno sulla proprietà: `getPropertyCoprops()` li
+   * cerca sul contratto che contiene quell'immobile, con ripiego sul
+   * proprietario. Scriverli altrove li rende invisibili all'elenco
+   * proprietari, ai report e soprattutto a CU e DAC7, che ripartiscono le
+   * quote proprio da lì.
+   *
+   * Per questo il write-back crea anche la riga in `DB.contratti`: non è un
+   * duplicato della pratica, è il record che il gestionale legge per sapere
+   * condizioni economiche e cointestazioni di quell'immobile. */
   const coprops = (caso.comproprietari || [])
     .map(campiCoproprietario)
     .filter((c) => c.nome || c.cognome);
+  esito.coprops = coprops.length;
 
-  if (coprops.length) {
-    await col.updateOne(
-      { _id: DOC_STATO },
-      { $set: { 'proprieta.$[elem].coprops': coprops } },
-      { arrayFilters: [{ 'elem.id': propertyId }] }
-    );
-    esito.coprops = coprops.length;
-  }
+  esito.contrattoId = await scriviRigaContratto(col, caso, ownerId, propertyId, coprops);
 
   return esito;
+}
+
+/** Condizioni del contratto nel formato numerico che usa il gestionale. */
+function rigaContratto(caso, ownerId, propertyId, coprops) {
+  const c = caso.condizioni || {};
+  const num = (v, d) => {
+    const n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isNaN(n) ? d : n;
+  };
+  // `data` in ISO: è il formato che ctrFmtDataEstesa() si aspetta.
+  const iso = (caso.pdfFinale?.generatoIl || new Date().toISOString()).slice(0, 10);
+
+  return {
+    owner_id: ownerId,
+    prop_ids: propertyId ? [propertyId] : [],
+    perc: num(c.compensoPerc, 30),
+    iva: c.regimeIvaCodice === 'esclusa' ? 'esclusa' : 'inclusa',
+    ritenuta: c.ritenuta !== undefined ? !!c.ritenuta : true,
+    durata: num(c.durataAnni, 1),
+    preavviso: num(String(c.preavvisoRecesso || '').match(/\d+/)?.[0], 6),
+    soglia: num(String(c.sogliaSpesa || '').replace(/[^\d,.]/g, '').replace(',', '.'), 50),
+    luogo: testo(caso.luogoFirma),
+    data: iso,
+    extra: testo(c.pattuizioni),
+    coprops,
+    versione: testo(caso.templateVersione) || '1.9',
+    stato: 'firmato',
+    testo_override: null,
+    // Aggancio alla pratica firmata: da qui si risale al PDF e all'audit.
+    pratica_rif: testo(caso.riferimento),
+  };
+}
+
+/**
+ * Scrive o aggiorna la riga di contratto. Se la pratica è già passata di qui
+ * (rigenerazione, firma ritentata) si aggiorna quella, non se ne crea un'altra.
+ */
+async function scriviRigaContratto(col, caso, ownerId, propertyId, coprops) {
+  const campi = rigaContratto(caso, ownerId, propertyId, coprops);
+  const stato = await col.findOne(
+    { _id: DOC_STATO },
+    { projection: { contratti: 1 } }
+  );
+  const esistente = (stato?.contratti || []).find(
+    (k) => k.pratica_rif && k.pratica_rif === campi.pratica_rif
+  );
+
+  if (esistente) {
+    await aggiornaElemento(col, 'contratti', esistente.id, {
+      ...campi,
+      updated: new Date().toISOString(),
+    });
+    return esistente.id;
+  }
+
+  const id = nuovoId();
+  const ora = new Date().toISOString();
+  await col.updateOne(
+    { _id: DOC_STATO },
+    { $push: { contratti: { id, ...campi, created: ora, updated: ora } } }
+  );
+  return id;
 }
 
 /**
@@ -304,6 +402,8 @@ function campiFiscaliMancanti(caso) {
 
 module.exports = {
   applicaWriteBack,
+  nomeProprieta,
+  rigaContratto,
   campiFiscaliMancanti,
   campiProprietario,
   campiProprieta,
