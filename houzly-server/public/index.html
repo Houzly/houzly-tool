@@ -894,7 +894,7 @@ input.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
   <div class="nav-group"><div class="nav-group-label">Sistema</div>
     <div class="nav-item" onclick="showPage('impostazioni')"><span class="nav-icon">&#9881;</span> Impostazioni</div>
   </div>
-  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v130 · 24/11 · Mappa, radar, calore, flussi</span></div>
+  <div class="sidebar-footer">Houzly Snc di Carella Daniele e Ruberti Romeo<br>P.IVA 02499920516<br>Via A. de Gasperi 90, Terranuova Bracciolini<br><span style="opacity:0.5;font-size:9px">build v131 · 26/11 · Contratti con firma digitale</span></div>
 </nav>
 <!-- MAIN -->
 <div id="main">
@@ -14340,7 +14340,7 @@ function renderContratti(){
     var statoColor=c.stato==='firmato'?'var(--green)':(c.stato==='inviato'?'var(--orange)':'var(--text-light)');
     return '<tr>'
       +'<td><strong>'+escHtml(owner?nomeOwner(owner.id):'—')+'</strong>'
-        +(c.testo_override?'<br><span style="font-size:10.5px;color:#5b21b6">\u270e testo personalizzato</span>':'')+'</td>'
+        +(c.pratica_rif?'<br><span style="font-size:10.5px;color:var(--green)">\u2714 firmato digitalmente \u00b7 '+escHtml(c.pratica_rif)+'</span>':'')+(c.testo_override?'<br><span style="font-size:10.5px;color:#5b21b6">\u270e testo personalizzato</span>':'')+'</td>'
       +'<td>'+nProps+' immobil'+(nProps===1?'e':'i')+((c.coprops&&c.coprops.length)?'<br><span style="font-size:10.5px;color:var(--text-light)">+'+c.coprops.length+' co-intestatar'+(c.coprops.length===1?'io':'i')+'</span>':'')+'</td>'
       +'<td>'+c.perc+'%'+ivaL+'</td>'
       +'<td style="font-size:12px">'+regime+'</td>'
@@ -14362,7 +14362,10 @@ function ctrSetStato(id,v){
   saveDB();toast('Stato contratto: '+v);renderContratti();
 }
 function ctrDelete(id){
-  if(!confirm('Eliminare questo contratto? (le anagrafiche non vengono toccate)'))return;
+  var _c=(DB.contratti||[]).find(function(x){return x.id===id;});
+  if(_c&&_c.pratica_rif){
+    if(!confirm('Questo contratto \u00e8 stato firmato digitalmente ('+_c.pratica_rif+').\n\nEliminando la riga spariscono le condizioni economiche e i co-intestatari usati da report, CU e DAC7. Il PDF firmato resta archiviato.\n\nProcedere comunque?'))return;
+  } else if(!confirm('Eliminare questo contratto? (le anagrafiche non vengono toccate)'))return;
   DB.contratti=DB.contratti.filter(function(x){return x.id!==id;});
   saveDB();renderContratti();toast('Contratto eliminato');
 }
@@ -14760,6 +14763,13 @@ function ctrSave(andPreview){
       obj.created=DB.contratti[idx].created;
       obj.stato=DB.contratti[idx].stato;
       obj.testo_override=null;
+      // Riga nata dalla firma digitale: l'aggancio alla pratica e la versione
+      // del contratto-tipo effettivamente sottoscritto non si riscrivono, altrimenti
+      // si perde il collegamento al PDF firmato e la riga dichiarerebbe la v1.5.
+      if(DB.contratti[idx].pratica_rif){
+        obj.pratica_rif=DB.contratti[idx].pratica_rif;
+        obj.versione=DB.contratti[idx].versione||obj.versione;
+      }
       DB.contratti[idx]=obj;
     } else DB.contratti.push(obj);
   } else DB.contratti.push(obj);
@@ -14804,6 +14814,18 @@ function ctrPreviewById(id){
   ctrEnsure();
   var c=DB.contratti.find(function(x){return x.id===id;});
   if(!c){toast('Contratto non trovato');return;}
+  // Contratto nato dal modulo firma digitale: l'originale e' il PDF firmato
+  // archiviato, non una ricostruzione dal template. Ricostruirlo qui darebbe
+  // un testo simile ma non identico a quello sottoscritto, e modificabile:
+  // meglio aprire il documento vero.
+  if(c.pratica_rif){
+    // La rotta e' protetta da requireAdminAuth, che accetta il PIN anche in
+    // query: serve perche' si apre in una scheda nuova, dove non si possono
+    // mandare intestazioni.
+    window.open('/api/contracts/'+encodeURIComponent(c.pratica_rif)
+      +'/pdf?pin='+encodeURIComponent(getAdminPin()),'_blank');
+    return;
+  }
   var owner=DB.proprietari.find(function(o){return o.id===c.owner_id;});
   if(!owner){toast('Mandante non trovato');return;}
   var html=c.testo_override||ctrBuildHtml(c,owner);
