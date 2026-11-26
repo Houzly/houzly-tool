@@ -202,6 +202,23 @@ function campiProprieta(i = {}, ownerId, caso = {}) {
   poni(out, 'scala', testo(i.scala));
   poni(out, 'interno', testo(i.interno));
   poni(out, 'piano', testo(i.piano));
+
+  /* Compenso e IVA pattuiti: vanno scritti QUI, sull'immobile.
+   *
+   * `getEffectiveHouzlyConfig()` tratta la proprietà come fonte primaria e
+   * ripiega sul proprietario solo se questi campi sono nulli. Lasciandoli
+   * vuoti la scheda della proprietà mostra la casella del compenso in bianco
+   * e sotto la riga "Eredita dal Proprietario: 20%" — che è un ripiego, non
+   * il dato del contratto: basta cambiare la percentuale di default del
+   * proprietario e questo immobile seguirebbe, pur avendo un contratto che
+   * dice altro. Il form li tiene in sola lettura proprio perché li fissa il
+   * contratto. */
+  const c = caso.condizioni || {};
+  if (c.compensoPerc != null && !Number.isNaN(+c.compensoPerc)) {
+    out.houzly_perc = +c.compensoPerc;
+  }
+  if (c.regimeIvaCodice) out.iva22_override = c.regimeIvaCodice === 'esclusa';
+
   if (ownerId) out.proprietario_id = ownerId;
   return out;
 }
