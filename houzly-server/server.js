@@ -4806,6 +4806,9 @@ try {
   app.use('/api/sign', createContractsPublicRouter({
     getDb,
     r2Upload,
+    // Serve a rileggere da R2 i documenti caricati e allegarli all'email
+    // interna: senza, a info@houzly.it arriva il solo contratto.
+    r2GetSignedUrl,
     resend,
     validateTaxCode,
   }));
