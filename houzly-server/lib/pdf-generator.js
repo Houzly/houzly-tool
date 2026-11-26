@@ -80,16 +80,83 @@ function sostituisci(testo, dati) {
 }
 
 /**
+ * Dai campi separati dell'anagrafica ricava i composti leggibili usati nel
+ * testo del contratto. I separati sono la verità — li vogliono così DAC7, CU
+ * e 770 — ma un contratto non si legge a campi, quindi qui si ricompongono.
+ * Un pezzo mancante viene saltato invece di lasciare virgole orfane.
+ */
+function arricchisciPersona(p = {}) {
+  const pezzi = (...v) => v.filter((x) => x && String(x).trim()).join(' ');
+
+  const nomeCompleto = p.ragioneSociale
+    ? p.ragioneSociale
+    : pezzi(p.nome, p.cognome) || p.nomeCognome || '';
+
+  const luogoNascitaCompleto = p.comuneNascita
+    ? p.comuneNascita + (p.provNascita ? ` (${String(p.provNascita).toUpperCase()})` : '')
+    : p.luogoNascita || '';
+
+  // "Via Roma 4, 52028 Terranuova Bracciolini (AR)"
+  const civico = pezzi(p.via, p.civico);
+  const localita = pezzi(p.cap, p.comune);
+  const residenzaCompleta = civico || localita
+    ? [civico, localita].filter(Boolean).join(', ') +
+      (p.provincia ? ` (${String(p.provincia).toUpperCase()})` : '')
+    : p.residenza || '';
+
+  return {
+    ...p,
+    nomeCompleto,
+    luogoNascitaCompleto,
+    residenzaCompleta,
+    cfPiva: p.cfPiva || pezzi(p.cf) || p.piva || '',
+  };
+}
+
+/**
+ * Stessa logica per l'immobile: indirizzo leggibile dai campi strutturati.
+ * I fallback sui nomi vecchi (foglio, particella…) servono alle pratiche
+ * aperte prima della v1.9, che altrimenti stamperebbero righe vuote.
+ */
+function arricchisciImmobile(i = {}) {
+  const pezzi = (...v) => v.filter((x) => x && String(x).trim()).join(' ');
+  const strada = pezzi(i.tipoVia, i.viaNome, i.civico);
+  const localita = pezzi(i.cap, i.comune);
+  const indirizzoCompleto = strada || localita
+    ? [strada, localita].filter(Boolean).join(', ') +
+      (i.provincia ? ` (${String(i.provincia).toUpperCase()})` : '')
+    : i.indirizzo || '';
+  return {
+    ...i,
+    indirizzoCompleto,
+    catFoglio: i.catFoglio || i.foglio || '',
+    catPart: i.catPart || i.particella || '',
+    catSub: i.catSub || i.subalterno || '',
+    catCat: i.catCat || i.categoria || '',
+  };
+}
+
+/**
  * Costruisce il blocco "E" delle parti: un solo capoverso se il proprietario è
  * unico, altrimenti intro + una voce per ciascun comproprietario + chiusura.
  * In caso di accredito suddiviso, a ogni voce si aggiunge il suo IBAN.
  */
-function bloccoParti(template, caso, condivisa, suddiviso) {
-  if (!condivisa) return [sostituisci(template.mandante, { mandante: caso.mandante || {} })];
-  const m = template.mandanteMultiplo;
-  if (!m) return [sostituisci(template.mandante, { mandante: caso.mandante || {} })];
+function bloccoParti(template, caso, condivisa, suddiviso, azienda) {
+  const mandante = arricchisciPersona(caso.mandante);
 
-  const parti = [caso.mandante || {}, ...(caso.comproprietari || [])];
+  if (!condivisa) {
+    // Una società non ha luogo e data di nascita, e firma per il legale
+    // rappresentante: serve un capoverso diverso, non lo stesso con buchi.
+    const modello = azienda && template.mandanteAzienda
+      ? template.mandanteAzienda
+      : template.mandante;
+    return [sostituisci(modello, { mandante })];
+  }
+
+  const m = template.mandanteMultiplo;
+  if (!m) return [sostituisci(template.mandante, { mandante })];
+
+  const parti = [mandante, ...(caso.comproprietari || []).map(arricchisciPersona)];
   const voci = parti.map((p) => {
     let t = sostituisci(m.voce, p);
     if (suddiviso && p.iban) t = t.replace(/;$/, `, IBAN **${p.iban}**;`);
@@ -121,19 +188,34 @@ function risolviTemplate(template, caso) {
   const condivisa = comproprietari.length > 0;
   const suddiviso = (caso.pagamento || {}).modalita === 'suddiviso';
 
+  // Il tipo soggetto lo decide Houzly alla creazione, non il proprietario:
+  // è da lì che discende se c'è la ritenuta e quale art. 8 va nel contratto.
+  const azienda = (caso.mandante || {}).tipoSoggetto === 'azienda';
+  const ritenuta = cond.ritenuta !== undefined ? !!cond.ritenuta : !azienda;
+  const pattuizioni = String(cond.pattuizioni || '').trim();
+
   // Flag usati dai `soloSe` di premesse, articoli e commi.
   const flag = {
     proprietaEsclusiva: !condivisa,
     proprietaCondivisa: condivisa,
     pagamentoUnico: condivisa && !suddiviso,
     pagamentoSuddiviso: condivisa && suddiviso,
+    personaFisica: !azienda,
+    azienda,
+    ritenutaAttiva: ritenuta,
+    ritenutaNonAttiva: !ritenuta,
+    conPattuizioni: !!pattuizioni,
   };
 
   const dati = {
-    mandante: caso.mandante || {},
-    immobile: caso.immobile || {},
+    mandante: arricchisciPersona(caso.mandante),
+    pattuizioni,
+    immobile: arricchisciImmobile(caso.immobile),
     ...template.defaults,
     ...cond,
+    // `pattuizioni` è già nel testo dell'art. 20: non deve finire anche fra i
+    // valori sostituibili con la stringa grezza di `cond`.
+    pattuizioni,
     servizi11bisOggetto: oggettoServizi(verde, piscina),
   };
 
@@ -180,14 +262,20 @@ function risolviTemplate(template, caso) {
     intestazione: template.intestazione,
     preambolo: template.preambolo,
     mandataria: template.mandataria,
-    mandante: mappaTesto(template.mandante),
-    mandanteBlocchi: bloccoParti(template, caso, condivisa, suddiviso),
+    // Campo storico, tenuto per gli snapshot generati prima dei blocchi
+    // multipli: deve riportare lo stesso testo che finisce nel PDF, non la
+    // variante persona fisica applicata a un'azienda.
+    mandante: bloccoParti(template, caso, false, false, azienda)[0],
+    mandanteBlocchi: bloccoParti(template, caso, condivisa, suddiviso, azienda),
     premesse: template.premesse
       .filter(visibile)
       .map((p) => ({ ...p, testo: mappaTesto(p.testo) })),
     articoli,
     clausoleVessatorie: clausole,
-    glossario: template.glossario,
+    glossario: {
+      ...template.glossario,
+      voci: template.glossario.voci.filter(visibile),
+    },
     condizioniApplicate: dati,
   };
 }
