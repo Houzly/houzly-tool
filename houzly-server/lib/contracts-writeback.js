@@ -319,7 +319,10 @@ async function scriviCopropsProprietario(col, ownerId, coprops) {
   const cf = (c) => String(c.cf || '').toUpperCase().trim();
   const nomeDi = (c) => `${c.nome || ''} ${c.cognome || ''}`.replace(/\s+/g, ' ').trim().toUpperCase();
 
-  let aggiunti = 0;
+  // Si tiene traccia di QUALI sono stati aggiunti, non di quanti: serve
+  // all'eliminazione della pratica, che deve togliere i comproprietari che
+  // ha portato lei e lasciare quelli che c'erano già.
+  const aggiunti = [];
   for (const nuovo of coprops) {
     const gia = elenco.find((c) =>
       (cf(nuovo) && cf(c) === cf(nuovo)) ||
@@ -329,7 +332,7 @@ async function scriviCopropsProprietario(col, ownerId, coprops) {
       Object.assign(gia, nuovo); // `nuovo` contiene solo campi pieni
     } else {
       elenco.push({ ...COPROP_VUOTO, ...nuovo });
-      aggiunti += 1;
+      aggiunti.push({ cf: cf(nuovo), nome: nomeDi(nuovo) });
     }
   }
 
@@ -439,7 +442,8 @@ async function applicaWriteBack(getDb, caso) {
   esito.coprops = coprops.length;
 
   esito.contrattoId = await scriviRigaContratto(col, caso, ownerId, propertyId, coprops);
-  esito.copropsNuovi = await scriviCopropsProprietario(col, ownerId, coprops);
+  esito.copropsAggiunti = await scriviCopropsProprietario(col, ownerId, coprops);
+  esito.copropsNuovi = esito.copropsAggiunti.length;
 
   return esito;
 }
@@ -504,6 +508,163 @@ async function scriviRigaContratto(col, caso, ownerId, propertyId, coprops) {
     { $push: { contratti: { id, ...campi, created: ora, updated: ora } } }
   );
   return id;
+}
+
+/* ------------------------------------------------------------------ *
+ * Eliminazione di una pratica e di ciò che ha scritto
+ * ------------------------------------------------------------------ */
+
+/**
+ * Quante volte un id compare nel resto del documento di stato.
+ *
+ * Serve a non cancellare un proprietario o un immobile che nel frattempo
+ * qualcosa usa: una prenotazione, un anticipo, una ricevuta, un altro
+ * contratto. Si cerca l'id ovunque invece di controllare un elenco fisso di
+ * campi, perché il gestionale ha una trentina di raccolte e una dimenticata
+ * si pagherebbe con un riferimento rotto che salta fuori mesi dopo.
+ *
+ * `escludi` sono le raccolte in cui l'id può comparire legittimamente perché
+ * stanno per essere rimosse anche loro, e `idProprio` è l'elemento stesso,
+ * che ovviamente contiene il proprio id.
+ */
+function usatoAltrove(stato, id, { escludi = [], saltaElementoConId = true } = {}) {
+  if (!id) return [];
+  const dove = [];
+
+  const cerca = (valore, percorso) => {
+    if (dove.length > 6) return; // bastano i primi per capire
+    if (valore === id) { dove.push(percorso); return; }
+    if (Array.isArray(valore)) {
+      valore.forEach((v, i) => cerca(v, `${percorso}[${i}]`));
+      return;
+    }
+    if (valore && typeof valore === 'object') {
+      if (saltaElementoConId && valore.id === id) return; // è l'elemento stesso
+      for (const k of Object.keys(valore)) cerca(valore[k], percorso ? `${percorso}.${k}` : k);
+    }
+  };
+
+  for (const chiave of Object.keys(stato)) {
+    if (chiave === '_id' || escludi.includes(chiave)) continue;
+    cerca(stato[chiave], chiave);
+  }
+  return dove;
+}
+
+/**
+ * Cosa verrebbe rimosso eliminando una pratica, senza rimuovere niente.
+ *
+ * La regola: si tocca solo ciò che la pratica ha creato. Il write-back ha
+ * registrato se proprietario e immobile li ha creati lui o li ha trovati
+ * già in anagrafica; un proprietario che esisteva prima resta dov'è, al
+ * massimo perde i comproprietari che questa pratica gli ha aggiunto.
+ */
+async function anteprimaEliminazione(getDb, caso) {
+  const col = await statoCol(getDb);
+  const stato = (await col.findOne({ _id: DOC_STATO })) || {};
+  const wb = caso.writeBack || {};
+
+  const contratti = stato.contratti || [];
+  const riga = contratti.find((k) => k.pratica_rif && k.pratica_rif === caso.riferimento) || null;
+
+  const esito = {
+    riferimento: caso.riferimento,
+    stato: caso.stato,
+    fileR2: (caso.allegati || []).filter((a) => a.r2Key).length + (caso.pdfFinale?.r2Key ? 1 : 0),
+    rigaContratto: riga ? { id: riga.id, data: riga.data } : null,
+    immobile: null,
+    proprietario: null,
+    coprops: (wb.copropsAggiunti || []).map((c) => c.nome || c.cf),
+  };
+
+  // Escludendo `contratti`: la riga di questa pratica sparisce comunque.
+  const senzaContratti = { escludi: ['contratti'] };
+
+  if (wb.propCreata && wb.propertyId) {
+    const p = (stato.proprieta || []).find((x) => x.id === wb.propertyId);
+    const usi = usatoAltrove(stato, wb.propertyId, senzaContratti);
+    esito.immobile = p
+      ? { id: p.id, nome: p.nome || '(senza nome)', eliminabile: !usi.length, usatoIn: usi }
+      : null;
+  }
+
+  if (wb.ownerCreato && wb.ownerId) {
+    const o = (stato.proprietari || []).find((x) => x.id === wb.ownerId);
+    // L'immobile di questa pratica punta al proprietario: non conta come uso
+    // esterno, perché sta per essere rimosso anche lui.
+    const usi = usatoAltrove(stato, wb.ownerId, senzaContratti)
+      .filter((d) => !(esito.immobile?.eliminabile && d.startsWith('proprieta[')));
+    esito.proprietario = o
+      ? {
+        id: o.id,
+        nome: [o.nome, o.cognome].filter(Boolean).join(' ') || o.ragione_sociale || '(senza nome)',
+        eliminabile: !usi.length,
+        usatoIn: usi,
+      }
+      : null;
+  }
+
+  return esito;
+}
+
+/**
+ * Rimuove dalle anagrafiche ciò che la pratica aveva scritto.
+ * Non tocca il documento della pratica né i file su R2: quelli li gestisce
+ * la rotta, che sa anche come parlare con R2.
+ */
+async function eliminaScritture(getDb, caso) {
+  const col = await statoCol(getDb);
+  const piano = await anteprimaEliminazione(getDb, caso);
+  const wb = caso.writeBack || {};
+  const fatto = { rigaContratto: false, immobile: false, proprietario: false, coprops: 0, tenuti: [] };
+
+  if (piano.rigaContratto) {
+    await col.updateOne(
+      { _id: DOC_STATO },
+      { $pull: { contratti: { pratica_rif: caso.riferimento } } }
+    );
+    fatto.rigaContratto = true;
+  }
+
+  // Comproprietari aggiunti a un proprietario che esisteva già: il
+  // proprietario resta, i comproprietari portati da questa pratica no.
+  const aggiunti = wb.copropsAggiunti || [];
+  if (aggiunti.length && wb.ownerId && !wb.ownerCreato) {
+    const s = await col.findOne({ _id: DOC_STATO }, { projection: { proprietari: 1 } });
+    const o = (s?.proprietari || []).find((x) => x.id === wb.ownerId);
+    if (o) {
+      const daTogliere = new Set(aggiunti.map((c) => (c.cf || c.nome || '').toUpperCase()));
+      const restano = (o.coprops || []).filter((c) => {
+        const chiavi = [
+          String(c.cf || '').toUpperCase(),
+          `${c.nome || ''} ${c.cognome || ''}`.replace(/\s+/g, ' ').trim().toUpperCase(),
+        ].filter(Boolean);
+        return !chiavi.some((k) => daTogliere.has(k));
+      });
+      fatto.coprops = (o.coprops || []).length - restano.length;
+      if (fatto.coprops) await aggiornaElemento(col, 'proprietari', wb.ownerId, { coprops: restano });
+    }
+  }
+
+  if (piano.immobile) {
+    if (piano.immobile.eliminabile) {
+      await col.updateOne({ _id: DOC_STATO }, { $pull: { proprieta: { id: piano.immobile.id } } });
+      fatto.immobile = true;
+    } else {
+      fatto.tenuti.push(`immobile "${piano.immobile.nome}" (usato da ${piano.immobile.usatoIn[0]})`);
+    }
+  }
+
+  if (piano.proprietario) {
+    if (piano.proprietario.eliminabile) {
+      await col.updateOne({ _id: DOC_STATO }, { $pull: { proprietari: { id: piano.proprietario.id } } });
+      fatto.proprietario = true;
+    } else {
+      fatto.tenuti.push(`proprietario "${piano.proprietario.nome}" (usato da ${piano.proprietario.usatoIn[0]})`);
+    }
+  }
+
+  return fatto;
 }
 
 /**
@@ -572,6 +733,9 @@ function campiFiscaliMancanti(caso) {
 
 module.exports = {
   applicaWriteBack,
+  anteprimaEliminazione,
+  eliminaScritture,
+  datiDaCodiceFiscale,
   nomeProprieta,
   rigaContratto,
   campiFiscaliMancanti,
