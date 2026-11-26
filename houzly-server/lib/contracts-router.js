@@ -13,8 +13,10 @@ const express = require('express');
 const { getTemplate, VERSIONE_ATTIVA } = require('../templates');
 const { risolviTemplate, generaPdf, nomeMandante } = require('./pdf-generator');
 const store = require('./contracts-store');
-const { applicaWriteBack, campiFiscaliMancanti, anteprimaEliminazione, eliminaScritture } =
-  require('./contracts-writeback');
+const {
+  applicaWriteBack, campiFiscaliMancanti, anteprimaEliminazione, eliminaScritture,
+  anteprimaPulizia, applicaPulizia,
+} = require('./contracts-writeback');
 
 /** Sede di Houzly: luogo di conclusione di ogni contratto. */
 const LUOGO_FIRMA_STANDARD = 'Terranuova Bracciolini';
@@ -433,6 +435,50 @@ function createContractsAdminRouter(deps) {
   });
 
   // GET /api/contracts/:riferimento — dettaglio
+  /* — pulizia dei residui —
+   *
+   * Registrate prima di /:riferimento: Express prende la prima rotta che
+   * combacia, e 'pulizia' su un solo segmento verrebbe scambiato per il
+   * riferimento di una pratica. */
+
+  /** Riferimenti delle pratiche che esistono ancora: tutto ciò che in
+   *  anagrafica ne cita uno diverso è un residuo. */
+  async function riferimentiVivi() {
+    const col = await store.cases(getDb);
+    const righe = await col.find({}, { projection: { riferimento: 1 } }).toArray();
+    return righe.map((r) => r.riferimento).filter(Boolean);
+  }
+
+  // GET /api/contracts/pulizia — cosa è rimasto appeso a pratiche sparite
+  router.get('/pulizia', async (req, res) => {
+    try {
+      res.json({ ok: true, anteprima: await anteprimaPulizia(getDb, await riferimentiVivi()) });
+    } catch (e) {
+      console.error('[contracts/pulizia]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/contracts/pulizia — rimuove i residui scelti
+  router.post('/pulizia', async (req, res) => {
+    try {
+      const b = req.body || {};
+      if (b.conferma !== 'PULISCI') {
+        return res.status(400).json({ ok: false, error: 'conferma_mancante' });
+      }
+      const fatto = await applicaPulizia(getDb, await riferimentiVivi(), {
+        contratti: Array.isArray(b.contratti) ? b.contratti : [],
+        immobili: Array.isArray(b.immobili) ? b.immobili : [],
+        proprietari: Array.isArray(b.proprietari) ? b.proprietari : [],
+      });
+      console.log('[contracts/pulizia] ' + JSON.stringify(fatto));
+      res.json({ ok: true, ...fatto });
+    } catch (e) {
+      console.error('[contracts/pulizia]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   router.get('/:riferimento', async (req, res) => {
     try {
       const col = await store.cases(getDb);
