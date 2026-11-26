@@ -13,7 +13,8 @@ const express = require('express');
 const { getTemplate, VERSIONE_ATTIVA } = require('../templates');
 const { risolviTemplate, generaPdf, nomeMandante } = require('./pdf-generator');
 const store = require('./contracts-store');
-const { applicaWriteBack, campiFiscaliMancanti } = require('./contracts-writeback');
+const { applicaWriteBack, campiFiscaliMancanti, anteprimaEliminazione, eliminaScritture } =
+  require('./contracts-writeback');
 
 /** Sede di Houzly: luogo di conclusione di ogni contratto. */
 const LUOGO_FIRMA_STANDARD = 'Terranuova Bracciolini';
@@ -293,7 +294,7 @@ function elencoClausole(caso) {
  * ══════════════════════════════════════════════════════════════════ */
 
 function createContractsAdminRouter(deps) {
-  const { getDb, resend, r2GetSignedUrl, APP_BASE_URL } = deps;
+  const { getDb, resend, r2GetSignedUrl, r2Delete, APP_BASE_URL } = deps;
   const router = express.Router();
 
   // POST /api/contracts — crea la pratica e invia l'invito
@@ -486,6 +487,73 @@ function createContractsAdminRouter(deps) {
       const url = await r2GetSignedUrl(a.r2Key, 300);
       res.redirect(url);
     } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/contracts/:riferimento/eliminazione — cosa verrebbe cancellato
+  //
+  // Si mostra prima di chiedere conferma: "elimina il contratto" non dice se
+  // sparisce anche il proprietario, e una prova fatta su un proprietario
+  // vero non deve portarselo via.
+  router.get('/:riferimento/eliminazione', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+      res.json({ ok: true, anteprima: await anteprimaEliminazione(getDb, caso) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // DELETE /api/contracts/:riferimento — elimina pratica, file e scritture
+  //
+  // Nasce per ripulire le prove, ma vale per qualsiasi pratica, quindi la
+  // conferma non è un sì: va rimandato indietro il riferimento esatto. Una
+  // pratica firmata è un documento sottoscritto, e questa è l'unica cosa che
+  // impedisce di cancellarla con un clic di troppo.
+  router.delete('/:riferimento', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+
+      if ((req.body || {}).conferma !== caso.riferimento) {
+        return res.status(400).json({ ok: false, error: 'conferma_mancante' });
+      }
+
+      const scritture = await eliminaScritture(getDb, caso);
+
+      // File su R2. Un fallimento qui non ferma l'eliminazione: resterebbe
+      // una pratica a metà, peggio di un file orfano nel bucket.
+      const chiavi = [
+        ...(caso.allegati || []).map((a) => a.r2Key),
+        caso.pdfFinale?.r2Key,
+      ].filter(Boolean);
+      let fileRimossi = 0;
+      if (typeof r2Delete === 'function') {
+        for (const k of chiavi) {
+          try { await r2Delete(k); fileRimossi += 1; } catch (e) {
+            console.error('[contracts/elimina] file non rimosso:', k, e.message);
+          }
+        }
+      }
+
+      await col.deleteOne({ _id: caso._id });
+
+      console.log(`[contracts/elimina] ${caso.riferimento} eliminata — ` +
+        `${fileRimossi}/${chiavi.length} file, scritture: ${JSON.stringify(scritture)}`);
+
+      res.json({
+        ok: true,
+        riferimento: caso.riferimento,
+        fileRimossi,
+        fileTotali: chiavi.length,
+        ...scritture,
+      });
+    } catch (e) {
+      console.error('[contracts/elimina]', e);
       res.status(500).json({ ok: false, error: e.message });
     }
   });
