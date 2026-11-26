@@ -386,6 +386,10 @@ async function applicaWriteBack(getDb, caso) {
       fisc_iva22: false,
       fisc_cedolare: true,
       houzly_perc: 20,
+      // Firma di provenienza: dice che questa scheda l'ha creata una pratica,
+      // e quale. Senza, una volta eliminata la pratica non ci sarebbe modo di
+      // distinguere un residuo da un proprietario inserito a mano.
+      creato_da_contratto: caso.riferimento || null,
       ...campiOwner,
     });
     esito.ownerCreato = true;
@@ -413,6 +417,7 @@ async function applicaWriteBack(getDb, caso) {
       id: propertyId,
       coprops: [],
       pulizie_owner: false,
+      creato_da_contratto: caso.riferimento || null,
       ...campiImm,
     });
     esito.propCreata = true;
@@ -667,6 +672,137 @@ async function eliminaScritture(getDb, caso) {
   return fatto;
 }
 
+/* ------------------------------------------------------------------ *
+ * Pulizia dei residui
+ * ------------------------------------------------------------------ */
+
+/**
+ * Cerca in anagrafica quello che è rimasto appeso a pratiche che non ci
+ * sono più.
+ *
+ * Succede dopo le prove, o se una pratica viene eliminata quando il suo
+ * immobile risultava ancora usato e poi quell'uso sparisce. Si distingue fra
+ * due gradi di certezza, perché non sono la stessa cosa:
+ *
+ * - "orfani": portano la firma `creato_da_contratto` di una pratica che non
+ *   esiste più. Qui si sa con certezza da dove vengono.
+ * - "inutilizzati": nessuno li nomina da nessuna parte, ma non portano
+ *   firma. Possono essere residui di prove fatte prima, oppure un
+ *   proprietario inserito a mano e non ancora attivo: si elencano, non si
+ *   cancellano da soli.
+ *
+ * In nessuno dei due casi si rimuove qualcosa di cui esista un uso.
+ */
+async function anteprimaPulizia(getDb, riferimentiVivi) {
+  const col = await statoCol(getDb);
+  const stato = (await col.findOne({ _id: DOC_STATO })) || {};
+  const vivi = new Set(riferimentiVivi || []);
+
+  const contratti = stato.contratti || [];
+  const proprieta = stato.proprieta || [];
+  const proprietari = stato.proprietari || [];
+
+  // Righe di contratto che puntano a una pratica sparita.
+  const contrattiOrfani = contratti
+    .filter((k) => k.pratica_rif && !vivi.has(k.pratica_rif))
+    .map((k) => ({
+      id: k.id,
+      pratica: k.pratica_rif,
+      proprietario: (() => {
+        const o = proprietari.find((x) => x.id === k.owner_id);
+        return o ? [o.nome, o.cognome].filter(Boolean).join(' ') || o.ragione_sociale || k.owner_id : k.owner_id;
+      })(),
+      data: k.data || null,
+    }));
+
+  // Le righe orfane stanno per sparire: non devono far sembrare "usati"
+  // il proprietario e l'immobile che nominano.
+  const idOrfani = new Set(contrattiOrfani.map((k) => k.id));
+  const statoSenzaOrfani = {
+    ...stato,
+    contratti: contratti.filter((k) => !idOrfani.has(k.id)),
+  };
+
+  const schede = (elenco, tipo, istantanea) => {
+    const orfani = [];
+    const inutilizzati = [];
+    for (const r of elenco) {
+      const usi = usatoAltrove(istantanea, r.id, {});
+      if (usi.length) continue;
+      const nome = tipo === 'proprieta'
+        ? (r.nome || '(senza nome)')
+        : ([r.nome, r.cognome].filter(Boolean).join(' ') || r.ragione_sociale || '(senza nome)');
+      const voce = { id: r.id, nome, pratica: r.creato_da_contratto || null };
+      if (r.creato_da_contratto && !vivi.has(r.creato_da_contratto)) orfani.push(voce);
+      else if (!r.creato_da_contratto) inutilizzati.push(voce);
+    }
+    return { orfani, inutilizzati };
+  };
+
+  const imm = schede(proprieta, 'proprieta', statoSenzaOrfani);
+
+  // I proprietari si valutano su un'istantanea senza gli immobili che stanno
+  // per essere rimossi. Altrimenti un proprietario di prova resterebbe per
+  // sempre: il suo unico immobile, orfano quanto lui, lo cita e lo fa
+  // sembrare in uso.
+  const idImmFuori = new Set(imm.orfani.map((x) => x.id));
+  const statoSenzaImmobili = {
+    ...statoSenzaOrfani,
+    proprieta: (statoSenzaOrfani.proprieta || []).filter((p) => !idImmFuori.has(p.id)),
+  };
+  const own = schede(proprietari, 'proprietari', statoSenzaImmobili);
+
+  return {
+    contrattiOrfani,
+    immobiliOrfani: imm.orfani,
+    immobiliInutilizzati: imm.inutilizzati,
+    proprietariOrfani: own.orfani,
+    proprietariInutilizzati: own.inutilizzati,
+    totale: contrattiOrfani.length + imm.orfani.length + own.orfani.length,
+  };
+}
+
+/**
+ * Rimuove i residui indicati. Ogni id viene ricontrollato qui: l'elenco
+ * arriva dal browser, e fra l'anteprima e la conferma può essere cambiato
+ * qualcosa — o l'elenco stesso.
+ */
+async function applicaPulizia(getDb, riferimentiVivi, scelte = {}) {
+  const col = await statoCol(getDb);
+  const piano = await anteprimaPulizia(getDb, riferimentiVivi);
+  const fatto = { contratti: 0, immobili: 0, proprietari: 0, rifiutati: [] };
+
+  const ammessi = (gruppi, chiesti) => {
+    const validi = new Map();
+    gruppi.flat().forEach((v) => validi.set(v.id, v));
+    return (chiesti || []).filter((id) => {
+      if (validi.has(id)) return true;
+      fatto.rifiutati.push(id);
+      return false;
+    });
+  };
+
+  for (const id of ammessi([piano.contrattiOrfani], scelte.contratti)) {
+    await col.updateOne({ _id: DOC_STATO }, { $pull: { contratti: { id } } });
+    fatto.contratti += 1;
+  }
+  for (const id of ammessi([piano.immobiliOrfani, piano.immobiliInutilizzati], scelte.immobili)) {
+    await col.updateOne({ _id: DOC_STATO }, { $pull: { proprieta: { id } } });
+    fatto.immobili += 1;
+  }
+  // I proprietari per ultimi: un immobile appena rimosso non deve più
+  // contare come uso del suo proprietario.
+  const dopo = await anteprimaPulizia(getDb, riferimentiVivi);
+  const idOwnerOk = new Set([...dopo.proprietariOrfani, ...dopo.proprietariInutilizzati].map((v) => v.id));
+  for (const id of (scelte.proprietari || [])) {
+    if (!idOwnerOk.has(id)) { fatto.rifiutati.push(id); continue; }
+    await col.updateOne({ _id: DOC_STATO }, { $pull: { proprietari: { id } } });
+    fatto.proprietari += 1;
+  }
+
+  return fatto;
+}
+
 /**
  * Elenca i campi che DAC7, CU e 770 richiedono e che risultano ancora vuoti.
  * Non blocca la firma — un contratto valido non può dipendere da un campo
@@ -735,6 +871,8 @@ module.exports = {
   applicaWriteBack,
   anteprimaEliminazione,
   eliminaScritture,
+  anteprimaPulizia,
+  applicaPulizia,
   datiDaCodiceFiscale,
   nomeProprieta,
   rigaContratto,
