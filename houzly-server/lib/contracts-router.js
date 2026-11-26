@@ -11,7 +11,7 @@
 
 const express = require('express');
 const { getTemplate, VERSIONE_ATTIVA } = require('../templates');
-const { risolviTemplate, generaPdf } = require('./pdf-generator');
+const { risolviTemplate, generaPdf, nomeMandante } = require('./pdf-generator');
 const store = require('./contracts-store');
 const { applicaWriteBack, campiFiscaliMancanti } = require('./contracts-writeback');
 
@@ -38,6 +38,119 @@ const TIPI_ALLEGATO = [
  * visura                 → verifica titolarità e dati catastali dichiarati
  */
 const ALLEGATI_OBBLIGATORI = ['documento_fronte', 'documento_retro', 'visura'];
+
+/* ── Documenti d'identità: uno per ogni titolare ───────────────────────
+ *
+ * Non basta il documento di chi firma. Chi firma dichiara di agire anche
+ * in nome degli altri comproprietari (premessa a-bis), e quella
+ * dichiarazione va verificata: senza il documento di ciascuno non si sa
+ * se le persone indicate in visura sono davvero quelle dichiarate, né si
+ * possono controllare i codici fiscali che finiscono in CU e DAC7.
+ *
+ * Il soggetto è `mandante` oppure `cp<indice>` (cp0, cp1, …) secondo la
+ * posizione nell'array `comproprietari`. Un allegato senza `soggetto` è
+ * del mandante: è così che restano validi gli allegati delle pratiche
+ * caricate prima di questa modifica.
+ */
+const SOGGETTO_MANDANTE = 'mandante';
+
+function etichettaSoggetto(soggetto, caso) {
+  if (soggetto === SOGGETTO_MANDANTE) {
+    const m = caso.mandante || {};
+    const nome = m.tipoSoggetto === 'azienda'
+      ? [m.legaleRapp, m.ragioneSociale && `(${m.ragioneSociale})`].filter(Boolean).join(' ')
+      : [m.nome, m.cognome].filter(Boolean).join(' ');
+    return nome || 'Firmatario';
+  }
+  const i = Number(String(soggetto).slice(2));
+  const c = (caso.comproprietari || [])[i] || {};
+  return [c.nome, c.cognome].filter(Boolean).join(' ') || `Comproprietario ${i + 1}`;
+}
+
+/** Elenco dei documenti d'identità attesi, uno per titolare. */
+function documentiRichiesti(caso) {
+  const elenco = [{
+    soggetto: SOGGETTO_MANDANTE,
+    etichetta: etichettaSoggetto(SOGGETTO_MANDANTE, caso),
+    tipi: ['documento_fronte', 'documento_retro'],
+  }];
+  (caso.comproprietari || []).forEach((c, i) => {
+    // Una riga appena aggiunta e ancora vuota non richiede niente: il
+    // documento si chiede quando c'è una persona a cui attribuirlo.
+    if (!c || (!c.nome && !c.cognome)) return;
+    const soggetto = `cp${i}`;
+    elenco.push({
+      soggetto,
+      etichetta: etichettaSoggetto(soggetto, caso),
+      tipi: ['documento_fronte', 'documento_retro'],
+    });
+  });
+  return elenco;
+}
+
+/** Soggetto di un allegato, con il ripiego per le pratiche di prima. */
+function soggettoAllegato(a) {
+  return a && a.soggetto ? a.soggetto : SOGGETTO_MANDANTE;
+}
+
+const chiave = (v) => String(v || '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+/**
+ * Il documento caricato è davvero di chi occupa oggi quella posizione?
+ *
+ * `cp0`, `cp1` … sono posizioni nell'elenco, e l'elenco si può riordinare:
+ * se il proprietario rimuove il primo comproprietario, il secondo scala al
+ * suo posto e si ritroverebbe il documento di un altro. Al caricamento si
+ * registra quindi anche a chi apparteneva — codice fiscale se c'è, altrimenti
+ * nome e cognome — e qui si verifica che corrisponda ancora. Se non
+ * corrisponde il documento non vale e va chiesto di nuovo: meglio una
+ * richiesta in più che un'identità sbagliata agli atti.
+ */
+function combaciaSoggetto(allegato, persona) {
+  if (!allegato.soggettoCf && !allegato.soggettoNome) return true; // caricato prima di questo controllo
+  if (allegato.soggettoCf && chiave(persona.cf)) {
+    return chiave(allegato.soggettoCf) === chiave(persona.cf);
+  }
+  if (allegato.soggettoNome) {
+    return chiave(allegato.soggettoNome) === chiave(`${persona.nome || ''} ${persona.cognome || ''}`);
+  }
+  return true;
+}
+
+/** La persona che occupa una posizione: `mandante` oppure `cp<indice>`. */
+function personaDelSoggetto(soggetto, caso) {
+  if (soggetto === SOGGETTO_MANDANTE) return caso.mandante || {};
+  return (caso.comproprietari || [])[Number(String(soggetto).slice(2))] || {};
+}
+
+/**
+ * Allegati che mancano per poter firmare: i documenti di ciascun titolare
+ * più la visura, che è una sola per immobile e non appartiene a nessuno.
+ */
+function allegatiMancanti(caso) {
+  const allegati = caso.allegati || [];
+  // 'documento' singolo delle pratiche pre-v1.8 vale come fronte e retro.
+  const vecchioUnico = allegati.some(
+    (a) => a.tipo === 'documento' && soggettoAllegato(a) === SOGGETTO_MANDANTE
+  );
+  const mancanti = [];
+
+  for (const d of documentiRichiesti(caso)) {
+    const persona = personaDelSoggetto(d.soggetto, caso);
+    for (const tipo of d.tipi) {
+      const trovato = allegati.some(
+        (a) => a.tipo === tipo && soggettoAllegato(a) === d.soggetto && combaciaSoggetto(a, persona)
+      );
+      if (trovato) continue;
+      if (vecchioUnico && d.soggetto === SOGGETTO_MANDANTE) continue;
+      mancanti.push({ soggetto: d.soggetto, etichetta: d.etichetta, tipo });
+    }
+  }
+  if (!(caso.allegati || []).some((a) => a.tipo === 'visura')) {
+    mancanti.push({ soggetto: null, etichetta: 'Immobile', tipo: 'visura' });
+  }
+  return mancanti;
+}
 
 /**
  * Campi anagrafici, separati e non accorpati.
@@ -141,8 +254,16 @@ function vistaPubblica(caso) {
     comproprietari: caso.comproprietari || [],
     pagamento: caso.pagamento || { modalita: 'unico' },
     allegatiObbligatori: ALLEGATI_OBBLIGATORI,
+    documentiRichiesti: documentiRichiesti(caso),
+    allegatiMancanti: allegatiMancanti(caso),
     allegati: (caso.allegati || []).map((a) => ({
-      tipo: a.tipo, nomeFile: a.nomeFile, uploadedAt: a.uploadedAt,
+      tipo: a.tipo,
+      soggetto: soggettoAllegato(a),
+      // `valido: false` = caricato per una posizione che ora è di un'altra
+      // persona. Il modulo lo mostra come da rifare, non come fatto.
+      valido: combaciaSoggetto(a, personaDelSoggetto(soggettoAllegato(a), caso)),
+      nomeFile: a.nomeFile,
+      uploadedAt: a.uploadedAt,
     })),
     clausole1341: caso.clausole1341 || {},
     clausoleRichieste: elencoClausole(caso),
@@ -532,6 +653,18 @@ function createContractsPublicRouter(deps) {
       if (!TIPI_ALLEGATO.includes(tipo)) return res.status(400).json({ ok: false, error: 'tipo_non_valido' });
       if (!dataBase64) return res.status(400).json({ ok: false, error: 'file_mancante' });
 
+      // Soggetto a cui appartiene il documento. Si accetta solo un indice che
+      // corrisponde davvero a un comproprietario della pratica: altrimenti si
+      // archivierebbero documenti intestati a nessuno.
+      let soggetto = String((req.body || {}).soggetto || SOGGETTO_MANDANTE);
+      if (soggetto !== SOGGETTO_MANDANTE) {
+        const i = Number(soggetto.replace(/^cp/, ''));
+        const n = (caso.comproprietari || []).length;
+        if (!/^cp\d+$/.test(soggetto) || !Number.isInteger(i) || i < 0 || i >= n) {
+          return res.status(400).json({ ok: false, error: 'soggetto_non_valido' });
+        }
+      }
+
       const buffer = Buffer.from(String(dataBase64).replace(/^data:[^;]+;base64,/, ''), 'base64');
       if (!buffer.length) return res.status(400).json({ ok: false, error: 'file_illeggibile' });
       if (buffer.length > MAX_ALLEGATO_BYTE) {
@@ -539,28 +672,54 @@ function createContractsPublicRouter(deps) {
       }
 
       const estensione = (nomeFile || '').split('.').pop()?.toLowerCase().slice(0, 5) || 'bin';
-      const key = `contratti/${caso.riferimento}/${tipo}-${Date.now()}.${estensione}`;
+      const suffisso = soggetto === SOGGETTO_MANDANTE ? '' : `-${soggetto}`;
+      const key = `contratti/${caso.riferimento}/${tipo}${suffisso}-${Date.now()}.${estensione}`;
       await r2Upload(key, buffer, contentType || 'application/octet-stream');
 
       const col = await store.cases(getDb);
+
+      // Ricaricare lo stesso documento sostituisce il precedente. Senza questo
+      // una foto venuta male resterebbe in archivio accanto a quella buona, e
+      // mesi dopo non si saprebbe quale delle due vale.
+      if (tipo !== 'altro') {
+        await col.updateOne(
+          { _id: caso._id },
+          {
+            $pull: {
+              allegati: soggetto === SOGGETTO_MANDANTE
+                ? { tipo, soggetto: { $in: [null, SOGGETTO_MANDANTE] } }
+                : { tipo, soggetto },
+            },
+          }
+        );
+      }
+
       await col.updateOne(
         { _id: caso._id },
         {
           $push: {
             allegati: {
               tipo,
+              soggetto,
+              // A chi apparteneva al momento del caricamento: serve a
+              // `combaciaSoggetto()` se poi l'elenco cambia ordine.
+              soggettoCf: personaDelSoggetto(soggetto, caso).cf || null,
+              soggettoNome: etichettaSoggetto(soggetto, caso),
               nomeFile: nomeFile || key.split('/').pop(),
               r2Key: key,
               bytes: buffer.length,
               uploadedAt: new Date().toISOString(),
             },
-            audit: store.eventoAudit(`Allegato caricato: ${tipo} (${Math.round(buffer.length / 1024)} KB)`, req),
+            audit: store.eventoAudit(
+              `Allegato caricato: ${tipo} [${etichettaSoggetto(soggetto, caso)}] (${Math.round(buffer.length / 1024)} KB)`,
+              req
+            ),
           },
           $set: { updatedAt: new Date().toISOString() },
         }
       );
 
-      res.json({ ok: true, tipo, bytes: buffer.length });
+      res.json({ ok: true, tipo, soggetto, bytes: buffer.length });
     } catch (e) {
       console.error('[sign/allegato]', e);
       res.status(500).json({ ok: false, error: e.message });
@@ -632,11 +791,17 @@ function createContractsPublicRouter(deps) {
         return res.status(400).json({ ok: false, error: 'dati_mancanti', campi: mancantiAnagrafica });
       }
 
-      // Documento d'identità e visura sono condizione di firma (art. 5.1).
-      const tipiCaricati = (caso.allegati || []).map((a) => a.tipo);
-      const allegatiMancanti = ALLEGATI_OBBLIGATORI.filter((t) => !tipiCaricati.includes(t));
-      if (allegatiMancanti.length) {
-        return res.status(400).json({ ok: false, error: 'allegati_mancanti', tipi: allegatiMancanti });
+      // Documenti d'identità e visura sono condizione di firma (art. 5.1).
+      // I documenti si contano per titolare, non per tipo: con tre
+      // comproprietari servono sei facciate, non due.
+      const mancantiAllegati = allegatiMancanti(caso);
+      if (mancantiAllegati.length) {
+        return res.status(400).json({
+          ok: false,
+          error: 'allegati_mancanti',
+          mancanti: mancantiAllegati,
+          tipi: [...new Set(mancantiAllegati.map((m) => m.tipo))],
+        });
       }
 
       // Comproprietà: ogni titolare deve essere identificato e le quote devono
@@ -845,8 +1010,8 @@ async function inviaCopie({ resend, caso, buffer }) {
 
   await resend.emails.send({
     from: FROM, to: 'info@houzly.it',
-    subject: `[Contratti] ${caso.riferimento} firmato — ${caso.mandante?.nomeCognome || caso.email}`,
-    html: `<p>Contratto ${caso.riferimento} firmato da ${caso.mandante?.nomeCognome || caso.email}.</p>
+    subject: `[Contratti] ${caso.riferimento} firmato — ${nomeMandante(caso.mandante) || caso.email}`,
+    html: `<p>Contratto ${caso.riferimento} firmato da ${nomeMandante(caso.mandante) || caso.email}.</p>
            <p>Struttura: ${caso.nomeStruttura || 'non indicata'}</p>`,
     attachments: allegato,
   });
@@ -856,4 +1021,7 @@ module.exports = {
   createContractsAdminRouter,
   createContractsPublicRouter,
   GIORNI_VALIDITA,
+  // Esposte per i test: sono le regole che decidono se si può firmare.
+  documentiRichiesti,
+  allegatiMancanti,
 };
