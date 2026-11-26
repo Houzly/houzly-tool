@@ -4800,6 +4800,10 @@ try {
     getDb,
     resend,
     r2GetSignedUrl,
+    // Eliminando una pratica se ne portano via anche i file archiviati:
+    // senza, resterebbero su R2 documenti d'identità di una pratica
+    // che non esiste più.
+    r2Delete,
     APP_BASE_URL,
   }));
 
