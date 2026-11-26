@@ -239,6 +239,15 @@ label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
 <script>
 'use strict';
 
+/* Con i campi anagrafici separati `nomeCognome` non esiste più: nelle
+   pratiche nuove va ricomposto, altrimenti l'elenco mostrerebbe un
+   indirizzo email al posto del nome del proprietario. */
+function nomeMandante(m){
+  if(!m) return '';
+  const pezzi=[m.nome,m.cognome].filter(x=>x&&String(x).trim()).join(' ');
+  return pezzi || m.ragioneSociale || m.nomeCognome || '';
+}
+
 const AUTH_KEY = 'houzly_auth_v2';
 const PIN_KEY  = 'houzly_contratti_pin';   // sessionStorage: si svuota alla chiusura della scheda
 const PIN_TOOL = 'onbPin';                 // stessa chiave usata da index.html
@@ -366,7 +375,7 @@ function disegnaElenco(){
   }
 
   el.innerHTML = lista.map(p => {
-    const nome = (p.mandante && p.mandante.nomeCognome) || p.email;
+    const nome = nomeMandante(p.mandante) || p.email;
     const firmata = p.stato === 'firmata';
     const chiusa  = firmata || p.stato === 'annullata';
     const nAll = (p.allegati || []).length;
@@ -645,8 +654,10 @@ async function dettaglio(rif){
   const righe = [];
   righe.push('Stato: ' + (ETICHETTE[p.stato] || p.stato));
   righe.push('Email: ' + p.email);
-  if(p.mandante && p.mandante.nomeCognome) righe.push('Intestatario: ' + p.mandante.nomeCognome);
-  if(p.mandante && p.mandante.cfPiva) righe.push('CF/P.IVA: ' + p.mandante.cfPiva);
+  const _int = nomeMandante(p.mandante);
+  if(_int) righe.push('Intestatario: ' + _int);
+  const _cf = p.mandante && (p.mandante.cf || p.mandante.piva || p.mandante.cfPiva);
+  if(_cf) righe.push('CF/P.IVA: ' + _cf);
   if(p.immobile && p.immobile.indirizzo) righe.push('Immobile: ' + p.immobile.indirizzo);
   if(p.pdfFinale) righe.push('SHA-256: ' + p.pdfFinale.sha256);
   righe.push('');
