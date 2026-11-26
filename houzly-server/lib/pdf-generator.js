@@ -118,6 +118,16 @@ function arricchisciPersona(p = {}) {
  * I fallback sui nomi vecchi (foglio, particella…) servono alle pratiche
  * aperte prima della v1.9, che altrimenti stamperebbero righe vuote.
  */
+/**
+ * Nome del mandante per i metadati e le notifiche. Con i campi separati
+ * `nomeCognome` non esiste più: ricomporlo qui evita che il PDF si
+ * intitoli "bozza" e che la mail interna mostri un indirizzo email.
+ */
+function nomeMandante(m = {}) {
+  const pezzi = (...v) => v.filter((x) => x && String(x).trim()).join(' ');
+  return pezzi(m.nome, m.cognome) || m.ragioneSociale || m.nomeCognome || '';
+}
+
 function arricchisciImmobile(i = {}) {
   const pezzi = (...v) => v.filter((x) => x && String(x).trim()).join(' ');
   const strada = pezzi(i.tipoVia, i.viaNome, i.civico);
@@ -481,7 +491,7 @@ function buildDocDefinition(snapshot, caso, opts = {}) {
     pageSize: 'A4',
     pageMargins: [55, 62, 55, 55],
     info: {
-      title: `Contratto mandato Houzly \u2014 ${(caso.mandante || {}).nomeCognome || 'bozza'}`,
+      title: `Contratto mandato Houzly \u2014 ${nomeMandante(caso.mandante) || 'bozza'}`,
       author: 'Houzly Snc',
       subject: 'Contratto di mandato con rappresentanza e mandato all\u2019incasso',
     },
@@ -724,4 +734,5 @@ function generaPdf(snapshot, caso, opts = {}) {
   });
 }
 
-module.exports = { risolviTemplate, generaPdf, buildDocDefinition, sostituisci };
+module.exports = {
+  nomeMandante, risolviTemplate, generaPdf, buildDocDefinition, sostituisci };
