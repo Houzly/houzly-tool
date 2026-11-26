@@ -80,7 +80,12 @@ input.sbagliato{border-color:var(--errore)}
 .aiuto.attenzione{color:var(--attenzione);font-weight:600}
 .aiuto.buono{color:var(--ok);font-weight:600}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-@media(max-width:420px){.duo{grid-template-columns:1fr}}
+.tris{display:grid;grid-template-columns:1.6fr 1fr 70px;gap:0 10px}
+@media(max-width:430px){.duo{grid-template-columns:1fr}.tris{grid-template-columns:1fr 1fr}}
+.su{text-transform:uppercase}
+.su::placeholder{text-transform:none}
+h3.sotto{font-size:15px;margin:26px 0 10px;padding-top:16px;border-top:1px solid var(--bordo);
+  color:var(--indigo)}
 
 /* ── pulsanti ── */
 .barra{display:flex;gap:10px;margin-top:26px}
@@ -187,56 +192,90 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
     <section id="s1">
       <h2>I suoi dati</h2>
       <p class="occhio">Servono a intestare il contratto e agli adempimenti fiscali che Houzly
-        cura per suo conto.</p>
+        cura per suo conto. Sono separati perché così li richiedono i modelli
+        dell’Agenzia delle Entrate.</p>
 
-      <label><span>Tipo di soggetto</span>
-        <select id="tipoSoggetto">
-          <option value="privato">Persona fisica</option>
-          <option value="azienda">Società o ditta</option>
-        </select>
-      </label>
+      <!-- blocco persona fisica -->
+      <div id="blocco-pf">
+        <div class="duo">
+          <label><span>Nome <i>*</i></span>
+            <input type="text" id="nome" autocomplete="given-name"></label>
+          <label><span>Cognome <i>*</i></span>
+            <input type="text" id="cognome" autocomplete="family-name"></label>
+        </div>
 
-      <label><span id="et-nome">Nome e cognome <i>*</i></span>
-        <input type="text" id="nomeCognome" autocomplete="name"></label>
+        <div class="tris">
+          <label><span>Comune di nascita</span><input type="text" id="comuneNascita"></label>
+          <label><span>Prov.</span><input type="text" id="provNascita" maxlength="2"
+            class="su" autocapitalize="characters"></label>
+          <label><span>Sesso</span>
+            <select id="sesso"><option value="">—</option><option value="M">M</option>
+              <option value="F">F</option></select></label>
+        </div>
 
-      <div class="duo" id="blocco-nascita">
-        <label><span>Luogo di nascita</span>
-          <input type="text" id="luogoNascita"></label>
         <label><span>Data di nascita</span>
-          <input type="text" id="dataNascita" placeholder="gg/mm/aaaa" inputmode="numeric"></label>
+          <input type="date" id="dataNascita"></label>
+
+        <label><span>Codice fiscale <i>*</i></span>
+          <input type="text" id="cf" class="su" spellcheck="false">
+          <div class="aiuto" id="cf-aiuto"></div></label>
       </div>
 
-      <label><span id="et-res">Residenza completa <i>*</i></span>
-        <input type="text" id="residenza" placeholder="Via, numero, CAP, città (prov.)"
+      <!-- blocco azienda -->
+      <div id="blocco-az" style="display:none">
+        <label><span>Ragione sociale <i>*</i></span>
+          <input type="text" id="ragioneSociale"></label>
+        <div class="duo">
+          <label><span>Partita IVA <i>*</i></span>
+            <input type="text" id="piva" inputmode="numeric" spellcheck="false"></label>
+          <label><span>Codice fiscale azienda</span>
+            <input type="text" id="cfAz" class="su" spellcheck="false"></label>
+        </div>
+        <label><span>Legale rappresentante <i>*</i></span>
+          <input type="text" id="legaleRapp" placeholder="Nome e cognome di chi firma"></label>
+        <label><span>Codice destinatario SdI o PEC di fatturazione</span>
+          <input type="text" id="sdi" class="su" spellcheck="false">
+          <div class="aiuto">Serve al suo commercialista per la fattura elettronica.</div></label>
+      </div>
+
+      <h3 class="sotto" id="tit-residenza">Residenza</h3>
+      <label><span>Indirizzo <i>*</i></span>
+        <input type="text" id="via" placeholder="Via e numero civico"
           autocomplete="street-address"></label>
+      <div class="tris">
+        <label><span>CAP</span><input type="text" id="cap" inputmode="numeric" maxlength="5"></label>
+        <label><span>Comune <i>*</i></span><input type="text" id="comune"></label>
+        <label><span>Prov.</span><input type="text" id="provincia" maxlength="2"
+          class="su" autocapitalize="characters"></label>
+      </div>
 
-      <label><span id="et-cf">Codice fiscale <i>*</i></span>
-        <input type="text" id="cfPiva" autocapitalize="characters" spellcheck="false">
-        <div class="aiuto" id="cf-aiuto"></div></label>
-
-      <label><span>IBAN per gli accrediti <i>*</i></span>
-        <input type="text" id="iban" autocapitalize="characters" spellcheck="false"
+      <h3 class="sotto">Contatti e accredito</h3>
+      <label><span>IBAN <i>*</i></span>
+        <input type="text" id="iban" class="su" spellcheck="false"
           placeholder="IT00 A000 0000 000 0000000000">
-        <div class="aiuto">Ci serve per bonificarle il netto entro il giorno 10 di ogni mese.</div></label>
-
+        <div class="aiuto">Il conto su cui le bonifichiamo il netto entro il giorno 10
+          di ogni mese.</div></label>
       <div class="duo">
-        <label><span>PEC</span><input type="email" id="pec" autocomplete="email"
+        <label><span>Email</span><input type="email" id="email" autocomplete="email"
           autocapitalize="none" spellcheck="false"></label>
         <label><span>Telefono</span><input type="tel" id="telefono" autocomplete="tel"></label>
       </div>
+      <label><span>PEC</span><input type="email" id="pec" autocapitalize="none"
+        spellcheck="false"></label>
 
-      <h3 style="font-size:16px;margin:26px 0 6px">Proprietà dell'immobile</h3>
-      <p class="occhio" style="margin-bottom:14px">Se l'immobile è intestato a più
+      <h3 class="sotto">Proprietà dell’immobile</h3>
+      <p class="occhio" style="margin-bottom:14px">Se l’immobile è intestato a più
         persone, servono i dati di tutte: il contratto deve riportarle.</p>
 
       <label class="clausola" style="cursor:pointer">
         <input type="checkbox" id="condivisa" onchange="cambiaProprieta()">
-        <span>L'immobile è in comproprietà con altre persone</span>
+        <span>L’immobile è in comproprietà con altre persone</span>
       </label>
 
       <div id="blocco-comproprieta" style="display:none">
         <label><span>La sua quota di proprietà (%)</span>
-          <input type="text" id="quota" inputmode="decimal" placeholder="es. 50"></label>
+          <input type="text" id="quota" inputmode="decimal" placeholder="es. 50"
+            oninput="aggiornaSomma()"></label>
 
         <div id="comproprietari"></div>
         <button class="second" type="button" onclick="aggiungiComproprietario()"
@@ -264,32 +303,55 @@ canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
 
     <!-- 2 · immobile -->
     <section id="s2">
-      <h2>L'immobile</h2>
-      <p class="occhio">I dati catastali si trovano sulla visura. Se non li ha sottomano può
-        proseguire e completarli più tardi: quello che scrive resta salvato.</p>
+      <h2>L’immobile</h2>
+      <p class="occhio">I dati catastali si trovano sulla visura, quella che carica al passo
+        successivo. Quello che scrive resta salvato: può interrompere e riprendere.</p>
 
-      <label><span>Indirizzo dell'immobile <i>*</i></span>
-        <input type="text" id="indirizzo" placeholder="Via, numero, CAP, città (prov.)"></label>
+      <div class="tris">
+        <label><span>Tipo</span>
+          <select id="tipoVia">
+            <option value="Via">Via</option><option value="Viale">Viale</option>
+            <option value="Piazza">Piazza</option><option value="Corso">Corso</option>
+            <option value="Strada">Strada</option><option value="Vicolo">Vicolo</option>
+            <option value="Località">Località</option><option value="Borgo">Borgo</option>
+            <option value="Largo">Largo</option><option value="Frazione">Frazione</option>
+          </select></label>
+        <label><span>Nome della via <i>*</i></span><input type="text" id="viaNome"></label>
+        <label><span>Civico</span><input type="text" id="civico"></label>
+      </div>
 
-      <div class="duo">
+      <div class="tris">
+        <label><span>CAP</span><input type="text" id="immCap" inputmode="numeric" maxlength="5"></label>
+        <label><span>Comune <i>*</i></span><input type="text" id="immComune"></label>
+        <label><span>Prov.</span><input type="text" id="immProvincia" maxlength="2"
+          class="su" autocapitalize="characters"></label>
+      </div>
+
+      <div class="tris">
+        <label><span>Scala</span><input type="text" id="scala"></label>
         <label><span>Piano</span><input type="text" id="piano"></label>
         <label><span>Interno</span><input type="text" id="interno"></label>
       </div>
 
-      <div class="duo">
-        <label><span>Foglio</span><input type="text" id="foglio" inputmode="numeric"></label>
-        <label><span>Particella</span><input type="text" id="particella" inputmode="numeric"></label>
-      </div>
+      <h3 class="sotto">Dati catastali</h3>
+      <p class="occhio" style="margin-bottom:14px">Li trova sulla visura, in alto.</p>
+
+      <label><span>Comune catastale</span>
+        <input type="text" id="catComune" placeholder="Di norma coincide col comune"></label>
 
       <div class="duo">
-        <label><span>Subalterno</span><input type="text" id="subalterno" inputmode="numeric"></label>
-        <label><span>Categoria catastale</span><input type="text" id="categoria"
-          placeholder="es. A/2" autocapitalize="characters"></label>
+        <label><span>Foglio</span><input type="text" id="catFoglio" inputmode="numeric"></label>
+        <label><span>Particella</span><input type="text" id="catPart" inputmode="numeric"></label>
+      </div>
+      <div class="duo">
+        <label><span>Subalterno</span><input type="text" id="catSub" inputmode="numeric"></label>
+        <label><span>Categoria</span><input type="text" id="catCat" placeholder="es. A/2"
+          class="su"></label>
       </div>
 
       <label><span>CIN — Codice Identificativo Nazionale</span>
-        <input type="text" id="cin" autocapitalize="characters" spellcheck="false">
-        <div class="aiuto">Se non ce l'ha, lasci vuoto: lo richiediamo noi per suo conto.</div></label>
+        <input type="text" id="cin" class="su" spellcheck="false">
+        <div class="aiuto">Se non ce l’ha, lasci vuoto: lo richiediamo noi per suo conto.</div></label>
 
       <div class="barra">
         <button class="second" onclick="vai(1)">Indietro</button>
@@ -426,7 +488,7 @@ const DOCUMENTI = [
 
 const ETICHETTE = ['Dati personali','Immobile','Documenti','Contratto','Firma','Completato'];
 
-let stato = {passo:1, pratica:null, letto:false, firme:{}, inCorso:false, caricati:[]};
+let stato = {passo:1, pratica:null, letto:false, firme:{}, inCorso:false, caricati:[], azienda:false};
 
 /* ── avvio ─────────────────────────────────────────────────────── */
 
@@ -437,6 +499,7 @@ async function avvia(){
     const d = await r.json();
     if(!d.ok) return bloccaPerErrore(d.error);
     stato.pratica = d.pratica;
+    stato.azienda = d.pratica.tipoSoggetto === 'azienda';
     stato.caricati = (d.pratica.allegati || []).map(a => a.tipo);
 
     if(d.pratica.firmato){
@@ -505,17 +568,33 @@ function disegnaAvanzamento(){
 
 /* ── campi ─────────────────────────────────────────────────────── */
 
-const CAMPI_M = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','iban','pec','telefono','tipoSoggetto','quota'];
-const CAMPI_I = ['indirizzo','piano','interno','foglio','particella','subalterno','categoria','cin'];
+// I campi sono separati perché così li vogliono DAC7, CU e 770: spezzare
+// a posteriori una stringa unica sbaglia proprio nei casi difficili.
+const CAMPI_M = ['nome','cognome','sesso','dataNascita','comuneNascita','provNascita','cf',
+  'ragioneSociale','piva','legaleRapp','sdi','via','cap','comune','provincia',
+  'email','pec','telefono','iban','quota'];
+
+// Alcuni id del form differiscono dal nome del campo per non collidere con
+// gli omonimi dell'immobile (comune, cap, provincia).
+const ID_IMMOBILE = {tipoVia:'tipoVia',viaNome:'viaNome',civico:'civico',scala:'scala',
+  piano:'piano',interno:'interno',cap:'immCap',comune:'immComune',provincia:'immProvincia',
+  catComune:'catComune',catFoglio:'catFoglio',catPart:'catPart',catSub:'catSub',
+  catCat:'catCat',cin:'cin'};
 
 function riempiCampi(p){
   CAMPI_M.forEach(k=>{ const e=document.getElementById(k); if(e&&p.mandante&&p.mandante[k]) e.value=p.mandante[k]; });
-  CAMPI_I.forEach(k=>{ const e=document.getElementById(k); if(e&&p.immobile&&p.immobile[k]) e.value=p.immobile[k]; });
+  // Il CF dell'azienda ha un id proprio perché nel DOM convive con quello PF.
+  if(p.mandante&&p.mandante.cf&&document.getElementById('cfAz')&&p.tipoSoggetto==='azienda')
+    document.getElementById('cfAz').value=p.mandante.cf;
+  Object.entries(ID_IMMOBILE).forEach(([campo,id])=>{
+    const e=document.getElementById(id);
+    if(e&&p.immobile&&p.immobile[campo]) e.value=p.immobile[campo];
+  });
   Object.entries(p.clausole1341||{}).forEach(([k,v])=>{
     const c=document.querySelector(`[data-clausola="${k}"]`);
     if(c&&v){c.checked=true;c.closest('.clausola').classList.add('presa');}
   });
-  aggiornaTipoSoggetto();
+  applicaTipoSoggetto();
 
   if((p.comproprietari||[]).length){
     document.getElementById('condivisa').checked=true;
@@ -530,7 +609,13 @@ function riempiCampi(p){
 function raccogli(){
   const m={},i={};
   CAMPI_M.forEach(k=>{const e=document.getElementById(k); if(e) m[k]=e.value.trim();});
-  CAMPI_I.forEach(k=>{const e=document.getElementById(k); if(e) i[k]=e.value.trim();});
+  // Per un'azienda il codice fiscale da mandare è quello del blocco azienda.
+  if(stato.azienda){
+    const e=document.getElementById('cfAz'); if(e) m.cf=e.value.trim();
+  }
+  Object.entries(ID_IMMOBILE).forEach(([campo,id])=>{
+    const e=document.getElementById(id); if(e) i[campo]=e.value.trim();
+  });
   const c={};
   document.querySelectorAll('[data-clausola]').forEach(e=>{c[e.dataset.clausola]=e.checked;});
   return {
@@ -542,7 +627,8 @@ function raccogli(){
 
 /* ── comproprietari ────────────────────────────────────────────── */
 
-const CAMPI_C = ['nomeCognome','luogoNascita','dataNascita','residenza','cfPiva','quota','iban'];
+const CAMPI_C = ['nome','cognome','sesso','dataNascita','comuneNascita','provNascita',
+  'cf','via','cap','comune','provincia','email','iban','quota'];
 
 // Se la casella non è spuntata l'elenco è vuoto: il contratto torna a proprietario unico.
 function leggiComproprietari(){
@@ -551,7 +637,7 @@ function leggiComproprietari(){
     const o={};
     CAMPI_C.forEach(k=>{ const e=box.querySelector('[data-c="'+k+'"]'); if(e) o[k]=e.value.trim(); });
     return o;
-  }).filter(o=>o.nomeCognome || o.cfPiva);
+  }).filter(o=>o.nome || o.cognome || o.cf);
 }
 
 function cambiaProprieta(){
@@ -582,16 +668,28 @@ function aggiungiComproprietario(dati){
       <b style="font-size:14px">Comproprietario ${n}</b>
       <button class="testuale" type="button" onclick="this.closest('.comproprietario').remove();aggiornaSomma();salvaFraPoco()">Rimuovi</button>
     </div>
-    <label><span>Nome e cognome</span><input type="text" data-c="nomeCognome"></label>
     <div class="duo">
-      <label><span>Luogo di nascita</span><input type="text" data-c="luogoNascita"></label>
-      <label><span>Data di nascita</span><input type="text" data-c="dataNascita" placeholder="gg/mm/aaaa" inputmode="numeric"></label>
+      <label><span>Nome</span><input type="text" data-c="nome"></label>
+      <label><span>Cognome</span><input type="text" data-c="cognome"></label>
     </div>
-    <label><span>Residenza</span><input type="text" data-c="residenza"></label>
+    <div class="tris">
+      <label><span>Comune di nascita</span><input type="text" data-c="comuneNascita"></label>
+      <label><span>Prov.</span><input type="text" data-c="provNascita" maxlength="2" class="su"></label>
+      <label><span>Sesso</span><select data-c="sesso"><option value="">—</option>
+        <option value="M">M</option><option value="F">F</option></select></label>
+    </div>
+    <label><span>Data di nascita</span><input type="date" data-c="dataNascita"></label>
+    <label><span>Indirizzo</span><input type="text" data-c="via" placeholder="Via e numero"></label>
+    <div class="tris">
+      <label><span>CAP</span><input type="text" data-c="cap" inputmode="numeric" maxlength="5"></label>
+      <label><span>Comune</span><input type="text" data-c="comune"></label>
+      <label><span>Prov.</span><input type="text" data-c="provincia" maxlength="2" class="su"></label>
+    </div>
     <div class="duo">
-      <label><span>Codice fiscale</span><input type="text" data-c="cfPiva" autocapitalize="characters" spellcheck="false"></label>
+      <label><span>Codice fiscale</span><input type="text" data-c="cf" class="su" spellcheck="false"></label>
       <label><span>Quota (%)</span><input type="text" data-c="quota" inputmode="decimal" oninput="aggiornaSomma()"></label>
     </div>
+    <label><span>Email</span><input type="email" data-c="email" autocapitalize="none" spellcheck="false"></label>
     <div class="riga-iban" style="display:none">
       <label style="margin-bottom:0"><span>IBAN di questo titolare</span>
         <input type="text" data-c="iban" autocapitalize="characters" spellcheck="false"></label>
@@ -617,8 +715,10 @@ function aggiornaSomma(){
 
 function convalida(passo){
   let obbligatori=[];
-  if(passo===1) obbligatori=['nomeCognome','residenza','cfPiva','iban'];
-  if(passo===2) obbligatori=['indirizzo'];
+  if(passo===1) obbligatori = stato.azienda
+    ? ['ragioneSociale','piva','legaleRapp','via','comune','iban']
+    : ['nome','cognome','cf','via','comune','iban'];
+  if(passo===2) obbligatori=['viaNome','immComune'];
   if(passo===3){
     const caricati=(stato.caricati||[]);
     const mancanti=DOCUMENTI.filter(d=>d.obbl && !caricati.includes(d.tipo));
@@ -644,7 +744,7 @@ function convalida(passo){
   // senza, il contratto non può nemmeno nominarli in epigrafe.
   if(passo===1 && document.getElementById('condivisa').checked){
     const suddiviso = document.getElementById('modalitaPagamento').value==='suddiviso';
-    const richiesti = ['nomeCognome','cfPiva','quota'].concat(suddiviso ? ['iban'] : []);
+    const richiesti = ['nome','cognome','cf','quota'].concat(suddiviso ? ['iban'] : []);
     let primoC=null;
 
     const q=document.getElementById('quota');
@@ -695,8 +795,10 @@ async function salva(){
     const d = await r.json();
     if(d.ok){
       mostraToast('Salvato');
-      if(d.cfValido===false) segnalaCF(false);
-      else if(d.cfValido===true) segnalaCF(true);
+      if(!stato.azienda){
+        if(d.cfValido===false) segnalaCF(false);
+        else if(d.cfValido===true) segnalaCF(true);
+      }
     }
   }catch(e){ /* offline: i dati restano nei campi, si riprova al passo dopo */ }
 }
@@ -718,17 +820,17 @@ document.addEventListener('input',ev=>{
   if(ev.target.matches('input,select,textarea')) salvaFraPoco();
 });
 
-function aggiornaTipoSoggetto(){
-  const azienda = document.getElementById('tipoSoggetto').value==='azienda';
-  document.getElementById('et-nome').innerHTML =
-    (azienda?'Ragione sociale':'Nome e cognome')+' <i>*</i>';
-  document.getElementById('et-res').innerHTML =
-    (azienda?'Sede legale':'Residenza completa')+' <i>*</i>';
-  document.getElementById('et-cf').innerHTML =
-    (azienda?'Partita IVA':'Codice fiscale')+' <i>*</i>';
-  document.getElementById('blocco-nascita').style.display = azienda?'none':'grid';
+/**
+ * Il tipo soggetto lo ha deciso Houzly alla creazione della pratica: qui si
+ * limita a scegliere quale blocco mostrare. Non è modificabile dal cliente,
+ * perché da quella scelta dipende l'art. 8 già scritto nel contratto.
+ */
+function applicaTipoSoggetto(){
+  const az = stato.azienda;
+  document.getElementById('blocco-pf').style.display = az?'none':'block';
+  document.getElementById('blocco-az').style.display = az?'block':'none';
+  document.getElementById('tit-residenza').textContent = az?'Sede legale':'Residenza';
 }
-document.getElementById('tipoSoggetto').addEventListener('change',aggiornaTipoSoggetto);
 
 /* ── documenti ─────────────────────────────────────────────────── */
 
@@ -813,9 +915,11 @@ function leggiBase64(file){
 function riempiRiepilogo(){
   const d=raccogli();
   const righe=[
-    ['Intestatario', d.mandante.nomeCognome],
-    ['Codice fiscale / P.IVA', d.mandante.cfPiva],
-    ['Immobile', d.immobile.indirizzo],
+    ['Intestatario', stato.azienda ? d.mandante.ragioneSociale
+        : [d.mandante.nome, d.mandante.cognome].filter(Boolean).join(' ')],
+    ['Codice fiscale / P.IVA', stato.azienda ? d.mandante.piva : d.mandante.cf],
+    ['Immobile', [d.immobile.tipoVia, d.immobile.viaNome, d.immobile.civico]
+        .filter(Boolean).join(' ') + (d.immobile.comune ? ', ' + d.immobile.comune : '')],
     ['Commissione di gestione', stato.pratica.condizioni.commissione],
   ];
   const acc=[];
