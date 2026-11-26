@@ -14,21 +14,27 @@
  *       quote, documento d'identità e visura diventano obbligatori (art. 5.1),
  *       l'IBAN entra nell'art. 9 con accredito unico o suddiviso per quota.
  * 1.8 → art. 5.1: il documento d'identità va acquisito fronte e retro.
+ * 1.9 → condizioni variabili decise da Houzly alla creazione: durata, regime IVA
+ *       sul compenso, art. 8 sdoppiato (persona fisica con ritenuta 21% /
+ *       soggetto d'impresa che fattura in proprio), art. 20 pattuizioni
+ *       particolari con clausola di prevalenza. Campi anagrafici separati.
  */
 
 const v15 = require('./mandato-v1.5');
 const v16 = require('./mandato-v1.6');
 const v17 = require('./mandato-v1.7');
 const v18 = require('./mandato-v1.8');
+const v19 = require('./mandato-v1.9');
 
 const TEMPLATES = {
   '1.5': v15,
   '1.6': v16,
   '1.7': v17,
   '1.8': v18,
+  '1.9': v19,
 };
 
-const VERSIONE_ATTIVA = '1.8';
+const VERSIONE_ATTIVA = '1.9';
 
 function getTemplate(versione = VERSIONE_ATTIVA) {
   const t = TEMPLATES[versione];
