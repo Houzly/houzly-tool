@@ -446,6 +446,54 @@ function createContractsAdminRouter(deps) {
     }
   });
 
+  // POST /api/contracts/:riferimento/write-back — riallinea le anagrafiche
+  //
+  // Il write-back gira alla firma, una volta sola. Serve poterlo rilanciare
+  // perché può essere fallito (Mongo non raggiungibile in quel momento) o
+  // essere girato quando ancora scriveva i comproprietari nel posto
+  // sbagliato. Rifare il contratto per rimediare non avrebbe senso: la firma
+  // è valida, è l'anagrafica che è rimasta indietro.
+  //
+  // Si può ripetere senza danni: il proprietario si riconosce dal codice
+  // fiscale, l'immobile dal CIN e la riga di contratto dal riferimento della
+  // pratica, quindi la seconda esecuzione aggiorna invece di duplicare.
+  // Niente viene cancellato: si scrivono solo i campi che hanno un valore.
+  router.post('/:riferimento/write-back', async (req, res) => {
+    try {
+      const col = await store.cases(getDb);
+      const caso = await col.findOne({ riferimento: req.params.riferimento });
+      if (!caso) return res.status(404).json({ ok: false, error: 'pratica_non_trovata' });
+      // Solo da una pratica firmata: i dati si alimentano quando il contratto
+      // è ufficiale, mai prima.
+      if (caso.stato !== 'firmata') {
+        return res.status(409).json({ ok: false, error: 'pratica_non_firmata', stato: caso.stato });
+      }
+
+      const esito = await applicaWriteBack(getDb, caso);
+      const mancanti = campiFiscaliMancanti(caso);
+
+      await col.updateOne(
+        { riferimento: caso.riferimento },
+        {
+          $set: { writeBack: { ...esito, eseguitoIl: new Date().toISOString(), rilanciato: true } },
+          $push: {
+            audit: store.eventoAudit(
+              `Anagrafiche riallineate a mano: ${esito.ownerCreato ? 'proprietario creato' : 'proprietario aggiornato'}, ` +
+              `${esito.propCreata ? 'immobile creato' : 'immobile aggiornato'}, ${esito.coprops} comproprietari`,
+              req
+            ),
+          },
+        }
+      );
+
+      console.log(`[contracts/write-back] ${caso.riferimento} → owner ${esito.ownerId}, prop ${esito.propertyId}`);
+      res.json({ ok: true, esito, campiFiscaliMancanti: mancanti });
+    } catch (e) {
+      console.error('[contracts/write-back]', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/contracts/:riferimento/rigenera-link — nuovo token, nuovo invito
   router.post('/:riferimento/rigenera-link', async (req, res) => {
     try {
