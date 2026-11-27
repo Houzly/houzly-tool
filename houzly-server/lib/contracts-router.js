@@ -630,10 +630,30 @@ function createContractsAdminRouter(deps) {
       const esito = await applicaWriteBack(getDb, caso);
       const mancanti = campiFiscaliMancanti(caso);
 
+      /* Chi ha creato proprietario e immobile non si riscrive a ogni giro.
+       *
+       * Al secondo riallineamento quelle schede esistono già, quindi questa
+       * esecuzione riporta `ownerCreato: false` — ma a crearle era stata
+       * comunque questa pratica. Sovrascrivendo, l'eliminazione le
+       * crederebbe preesistenti e le lascerebbe in anagrafica. Una volta
+       * vero, resta vero. */
+      const prima = caso.writeBack || {};
+      const esitoUnito = {
+        ...esito,
+        ownerCreato: prima.ownerCreato || esito.ownerCreato,
+        propCreata: prima.propCreata || esito.propCreata,
+        copropsAggiunti: [
+          ...(prima.copropsAggiunti || []),
+          ...(esito.copropsAggiunti || []).filter(
+            (c) => !(prima.copropsAggiunti || []).some((p) => (p.cf || p.nome) === (c.cf || c.nome))
+          ),
+        ],
+      };
+
       await col.updateOne(
         { riferimento: caso.riferimento },
         {
-          $set: { writeBack: { ...esito, eseguitoIl: new Date().toISOString(), rilanciato: true } },
+          $set: { writeBack: { ...esitoUnito, eseguitoIl: new Date().toISOString(), rilanciato: true } },
           $push: {
             audit: store.eventoAudit(
               `Anagrafiche riallineate a mano: ${esito.ownerCreato ? 'proprietario creato' : 'proprietario aggiornato'}, ` +
