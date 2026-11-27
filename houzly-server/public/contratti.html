@@ -804,8 +804,10 @@ async function pulizia(){
 
   const voce = (tipo, x, dettaglio, spuntato) =>
     '<label class="pul-voce"><input type="checkbox" data-tipo="' + tipo + '" value="'
-    + esc(x.id) + '"' + (spuntato ? ' checked' : '') + '><span><b>' + esc(x.nome || x.id)
-    + '</b><small>' + esc(dettaglio) + '</small></span></label>';
+    + esc(x.id) + '" data-dipende="' + esc((x.dipendeDa || []).join(','))
+    + '" onchange="pulCoerenza(this)"' + (spuntato ? ' checked' : '')
+    + '><span><b>' + esc(x.nome || x.id) + '</b><small>' + esc(dettaglio)
+    + '</small></span></label>';
 
   let html = '';
 
@@ -841,11 +843,34 @@ async function pulizia(){
   document.getElementById('velo-pulizia').hidden = false;
 }
 
+/* Selezione coerente fra immobili e proprietari.
+   Un proprietario non si può togliere lasciando in piedi un immobile che lo
+   nomina: il server lo rifiuterebbe e l'utente si vedrebbe un errore senza
+   capire perché. Spuntando il proprietario si spuntano anche i suoi
+   immobili, e togliendo la spunta a un immobile la si toglie ai proprietari
+   che ne dipendono. */
+function pulCoerenza(input){
+  const dip = (input.dataset.dipende || '').split(',').filter(Boolean);
+  const casella = id => document.querySelector(
+    '#pul-elenco input[data-tipo="immobili"][value="' + CSS.escape(id) + '"]');
+
+  if(input.dataset.tipo === 'proprietari' && input.checked){
+    dip.forEach(id => { const c = casella(id); if(c) c.checked = true; });
+    return;
+  }
+  if(input.dataset.tipo === 'immobili' && !input.checked){
+    document.querySelectorAll('#pul-elenco input[data-tipo="proprietari"]').forEach(o => {
+      if((o.dataset.dipende || '').split(',').includes(input.value)) o.checked = false;
+    });
+  }
+}
+
 function pulInverti(ev){
   ev.preventDefault();
   const box = ev.target.parentElement.querySelectorAll('input[type=checkbox]');
   const tutti = Array.from(box).every(i => i.checked);
   box.forEach(i => { i.checked = !tutti; });
+  box.forEach(i => pulCoerenza(i));
 }
 
 function chiudiPulizia(){
