@@ -89,6 +89,35 @@ main{max-width:900px;margin:0 auto;padding:18px 18px calc(var(--safe-bottom) + 4
 .az.forte{background:var(--navy);color:#fff;border-color:var(--navy)}
 .az.rischio{color:var(--red);border-color:rgba(214,58,74,.3)}
 .az:disabled{opacity:.4;cursor:not-allowed}
+/* Finestra di riallineamento: serve una scelta voce per voce, perché fra
+   le schede inutilizzate possono esserci anagrafiche inserite a mano. */
+.velo{position:fixed;inset:0;background:rgba(23,0,70,.45);z-index:60;
+  display:flex;align-items:flex-end;justify-content:center;padding:0}
+/* `display:flex` sulla classe vince sull'attributo hidden, che vale
+   display:none a specificità zero: senza questa riga la finestra
+   resterebbe aperta per sempre. */
+.velo[hidden]{display:none}
+@media(min-width:640px){.velo{align-items:center;padding:24px}}
+.finestra{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;
+  width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;
+  padding:22px 20px calc(16px + var(--safe-bottom))}
+@media(min-width:640px){.finestra{border-radius:var(--radius);padding-bottom:18px}}
+.finestra h2{margin:0 0 6px;font-size:18px;color:var(--text)}
+.pul-intro{margin:0 0 14px;font-size:13px;color:var(--text-mid);line-height:1.45}
+#pul-elenco{overflow-y:auto;flex:1;margin:0 -4px;padding:0 4px}
+.pul-gruppo{margin-bottom:16px}
+.pul-tit{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--text-dim);margin:0 0 4px}
+.pul-nota{font-size:12px;color:var(--text-mid);margin:0 0 8px;line-height:1.4}
+.pul-voce{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer}
+.pul-voce input{margin:2px 0 0;width:17px;height:17px;flex:none;accent-color:var(--navy)}
+.pul-voce b{font-weight:600;font-size:14px;color:var(--text);display:block}
+.pul-voce small{color:var(--text-dim);font-size:12px}
+.pul-tutti{background:none;border:0;color:var(--accent);font:inherit;font-size:12px;
+  cursor:pointer;padding:0;margin:0 0 8px}
+.pul-azioni{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--border)}
 
 /* ── form nuova ── */
 .nuovo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
@@ -242,6 +271,18 @@ label>span em{font-style:normal;font-weight:400;color:var(--text-dim)}
     <div class="pills" id="pills"></div>
     <div id="elenco"><div class="filatore"></div></div>
   </main>
+</div>
+
+<div class="velo" id="velo-pulizia" hidden>
+  <div class="finestra">
+    <h2 id="pul-titolo">Riallinea anagrafica</h2>
+    <p class="pul-intro" id="pul-intro"></p>
+    <div id="pul-elenco"></div>
+    <div class="pul-azioni">
+      <button class="az" onclick="chiudiPulizia()">Annulla</button>
+      <button class="az forte" id="pul-conferma" onclick="confermaPulizia()">Rimuovi i selezionati</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -740,72 +781,95 @@ async function documenti(rif){
  * Riallinea l'anagrafica dopo che sono state eliminate delle pratiche.
  *
  * L'eliminazione di una pratica si porta via quello che aveva creato, ma
- * qualcosa può restare indietro: una riga di contratto cancellata a mano
- * dal gestionale, un immobile che al momento dell'eliminazione risultava
- * ancora usato da una prenotazione poi rimossa. Questo tasto li ritrova.
+ * qualcosa può restare indietro: una riga di contratto cancellata a mano dal
+ * gestionale, un immobile che al momento dell'eliminazione risultava ancora
+ * usato da una prenotazione poi rimossa, o schede create prima che esistesse
+ * la firma di provenienza.
  *
- * Due gruppi, tenuti distinti apposta: i residui con la firma di una pratica
- * sparita, di cui si sa la provenienza, e le schede che semplicemente non
- * usa nessuno — che potrebbero anche essere un proprietario inserito a
- * mano e non ancora attivo. Il secondo gruppo si elenca e basta.
+ * Si sceglie voce per voce, e il secondo gruppo parte senza spunte: lì
+ * dentro, accanto ai residui di una prova, può esserci un proprietario
+ * censito a mano e non ancora attivo. Proporre di cancellare tutto in blocco
+ * sarebbe chiedere di fidarsi di un'euristica per dei dati veri.
  */
+let _pulizia = null;
+
 async function pulizia(){
   const a = await api('/pulizia');
   if(!a.ok) return mostra('Errore: ' + a.error);
-  const p = a.anteprima || {};
+  const p = _pulizia = a.anteprima || {};
 
-  const nomi = (v, max) => v.slice(0, max || 6).map(x => x.nome || x.proprietario || x.id).join(', ')
-    + (v.length > (max || 6) ? ' e altri ' + (v.length - (max || 6)) : '');
+  const certi = p.contrattiOrfani.length + p.immobiliOrfani.length + p.proprietariOrfani.length;
+  const dubbi = p.immobiliInutilizzati.length + p.proprietariInutilizzati.length;
+  if(!certi && !dubbi) return mostra('Anagrafica in ordine, nessun residuo');
 
-  const certi = [];
-  if(p.contrattiOrfani.length)
-    certi.push(p.contrattiOrfani.length + ' righe di contratto senza pratica — ' + nomi(p.contrattiOrfani));
-  if(p.immobiliOrfani.length)
-    certi.push(p.immobiliOrfani.length + ' immobili creati da pratiche eliminate — ' + nomi(p.immobiliOrfani));
-  if(p.proprietariOrfani.length)
-    certi.push(p.proprietariOrfani.length + ' proprietari creati da pratiche eliminate — ' + nomi(p.proprietariOrfani));
+  const voce = (tipo, x, dettaglio, spuntato) =>
+    '<label class="pul-voce"><input type="checkbox" data-tipo="' + tipo + '" value="'
+    + esc(x.id) + '"' + (spuntato ? ' checked' : '') + '><span><b>' + esc(x.nome || x.id)
+    + '</b><small>' + esc(dettaglio) + '</small></span></label>';
 
-  const dubbi = [].concat(p.immobiliInutilizzati, p.proprietariInutilizzati);
+  let html = '';
 
-  if(!certi.length && !dubbi.length) return mostra('Anagrafica in ordine, nessun residuo');
-
-  let testo = '';
-  if(certi.length) testo += 'Residui di pratiche eliminate:\n\n· ' + certi.join('\n· ') + '\n\n';
-
-  let immobili = p.immobiliOrfani.map(x => x.id);
-  let proprietari = p.proprietariOrfani.map(x => x.id);
-
-  if(certi.length){
-    testo += 'Niente di tutto questo è usato da prenotazioni, ricevute o altri contratti: '
-      + 'quello che risulta ancora in uso viene saltato.\n\nProcedere con la rimozione?';
-    if(!confirm(testo)) return;
+  if(certi){
+    html += '<div class="pul-gruppo"><p class="pul-tit">Residui di pratiche eliminate</p>'
+      + '<p class="pul-nota">Create da una pratica che non esiste più. '
+      + 'Nessuna è usata da prenotazioni, ricevute o altri contratti.</p>'
+      + p.contrattiOrfani.map(x => voce('contratti',
+          {id:x.id, nome:'Riga di contratto — ' + (x.proprietario||'')},
+          'pratica ' + (x.pratica||'') + (x.data ? ' · ' + x.data : ''), true)).join('')
+      + p.immobiliOrfani.map(x => voce('immobili', x,
+          'immobile · pratica ' + (x.pratica||''), true)).join('')
+      + p.proprietariOrfani.map(x => voce('proprietari', x,
+          'proprietario · pratica ' + (x.pratica||''), true)).join('')
+      + '</div>';
   }
 
-  /* Secondo gruppo: schede che non usa nessuno ma senza firma di provenienza.
-     Si chiedono a parte, con i nomi davanti, perché qui la certezza non
-     c'è: possono essere prove fatte prima che la firma esistesse, oppure un
-     prospect censito a mano e non ancora attivo. */
-  if(dubbi.length){
-    const elenco = dubbi.map(x => '\u00b7 ' + (x.nome || x.id)).join('\n');
-    const vuole = confirm('Ci sono ' + dubbi.length + ' schede che non usa nessuno, senza traccia '
-      + 'della pratica che le ha create:\n\n' + elenco
-      + '\n\nPossono essere residui di prove fatte prima, oppure anagrafiche inserite a mano e '
-      + 'non ancora attive.\n\nRimuovere anche queste? Scelga Annulla se riconosce qualcosa da tenere.');
-    if(vuole){
-      immobili = immobili.concat(p.immobiliInutilizzati.map(x => x.id));
-      proprietari = proprietari.concat(p.proprietariInutilizzati.map(x => x.id));
-    } else if(!certi.length){
-      return mostra('Nessuna modifica');
-    }
+  if(dubbi){
+    html += '<div class="pul-gruppo"><p class="pul-tit">Schede che non usa nessuno</p>'
+      + '<p class="pul-nota">Nessuno le nomina da nessuna parte, ma non portano traccia della '
+      + 'pratica che le ha create: possono essere prove di prima, oppure anagrafiche inserite '
+      + 'a mano e non ancora attive. <b>Spunti solo quelle da rimuovere.</b></p>'
+      + '<button class="pul-tutti" onclick="pulInverti(event)">Seleziona / deseleziona tutte</button>'
+      + p.immobiliInutilizzati.map(x => voce('immobili', x, 'immobile', false)).join('')
+      + p.proprietariInutilizzati.map(x => voce('proprietari', x, 'proprietario', false)).join('')
+      + '</div>';
   }
 
-  mostra('Pulizia in corso\u2026');
-  const d = await api('/pulizia', {method:'POST', body: JSON.stringify({
-    conferma: 'PULISCI',
-    contratti: p.contrattiOrfani.map(x => x.id),
-    immobili,
-    proprietari,
-  })});
+  document.getElementById('pul-intro').textContent = certi
+    ? 'I residui di pratiche eliminate sono già selezionati. Controlli il secondo gruppo prima di confermare.'
+    : 'Nessun residuo di pratiche eliminate. Qui sotto le schede che non risulta usi nessuno.';
+  document.getElementById('pul-elenco').innerHTML = html;
+  document.getElementById('velo-pulizia').hidden = false;
+}
+
+function pulInverti(ev){
+  ev.preventDefault();
+  const box = ev.target.parentElement.querySelectorAll('input[type=checkbox]');
+  const tutti = Array.from(box).every(i => i.checked);
+  box.forEach(i => { i.checked = !tutti; });
+}
+
+function chiudiPulizia(){
+  document.getElementById('velo-pulizia').hidden = true;
+  _pulizia = null;
+}
+
+async function confermaPulizia(){
+  const scelte = {contratti:[], immobili:[], proprietari:[]};
+  document.querySelectorAll('#pul-elenco input[type=checkbox]:checked')
+    .forEach(i => scelte[i.dataset.tipo].push(i.value));
+
+  const quanti = scelte.contratti.length + scelte.immobili.length + scelte.proprietari.length;
+  if(!quanti) return mostra('Non ha selezionato niente');
+
+  const nomi = Array.from(document.querySelectorAll('#pul-elenco input:checked'))
+    .map(i => i.parentElement.querySelector('b').textContent);
+  if(!confirm('Rimuovere ' + quanti + (quanti===1 ? ' voce:' : ' voci:') + '\n\n· '
+    + nomi.join('\n· ') + '\n\nL’operazione non si può annullare.')) return;
+
+  chiudiPulizia();
+  mostra('Rimozione in corso…');
+  const d = await api('/pulizia', {method:'POST',
+    body: JSON.stringify(Object.assign({conferma:'PULISCI'}, scelte))});
   if(!d.ok) return mostra('Errore: ' + d.error);
 
   const fatto = [];
@@ -814,8 +878,8 @@ async function pulizia(){
   if(d.proprietari) fatto.push(d.proprietari + ' proprietari');
   mostra(fatto.length ? 'Rimossi: ' + fatto.join(', ') : 'Niente da rimuovere');
   if(d.rifiutati && d.rifiutati.length)
-    setTimeout(()=>alert(d.rifiutati.length + ' elementi non sono stati rimossi perché nel '
-      + 'frattempo risultano usati da qualcos’altro.'), 500);
+    setTimeout(()=>alert(d.rifiutati.length + ' voci non sono state rimosse perché nel '
+      + 'frattempo risultano usate da qualcos’altro.'), 500);
 }
 
 async function elimina(rif){
