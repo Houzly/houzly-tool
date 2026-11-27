@@ -585,16 +585,28 @@ async function anteprimaEliminazione(getDb, caso) {
   // Escludendo `contratti`: la riga di questa pratica sparisce comunque.
   const senzaContratti = { escludi: ['contratti'] };
 
-  if (wb.propCreata && wb.propertyId) {
-    const p = (stato.proprieta || []).find((x) => x.id === wb.propertyId);
+  /* Due prove indipendenti che una scheda l'ha creata questa pratica: il
+   * resoconto del write-back e la firma sulla scheda stessa. Basta una.
+   * Il resoconto può essersi perso in un riallineamento fatto con una
+   * versione che lo riscriveva da capo; la firma, una volta apposta, resta. */
+  const creataDaQui = (r) => !!r && r.creato_da_contratto === caso.riferimento;
+
+  const propTrovata = (stato.proprieta || []).find((x) => x.id === wb.propertyId);
+  if ((wb.propCreata || creataDaQui(propTrovata)) && wb.propertyId) {
     const usi = usatoAltrove(stato, wb.propertyId, senzaContratti);
-    esito.immobile = p
-      ? { id: p.id, nome: p.nome || '(senza nome)', eliminabile: !usi.length, usatoIn: usi }
+    esito.immobile = propTrovata
+      ? {
+        id: propTrovata.id,
+        nome: propTrovata.nome || '(senza nome)',
+        eliminabile: !usi.length,
+        usatoIn: usi,
+      }
       : null;
   }
 
-  if (wb.ownerCreato && wb.ownerId) {
-    const o = (stato.proprietari || []).find((x) => x.id === wb.ownerId);
+  const ownerTrovato = (stato.proprietari || []).find((x) => x.id === wb.ownerId);
+  if ((wb.ownerCreato || creataDaQui(ownerTrovato)) && wb.ownerId) {
+    const o = ownerTrovato;
     // L'immobile di questa pratica punta al proprietario: non conta come uso
     // esterno, perché sta per essere rimosso anche lui.
     const usi = usatoAltrove(stato, wb.ownerId, senzaContratti)
