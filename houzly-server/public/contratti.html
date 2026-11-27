@@ -771,25 +771,40 @@ async function pulizia(){
 
   let testo = '';
   if(certi.length) testo += 'Residui di pratiche eliminate:\n\n· ' + certi.join('\n· ') + '\n\n';
-  else testo += 'Nessun residuo di pratiche eliminate.\n\n';
 
-  if(dubbi.length){
-    testo += 'Ci sono anche ' + dubbi.length + ' schede che non usa nessuno, ma senza traccia '
-      + 'di una pratica: ' + nomi(dubbi, 8) + '.\nPotrebbero essere prove vecchie oppure '
-      + 'anagrafiche inserite a mano e non ancora attive, quindi NON vengono toccate.\n\n';
+  let immobili = p.immobiliOrfani.map(x => x.id);
+  let proprietari = p.proprietariOrfani.map(x => x.id);
+
+  if(certi.length){
+    testo += 'Niente di tutto questo è usato da prenotazioni, ricevute o altri contratti: '
+      + 'quello che risulta ancora in uso viene saltato.\n\nProcedere con la rimozione?';
+    if(!confirm(testo)) return;
   }
-  if(!certi.length) return alert(testo + 'Non c’è niente da rimuovere in automatico.');
 
-  testo += 'Niente di tutto questo è usato da prenotazioni, ricevute o altri contratti: '
-    + 'quello che risulta ancora in uso viene saltato.\n\nProcedere con la rimozione?';
-  if(!confirm(testo)) return;
+  /* Secondo gruppo: schede che non usa nessuno ma senza firma di provenienza.
+     Si chiedono a parte, con i nomi davanti, perché qui la certezza non
+     c'è: possono essere prove fatte prima che la firma esistesse, oppure un
+     prospect censito a mano e non ancora attivo. */
+  if(dubbi.length){
+    const elenco = dubbi.map(x => '\u00b7 ' + (x.nome || x.id)).join('\n');
+    const vuole = confirm('Ci sono ' + dubbi.length + ' schede che non usa nessuno, senza traccia '
+      + 'della pratica che le ha create:\n\n' + elenco
+      + '\n\nPossono essere residui di prove fatte prima, oppure anagrafiche inserite a mano e '
+      + 'non ancora attive.\n\nRimuovere anche queste? Scelga Annulla se riconosce qualcosa da tenere.');
+    if(vuole){
+      immobili = immobili.concat(p.immobiliInutilizzati.map(x => x.id));
+      proprietari = proprietari.concat(p.proprietariInutilizzati.map(x => x.id));
+    } else if(!certi.length){
+      return mostra('Nessuna modifica');
+    }
+  }
 
-  mostra('Pulizia in corso…');
+  mostra('Pulizia in corso\u2026');
   const d = await api('/pulizia', {method:'POST', body: JSON.stringify({
     conferma: 'PULISCI',
     contratti: p.contrattiOrfani.map(x => x.id),
-    immobili: p.immobiliOrfani.map(x => x.id),
-    proprietari: p.proprietariOrfani.map(x => x.id),
+    immobili,
+    proprietari,
   })});
   if(!d.ok) return mostra('Errore: ' + d.error);
 
