@@ -753,16 +753,28 @@ async function anteprimaPulizia(getDb, riferimentiVivi) {
 
   const imm = schede(proprieta, 'proprieta', statoSenzaOrfani);
 
-  // I proprietari si valutano su un'istantanea senza gli immobili che stanno
-  // per essere rimossi. Altrimenti un proprietario di prova resterebbe per
-  // sempre: il suo unico immobile, orfano quanto lui, lo cita e lo fa
-  // sembrare in uso.
-  const idImmFuori = new Set(imm.orfani.map((x) => x.id));
+  /* I proprietari si valutano su un'istantanea senza gli immobili che
+   * possono essere rimossi — tutti e due i gruppi, non solo quelli certi.
+   *
+   * Altrimenti un proprietario di prova non comparirebbe mai nell'elenco:
+   * il suo unico immobile lo cita, e finché quell'immobile è in piedi lui
+   * risulta "in uso". Si finiva per poter togliere Villa Roma e non il suo
+   * proprietario, che restava in anagrafica senza niente attaccato. */
+  const idImmFuori = new Set([...imm.orfani, ...imm.inutilizzati].map((x) => x.id));
   const statoSenzaImmobili = {
     ...statoSenzaOrfani,
     proprieta: (statoSenzaOrfani.proprieta || []).filter((p) => !idImmFuori.has(p.id)),
   };
   const own = schede(proprietari, 'proprietari', statoSenzaImmobili);
+
+  /* Da quali immobili dipende la rimovibilità di ciascun proprietario: il
+   * modulo li usa per tenere coerente la selezione, perché un proprietario
+   * non si può togliere lasciando in piedi un immobile che lo nomina. */
+  for (const o of [...own.orfani, ...own.inutilizzati]) {
+    o.dipendeDa = (statoSenzaOrfani.proprieta || [])
+      .filter((p) => idImmFuori.has(p.id) && usatoAltrove({ x: p }, o.id, {}).length)
+      .map((p) => p.id);
+  }
 
   return {
     contrattiOrfani,
@@ -802,12 +814,22 @@ async function applicaPulizia(getDb, riferimentiVivi, scelte = {}) {
     await col.updateOne({ _id: DOC_STATO }, { $pull: { proprieta: { id } } });
     fatto.immobili += 1;
   }
-  // I proprietari per ultimi: un immobile appena rimosso non deve più
-  // contare come uso del suo proprietario.
-  const dopo = await anteprimaPulizia(getDb, riferimentiVivi);
-  const idOwnerOk = new Set([...dopo.proprietariOrfani, ...dopo.proprietariInutilizzati].map((v) => v.id));
+  /* I proprietari per ultimi, e verificati sullo stato REALE di adesso.
+   *
+   * L'anteprima sconta gli immobili che si potrebbero rimuovere, perché
+   * altrimenti un proprietario non comparirebbe mai nell'elenco. Ma qui
+   * conta solo cosa è rimasto davvero: se l'immobile che lo nomina non è
+   * stato selezionato ed è ancora in piedi, togliere il proprietario
+   * lascerebbe quell'immobile a puntare a un id che non esiste. */
+  const statoOra = (await col.findOne({ _id: DOC_STATO })) || {};
+  const idCandidati = new Set(
+    [...piano.proprietariOrfani, ...piano.proprietariInutilizzati].map((v) => v.id)
+  );
   for (const id of (scelte.proprietari || [])) {
-    if (!idOwnerOk.has(id)) { fatto.rifiutati.push(id); continue; }
+    const usi = idCandidati.has(id)
+      ? usatoAltrove(statoOra, id, { escludi: ['contratti'] })
+      : ['non in elenco'];
+    if (usi.length) { fatto.rifiutati.push(id); continue; }
     await col.updateOne({ _id: DOC_STATO }, { $pull: { proprietari: { id } } });
     fatto.proprietari += 1;
   }
